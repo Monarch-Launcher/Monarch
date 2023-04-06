@@ -2,8 +2,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod monarch_utils;
+mod monarch_games;
 use monarch_utils::monarch_fs::init_monarch_fs;
 use monarch_utils::logger::init_logger;
+use monarch_games::commands::{steam_downloader, launch_steam_game, search_games,
+                              blizzard_downloader, launch_blizzard_game, epic_downloader};
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -16,7 +19,15 @@ fn main() {
     init_logger().unwrap();
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            steam_downloader,
+            launch_steam_game,
+            search_games,
+            blizzard_downloader,
+            launch_blizzard_game,
+            epic_downloader
+            ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

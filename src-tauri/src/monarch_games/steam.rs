@@ -43,67 +43,70 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 }
 
 /// Opens the steam installer for a steam game, takes its steam id as parameter.
-pub async fn download_game(id: &str) -> io::Result<()> {
+pub async fn download_game(game: MonarchGame) {
+    let name: &str = game.get_name();
+    let id: &str = game.get_id();
+
     let mut game_command: String = String::from("steam://install/");
     game_command.push_str(id);
 
     let download_result: Result<Child, Error> = Command::new("PowerShell")
                                                         .arg("start")
-                                                        .arg(game_command)
+                                                        .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
 
     match download_result {
         Ok(_) => {
-            info!("Running steam installer for game with id: {}", id);
-            Ok(())
+            info!("Running steam installer for: {}", name);
         },
         Err(e) => {
-            error!("Failed to run steam installer for game with id: {} | Message: {:?}", id, e);
-            Err(e)
+            error!("Failed to run steam installer: {}(Game: {}) | Message: {:?}", game_command, name, e);
         }
     }
 }
 
 /// Launches steam game
-pub async fn launch_game(id: &str) -> io::Result<()> {
+pub async fn launch_game(game: MonarchGame) {
+    let name: &str = game.get_name();
+    let id: &str = game.get_id();
+
     let mut game_command: String = String::from("steam://rungameid/");
     game_command.push_str(id);
 
     let launch_result: Result<Child, Error> = Command::new("PowerShell")
                                                         .arg("start")
-                                                        .arg(game_command)
+                                                        .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
 
     match launch_result {
         Ok(_) => {
-            info!("Launching game: {}", id);
-            Ok(())
+            info!("Launching game: {}", name);
         },
         Err(e) => {
-            error!("Failed to launch game: {} via steam! | Message: {:?}", id, e);
-            Err(e)
+            error!("Failed to launch game: {}({}) | Message: {:?}", game_command, name, e);
         }
     }
 }
 
 /// Opens Steam store page for specified game
-pub async fn buy_game(id: &str) -> io::Result<()> {
+pub async fn buy_game(game: MonarchGame) {
+    let name: &str = game.get_name();
+    let id: &str = game.get_id();
+
     let mut game_command: String = String::from("steam://purchase/");
     game_command.push_str(id);
 
     let launch_result: Result<Child, Error> = Command::new("PowerShell")
                                                         .arg("start")
-                                                        .arg(game_command)
+                                                        .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
 
     match launch_result {
         Ok(_) => {
-            info!("Launching game: {}", id);
-            Ok(())
-        },
+            info!("Opening store page: {}", name);
+        }
         Err(e) => {
-            error!("Failed to launch game: {} via steam! | Message: {:?}", id, e);
-            Err(e)
+            error!("Failed to open store page: {}({}) | Message: {:?}", game_command, name, e);
         }
     }
 }
@@ -113,23 +116,24 @@ pub async fn get_library() -> io::Result<Vec<MonarchGame>> {
     let result = get_reg_folder_contents("Valve\\Steam\\Apps");
     
     match result {
-        Ok(library) => {
+        Ok(library) => { // Found games for steam in registry
             let mut games: Vec<MonarchGame> = Vec::new();
             
-            for item in library.iter() {
+            for item in library.iter() { // Get info for each game
                 let mut target: String = String::from("https://store.steampowered.com/app/");
                 target.push_str(item);
                 let response: Response = request_data(&target).await;
 
                 match library_steam_game_parser(response, item).await {
-                    Ok(game) => { games.push(game) }
-                    Err(_) => { }
+                    Ok(game) => { games.push(game) } // Push game to vec
+                    Err(_) => { 
+                        // Classic do nothing case
+                    }
                 }
             }
-
             return Ok(games)
         }
-        Err(e) => { println!("Failed to get library: {:?}", e) }
+        Err(e) => { info!("Failed to get library: {:?}", e) }
     }
     let err: io::Error = io::Error::new(io::ErrorKind::NotFound, "Failed to get Steam game library!"); 
     return Err(err)
