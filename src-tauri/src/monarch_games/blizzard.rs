@@ -35,7 +35,9 @@ pub async fn get_blizzard() {
 }
 
 /// Attempts to run Blizzard game, returns Ok() or Err()
-pub fn run_blizzard_game(id: &str) -> io::Result<()> {
+pub fn launch_game(name: &str) -> io::Result<()> {
+    // Convert name to id, somehow
+
     let mut game_command: String = String::from("battlenet://");
     game_command.push_str(id);
 

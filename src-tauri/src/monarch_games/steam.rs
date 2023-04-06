@@ -30,7 +30,7 @@ pub async fn get_steam() {
 }
 
 /// Search function to find steam games
-pub async fn find_steam_game(name: &str) -> Vec<MonarchGame> {
+pub async fn find_game(name: &str) -> Vec<MonarchGame> {
     let mut target: String = String::from("https://store.steampowered.com/search/?term=");
     target.push_str(name);
 
@@ -43,7 +43,7 @@ pub async fn find_steam_game(name: &str) -> Vec<MonarchGame> {
 }
 
 /// Opens the steam installer for a steam game, takes its steam id as parameter.
-pub async fn download_steam_game(id: &str) -> io::Result<()> {
+pub async fn download_game(id: &str) -> io::Result<()> {
     let mut game_command: String = String::from("steam://install/");
     game_command.push_str(id);
 
@@ -65,7 +65,7 @@ pub async fn download_steam_game(id: &str) -> io::Result<()> {
 }
 
 /// Launches steam game
-pub async fn run_steam_game(id: &str) -> io::Result<()> {
+pub async fn launch_game(id: &str) -> io::Result<()> {
     let mut game_command: String = String::from("steam://rungameid/");
     game_command.push_str(id);
 
@@ -87,7 +87,7 @@ pub async fn run_steam_game(id: &str) -> io::Result<()> {
 }
 
 /// Opens Steam store page for specified game
-pub async fn buy_steam_game(id: &str) -> io::Result<()> {
+pub async fn buy_game(id: &str) -> io::Result<()> {
     let mut game_command: String = String::from("steam://purchase/");
     game_command.push_str(id);
 
@@ -109,7 +109,7 @@ pub async fn buy_steam_game(id: &str) -> io::Result<()> {
 }
 
 /// Finds local steam library installed on current system via winreg
-pub async fn get_steam_library() -> io::Result<Vec<MonarchGame>> {
+pub async fn get_library() -> io::Result<Vec<MonarchGame>> {
     let result = get_reg_folder_contents("Valve\\Steam\\Apps");
     
     match result {
