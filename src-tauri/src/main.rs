@@ -33,6 +33,7 @@ fn main() {
             ])
         .run(tauri::generate_context!());
 
+    // Better to write to log than to console with .expect() due to line nr 2, hiding console on Windows
     match app_result {
         Ok(_) => { }
         Err(e) => { error!("Failed to build Tauri app! | Message: {:?}", e) }
