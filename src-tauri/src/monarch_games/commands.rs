@@ -4,6 +4,12 @@ use super::blizzard;
 use super::epic;
 
 #[tauri::command]
+/// Search for games on Monarch, currently only support Steam search
+pub async fn search_games(name: String) -> Vec<MonarchGame> {
+    return steam::find_game(&name).await
+}   
+
+#[tauri::command]
 /// Manually download Steam
 pub async fn steam_downloader() {
     steam::get_steam().await;
@@ -11,14 +17,14 @@ pub async fn steam_downloader() {
 
 #[tauri::command]
 /// Launch a game via Steam
-pub async fn launch_steam_game(game: MonarchGame) {
-    steam::launch_game(game).await;
+pub fn launch_steam_game(game: MonarchGame) {
+    steam::launch_game(game);
 }
 
 #[tauri::command]
-/// Search for games on Monarch, currently only support Steam search
-pub async fn search_games(name: String) {
-    steam::find_game(&name).await;
+/// Open "Download window" for Steam game
+pub fn download_steam_game(game: MonarchGame) {
+    steam::download_game(game);
 }
 
 #[tauri::command]
@@ -29,7 +35,7 @@ pub async fn blizzard_downloader() {
 
 #[tauri::command]
 /// Launch a game via Battle.net
-pub async fn launch_blizzard_game(game: MonarchGame) {
+pub fn launch_blizzard_game(game: MonarchGame) {
     blizzard::launch_game(game);
 }
 

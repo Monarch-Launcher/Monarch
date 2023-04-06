@@ -37,13 +37,13 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
     info!("Searching: {}", target);
 
     let response: Response = request_data(&target).await;
-    let games: Vec<MonarchGame> = find_steam_game_parser(response).await;
+    let games: Vec<MonarchGame> = store_steam_game_parser(response).await;
 
     return games
 }
 
 /// Opens the steam installer for a steam game, takes its steam id as parameter.
-pub async fn download_game(game: MonarchGame) {
+pub fn download_game(game: MonarchGame) {
     let name: &str = game.get_name();
     let id: &str = game.get_id();
 
@@ -66,7 +66,7 @@ pub async fn download_game(game: MonarchGame) {
 }
 
 /// Launches steam game
-pub async fn launch_game(game: MonarchGame) {
+pub fn launch_game(game: MonarchGame) {
     let name: &str = game.get_name();
     let id: &str = game.get_id();
 
@@ -89,7 +89,7 @@ pub async fn launch_game(game: MonarchGame) {
 }
 
 /// Opens Steam store page for specified game
-pub async fn buy_game(game: MonarchGame) {
+pub fn buy_game(game: MonarchGame) {
     let name: &str = game.get_name();
     let id: &str = game.get_id();
 
@@ -149,7 +149,7 @@ fn steam_is_installed() -> bool {
 }
 
 /// Returns a HashMap of games with their respective Steam IDs.
-async fn find_steam_game_parser(response: Response) -> Vec<MonarchGame> {
+async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
 
     let content = response.text().await.unwrap();
