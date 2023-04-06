@@ -1,0 +1,15 @@
+{
+  "extends": ["airbnb", "airbnb-typescript", "airbnb/hooks"],
+  "rules": {
+    "react/jsx-uses-react": "off",
+    "react/react-in-jsx-scope": "off",
+    "import/no-extraneous-dependencies": "off",
+    "linebreak-style": "off",
+    "react/function-component-definition": "off",
+    "arrow-body-style": "off"
+  },
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  }
+}
+  
