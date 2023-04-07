@@ -6,7 +6,13 @@
     "import/no-extraneous-dependencies": "off",
     "linebreak-style": "off",
     "react/function-component-definition": "off",
-    "arrow-body-style": "off"
+    "arrow-body-style": "off",
+    "react/button-has-type": "off",
+    "object-curly-newline": "off",
+    "no-confusing-arrow": "off",
+    "implicit-arrow-linebreak": "off",
+    "@typescript-eslint/indent": "off",
+    "react/require-default-props": "off"
   },
   "parserOptions": {
     "project": "./tsconfig.json"
