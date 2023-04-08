@@ -162,7 +162,7 @@ async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
     let game_ids: Vec<ElementRef> = document.select(&id_selector).collect();
 
     for i in 0..game_titles.len() {
-        let cur_game = MonarchGame::new(&get_steam_name(game_titles[i]), &get_steamid(game_ids[i]), "steam");
+        let cur_game = MonarchGame::new(&get_steam_name(game_titles[i]), &get_steamid(game_ids[i]), "steam", "temp", "temp");
         games.push(cur_game);
     }
     return games
@@ -176,7 +176,7 @@ async fn library_steam_game_parser(response: Response, id: &str) -> io::Result<M
     let game_title: Vec<ElementRef> = document.select(&title_selector).collect();
 
     if game_title.len() > 0 {
-        return Ok(MonarchGame::new(&get_steam_name(game_title[0]), id, "steam"))
+        return Ok(MonarchGame::new(&get_steam_name(game_title[0]), id, "steam", "temp", "temp"))
     }
     
     let err = io::Error::new(io::ErrorKind::NotFound, "No game found matching Registry entry!");
