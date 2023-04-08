@@ -24,7 +24,7 @@ pub async fn refresh_library() {
 pub fn launch_game(game: MonarchGame) {
     match game.get_platform() {
         "steam" => { steam::launch_game(game); }
-        "blizzard" => {}
+        "blizzard" => { blizzard::launch_game(game); }
         "epic" => {}
         "monarch" => {}
         _ => {}
@@ -36,6 +36,18 @@ pub fn launch_game(game: MonarchGame) {
 pub fn download_game(game: MonarchGame) {
     match game.get_platform() {
         "steam" => { steam::download_game(game); }
+        "blizzard" => {}
+        "epic" => {}
+        "monarch" => {}
+        _ => {}
+    }
+}
+
+#[tauri::command]
+/// Open "Purchase window" for a game
+pub fn purchase_game(game: MonarchGame) {
+    match game.get_platform() {
+        "steam" => { steam::purchase_game(game); }
         "blizzard" => {}
         "epic" => {}
         "monarch" => {}

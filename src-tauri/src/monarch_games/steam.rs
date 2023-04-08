@@ -87,7 +87,7 @@ pub fn launch_game(game: MonarchGame) {
 }
 
 /// Opens Steam store page for specified game
-pub fn buy_game(game: MonarchGame) {
+pub fn purchase_game(game: MonarchGame) {
     let name: &str = game.get_name();
     let id: &str = game.get_id();
 
