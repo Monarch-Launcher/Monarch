@@ -9,8 +9,6 @@ use crate::monarch_utils::{winreg_searcher::{is_installed, get_reg_folder_conten
 use crate::unwrap_some_or_return;
 use super::monarchgame::MonarchGame;
 
-/// Sctruct for storing information about steam game
-
 /*
 ---------- Here are public functions for doing anything related to Steam ----------
 */
@@ -112,31 +110,20 @@ pub fn buy_game(game: MonarchGame) {
 }
 
 /// Finds local steam library installed on current system via winreg
-pub async fn get_library() -> io::Result<Vec<MonarchGame>> {
-    let result = get_reg_folder_contents("Valve\\Steam\\Apps");
-    
-    match result {
-        Ok(library) => { // Found games for steam in registry
-            let mut games: Vec<MonarchGame> = Vec::new();
-            
-            for item in library.iter() { // Get info for each game
-                let mut target: String = String::from("https://store.steampowered.com/app/");
-                target.push_str(item);
-                let response: Response = request_data(&target).await;
+pub async fn get_library() {
+    if let Ok(library) = get_reg_folder_contents("Valve\\Steam\\Apps") {
+        let mut games: Vec<MonarchGame> = Vec::new();    
+        
+        for item in library.iter() { // Get info for each game
+            let mut target: String = String::from("https://store.steampowered.com/app/");
+            target.push_str(item);
+            let response: Response = request_data(&target).await;
 
-                match library_steam_game_parser(response, item).await {
-                    Ok(game) => { games.push(game) } // Push game to vec
-                    Err(_) => { 
-                        // Classic do nothing case
-                    }
-                }
+            if let Ok(game) = library_steam_game_parser(response, item).await {
+                games.push(game);
             }
-            return Ok(games)
         }
-        Err(e) => { info!("Failed to get library: {:?}", e) }
     }
-    let err: io::Error = io::Error::new(io::ErrorKind::NotFound, "Failed to get Steam game library!"); 
-    return Err(err)
 }
 
 /*
