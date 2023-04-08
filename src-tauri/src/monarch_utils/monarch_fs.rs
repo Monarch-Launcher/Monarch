@@ -7,26 +7,33 @@ use std::process::exit;
 pub fn init_monarch_fs() {
     check_appdata_folder();
     check_resources_folder();
+    check_appdata_folder();
+    check_resources_folder();
 }
 
 /// Create Monarch folder in users %appdata% directory
 fn check_appdata_folder() {
-    let appdata_path = get_app_data_path();
-
-    match appdata_path {  
-        Ok(path) =>  {
-            if !path_exists(&path) {
-                if let Err(e) = create_dir(&path) {
-                    println!("Failed to create Monarch %appdata% folder! | Message: {:?}", e);
-                } // Returns result of creating directory
-            }
-        }
-        Err(e) => {
-            // If Monarch fails to create its own %appdata% directory
-            println!("Something went wrong looking for %appdata% folder! \nErr: {:?} \nExiting... ", e);
-            exit(1); // Exit out of app!
+    if let Ok(path) = get_app_data_path() {
+        if !path_exists(&path) {
+            create_dir(&path); // Returns result of creating directory
         }
     }
+    // If Monarch fails to create its own %appdata% directory
+    println!("Something went wrong looking for %appdata% folder! \nErr: {} \nExiting...", e);
+    exit(1); // Exit out of app!
+}
+
+/// Folder to store image resources for game thumbnails etc...
+fn check_resources_folder() {
+    if let Ok(mut path) = get_app_data_path() {
+        path.push_str("\\resources");
+        
+        if !path_exists(&path) {
+            if let Err(e) = create_dir(&path) {
+                println!("Failed to create empty resources folder! | Message: {:?}", e);
+            }
+        }
+    }    
 }
 
 /// Folder to store image resources for game thumbnails etc...
