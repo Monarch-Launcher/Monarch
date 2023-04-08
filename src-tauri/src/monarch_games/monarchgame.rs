@@ -5,11 +5,18 @@ pub struct MonarchGame {
     name: String,
     id: String,
     platform: String,
+    executable_path: String,
+    thumbnail_path: String,
+
 }
 
 impl MonarchGame {
-    pub fn new(name: &str, id: &str, platform: &str) -> Self {
-        MonarchGame { name: name.to_string(), id: id.to_string(), platform: platform.to_string() }
+    pub fn new(name: &str, id: &str, platform: &str, exec_path: &str, thumbnail_path: &str) -> Self {
+        Self { name: name.to_string(), 
+               id: id.to_string(), 
+               platform: platform.to_string(),
+               executable_path: exec_path.to_string(),
+               thumbnail_path: thumbnail_path.to_string() }
     }
 
     pub fn get_name(&self) -> &str {

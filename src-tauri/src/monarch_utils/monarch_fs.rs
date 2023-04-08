@@ -5,27 +5,33 @@ use std::process::exit;
 
 /// Run on startup to ensure users filesystem is ready for Monarch launcher 
 pub fn init_monarch_fs() {
-    create_appdata_folder().unwrap();
+    check_appdata_folder();
+    check_resources_folder();
 }
 
 /// Create Monarch folder in users %appdata% directory
-fn create_appdata_folder() -> io::Result<()> {
-    let app_data_path = get_app_data_path();
-
-    match app_data_path {
-        Ok(path) => {
-            if path_exists(&path) {
-                Ok(())
-            }
-            else {
-                return create_dir(&path); // Returns result of creating directory
-            }
-        }
-        Err(e) => {
-            println!("Something went wrong looking for %appdata% folder! \nErr: {} \nExiting...", e);
-            exit(1); // Exit out of app!
+fn check_appdata_folder() {
+    if let Ok(path) = get_app_data_path() {
+        if !path_exists(&path) {
+            create_dir(&path); // Returns result of creating directory
         }
     }
+    // If Monarch fails to create its own %appdata% directory
+    println!("Something went wrong looking for %appdata% folder! \nErr: {} \nExiting...", e);
+    exit(1); // Exit out of app!
+}
+
+/// Folder to store image resources for game thumbnails etc...
+fn check_resources_folder() {
+    if let Ok(mut path) = get_app_data_path() {
+        path.push_str("\\resources");
+        
+        if !path_exists(&path) {
+            if let Err(e) = create_dir(&path) {
+                println!("Failed to create empty resources folder! | Message: {:?}", e);
+            }
+        }
+    }    
 }
 
 /// Gets the users %appdata% directory and adds \Monarch to the end of it to generate Monarch path
