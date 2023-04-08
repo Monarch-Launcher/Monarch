@@ -17,6 +17,13 @@ const Header = styled.div``;
 const NavContainer = styled.div`
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+`;
+
+const TabContainer = styled.div`
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
 `;
 
@@ -48,19 +55,47 @@ const SideMenu = () => {
     return pathname === '/settings';
   }, [pathname]);
 
+  const isLibrary = React.useMemo(() => {
+    return pathname === '/library';
+  }, [pathname]);
+
+  const isSearch = React.useMemo(() => {
+    return pathname === '/search';
+  }, [pathname]);
+
   return (
     <Container>
       <Header>Monarch</Header>
       <NavContainer>
-        <LinkWrapper $isActive={isHome}>
-          <Button
-            variant="transparent"
-            type="button"
-            onClick={() => navigateTo('/')}
-          >
-            Home
-          </Button>
-        </LinkWrapper>
+        <TabContainer>
+          <LinkWrapper $isActive={isHome}>
+            <Button
+              variant="transparent"
+              type="button"
+              onClick={() => navigateTo('/')}
+            >
+              Home
+            </Button>
+          </LinkWrapper>
+          <LinkWrapper $isActive={isLibrary}>
+            <Button
+              variant="transparent"
+              type="button"
+              onClick={() => navigateTo('/library')}
+            >
+              Library
+            </Button>
+          </LinkWrapper>
+          <LinkWrapper $isActive={isSearch}>
+            <Button
+              variant="transparent"
+              type="button"
+              onClick={() => navigateTo('/search')}
+            >
+              Search
+            </Button>
+          </LinkWrapper>
+        </TabContainer>
         <LinkWrapper $isActive={isSettings}>
           <Button
             variant="transparent"
