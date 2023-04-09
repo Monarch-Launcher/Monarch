@@ -1,6 +1,11 @@
 import * as React from 'react';
 import styled from 'styled-components';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { BiHomeAlt } from 'react-icons/bi';
+import { HiOutlineSquares2X2 } from 'react-icons/hi2';
+import { HiOutlineCog } from 'react-icons/hi';
+import { AiOutlineSearch } from 'react-icons/ai';
+import { type IconType } from 'react-icons';
 import Button from '../button';
 
 const Container = styled.div`
@@ -36,6 +41,12 @@ const LinkWrapper = styled.div<{ $isActive: boolean }>`
       : theme.colors.button.transparent.background};
 `;
 
+type Tab = {
+  path: string;
+  title: string;
+  leftIcon: IconType;
+};
+
 const SideMenu = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -47,20 +58,28 @@ const SideMenu = () => {
     [navigate],
   );
 
-  const isHome = React.useMemo(() => {
-    return pathname === '/';
-  }, [pathname]);
+  const tabs = React.useMemo((): Tab[] => {
+    return [
+      {
+        path: '/',
+        title: 'Home',
+        leftIcon: BiHomeAlt,
+      },
+      {
+        path: '/library',
+        title: 'Library',
+        leftIcon: HiOutlineSquares2X2,
+      },
+      {
+        path: '/search',
+        title: 'Search',
+        leftIcon: AiOutlineSearch,
+      },
+    ];
+  }, []);
 
   const isSettings = React.useMemo(() => {
     return pathname === '/settings';
-  }, [pathname]);
-
-  const isLibrary = React.useMemo(() => {
-    return pathname === '/library';
-  }, [pathname]);
-
-  const isSearch = React.useMemo(() => {
-    return pathname === '/search';
   }, [pathname]);
 
   return (
@@ -68,38 +87,24 @@ const SideMenu = () => {
       <Header>Monarch</Header>
       <NavContainer>
         <TabContainer>
-          <LinkWrapper $isActive={isHome}>
-            <Button
-              variant="transparent"
-              type="button"
-              onClick={() => navigateTo('/')}
-            >
-              Home
-            </Button>
-          </LinkWrapper>
-          <LinkWrapper $isActive={isLibrary}>
-            <Button
-              variant="transparent"
-              type="button"
-              onClick={() => navigateTo('/library')}
-            >
-              Library
-            </Button>
-          </LinkWrapper>
-          <LinkWrapper $isActive={isSearch}>
-            <Button
-              variant="transparent"
-              type="button"
-              onClick={() => navigateTo('/search')}
-            >
-              Search
-            </Button>
-          </LinkWrapper>
+          {tabs.map((tab) => (
+            <LinkWrapper $isActive={pathname === tab.path}>
+              <Button
+                variant="transparent"
+                type="button"
+                leftIcon={tab.leftIcon}
+                onClick={() => navigateTo(tab.path)}
+              >
+                {tab.title}
+              </Button>
+            </LinkWrapper>
+          ))}
         </TabContainer>
         <LinkWrapper $isActive={isSettings}>
           <Button
             variant="transparent"
             type="button"
+            leftIcon={HiOutlineCog}
             onClick={() => navigateTo('/settings')}
           >
             Settings

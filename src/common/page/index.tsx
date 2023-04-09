@@ -11,6 +11,7 @@ const PageContainer = styled.div`
 
 const ContentContainer = styled.div`
   padding: 0.5rem 1rem;
+  width: 100%;
 `;
 
 const Title = styled.h1``;

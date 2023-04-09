@@ -3,18 +3,18 @@ import styled from 'styled-components';
 import Page from '../../common/page';
 import GameCard from '../../common/gameCard';
 
-const CardsContainer = styled.div`
-  display: inline-block;
-  width: 100%;
+const LibraryContainer = styled.div`
+  width: 85%;
   height: calc(100% - 7rem);
   overflow-y: auto;
+  border-radius: 0.5rem;
 `;
 
 const Library = () => {
   return (
     <Page title="Library">
-      <p>library content</p>
-      <CardsContainer>
+      <p>Prob like a search bar over here</p>
+      <LibraryContainer>
         <GameCard />
         <GameCard />
         <GameCard />
@@ -24,16 +24,7 @@ const Library = () => {
         <GameCard />
         <GameCard />
         <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-      </CardsContainer>
+      </LibraryContainer>
     </Page>
   );
 };

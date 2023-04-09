@@ -1,5 +1,6 @@
 import * as React from 'react';
 import styled from 'styled-components';
+import { type IconType } from 'react-icons';
 import { type ButtonVariant } from '../../global/theme';
 
 const MonarchButton = styled.button<{
@@ -12,6 +13,10 @@ const MonarchButton = styled.button<{
   padding: 0.5rem 1rem;
   width: 100%;
   transition: ease 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  max-height: 2.5rem;
 
   color: ${({ theme, $variant }) => theme.colors.button[$variant].text};
 
@@ -52,6 +57,8 @@ type ButtonProps = {
   onClick: () => void;
   disabled?: boolean;
   children: React.ReactNode;
+  leftIcon?: IconType;
+  rightIcon?: IconType;
 };
 
 const Button = ({
@@ -60,6 +67,8 @@ const Button = ({
   onClick,
   disabled = false,
   children,
+  leftIcon,
+  rightIcon,
 }: ButtonProps) => {
   return (
     <MonarchButton
@@ -69,7 +78,9 @@ const Button = ({
       $disabled={disabled}
       disabled={disabled}
     >
+      {leftIcon && leftIcon({ size: 24 })}
       {children}
+      {rightIcon && rightIcon({ size: 24 })}
     </MonarchButton>
   );
 };
