@@ -6,7 +6,7 @@ import GameCard from '../../common/gameCard';
 const CardsContainer = styled.div`
   display: inline-block;
   width: 100%;
-  max-height: 100vh;
+  height: calc(100% - 7rem);
   overflow-y: auto;
 `;
 
@@ -15,6 +15,18 @@ const Library = () => {
     <Page title="Library">
       <p>library content</p>
       <CardsContainer>
+        <GameCard />
+        <GameCard />
+        <GameCard />
+        <GameCard />
+        <GameCard />
+        <GameCard />
+        <GameCard />
+        <GameCard />
+        <GameCard />
+        <GameCard />
+        <GameCard />
+        <GameCard />
         <GameCard />
         <GameCard />
         <GameCard />
