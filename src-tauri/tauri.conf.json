@@ -27,7 +27,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.dev",
+      "identifier": "monarch",
       "targets": "all"
     },
     "security": {
@@ -41,8 +41,8 @@
         "fullscreen": false,
         "resizable": true,
         "title": "Monarch",
-        "width": 800,
-        "height": 600
+        "width": 1280,
+        "height": 720
       }
     ]
   }

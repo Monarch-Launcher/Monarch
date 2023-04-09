@@ -1,9 +1,9 @@
 use log::{info, error};
-use std::io;
 use std::io::Error;
 use std::process::{Command, Child};
 
 use crate::monarch_utils::{winreg_searcher::is_installed, downloader::download_and_run};
+use super::monarchgame::MonarchGame;
 
 /*
 This is hopefully not a long time solution. For now running battlenet://<game> only opens battlenet page and doesn't run game.
@@ -35,7 +35,11 @@ pub async fn get_blizzard() {
 }
 
 /// Attempts to run Blizzard game, returns Ok() or Err()
-pub fn run_blizzard_game(id: &str) -> io::Result<()> {
+pub fn launch_game(game: MonarchGame) {
+    // Convert name to id, somehow
+    let name: &str = game.get_name();
+    let id: &str = game.get_id();
+
     let mut game_command: String = String::from("battlenet://");
     game_command.push_str(id);
 
@@ -45,12 +49,10 @@ pub fn run_blizzard_game(id: &str) -> io::Result<()> {
                                                     .spawn(); // Run steam installer for specified game
     match exec_result {
         Ok(_) => {
-            info!("Launching game: {}", game_command);
-            Ok(())
+            info!("Launching game: {}", name);
         }
         Err(e) => {
-            error!("Failed to launch game: {} | Message: {:?}", id, e);
-            Err(e)
+            error!("Failed to launch game: {}({}) | Message: {:?}", game_command, name, e);
         }
     }
 }

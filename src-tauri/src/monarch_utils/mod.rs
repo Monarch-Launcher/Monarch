@@ -5,3 +5,4 @@ pub mod logger;
 pub mod monarch_fs;
 pub mod webscraping;
 pub mod database;
+pub mod commands;

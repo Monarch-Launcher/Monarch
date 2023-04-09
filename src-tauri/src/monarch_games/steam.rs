@@ -9,8 +9,6 @@ use crate::monarch_utils::{winreg_searcher::{is_installed, get_reg_folder_conten
 use crate::unwrap_some_or_return;
 use super::monarchgame::MonarchGame;
 
-/// Sctruct for storing information about steam game
-
 /*
 ---------- Here are public functions for doing anything related to Steam ----------
 */
@@ -30,109 +28,102 @@ pub async fn get_steam() {
 }
 
 /// Search function to find steam games
-pub async fn find_steam_game(name: &str) -> Vec<MonarchGame> {
+pub async fn find_game(name: &str) -> Vec<MonarchGame> {
     let mut target: String = String::from("https://store.steampowered.com/search/?term=");
     target.push_str(name);
 
     info!("Searching: {}", target);
 
     let response: Response = request_data(&target).await;
-    let games: Vec<MonarchGame> = find_steam_game_parser(response).await;
+    let games: Vec<MonarchGame> = store_steam_game_parser(response).await;
 
     return games
 }
 
 /// Opens the steam installer for a steam game, takes its steam id as parameter.
-pub async fn download_steam_game(id: &str) -> io::Result<()> {
+pub fn download_game(game: MonarchGame) {
+    let name: &str = game.get_name();
+    let id: &str = game.get_id();
+
     let mut game_command: String = String::from("steam://install/");
     game_command.push_str(id);
 
     let download_result: Result<Child, Error> = Command::new("PowerShell")
                                                         .arg("start")
-                                                        .arg(game_command)
+                                                        .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
 
     match download_result {
         Ok(_) => {
-            info!("Running steam installer for game with id: {}", id);
-            Ok(())
+            info!("Running steam installer for: {}", name);
         },
         Err(e) => {
-            error!("Failed to run steam installer for game with id: {} | Message: {:?}", id, e);
-            Err(e)
+            error!("Failed to run steam installer: {}(Game: {}) | Message: {:?}", game_command, name, e);
         }
     }
 }
 
 /// Launches steam game
-pub async fn run_steam_game(id: &str) -> io::Result<()> {
+pub fn launch_game(game: MonarchGame) {
+    let name: &str = game.get_name();
+    let id: &str = game.get_id();
+
     let mut game_command: String = String::from("steam://rungameid/");
     game_command.push_str(id);
 
     let launch_result: Result<Child, Error> = Command::new("PowerShell")
                                                         .arg("start")
-                                                        .arg(game_command)
+                                                        .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
 
     match launch_result {
         Ok(_) => {
-            info!("Launching game: {}", id);
-            Ok(())
+            info!("Launching game: {}", name);
         },
         Err(e) => {
-            error!("Failed to launch game: {} via steam! | Message: {:?}", id, e);
-            Err(e)
+            error!("Failed to launch game: {}({}) | Message: {:?}", game_command, name, e);
         }
     }
 }
 
 /// Opens Steam store page for specified game
-pub async fn buy_steam_game(id: &str) -> io::Result<()> {
+pub fn purchase_game(game: MonarchGame) {
+    let name: &str = game.get_name();
+    let id: &str = game.get_id();
+
     let mut game_command: String = String::from("steam://purchase/");
     game_command.push_str(id);
 
     let launch_result: Result<Child, Error> = Command::new("PowerShell")
                                                         .arg("start")
-                                                        .arg(game_command)
+                                                        .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
 
     match launch_result {
         Ok(_) => {
-            info!("Launching game: {}", id);
-            Ok(())
-        },
+            info!("Opening store page: {}", name);
+        }
         Err(e) => {
-            error!("Failed to launch game: {} via steam! | Message: {:?}", id, e);
-            Err(e)
+            error!("Failed to open store page: {}({}) | Message: {:?}", game_command, name, e);
         }
     }
 }
 
 /// Finds local steam library installed on current system via winreg
-pub async fn get_steam_library() -> io::Result<Vec<MonarchGame>> {
-    let result = get_reg_folder_contents("Valve\\Steam\\Apps");
-    
-    match result {
-        Ok(library) => {
-            let mut games: Vec<MonarchGame> = Vec::new();
-            
-            for item in library.iter() {
-                let mut target: String = String::from("https://store.steampowered.com/app/");
-                target.push_str(item);
-                let response: Response = request_data(&target).await;
+pub async fn get_library() {
+    if let Ok(library) = get_reg_folder_contents("Valve\\Steam\\Apps") {
+        let mut games: Vec<MonarchGame> = Vec::new();    
+        
+        for item in library.iter() { // Get info for each game
+            let mut target: String = String::from("https://store.steampowered.com/app/");
+            target.push_str(item);
+            let response: Response = request_data(&target).await;
 
-                match library_steam_game_parser(response, item).await {
-                    Ok(game) => { games.push(game) }
-                    Err(_) => { }
-                }
+            if let Ok(game) = library_steam_game_parser(response, item).await {
+                games.push(game);
             }
-
-            return Ok(games)
         }
-        Err(e) => { println!("Failed to get library: {:?}", e) }
     }
-    let err: io::Error = io::Error::new(io::ErrorKind::NotFound, "Failed to get Steam game library!"); 
-    return Err(err)
 }
 
 /*
@@ -145,7 +136,7 @@ fn steam_is_installed() -> bool {
 }
 
 /// Returns a HashMap of games with their respective Steam IDs.
-async fn find_steam_game_parser(response: Response) -> Vec<MonarchGame> {
+async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
 
     let content = response.text().await.unwrap();
@@ -158,7 +149,7 @@ async fn find_steam_game_parser(response: Response) -> Vec<MonarchGame> {
     let game_ids: Vec<ElementRef> = document.select(&id_selector).collect();
 
     for i in 0..game_titles.len() {
-        let cur_game = MonarchGame::new(&get_steam_name(game_titles[i]), &get_steamid(game_ids[i]), "steam");
+        let cur_game = MonarchGame::new(&get_steam_name(game_titles[i]), &get_steamid(game_ids[i]), "steam", "temp", "temp");
         games.push(cur_game);
     }
     return games
@@ -172,7 +163,7 @@ async fn library_steam_game_parser(response: Response, id: &str) -> io::Result<M
     let game_title: Vec<ElementRef> = document.select(&title_selector).collect();
 
     if game_title.len() > 0 {
-        return Ok(MonarchGame::new(&get_steam_name(game_title[0]), id, "steam"))
+        return Ok(MonarchGame::new(&get_steam_name(game_title[0]), id, "steam", "temp", "temp"))
     }
     
     let err = io::Error::new(io::ErrorKind::NotFound, "No game found matching Registry entry!");
