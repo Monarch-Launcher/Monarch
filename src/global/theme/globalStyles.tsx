@@ -20,6 +20,13 @@ const MainGlobalStyles = createGlobalStyle`
     overflow: auto;
   }
 
+  &::-webkit-scrollbar {
+    display: none;
+  } 
+
+  -ms-overflow-style: none;
+   scrollbar-width: none; 
+
 `;
 
 const GlobalStyles = React.memo(() => <MainGlobalStyles />);

@@ -1,14 +1,10 @@
-import { useNavigate } from 'react-router';
+import Page from '../../common/page';
 
 const Settings = () => {
-  const navigate = useNavigate();
   return (
-    <div>
+    <Page>
       <p>This is the settings page</p>
-      <button type="button" onClick={() => navigate('/')}>
-        To Home
-      </button>
-    </div>
+    </Page>
   );
 };
 

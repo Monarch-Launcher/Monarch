@@ -14,7 +14,7 @@ tauri-build = { version = "1.2", features = [] }
 
 [dependencies]
 # Tauri dependencies
-tauri = { version = "1.2", features = ["shell-open"] }
+tauri = { version = "1.2", features = ["shell-open", "window-set-min-size"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
