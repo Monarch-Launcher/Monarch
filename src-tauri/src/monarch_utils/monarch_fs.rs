@@ -9,8 +9,6 @@ use std::time::SystemTime;
 pub fn init_monarch_fs() {
     check_appdata_folder();
     check_resources_folder();
-    check_appdata_folder();
-    check_resources_folder();
 }
 
 /// Create Monarch folder in users %appdata% directory
