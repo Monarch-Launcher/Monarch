@@ -1,10 +1,9 @@
-use log::info;
-use crate::monarch_utils::monarch_fs::{get_app_data_path, create_dir, path_exists};
-
 use log::LevelFilter;
 use log4rs::append::file::FileAppender;
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::config::{Appender, Config, Root};
+
+use crate::monarch_utils::monarch_fs::{get_app_data_path, create_dir, path_exists};
 
 /// Initializes logger to ensure logs are written when running app.
 /// To log to the monarch.log file you use the log macros as shown in the bottom with info!()
@@ -29,7 +28,6 @@ pub fn init_logger() {
                         .expect("Failed to build logger config during init_logger()");
 
     log4rs::init_config(config).unwrap();
-    info!("Logger initialized!");
 }
 
 /// Creates path to log folder that should be located under %appdata%.
