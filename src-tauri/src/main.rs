@@ -11,18 +11,12 @@ use monarch_utils::logger::init_logger;
 use monarch_games::commands::{steam_downloader, search_games, refresh_library, blizzard_downloader, 
                               launch_game, download_game, purchase_game, epic_downloader};
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 fn main() {
     init_monarch_fs();
     init_logger();
 
     let app_result = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            greet,
             steam_downloader,
             search_games,
             refresh_library,

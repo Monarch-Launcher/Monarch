@@ -146,3 +146,23 @@ fn time_to_remove(file: PathBuf) -> bool {
     }
     false
 }
+
+/// Removes all files in \resources\cache, meant for UI so that user can clear folder if wanted
+pub fn clear_all_cache() {
+    if let Ok(files) = fs::read_dir(get_resources_cache()) {
+        for file in files {
+            if let Ok(file_path) = file {
+                force_remove_thumbnail(file_path);
+            }       
+        }
+    }
+}
+
+/// Removes old cache file even if it's not old enough
+fn force_remove_thumbnail(file: DirEntry) {
+    if time_to_remove(file.path()) {
+        if let Err(e) = fs::remove_file(file.path()) {
+            error!("Failed to remove file from: {}! | Message: {:?}", get_resources_cache(), e);
+        }
+    }
+}
