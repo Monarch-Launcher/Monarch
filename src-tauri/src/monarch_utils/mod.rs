@@ -1,5 +1,4 @@
 pub mod monarch_download;
-pub mod monarch_macros;
 pub mod monarch_winreg;
 pub mod monarch_logger;
 pub mod monarch_fs;

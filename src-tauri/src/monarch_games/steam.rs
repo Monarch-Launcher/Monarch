@@ -6,7 +6,6 @@ use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
 
 use crate::monarch_utils::{monarch_winreg::{is_installed, get_reg_folder_contents}, monarch_download::download_and_run, monarch_web::request_data};
-use crate::unwrap_some_or_return;
 use super::monarchgame::MonarchGame;
 
 /*
@@ -177,13 +176,11 @@ fn get_steam_name(elem: ElementRef) -> String {
 
 /// Parses html of Steams website to extract either an app id or a bundle id
 fn get_steamid(elem: ElementRef) -> String {
-    let app_id: Option<&str> = elem.value().attr("data-ds-appid");
-
-    match app_id {
-        Some(id) => id.to_string(),
-        None => {
-            let bundle_id: Option<&str> = elem.value().attr("data-ds-bundleid");
-            unwrap_some_or_return!(bundle_id, "").to_string() // Return the Some() value or just "" as string
-        }
+    if let Some(app_id) = elem.value().attr("data-ds-appid") {
+        return app_id.to_string()
     }
+    if let Some(bundle_id) = elem.value().attr("data-ds-bundleid") {
+        return bundle_id.to_string()
+    }
+    String::new() // Default returns empty String for now
 }
