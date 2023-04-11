@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use log::{info, error};
 
-use crate::monarch_utils::monarch_web::request_data;
+use super::monarch_web::request_data;
 
 /// Creates a tmp path name for file to install.
 async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {
@@ -58,4 +58,15 @@ pub async fn download_and_run(url: &str) {
         Ok(_) => { info!("Executing '{}'", installer_path.display()) }
         Err(err) => { error!("Failed to run '{}' | Message: {:?}", installer_path.display(), err) }
     }
+}
+
+/*
+---------- Download images for games ----------
+*/
+
+pub async fn download_image(url: &str, path: &str) {
+    let response = request_data(url).await;
+    let thumbnail_path = PathBuf::from(path);
+
+    write_content(&thumbnail_path, response).await;
 }

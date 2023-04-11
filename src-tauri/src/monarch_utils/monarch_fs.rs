@@ -5,6 +5,10 @@ use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+/*
+---------- General functions for filesystem tasks ----------
+*/
+
 /// Run on startup to ensure users filesystem is ready for Monarch launcher 
 pub fn init_monarch_fs() {
     check_appdata_folder();
@@ -72,6 +76,28 @@ pub fn get_app_data_path() -> Result<String, VarError> {
     }
 }
 
+/// Checks whether a given path exists already or not
+pub fn path_exists(path: &str) -> bool {
+    if Path::new(path).exists() {
+        return true
+    }
+    return false
+}
+
+/// Attempts to create an empty directory and returns result
+pub fn create_dir(path: &str) -> io::Result<()> {
+    let result = fs::create_dir(path);
+
+    match result {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e)
+    }
+}
+
+/*
+---------- Functions related to storing in resources dir ----------
+*/
+
 /// Returns path to resources folder.
 /// Should never fail during runtime because of init_monarch_fs,
 /// but if it does it returns an empty string.
@@ -95,24 +121,6 @@ pub fn get_resources_library() -> String {
     let mut lib_img_path = get_resources_path();
     lib_img_path.push_str("\\library");
     return lib_img_path
-}
-
-/// Checks whether a given path exists already or not
-pub fn path_exists(path: &str) -> bool {
-    if Path::new(path).exists() {
-        return true
-    }
-    return false
-}
-
-/// Attempts to create an empty directory and returns result
-pub fn create_dir(path: &str) -> io::Result<()> {
-    let result = fs::create_dir(path);
-
-    match result {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e)
-    }
 }
 
 /// Clears out old cached thumbnails
@@ -165,4 +173,19 @@ fn force_remove_thumbnail(file: DirEntry) {
             error!("Failed to remove file from: {}! | Message: {:?}", get_resources_cache(), e);
         }
     }
+}
+
+/// Create a name for image file in cache directory
+/// Can be used to download image and check if an image already exists
+pub fn generate_cache_image_name(name: &str) -> String {
+    let mut dir = get_resources_cache();
+    dir.push_str(name);
+    dir
+}
+
+/// Create a name for image file in cache directory
+pub fn generate_library_image_name(name: &str) -> String {
+    let mut dir = get_resources_library();
+    dir.push_str(name);
+    dir
 }

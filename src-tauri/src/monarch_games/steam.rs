@@ -5,7 +5,10 @@ use std::io::Error;
 use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
 
-use crate::monarch_utils::{monarch_winreg::{is_installed, get_reg_folder_contents}, monarch_download::download_and_run, monarch_web::request_data};
+use crate::monarch_utils::{monarch_winreg::{is_installed, get_reg_folder_contents}, 
+                           monarch_download::{download_and_run, download_image}, 
+                           monarch_web::request_data,
+                           monarch_fs::{generate_cache_image_name, generate_library_image_name}};
 use super::monarchgame::MonarchGame;
 
 /*
@@ -143,12 +146,18 @@ async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
 
     let title_selector: Selector = Selector::parse("span.title").unwrap();
     let id_selector: Selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap();
+    let image_selector: Selector = Selector::parse("div.col search_capsule").unwrap();
     
-    let game_titles: Vec<ElementRef> = document.select(&title_selector).collect();
-    let game_ids: Vec<ElementRef> = document.select(&id_selector).collect();
+    let titles: Vec<ElementRef> = document.select(&title_selector).collect();
+    let ids: Vec<ElementRef> = document.select(&id_selector).collect();
+    let images: Vec<ElementRef> = document.select(&image_selector).collect();
 
-    for i in 0..game_titles.len() {
-        let cur_game = MonarchGame::new(&get_steam_name(game_titles[i]), &get_steamid(game_ids[i]), "steam", "temp", "temp");
+    for i in 0..titles.len() {
+        let name = get_steam_name(titles[i]);
+        let id = get_steamid(ids[i]);
+        let image_path = download_cache_image(images[i], &name).await; // NEED TO FIX!
+
+        let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
         games.push(cur_game);
     }
     return games
@@ -183,4 +192,18 @@ fn get_steamid(elem: ElementRef) -> String {
         return bundle_id.to_string()
     }
     String::new() // Default returns empty String for now
+}
+
+/// Downloads image to cache dir and returns its path
+async fn download_cache_image(url: &str, name: &str) -> String {
+    let path = generate_cache_image_name(name);
+    download_image(url, &path).await;
+    return path
+}
+
+/// Downloads image to library dir and returns its path
+async fn download_library_image(url: &str, name: &str) -> String {
+    let path = generate_library_image_name(name);
+    download_image(url, &path).await;
+    return path
 }
