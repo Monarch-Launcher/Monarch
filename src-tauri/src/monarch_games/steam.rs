@@ -5,12 +5,12 @@ use std::io::Error;
 use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
 
-use crate::monarch_utils::{winreg_searcher::{is_installed, get_reg_folder_contents}, downloader::download_and_run, webscraping::request_data};
+use crate::monarch_utils::{monarch_winreg::{is_installed, get_reg_folder_contents}, monarch_download::download_and_run, monarch_web::request_data};
 use crate::unwrap_some_or_return;
 use super::monarchgame::MonarchGame;
 
 /*
----------- Here are public functions for doing anything related to Steam ----------
+---------- Public functions ----------
 */
 
 /// Downloads Steam launcher if not already installed
@@ -127,7 +127,7 @@ pub async fn get_library() {
 }
 
 /*
----------- Here are private "behind the scenes" functions for the public facing functions ----------
+---------- Private functions ----------
 */
 
 /// Returns whether or not Steam launcher is installed

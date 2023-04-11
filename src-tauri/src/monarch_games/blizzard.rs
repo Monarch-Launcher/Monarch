@@ -2,7 +2,7 @@ use log::{info, error};
 use std::io::Error;
 use std::process::{Command, Child};
 
-use crate::monarch_utils::{winreg_searcher::is_installed, downloader::download_and_run};
+use crate::monarch_utils::{monarch_winreg::is_installed, monarch_download::download_and_run};
 use super::monarchgame::MonarchGame;
 
 /*

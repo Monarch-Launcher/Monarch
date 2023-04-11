@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use log::{info, error};
 
-use crate::monarch_utils::webscraping::request_data;
+use crate::monarch_utils::monarch_web::request_data;
 
 /// Creates a tmp path name for file to install.
 async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {

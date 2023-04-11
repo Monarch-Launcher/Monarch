@@ -1,6 +1,6 @@
 use log::info;
 
-use crate::monarch_utils::{winreg_searcher::is_installed, downloader::download_and_run};
+use crate::monarch_utils::{monarch_winreg::is_installed, monarch_download::download_and_run};
 
 /// Installs Epic games launcher if not already installed
 pub async fn get_epic() {

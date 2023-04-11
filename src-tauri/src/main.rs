@@ -7,7 +7,7 @@ mod monarch_utils;
 mod monarch_games;
 
 use monarch_utils::monarch_fs::init_monarch_fs;
-use monarch_utils::logger::init_logger;
+use monarch_utils::monarch_logger::init_logger;
 use monarch_games::commands::{steam_downloader, search_games, refresh_library, blizzard_downloader, 
                               launch_game, download_game, purchase_game, epic_downloader};
 
