@@ -61,19 +61,6 @@ fn check_resources_folder() {
     }
 }
 
-/// Folder to store image resources for game thumbnails etc...
-fn check_resources_folder() {
-    if let Ok(mut path) = get_app_data_path() {
-        path.push_str("\\resources");
-        
-        if !path_exists(&path) {
-            if let Err(e) = create_dir(&path) {
-                println!("Failed to create empty resources folder! | Message: {:?}", e);
-            }
-        }
-    }    
-}
-
 /// Gets the users %appdata% directory and adds \Monarch to the end of it to generate Monarch path
 pub fn get_app_data_path() -> Result<String, VarError> {
     let app_data_path_res = std::env::var("APPDATA");
