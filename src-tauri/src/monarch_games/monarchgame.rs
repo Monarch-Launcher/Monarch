@@ -7,7 +7,6 @@ pub struct MonarchGame {
     platform: String,
     executable_path: String,
     thumbnail_path: String,
-
 }
 
 impl MonarchGame {
