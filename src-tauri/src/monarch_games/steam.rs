@@ -150,11 +150,9 @@ async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
 
     let title_selector: Selector = Selector::parse("span.title").unwrap();
     let id_selector: Selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap();
-    let image_selector: Selector = Selector::parse("img").unwrap();
     
     let titles: Vec<ElementRef> = document.select(&title_selector).collect();
     let ids: Vec<ElementRef> = document.select(&id_selector).collect();
-    let images: Vec<ElementRef> = document.select(&image_selector).collect();
 
     for i in 0..titles.len() {
         let name = get_steam_name(titles[i]);
@@ -181,7 +179,17 @@ async fn library_steam_game_parser(response: Response, id: &str) -> io::Result<M
     let game_title: Vec<ElementRef> = document.select(&title_selector).collect();
 
     if game_title.len() > 0 {
-        return Ok(MonarchGame::new(&get_steam_name(game_title[0]), id, "steam", "temp", "temp"))
+        let name = get_steam_name(game_title[0]);
+        let image_path = generate_library_image_name(&name);
+        let image_link = get_img_link(&id);
+
+        let download_path = image_path.clone().as_str();
+        // Start downlaod of image in background
+        tokio::task::spawn(async move {
+            download_image(image_link.as_str(), download_path).await; 
+        });
+
+        return Ok(MonarchGame::new(&name, id, "steam", "temp", &image_path))
     }
     
     let err = io::Error::new(io::ErrorKind::NotFound, "No game found matching Registry entry!");
@@ -206,16 +214,9 @@ fn get_steamid(elem: ElementRef) -> String {
 
 /// Creates url for thumbnail based on app id
 fn get_img_link(id: &str) -> String {
-    let mut target = String::from("https://cdn.akamai.steamstatic.com/steam/apps/");    
+    let mut target = String::from("https://cdn.cloudflare.steamstatic.com/steam/apps/");    
     target.push_str(id);
-    target.push_str("/capsule_231x87.jpg");
+    target.push_str("/header.jpg");
 
     return target
-} 
-
-/// Downloads image to library dir and returns its path
-async fn download_library_image(url: &str, name: &str) -> String {
-    let path = generate_library_image_name(name);
-    download_image(url, &path).await;
-    return path
 }

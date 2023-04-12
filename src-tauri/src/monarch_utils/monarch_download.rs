@@ -72,7 +72,6 @@ pub async fn download_image(url: &str, path: &str) {
     match response{
         Ok(content) => {
             let thumbnail_path = PathBuf::from(path);
-            println!("{} : {}", path, url);
             if let Ok(img_bytes) = content.bytes().await {
                 let image = image::load_from_memory(&img_bytes).unwrap();
                 image.save(thumbnail_path).unwrap();
