@@ -1,6 +1,5 @@
 use log::{info, error};
 use std::process::{Command, Child};
-use std::io;
 use std::io::Error;
 use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
@@ -119,16 +118,7 @@ pub async fn get_library() {
     if let Ok(library) = get_reg_folder_contents("Valve\\Steam\\Apps") {
         let mut games: Vec<MonarchGame> = Vec::new();    
         
-        for item in library.iter() { // Get info for each game
-            let mut target: String = String::from("https://store.steampowered.com/app/");
-            target.push_str(item);
-            
-            if let Ok(response) = request_data(&target).await {
-                if let Ok(game) = library_steam_game_parser(response, item).await {
-                    games.push(game);
-                }
-            }
-        }
+        games = library_steam_game_parser(library).await;
     }
 }
 
@@ -171,29 +161,34 @@ async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
     return games
 }
 
-async fn library_steam_game_parser(response: Response, id: &str) -> io::Result<MonarchGame> {
-    let content = response.text().await.unwrap();
-    let document = Html::parse_document(&content);
-
+async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
+    let mut games: Vec<MonarchGame> = Vec::new();
     let title_selector: Selector = Selector::parse("div.apphub_AppName").unwrap();
-    let game_title: Vec<ElementRef> = document.select(&title_selector).collect();
 
-    if game_title.len() > 0 {
-        let name = get_steam_name(game_title[0]);
-        let image_path = generate_library_image_name(&name);
-        let image_link = get_img_link(&id);
+    for id in ids {
+        let mut target: String = String::from("https://store.steampowered.com/app/");
+        target.push_str(&id);
 
-        let download_path = image_path.clone().as_str();
-        // Start downlaod of image in background
-        tokio::task::spawn(async move {
-            download_image(image_link.as_str(), download_path).await; 
-        });
+        if let Ok(content) = request_data(&target).await {
+            let document = Html::parse_document(&content.text().await.unwrap());
+            let name_refs: Vec<ElementRef> = document.select(&title_selector).collect();
+            
+            if name_refs.len() >= 1 {
+                let name = get_steam_name(name_refs[0]);
+                let image_path = generate_library_image_name(&name);
+                let image_link = get_img_link(&id);
 
-        return Ok(MonarchGame::new(&name, id, "steam", "temp", &image_path))
+                let game: MonarchGame = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
+                games.push(game);
+
+                // Workaround for [tauri::command] not working with download_image().await in same thread 
+                tokio::task::spawn(async move {
+                    download_image(image_link.as_str(), image_path.as_str()).await; 
+                });
+            } 
+        }        
     }
-    
-    let err = io::Error::new(io::ErrorKind::NotFound, "No game found matching Registry entry!");
-    return Err(err)
+    return games
 }
 
 /// Extracts the name of the game from html element
