@@ -1,8 +1,7 @@
 use reqwest;
-use reqwest::Response;
+use reqwest::{Response, Result};
 
 /// Gets data from url.
-pub async fn request_data(url: &str) -> Response {
-    let target = url;
-    return reqwest::get(target).await.unwrap()
+pub async fn request_data(url: &str) -> Result<Response> {
+    return reqwest::get(url).await;
 }

@@ -4,6 +4,7 @@ use std::io;
 use std::io::Error;
 use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
+use tokio;
 
 use crate::monarch_utils::{monarch_winreg::{is_installed, get_reg_folder_contents}, 
                            monarch_download::{download_and_run, download_image}, 
@@ -31,13 +32,15 @@ pub async fn get_steam() {
 
 /// Search function to find steam games
 pub async fn find_game(name: &str) -> Vec<MonarchGame> {
+    let mut games: Vec<MonarchGame> = Vec::new();
     let mut target: String = String::from("https://store.steampowered.com/search/?term=");
     target.push_str(name);
 
     info!("Searching: {}", target);
 
-    let response: Response = request_data(&target).await;
-    let games: Vec<MonarchGame> = store_steam_game_parser(response).await;
+    if let Ok(response) = request_data(&target).await {    
+        games = store_steam_game_parser(response).await;
+    }
 
     return games
 }
@@ -119,10 +122,11 @@ pub async fn get_library() {
         for item in library.iter() { // Get info for each game
             let mut target: String = String::from("https://store.steampowered.com/app/");
             target.push_str(item);
-            let response: Response = request_data(&target).await;
-
-            if let Ok(game) = library_steam_game_parser(response, item).await {
-                games.push(game);
+            
+            if let Ok(response) = request_data(&target).await {
+                if let Ok(game) = library_steam_game_parser(response, item).await {
+                    games.push(game);
+                }
             }
         }
     }
@@ -146,7 +150,7 @@ async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
 
     let title_selector: Selector = Selector::parse("span.title").unwrap();
     let id_selector: Selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap();
-    let image_selector: Selector = Selector::parse("div.col search_capsule").unwrap();
+    let image_selector: Selector = Selector::parse("img").unwrap();
     
     let titles: Vec<ElementRef> = document.select(&title_selector).collect();
     let ids: Vec<ElementRef> = document.select(&id_selector).collect();
@@ -155,10 +159,16 @@ async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
     for i in 0..titles.len() {
         let name = get_steam_name(titles[i]);
         let id = get_steamid(ids[i]);
-        let image_path = download_cache_image(images[i], &name).await; // NEED TO FIX!
+        let image_link = get_img_link(&id);
+        let image_path = generate_cache_image_name(&name);
 
         let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
         games.push(cur_game);
+
+        // Workaround for [tauri::command] not working with download_image().await in same thread 
+        tokio::task::spawn(async move {
+            download_image(image_link.as_str(), image_path.as_str()).await; 
+        });
     }
     return games
 }
@@ -194,12 +204,14 @@ fn get_steamid(elem: ElementRef) -> String {
     String::new() // Default returns empty String for now
 }
 
-/// Downloads image to cache dir and returns its path
-async fn download_cache_image(url: &str, name: &str) -> String {
-    let path = generate_cache_image_name(name);
-    download_image(url, &path).await;
-    return path
-}
+/// Creates url for thumbnail based on app id
+fn get_img_link(id: &str) -> String {
+    let mut target = String::from("https://cdn.akamai.steamstatic.com/steam/apps/");    
+    target.push_str(id);
+    target.push_str("/capsule_231x87.jpg");
+
+    return target
+} 
 
 /// Downloads image to library dir and returns its path
 async fn download_library_image(url: &str, name: &str) -> String {

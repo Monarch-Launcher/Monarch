@@ -178,14 +178,33 @@ fn force_remove_thumbnail(file: DirEntry) {
 /// Create a name for image file in cache directory
 /// Can be used to download image and check if an image already exists
 pub fn generate_cache_image_name(name: &str) -> String {
+    let filename = generate_filename(name);
     let mut dir = get_resources_cache();
-    dir.push_str(name);
+    
+    dir.push_str("\\");
+    dir.push_str(&filename);
     dir
 }
 
 /// Create a name for image file in cache directory
 pub fn generate_library_image_name(name: &str) -> String {
+    let filename = generate_filename(name);
     let mut dir = get_resources_library();
-    dir.push_str(name);
+    
+    dir.push_str("\\");
+    dir.push_str(&filename);
     dir
+}
+
+fn generate_filename(name: &str) -> String {
+    let ascii_name: String = name.to_lowercase()
+                                 .chars()
+                                 .filter(|c| c.is_ascii())
+                                 .collect::<String>();
+    let mut filename: String = ascii_name.replace(".", "-")
+                                     .replace(",", "-")
+                                     .replace(" ", "_");
+    filename.push_str(".jpg");
+    
+    return filename
 }
