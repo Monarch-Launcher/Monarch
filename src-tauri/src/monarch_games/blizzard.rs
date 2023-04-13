@@ -3,8 +3,6 @@ use std::io::Error;
 use std::process::{Command, Child};
 
 use crate::monarch_utils::{monarch_winreg::is_installed, monarch_download::download_and_run};
-use super::monarchgame::MonarchGame;
-
 /*
 This is hopefully not a long time solution. For now running battlenet://<game> only opens battlenet page and doesn't run game.
 Here are game codes:
@@ -34,12 +32,8 @@ pub async fn get_blizzard() {
     }
 }
 
-/// Attempts to run Blizzard game, returns Ok() or Err()
-pub fn launch_game(game: MonarchGame) {
-    // Convert name to id, somehow
-    let name: &str = game.get_name();
-    let id: &str = game.get_id();
-
+/// Attempts to run Blizzard game
+pub fn launch_game(name: &str, id: &str) {
     let mut game_command: String = String::from("battlenet://");
     game_command.push_str(id);
 

@@ -45,10 +45,7 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 }
 
 /// Opens the steam installer for a steam game, takes its steam id as parameter.
-pub fn download_game(game: MonarchGame) {
-    let name: &str = game.get_name();
-    let id: &str = game.get_id();
-
+pub fn download_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://install/");
     game_command.push_str(id);
 
@@ -68,10 +65,7 @@ pub fn download_game(game: MonarchGame) {
 }
 
 /// Launches steam game
-pub fn launch_game(game: MonarchGame) {
-    let name: &str = game.get_name();
-    let id: &str = game.get_id();
-
+pub fn launch_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://rungameid/");
     game_command.push_str(id);
 
@@ -91,10 +85,7 @@ pub fn launch_game(game: MonarchGame) {
 }
 
 /// Opens Steam store page for specified game
-pub fn purchase_game(game: MonarchGame) {
-    let name: &str = game.get_name();
-    let id: &str = game.get_id();
-
+pub fn purchase_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://purchase/");
     game_command.push_str(id);
 
