@@ -25,6 +25,7 @@ const Search = () => {
   const [searchString, setSearchString] = React.useState<string>('');
   const [games, setGames] = React.useState<MonarchGame[]>([]);
   const [noResults, setNoResults] = React.useState(false);
+  const [error, setError] = React.useState(false);
 
   const searchGames = React.useCallback(async () => {
     // Return early if searchString is empty
@@ -32,13 +33,18 @@ const Search = () => {
       return;
     }
 
-    const result: MonarchGame[] = await invoke('search_games', {
-      name: searchString,
-    });
-    if (result.length === 0) {
-      setNoResults(true);
+    try {
+      const result: MonarchGame[] = await invoke('search_games', {
+        name: searchString,
+      });
+      if (result.length === 0) {
+        setNoResults(true);
+      }
+      setGames(result);
+      setError(false);
+    } catch (err) {
+      setError(true);
     }
-    setGames(result);
   }, [searchString]);
 
   const handleChange = React.useCallback(
@@ -63,6 +69,7 @@ const Search = () => {
         {noResults && (
           <p>Couldn&apos;t find any games for &quot;{searchString}&quot;</p>
         )}
+        {error && <p>Something went wrong</p>}
       </ResultsContainer>
     </Page>
   );
