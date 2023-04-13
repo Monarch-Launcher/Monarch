@@ -1,7 +1,13 @@
+use std::{process::exit, io, fs};
+use log::error;
 use std::env::VarError;
-use std::{fs, io};
-use std::path::Path;
-use std::process::exit;
+use std::fs::DirEntry;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
+
+/*
+---------- General functions for filesystem tasks ----------
+*/
 
 /// Run on startup to ensure users filesystem is ready for Monarch launcher 
 pub fn init_monarch_fs() {
@@ -31,20 +37,36 @@ fn check_appdata_folder() {
 
 /// Folder to store image resources for game thumbnails etc...
 fn check_resources_folder() {
-    if let Ok(mut path) = get_app_data_path() {
-        path.push_str("\\resources");
+    let resources_dir = get_resources_path();
+    let cache_dir = get_resources_cache();
+    let lib_img_dir = get_resources_library();
         
-        if !path_exists(&path) {
-            if let Err(e) = create_dir(&path) {
-                println!("Failed to create empty resources folder! | Message: {:?}", e);
-            }
+    if !path_exists(&resources_dir) {
+        if let Err(e) = create_dir(&resources_dir) {
+            println!("Failed to create empty folder: {}! | Message: {:?}", resources_dir, e);
+            exit(1);
         }
-    }    
+    }
+
+    if !path_exists(&cache_dir) {
+        if let Err(e) = create_dir(&cache_dir) {
+            println!("Failed to create empty folder: {}! | Message: {:?}", cache_dir, e);
+            exit(1);
+        }
+    }
+
+    if !path_exists(&lib_img_dir) {
+        if let Err(e) = create_dir(&lib_img_dir) {
+            println!("Failed to create empty folder: {}! | Message: {:?}", lib_img_dir, e);
+            exit(1);
+        }
+    }
 }
 
 /// Gets the users %appdata% directory and adds \Monarch to the end of it to generate Monarch path
 pub fn get_app_data_path() -> Result<String, VarError> {
     let app_data_path_res = std::env::var("APPDATA");
+    
     match app_data_path_res {
         Ok(mut app_data_path) => {
             app_data_path.push_str("\\Monarch");
@@ -70,4 +92,119 @@ pub fn create_dir(path: &str) -> io::Result<()> {
         Ok(_) => Ok(()),
         Err(e) => Err(e)
     }
+}
+
+/*
+---------- Functions related to storing in resources dir ----------
+*/
+
+/// Returns path to resources folder.
+/// Should never fail during runtime because of init_monarch_fs,
+/// but if it does it returns an empty string.
+pub fn get_resources_path() -> String {
+    if let Ok(mut path) = get_app_data_path() {
+        path.push_str("\\resources");
+        return path
+    }
+    return String::new()
+}
+
+/// Returns path to store temporary images
+pub fn get_resources_cache() -> String {
+    let mut cache_path = get_resources_path();
+    cache_path.push_str("\\cache");
+    return cache_path
+}
+
+/// Returns path to store thumbnails for games in library
+pub fn get_resources_library() -> String {
+    let mut lib_img_path = get_resources_path();
+    lib_img_path.push_str("\\library");
+    return lib_img_path
+}
+
+/// Clears out old cached thumbnails
+pub fn clear_cached_thumbnails() {
+    if let Ok(files) = fs::read_dir(get_resources_cache()) {
+        for file in files {
+            if let Ok(file_path) = file {
+                remove_thumbnail(file_path);
+            }       
+        }
+    }
+}
+
+/// Removes old cache file if old enough
+fn remove_thumbnail(file: DirEntry) {
+    if time_to_remove(file.path()) {
+        if let Err(e) = fs::remove_file(file.path()) {
+            error!("Failed to remove file from: {}! | Message: {:?}", get_resources_cache(), e);
+        }
+    }
+}
+
+/// Checks if it's time to remove cached thumbnail
+fn time_to_remove(file: PathBuf) -> bool {
+    if let Ok(metadata) = fs::metadata(file) {
+        if let Ok(time) = metadata.modified() {
+            if let Ok(age) = SystemTime::now().duration_since(time) {
+                return age.as_secs() >= 1209600 // Return if file is older than 14 days
+            }
+        }
+    }
+    false
+}
+
+/// Removes all files in \resources\cache, meant for UI so that user can clear folder if wanted
+pub fn clear_all_cache() {
+    if let Ok(files) = fs::read_dir(get_resources_cache()) {
+        for file in files {
+            if let Ok(file_path) = file {
+                force_remove_thumbnail(file_path);
+            }       
+        }
+    }
+}
+
+/// Removes old cache file even if it's not old enough
+fn force_remove_thumbnail(file: DirEntry) {
+    if time_to_remove(file.path()) {
+        if let Err(e) = fs::remove_file(file.path()) {
+            error!("Failed to remove file from: {}! | Message: {:?}", get_resources_cache(), e);
+        }
+    }
+}
+
+/// Create a name for image file in cache directory
+/// Can be used to download image and check if an image already exists
+pub fn generate_cache_image_name(name: &str) -> String {
+    let filename = generate_filename(name);
+    let mut dir = get_resources_cache();
+    
+    dir.push_str("\\");
+    dir.push_str(&filename);
+    dir
+}
+
+/// Create a name for image file in cache directory
+pub fn generate_library_image_name(name: &str) -> String {
+    let filename = generate_filename(name);
+    let mut dir = get_resources_library();
+    
+    dir.push_str("\\");
+    dir.push_str(&filename);
+    dir
+}
+
+fn generate_filename(name: &str) -> String {
+    let ascii_name: String = name.to_lowercase()
+                                 .chars()
+                                 .filter(|c| c.is_ascii())
+                                 .collect::<String>();
+    let mut filename: String = ascii_name.replace(".", "-")
+                                     .replace(",", "-")
+                                     .replace(" ", "_");
+    filename.push_str(".jpg");
+    
+    return filename
 }

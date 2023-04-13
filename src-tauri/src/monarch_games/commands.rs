@@ -21,10 +21,10 @@ pub async fn refresh_library() {
 
 #[tauri::command]
 /// Launch a game
-pub fn launch_game(game: MonarchGame) {
-    match game.get_platform() {
-        "steam" => { steam::launch_game(game); }
-        "blizzard" => { blizzard::launch_game(game); }
+pub fn launch_game(name: String, id: String, platform: String) {
+    match platform.as_str() {
+        "steam" => { steam::launch_game(name.as_str(), id.as_str()); }
+        "blizzard" => { blizzard::launch_game(name.as_str(), id.as_str()); }
         "epic" => {}
         "monarch" => {}
         _ => {}
@@ -33,9 +33,9 @@ pub fn launch_game(game: MonarchGame) {
 
 #[tauri::command]
 /// Open "Download window" for a game
-pub fn download_game(game: MonarchGame) {
-    match game.get_platform() {
-        "steam" => { steam::download_game(game); }
+pub fn download_game(name: String, id: String, platform: String) {
+    match platform.as_str() {
+        "steam" => { steam::download_game(name.as_str(), id.as_str()); }
         "blizzard" => {}
         "epic" => {}
         "monarch" => {}
@@ -45,9 +45,9 @@ pub fn download_game(game: MonarchGame) {
 
 #[tauri::command]
 /// Open "Purchase window" for a game
-pub fn purchase_game(game: MonarchGame) {
-    match game.get_platform() {
-        "steam" => { steam::purchase_game(game); }
+pub fn purchase_game(name: String, id: String, platform: String) {
+    match platform.as_str() {
+        "steam" => { steam::purchase_game(name.as_str(), id.as_str()); }
         "blizzard" => {}
         "epic" => {}
         "monarch" => {}

@@ -1,8 +1,7 @@
-pub mod downloader;
-pub mod macros;
-pub mod winreg_searcher;
-pub mod logger;
+pub mod monarch_download;
+pub mod monarch_winreg;
+pub mod monarch_logger;
 pub mod monarch_fs;
-pub mod webscraping;
-pub mod database;
+pub mod monarch_web;
+pub mod monarch_db;
 pub mod commands;
