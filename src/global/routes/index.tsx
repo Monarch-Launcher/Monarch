@@ -3,6 +3,7 @@ import Home from '../../modules/home';
 import Settings from '../../modules/settings';
 import Library from '../../modules/library';
 import Search from '../../modules/search';
+import MooseTestPage from '../../modules/mooseTestPage';
 
 export default () => {
   return (
@@ -12,6 +13,7 @@ export default () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/library" element={<Library />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/moose" element={<MooseTestPage />} />
       </Routes>
     </MemoryRouter>
   );

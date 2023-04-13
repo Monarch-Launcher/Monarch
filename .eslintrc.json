@@ -12,7 +12,12 @@
     "no-confusing-arrow": "off",
     "implicit-arrow-linebreak": "off",
     "@typescript-eslint/indent": "off",
-    "react/require-default-props": "off"
+    "react/require-default-props": "off",
+    "react/jsx-props-no-spreading": "off",
+    "react/jsx-one-expression-per-line": "off"
+
+
+
   },
   "parserOptions": {
     "project": "./tsconfig.json"

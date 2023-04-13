@@ -1,7 +1,7 @@
 import * as React from 'react';
 import styled from 'styled-components';
 import Page from '../../common/page';
-import GameCard from '../../common/gameCard';
+import SearchBar from '../../common/searchBar';
 
 const LibraryContainer = styled.div`
   width: 85%;
@@ -13,18 +13,8 @@ const LibraryContainer = styled.div`
 const Library = () => {
   return (
     <Page title="Library">
-      <p>Prob like a search bar over here</p>
-      <LibraryContainer>
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-        <GameCard />
-      </LibraryContainer>
+      <SearchBar value="" onChange={() => {}} onSearchClick={() => {}} />
+      <LibraryContainer>content here</LibraryContainer>
     </Page>
   );
 };
