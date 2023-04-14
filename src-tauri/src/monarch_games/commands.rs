@@ -10,7 +10,14 @@ use super::epic;
 #[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
 pub async fn search_games(name: String) -> Vec<MonarchGame> {
-    return steam::find_game(&name).await
+    let mut games: Vec<MonarchGame> = Vec::new();
+    let mut steam_games: Vec<MonarchGame> = steam::find_game(&name).await;
+    let mut epic_games: Vec<MonarchGame> = epic::find_game(&name).await;
+
+    games.append(&mut steam_games);
+    games.append(&mut epic_games);
+
+    return games
 }   
 
 #[tauri::command]

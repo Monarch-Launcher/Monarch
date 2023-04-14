@@ -38,7 +38,7 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
     info!("Searching: {}", target);
 
     if let Ok(response) = request_data(&target).await {    
-        games = store_steam_game_parser(response).await;
+        games = steam_store_parser(response).await;
     }
 
     return games
@@ -122,7 +122,7 @@ fn steam_is_installed() -> bool {
 }
 
 /// Returns a HashMap of games with their respective Steam IDs.
-async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
+async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
 
     let content = response.text().await.unwrap();

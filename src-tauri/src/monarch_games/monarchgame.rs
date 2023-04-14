@@ -18,6 +18,7 @@ impl MonarchGame {
                thumbnail_path: thumbnail_path.to_string() }
     }
 
+    /* 
     pub fn get_name(&self) -> &str {
         &self.name
     }
@@ -29,4 +30,13 @@ impl MonarchGame {
     pub fn get_platform(&self) -> &str {
         &self.platform
     }
+
+    pub fn get_exec_path(&self) -> &str {
+        &self.executable_path
+    }
+
+    pub fn get_thumbnail_path(&self) -> &str {
+        &self.thumbnail_path
+    }
+    */
 }
