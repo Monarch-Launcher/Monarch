@@ -1,7 +1,6 @@
 use log::info;
 use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
-use serde::__private::doc;
 
 use crate::monarch_utils::{monarch_winreg::is_installed, 
                            monarch_download::{download_and_run, download_image}, 
