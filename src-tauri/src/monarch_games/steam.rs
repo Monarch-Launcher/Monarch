@@ -32,6 +32,7 @@ pub async fn get_steam() {
 /// Search function to find steam games
 pub async fn find_game(name: &str) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
+    let mut games: Vec<MonarchGame> = Vec::new();
     let mut target: String = String::from("https://store.steampowered.com/search/?term=");
     target.push_str(name);
 
@@ -44,7 +45,7 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
     return games
 }
 
-/// Opens the steam installer for a steam game, takes its steam id as parameter.
+/// Opens the steam installer for a steam game
 pub fn download_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://install/");
     game_command.push_str(id);
@@ -73,7 +74,6 @@ pub fn launch_game(name: &str, id: &str) {
                                                         .arg("start")
                                                         .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
-
     match launch_result {
         Ok(_) => {
             info!("Launching game: {}", name);
@@ -93,7 +93,6 @@ pub fn purchase_game(name: &str, id: &str) {
                                                         .arg("start")
                                                         .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
-
     match launch_result {
         Ok(_) => {
             info!("Opening store page: {}", name);
@@ -113,6 +112,7 @@ pub async fn get_library() {
 }
 
 /*
+---------- Private functions ----------
 ---------- Private functions ----------
 */
 
@@ -139,7 +139,8 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
         let id = get_steamid(ids[i]);
         let image_link = get_img_link(&id);
         let image_path = generate_cache_image_name(&name);
-
+    
+        let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
         let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
         games.push(cur_game);
 
@@ -176,8 +177,8 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
                     download_image(image_link.as_str(), image_path.as_str()).await; 
                 });
             } 
-        }        
-    }
+        }
+    }      
     return games
 }
 
