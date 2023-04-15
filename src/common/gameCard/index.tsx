@@ -11,7 +11,7 @@ const CardContainer = styled.div`
   vertical-align: top;
   width: 15rem;
   height: 20rem;
-  background-color: ${({ theme }) => theme.colors.primary};
+  background-color: ${({ theme }) => theme.colors.secondary};
   border-radius: 0.5rem;
   margin: 0.5rem;
 `;
@@ -26,6 +26,7 @@ const CardContent = styled.div`
 
 const Info = styled.p`
   font-weight: 700;
+  color: ${({ theme }) => theme.colors.primary};
 `;
 
 const Thumbnail = styled.img<{ $isInfo: boolean }>`
@@ -107,7 +108,7 @@ const GameCard = ({
         <Info>{name}</Info>
         <Info>Platform: {platform}</Info>
         <Button
-          variant="secondary"
+          variant="primary"
           type="button"
           onClick={toggleDrawer}
           disabled={drawerOpen}
