@@ -14,10 +14,8 @@
     "@typescript-eslint/indent": "off",
     "react/require-default-props": "off",
     "react/jsx-props-no-spreading": "off",
-    "react/jsx-one-expression-per-line": "off"
-
-
-
+    "react/jsx-one-expression-per-line": "off",
+    "@typescript-eslint/return-await": "off"
   },
   "parserOptions": {
     "project": "./tsconfig.json"
