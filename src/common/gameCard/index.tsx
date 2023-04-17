@@ -81,19 +81,20 @@ const GameCard = ({
 
   // Detect click outside drawer to close it
   React.useEffect(() => {
-    if (drawerOpen) {
-      const handleClickOutside = (event: any) => {
-        if (drawerRef.current && !drawerRef.current.contains(event.target)) {
-          toggleDrawer();
-        }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
+    if (!drawerOpen) {
+      return () => {};
     }
-    return () => {};
+
+    const handleClickOutside = (event: any) => {
+      if (drawerRef.current && !drawerRef.current.contains(event.target)) {
+        toggleDrawer();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [drawerRef, toggleDrawer, drawerOpen]);
 
   return (
