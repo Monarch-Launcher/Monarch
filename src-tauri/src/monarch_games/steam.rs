@@ -115,7 +115,6 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
 /*
 ---------- Private functions ----------
----------- Private functions ----------
 */
 
 /// Returns whether or not Steam launcher is installed

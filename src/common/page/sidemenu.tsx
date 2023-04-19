@@ -1,19 +1,20 @@
 import * as React from 'react';
 import styled from 'styled-components';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BiHomeAlt } from 'react-icons/bi';
+import { BiHomeAlt, BiTestTube } from 'react-icons/bi';
 import { HiOutlineSquares2X2 } from 'react-icons/hi2';
 import { HiOutlineCog } from 'react-icons/hi';
 import { AiOutlineSearch } from 'react-icons/ai';
 import { type IconType } from 'react-icons';
 import Button from '../button';
+import logo from '../../assets/logo.png';
 
 const Container = styled.div`
   background-color: ${({ theme }) => theme.colors.secondary};
   width: 12rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
   padding: 0.5rem;
 `;
 
@@ -41,7 +42,12 @@ const LinkWrapper = styled.div<{ $isActive: boolean }>`
       : theme.colors.button.transparent.background};
 `;
 
+const StyledLogo = styled.img`
+  width: 90px;
+`;
+
 type Tab = {
+  id: number;
   path: string;
   title: string;
   leftIcon: IconType;
@@ -61,19 +67,28 @@ const SideMenu = () => {
   const tabs = React.useMemo((): Tab[] => {
     return [
       {
+        id: 1,
         path: '/',
         title: 'Home',
         leftIcon: BiHomeAlt,
       },
       {
+        id: 2,
         path: '/library',
         title: 'Library',
         leftIcon: HiOutlineSquares2X2,
       },
       {
+        id: 3,
         path: '/search',
         title: 'Search',
         leftIcon: AiOutlineSearch,
+      },
+      {
+        id: 4,
+        path: '/moose',
+        title: 'Moose',
+        leftIcon: BiTestTube,
       },
     ];
   }, []);
@@ -84,15 +99,18 @@ const SideMenu = () => {
 
   return (
     <Container>
-      <Header>Monarch</Header>
+      <Header>
+        <StyledLogo alt="logo" src={logo} />
+      </Header>
       <NavContainer>
         <TabContainer>
           {tabs.map((tab) => (
-            <LinkWrapper $isActive={pathname === tab.path}>
+            <LinkWrapper key={tab.id} $isActive={pathname === tab.path}>
               <Button
                 variant="transparent"
                 type="button"
                 leftIcon={tab.leftIcon}
+                width="100%"
                 onClick={() => navigateTo(tab.path)}
               >
                 {tab.title}
@@ -105,6 +123,7 @@ const SideMenu = () => {
             variant="transparent"
             type="button"
             leftIcon={HiOutlineCog}
+            width="100%"
             onClick={() => navigateTo('/settings')}
           >
             Settings
