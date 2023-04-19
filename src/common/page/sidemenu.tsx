@@ -7,13 +7,14 @@ import { HiOutlineCog } from 'react-icons/hi';
 import { AiOutlineSearch } from 'react-icons/ai';
 import { type IconType } from 'react-icons';
 import Button from '../button';
+import logo from '../../assets/logo.png';
 
 const Container = styled.div`
   background-color: ${({ theme }) => theme.colors.secondary};
   width: 12rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
   padding: 0.5rem;
 `;
 
@@ -39,6 +40,10 @@ const LinkWrapper = styled.div<{ $isActive: boolean }>`
     $isActive
       ? theme.colors.button.transparent.active
       : theme.colors.button.transparent.background};
+`;
+
+const StyledLogo = styled.img`
+  width: 90px;
 `;
 
 type Tab = {
@@ -94,7 +99,9 @@ const SideMenu = () => {
 
   return (
     <Container>
-      <Header>Monarch</Header>
+      <Header>
+        <StyledLogo alt="logo" src={logo} />
+      </Header>
       <NavContainer>
         <TabContainer>
           {tabs.map((tab) => (

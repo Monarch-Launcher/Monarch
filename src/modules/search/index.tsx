@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api';
 import Page from '../../common/page';
 import GameCard from '../../common/gameCard';
 import SearchBar from '../../common/searchBar';
+import { useGames } from '../../global/contexts/gamesProvider';
 
 const ResultsContainer = styled.div`
   width: 85%;
@@ -23,9 +24,9 @@ type MonarchGame = {
 
 const Search = () => {
   const [searchString, setSearchString] = React.useState<string>('');
-  const [games, setGames] = React.useState<MonarchGame[]>([]);
   const [noResults, setNoResults] = React.useState(false);
   const [error, setError] = React.useState(false);
+  const { searchedGames, updateSearchedGames } = useGames();
 
   const searchGames = React.useCallback(async () => {
     // Return early if searchString is empty
@@ -40,12 +41,12 @@ const Search = () => {
       if (result.length === 0) {
         setNoResults(true);
       }
-      setGames(result);
+      updateSearchedGames(result);
       setError(false);
     } catch (err) {
       setError(true);
     }
-  }, [searchString]);
+  }, [searchString, updateSearchedGames]);
 
   const handleChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +64,7 @@ const Search = () => {
         onSearchClick={searchGames}
       />
       <ResultsContainer>
-        {games.map((game) => (
+        {searchedGames.map((game) => (
           <GameCard key={game.id} {...game} />
         ))}
         {noResults && (
