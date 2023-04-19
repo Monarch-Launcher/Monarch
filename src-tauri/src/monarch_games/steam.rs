@@ -32,19 +32,20 @@ pub async fn get_steam() {
 /// Search function to find steam games
 pub async fn find_game(name: &str) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
+    let mut games: Vec<MonarchGame> = Vec::new();
     let mut target: String = String::from("https://store.steampowered.com/search/?term=");
     target.push_str(name);
 
     info!("Searching: {}", target);
 
     if let Ok(response) = request_data(&target).await {    
-        games = store_steam_game_parser(response).await;
+        games = steam_store_parser(response).await;
     }
 
     return games
 }
 
-/// Opens the steam installer for a steam game, takes its steam id as parameter.
+/// Opens the steam installer for a steam game
 pub fn download_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://install/");
     game_command.push_str(id);
@@ -73,7 +74,6 @@ pub fn launch_game(name: &str, id: &str) {
                                                         .arg("start")
                                                         .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
-
     match launch_result {
         Ok(_) => {
             info!("Launching game: {}", name);
@@ -93,7 +93,6 @@ pub fn purchase_game(name: &str, id: &str) {
                                                         .arg("start")
                                                         .arg(&game_command)
                                                         .spawn(); // Run steam installer for specified game 
-
     match launch_result {
         Ok(_) => {
             info!("Opening store page: {}", name);
@@ -105,11 +104,13 @@ pub fn purchase_game(name: &str, id: &str) {
 }
 
 /// Finds local steam library installed on current system via winreg
-pub async fn get_library() {
+pub async fn get_library() -> Vec<MonarchGame> {
+    let mut games: Vec<MonarchGame> = Vec::new();
     if let Ok(library) = get_reg_folder_contents("Valve\\Steam\\Apps") {
-        let mut _games: Vec<MonarchGame> = Vec::new();    
-        _games = library_steam_game_parser(library).await;
+        games = library_steam_game_parser(library).await;
     }
+
+    return games
 }
 
 /*
@@ -122,7 +123,7 @@ fn steam_is_installed() -> bool {
 }
 
 /// Returns a HashMap of games with their respective Steam IDs.
-async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
+async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
 
     let content = response.text().await.unwrap();
@@ -139,7 +140,8 @@ async fn store_steam_game_parser(response: Response) -> Vec<MonarchGame> {
         let id = get_steamid(ids[i]);
         let image_link = get_img_link(&id);
         let image_path = generate_cache_image_name(&name);
-
+    
+        let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
         let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
         games.push(cur_game);
 
@@ -176,8 +178,8 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
                     download_image(image_link.as_str(), image_path.as_str()).await; 
                 });
             } 
-        }        
-    }
+        }
+    }      
     return games
 }
 
