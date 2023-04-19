@@ -14,7 +14,7 @@ const ResultsContainer = styled.div`
   margin: 1rem 0;
 `;
 
-type MonarchGame = {
+export type MonarchGame = {
   id: number;
   executable_path: string;
   name: string;

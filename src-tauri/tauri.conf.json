@@ -17,6 +17,12 @@
         "all": false,
         "open": true
       },
+      "dialog": {
+        "open": true
+      },
+      "fs": {
+        "readFile": true
+      },
       "window": {
         "setMinSize": true
       },

@@ -15,7 +15,9 @@
     "react/require-default-props": "off",
     "react/jsx-props-no-spreading": "off",
     "react/jsx-one-expression-per-line": "off",
-    "@typescript-eslint/return-await": "off"
+    "@typescript-eslint/return-await": "off",
+    "function-paren-newline": "off",
+    "operator-linebreak": "off"
   },
   "parserOptions": {
     "project": "./tsconfig.json"

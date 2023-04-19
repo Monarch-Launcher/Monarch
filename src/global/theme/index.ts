@@ -10,10 +10,10 @@ export const colors = {
       background: '#FF6000',
       hoverBorder: '#FF2000',
       hoverText: '#000',
-      hoverBackground: '#FF0000',
+      hoverBackground: '#FF2000',
       focusText: '',
-      focusBorder: '#FF0000',
-      focusBackground: '#FF0000',
+      focusBorder: '#FF2000',
+      focusBackground: '#FF2000',
       active: '',
       disabled: {
         text: '#454545',
