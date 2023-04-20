@@ -32,7 +32,6 @@ pub async fn get_steam() {
 /// Search function to find steam games
 pub async fn find_game(name: &str) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
-    let mut games: Vec<MonarchGame> = Vec::new();
     let mut target: String = String::from("https://store.steampowered.com/search/?term=");
     target.push_str(name);
 

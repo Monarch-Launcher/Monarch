@@ -216,13 +216,13 @@ pub fn generate_library_image_name(name: &str) -> String {
 }
 
 fn generate_image_filename(name: &str) -> String {
-    let ascii_name: String = name.to_lowercase()
+    let ascii_name: String = name.to_lowercase() // Only keep ascii characters
                                  .chars()
                                  .filter(|c| c.is_ascii())
                                  .collect::<String>();
-    let mut filename: String = ascii_name.replace(".", "-")
-                                     .replace(",", "-")
-                                     .replace(" ", "_");
+
+    let mut filename: String = ascii_name.replace(&['(', ')', ',', '\"', '.', ';', ':', '\''][..], "") // Remove special characters
+                                         .replace(" ", "_"); // Replace space with _
     filename.push_str(".jpg");
     
     return filename
