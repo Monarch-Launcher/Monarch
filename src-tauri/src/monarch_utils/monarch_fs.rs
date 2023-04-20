@@ -1,4 +1,5 @@
 use std::{process::exit, io, fs};
+use json::JsonValue;
 use log::error;
 use std::env::VarError;
 use std::fs::DirEntry;
@@ -74,6 +75,24 @@ pub fn get_app_data_path() -> Result<String, VarError> {
         },
         Err(e) => Err(e)
     }
+}
+
+/// Returns path to library.json
+pub fn get_library_json_path() -> String {
+    if let Ok(mut path) = get_app_data_path() {
+        path.push_str("\\library.json");
+        return path
+    }
+    String::new()
+}
+
+/// Write JSON to file
+pub fn write_json_content(content: JsonValue, path: &str) -> io::Result<()> {
+    if let Err(e) = fs::write(path, content.to_string()) {
+        error!("Failed to write new library to: {} | Message: {:?}", path, e);
+        return Err(e)
+    }
+    return Ok(())
 }
 
 /// Checks whether a given path exists already or not
@@ -178,7 +197,7 @@ fn force_remove_thumbnail(file: DirEntry) {
 /// Create a name for image file in cache directory
 /// Can be used to download image and check if an image already exists
 pub fn generate_cache_image_name(name: &str) -> String {
-    let filename = generate_filename(name);
+    let filename = generate_image_filename(name);
     let mut dir = get_resources_cache();
     
     dir.push_str("\\");
@@ -188,7 +207,7 @@ pub fn generate_cache_image_name(name: &str) -> String {
 
 /// Create a name for image file in cache directory
 pub fn generate_library_image_name(name: &str) -> String {
-    let filename = generate_filename(name);
+    let filename = generate_image_filename(name);
     let mut dir = get_resources_library();
     
     dir.push_str("\\");
@@ -196,7 +215,7 @@ pub fn generate_library_image_name(name: &str) -> String {
     dir
 }
 
-fn generate_filename(name: &str) -> String {
+fn generate_image_filename(name: &str) -> String {
     let ascii_name: String = name.to_lowercase()
                                  .chars()
                                  .filter(|c| c.is_ascii())

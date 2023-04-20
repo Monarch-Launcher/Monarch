@@ -1589,6 +1589,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "json"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
+
+[[package]]
 name = "json-patch"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1831,6 +1837,7 @@ name = "monarch"
 version = "0.0.0"
 dependencies = [
  "image",
+ "json",
  "log",
  "log4rs",
  "reqwest",
