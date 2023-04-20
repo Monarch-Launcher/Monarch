@@ -2,16 +2,19 @@ import { ThemeProvider } from 'styled-components';
 import Routes from './global/routes';
 import GlobalStyles from './global/theme/globalStyles';
 import theme from './global/theme';
-import GamesProvider from './global/contexts/gamesProvider';
+import SearchGamesProvider from './global/contexts/searchGamesProvider';
+import LibraryProvider from './global/contexts/libraryProvider';
 
 const App = () => {
   return (
-    <GamesProvider>
-      <ThemeProvider theme={theme}>
-        <GlobalStyles />
-        <Routes />
-      </ThemeProvider>
-    </GamesProvider>
+    <LibraryProvider>
+      <SearchGamesProvider>
+        <ThemeProvider theme={theme}>
+          <GlobalStyles />
+          <Routes />
+        </ThemeProvider>
+      </SearchGamesProvider>
+    </LibraryProvider>
   );
 };
 

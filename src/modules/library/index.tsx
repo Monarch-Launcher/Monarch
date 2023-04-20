@@ -1,15 +1,13 @@
 import * as React from 'react';
-import styled from 'styled-components';
-import { invoke, dialog } from '@tauri-apps/api';
+import styled, { css } from 'styled-components';
+import { dialog } from '@tauri-apps/api';
 import { FiRefreshCcw } from 'react-icons/fi';
 import { FaFolderPlus } from 'react-icons/fa';
 import Page from '../../common/page';
 import SearchBar from '../../common/searchBar';
 import Button from '../../common/button';
-import { useGames } from '../../global/contexts/gamesProvider';
-import { MonarchGame } from '../search';
+import { useLibrary } from '../../global/contexts/libraryProvider';
 import GameCard from '../../common/gameCard';
-import spinner from '../../assets/spinner.gif';
 
 const LibraryContainer = styled.div`
   width: 85%;
@@ -24,40 +22,29 @@ const Row = styled.div`
   gap: 1rem;
 `;
 
-const LoadingContainer = styled.div`
-  position: absolute;
-  top: 40%;
-  left: 50%;
-  text-align: center;
-`;
+const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
+  ${({ $loading }) =>
+    $loading &&
+    css`
+      animation: spin-animation 1.2s infinite;
+    `}
 
-const Spinner = styled.img`
-  margin-left: auto;
-  margin-right: auto;
+  @keyframes spin-animation {
+    0% {
+      transform: rotate(359deg);
+    }
+    100% {
+      transform: rotate(0);
+    }
+  }
 `;
 
 const LoadingText = styled.p``;
 
 const Library = () => {
-  const { library, updateLibrary } = useGames();
-  const [error, setError] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-
-  const handleRefresh = React.useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const result: MonarchGame[] = await invoke('refresh_library');
-      updateLibrary(result);
-
-      setLoading(false);
-      setError(false);
-    } catch (err) {
-      setLoading(false);
-      setError(true);
-    }
-  }, [updateLibrary]);
+  const [dialogError, setDialogError] = React.useState(false);
+  const { library, loading, error, refreshLibrary } = useLibrary();
 
   const handleOpenDialog = React.useCallback(async () => {
     try {
@@ -68,10 +55,10 @@ const Library = () => {
       });
 
       // TODO: Invoke function that adds folder
-      await invoke('add_folder', { path });
-      setError(false);
+      // await invoke('add_folder', { path });
+      setDialogError(false);
     } catch (err) {
-      setError(true);
+      setDialogError(true);
     }
   }, []);
 
@@ -98,10 +85,9 @@ const Library = () => {
           value={searchTerm}
           onChange={handleChange}
           onSearchClick={() => {}}
-          buttonDisabled
         />
-        <Button type="button" variant="primary" onClick={handleRefresh}>
-          <FiRefreshCcw />
+        <Button type="button" variant="primary" onClick={refreshLibrary}>
+          <StyledRefreshIcon $loading={loading} />
         </Button>
         <Button type="button" variant="primary" onClick={handleOpenDialog}>
           <FaFolderPlus />
@@ -109,16 +95,12 @@ const Library = () => {
       </Row>
       <LibraryContainer>
         {loading ? (
-          <LoadingContainer>
-            <Spinner src={spinner} alt="loading-spinner" />
-            <LoadingText>
-              Refreshing your library, this may take a while...
-            </LoadingText>
-          </LoadingContainer>
+          <LoadingText>Loading...</LoadingText>
         ) : (
           filteredLibrary.map((game) => <GameCard key={game.id} {...game} />)
         )}
         {!loading && error && <p>Something went wrong</p>}
+        {dialogError && <p>Something went wrong when opening the explorer</p>}
       </LibraryContainer>
     </Page>
   );
