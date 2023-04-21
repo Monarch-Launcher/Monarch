@@ -6,13 +6,13 @@ import { type ButtonVariant } from '../../global/theme';
 const MonarchButton = styled.button<{
   $variant: keyof ButtonVariant;
   $disabled: boolean;
-  $width: string;
+  $fullWidth: boolean;
 }>`
   border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 700;
   padding: 0.5rem 1rem;
-  width: ${({ $width }) => $width};
+  width: ${({ $fullWidth }) => ($fullWidth ? '100%' : 'fit-content')};
   transition: ease 0.2s;
   display: flex;
   align-items: center;
@@ -60,7 +60,9 @@ type ButtonProps = {
   children: React.ReactNode;
   leftIcon?: IconType;
   rightIcon?: IconType;
-  width?: string;
+  fullWidth?: boolean;
+  className?: string;
+  title?: string;
 };
 
 const Button = ({
@@ -71,7 +73,9 @@ const Button = ({
   children,
   leftIcon,
   rightIcon,
-  width = 'fit-content',
+  fullWidth = false,
+  title,
+  className,
 }: ButtonProps) => {
   return (
     <MonarchButton
@@ -79,8 +83,10 @@ const Button = ({
       onClick={onClick}
       $variant={variant}
       $disabled={disabled}
-      $width={width}
+      $fullWidth={fullWidth}
       disabled={disabled}
+      className={className}
+      title={title}
     >
       {leftIcon && leftIcon({ size: 24 })}
       {children}
