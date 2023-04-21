@@ -43,6 +43,7 @@ type SearchBarProps = {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSearchClick: () => void;
   buttonDisabled?: boolean;
+  placeholder?: string;
 };
 
 const SearchBar = ({
@@ -50,6 +51,7 @@ const SearchBar = ({
   onChange,
   onSearchClick,
   buttonDisabled = false,
+  placeholder,
 }: SearchBarProps) => {
   const handleKeyPressed = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -66,6 +68,7 @@ const SearchBar = ({
         value={value}
         onChange={onChange}
         onKeyDown={handleKeyPressed}
+        placeholder={placeholder}
       />
       <SearchButton
         type="button"

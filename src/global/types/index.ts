@@ -5,3 +5,8 @@ export type MonarchGame = {
   platform: string;
   thumbnail_path: string;
 };
+
+export type Result = {
+  empty: boolean;
+  message: string;
+};

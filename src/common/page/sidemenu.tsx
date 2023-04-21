@@ -110,7 +110,7 @@ const SideMenu = () => {
                 variant="transparent"
                 type="button"
                 leftIcon={tab.leftIcon}
-                width="100%"
+                fullWidth
                 onClick={() => navigateTo(tab.path)}
               >
                 {tab.title}
@@ -123,7 +123,7 @@ const SideMenu = () => {
             variant="transparent"
             type="button"
             leftIcon={HiOutlineCog}
-            width="100%"
+            fullWidth
             onClick={() => navigateTo('/settings')}
           >
             Settings
