@@ -1,9 +1,10 @@
 import * as React from 'react';
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 import { AiOutlineSearch } from 'react-icons/ai';
 
 const SearchContainer = styled.div`
   display: flex;
+  max-height: 2rem;
 `;
 
 const StyledInput = styled.input`
@@ -16,7 +17,7 @@ const StyledInput = styled.input`
   }
 `;
 
-const SearchButton = styled.button`
+const SearchButton = styled.button<{ $disabled: boolean }>`
   border-radius: 0 40% 40% 0;
   transition: ease 0.2s;
   color: ${({ theme }) => theme.colors.primary};
@@ -25,20 +26,31 @@ const SearchButton = styled.button`
   display: flex;
   align-items: center;
   padding: 0.2rem 0.5rem;
-  &:hover {
-    cursor: pointer;
-    background-color: ${({ theme }) => theme.colors.primary};
-    color: ${({ theme }) => theme.colors.secondary};
-  }
+
+  ${({ $disabled }) =>
+    !$disabled &&
+    css`
+      &:hover {
+        cursor: pointer;
+        background-color: ${({ theme }) => theme.colors.primary};
+        color: ${({ theme }) => theme.colors.secondary};
+      }
+    `}
 `;
 
 type SearchBarProps = {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSearchClick: () => void;
+  buttonDisabled?: boolean;
 };
 
-const SearchBar = ({ value, onChange, onSearchClick }: SearchBarProps) => {
+const SearchBar = ({
+  value,
+  onChange,
+  onSearchClick,
+  buttonDisabled = false,
+}: SearchBarProps) => {
   const handleKeyPressed = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
@@ -55,7 +67,12 @@ const SearchBar = ({ value, onChange, onSearchClick }: SearchBarProps) => {
         onChange={onChange}
         onKeyDown={handleKeyPressed}
       />
-      <SearchButton type="button" onClick={onSearchClick}>
+      <SearchButton
+        type="button"
+        onClick={onSearchClick}
+        disabled={buttonDisabled}
+        $disabled={buttonDisabled}
+      >
         <AiOutlineSearch size={24} />
       </SearchButton>
     </SearchContainer>
