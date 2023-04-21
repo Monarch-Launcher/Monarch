@@ -4,6 +4,7 @@ import Settings from '../../modules/settings';
 import Library from '../../modules/library';
 import Search from '../../modules/search';
 import MooseTestPage from '../../modules/mooseTestPage';
+import NotFound from '../../modules/notFound';
 
 export default () => {
   return (
@@ -14,6 +15,7 @@ export default () => {
         <Route path="/library" element={<Library />} />
         <Route path="/search" element={<Search />} />
         <Route path="/moose" element={<MooseTestPage />} />
+        <Route path="/*" element={<NotFound />} />
       </Routes>
     </MemoryRouter>
   );

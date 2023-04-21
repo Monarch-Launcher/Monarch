@@ -4,6 +4,8 @@ import Page from '../../common/page';
 import GameCard from '../../common/gameCard';
 import SearchBar from '../../common/searchBar';
 import { useSearchGames } from '../../global/contexts/searchGamesProvider';
+import Spinner from '../../common/spinner';
+import Error from '../../common/error';
 
 const ResultsContainer = styled.div`
   width: 85%;
@@ -15,12 +17,11 @@ const ResultsContainer = styled.div`
 
 const Search = () => {
   const [searchString, setSearchString] = React.useState('');
-  const [noResults, setNoResults] = React.useState(false);
-  const { searchedGames, loading, error, searchGames } = useSearchGames();
+  const { searchedGames, loading, error, searchGames, results } =
+    useSearchGames();
 
   const handleChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setNoResults(false);
       setSearchString(e.target.value);
     },
     [],
@@ -32,8 +33,7 @@ const Search = () => {
       return;
     }
     await searchGames(searchString);
-    setNoResults(searchedGames.length === 0);
-  }, [searchGames, searchString, searchedGames]);
+  }, [searchGames, searchString]);
 
   return (
     <Page title="Search">
@@ -41,16 +41,18 @@ const Search = () => {
         value={searchString}
         onChange={handleChange}
         onSearchClick={handleClick}
+        placeholder="Search"
       />
       <ResultsContainer>
-        {searchedGames.map((game) => (
-          <GameCard key={game.id} {...game} />
-        ))}
-        {noResults && (
-          <p>Couldn&apos;t find any games for &quot;{searchString}&quot;</p>
+        {loading ? (
+          <Spinner />
+        ) : (
+          searchedGames.map((game) => <GameCard key={game.id} {...game} />)
         )}
-        {error && <p>Something went wrong</p>}
-        {loading && <p>Loading...</p>}
+        {!loading && results?.empty && <p>{results.message}</p>}
+        {!loading && error && (
+          <Error description="Couldn't load games" onRetry={handleClick} />
+        )}
       </ResultsContainer>
     </Page>
   );

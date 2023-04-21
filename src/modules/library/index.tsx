@@ -8,6 +8,8 @@ import SearchBar from '../../common/searchBar';
 import Button from '../../common/button';
 import { useLibrary } from '../../global/contexts/libraryProvider';
 import GameCard from '../../common/gameCard';
+import Spinner from '../../common/spinner';
+import Error from '../../common/error';
 
 const LibraryContainer = styled.div`
   width: 85%;
@@ -39,12 +41,10 @@ const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
   }
 `;
 
-const LoadingText = styled.p``;
-
 const Library = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [dialogError, setDialogError] = React.useState(false);
-  const { library, loading, error, refreshLibrary } = useLibrary();
+  const { library, loading, error, refreshLibrary, results } = useLibrary();
 
   const handleOpenDialog = React.useCallback(async () => {
     try {
@@ -85,22 +85,41 @@ const Library = () => {
           value={searchTerm}
           onChange={handleChange}
           onSearchClick={() => {}}
+          placeholder="Search"
         />
-        <Button type="button" variant="primary" onClick={refreshLibrary}>
+        <Button
+          type="button"
+          variant="primary"
+          onClick={refreshLibrary}
+          title="Refresh"
+        >
           <StyledRefreshIcon $loading={loading} />
         </Button>
-        <Button type="button" variant="primary" onClick={handleOpenDialog}>
+        <Button
+          type="button"
+          variant="primary"
+          onClick={handleOpenDialog}
+          title="Add game folder"
+        >
           <FaFolderPlus />
         </Button>
       </Row>
       <LibraryContainer>
-        {loading ? (
-          <LoadingText>Loading...</LoadingText>
+        {filteredLibrary.length === 0 && loading ? (
+          <Spinner />
         ) : (
           filteredLibrary.map((game) => <GameCard key={game.id} {...game} />)
         )}
-        {!loading && error && <p>Something went wrong</p>}
-        {dialogError && <p>Something went wrong when opening the explorer</p>}
+        {!loading && results?.empty && <p>{results.message}</p>}
+        {error && (
+          <Error description="Couldn't load library" onRetry={refreshLibrary} />
+        )}
+        {dialogError && (
+          <Error
+            description="Couldn't open file explorer"
+            onRetry={handleOpenDialog}
+          />
+        )}
       </LibraryContainer>
     </Page>
   );

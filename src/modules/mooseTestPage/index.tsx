@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { invoke } from '@tauri-apps/api';
 import Page from '../../common/page';
 import Button from '../../common/button';
+import Spinner from '../../common/spinner';
 
 const ResultContainer = styled.div`
   overflow-y: auto;
@@ -11,10 +12,12 @@ const ResultContainer = styled.div`
 
 const MooseTestPage = () => {
   const [result, setResult] = React.useState<unknown>();
+  const [loading, setLoading] = React.useState(false);
 
   // This function will be called when the button is clicked
   const handleClick = React.useCallback(async () => {
     try {
+      setLoading(true);
       // -- invoke() parameters --
       // first parameters: string -> the name of the rust command to call (required)
       // second parameters: json object -> the parameter(s) the rust command takes (optional)
@@ -28,6 +31,8 @@ const MooseTestPage = () => {
       setResult(functionResult);
     } catch (err) {
       setResult(err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -37,7 +42,9 @@ const MooseTestPage = () => {
         Call command
       </Button>
       <h3>Result of called rust command:</h3>
-      <ResultContainer>{JSON.stringify(result)}</ResultContainer>
+      <ResultContainer>
+        {loading ? <Spinner /> : JSON.stringify(result)}
+      </ResultContainer>
     </Page>
   );
 };
