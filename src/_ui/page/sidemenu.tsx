@@ -64,7 +64,7 @@ const SideMenu = () => {
     [navigate],
   );
 
-  const tabs = React.useMemo((): Tab[] => {
+  const tabs = React.useMemo<Tab[]>(() => {
     return [
       {
         id: 1,

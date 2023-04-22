@@ -1,10 +1,10 @@
 import { Route, Routes, MemoryRouter } from 'react-router-dom';
-import Home from '../../modules/home';
-import Settings from '../../modules/settings';
-import Library from '../../modules/library';
-import Search from '../../modules/search';
-import MooseTestPage from '../../modules/mooseTestPage';
-import NotFound from '../../modules/notFound';
+import Home from '../../pages/home';
+import Settings from '../../pages/settings';
+import Library from '../../pages/library';
+import Search from '../../pages/search';
+import MooseTestPage from '../../pages/mooseTestPage';
+import NotFound from '../../pages/notFound';
 
 export default () => {
   return (

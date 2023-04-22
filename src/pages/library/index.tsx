@@ -3,13 +3,13 @@ import styled, { css } from 'styled-components';
 import { dialog } from '@tauri-apps/api';
 import { FiRefreshCcw } from 'react-icons/fi';
 import { FaFolderPlus } from 'react-icons/fa';
-import Page from '../../common/page';
-import SearchBar from '../../common/searchBar';
-import Button from '../../common/button';
+import Page from '../../_ui/page';
+import SearchBar from '../../_ui/searchBar';
+import Button from '../../_ui/button';
 import { useLibrary } from '../../global/contexts/libraryProvider';
-import GameCard from '../../common/gameCard';
-import Spinner from '../../common/spinner';
-import Error from '../../common/error';
+import GameCard from '../../_ui/gameCard';
+import Spinner from '../../_ui/spinner';
+import Error from '../../_ui/error';
 
 const LibraryContainer = styled.div`
   width: 85%;

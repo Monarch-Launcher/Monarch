@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import Page from '../../common/page';
-import Button from '../../common/button';
+import Page from '../../_ui/page';
+import Button from '../../_ui/button';
 
 const Container = styled.div`
   display: flex;
