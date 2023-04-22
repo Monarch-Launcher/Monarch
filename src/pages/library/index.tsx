@@ -86,7 +86,6 @@ const Library = () => {
           onChange={handleChange}
           onSearchClick={() => {}}
           placeholder="Search"
-          loading={loading}
         />
         <Button
           type="button"
