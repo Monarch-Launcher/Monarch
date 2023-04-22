@@ -49,6 +49,23 @@ const LibraryProvider = ({ children }: Props) => {
     }
   }, []);
 
+  const getLibrary = React.useCallback(async () => {
+    try {
+      setError(false);
+      setLoading(true);
+      const result: MonarchGame[] = await invoke('get_library');
+      setLibrary([...result]);
+    } catch (err) {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    getLibrary();
+  }, [getLibrary]);
+
   const value = React.useMemo(() => {
     return {
       library,
