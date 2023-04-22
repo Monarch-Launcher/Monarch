@@ -38,7 +38,12 @@ const MooseTestPage = () => {
 
   return (
     <Page title="Moose's test page">
-      <Button variant="primary" type="button" onClick={handleClick}>
+      <Button
+        variant="primary"
+        type="button"
+        onClick={handleClick}
+        loading={loading}
+      >
         Call command
       </Button>
       <h3>Result of called rust command:</h3>
