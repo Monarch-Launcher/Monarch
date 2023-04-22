@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MonarchGame {
     name: String,
     id: String,
@@ -17,8 +17,7 @@ impl MonarchGame {
                executable_path: exec_path.to_string(),
                thumbnail_path: thumbnail_path.to_string() }
     }
-
-    /* 
+    
     pub fn get_name(&self) -> &str {
         &self.name
     }
@@ -38,5 +37,4 @@ impl MonarchGame {
     pub fn get_thumbnail_path(&self) -> &str {
         &self.thumbnail_path
     }
-    */
 }

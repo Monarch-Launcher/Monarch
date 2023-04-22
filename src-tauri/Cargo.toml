@@ -26,6 +26,7 @@ scraper = "0.15.0"
 log = "0.4.17"
 log4rs = "1.2.0"
 image = "0.24.6"
+json = "0.12.4"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

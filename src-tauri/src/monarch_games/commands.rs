@@ -1,4 +1,7 @@
+use serde_json::value::Value;
+
 use super::monarchgame::MonarchGame;
+use super::monarch_library;
 use super::steam;
 use super::blizzard;
 use super::epic;
@@ -21,6 +24,12 @@ pub async fn search_games(name: String) -> Vec<MonarchGame> {
 }   
 
 #[tauri::command]
+/// Returns MonarchGames from library.json
+pub async fn get_library() -> Value {
+    monarch_library::get_games()
+}
+
+#[tauri::command]
 /// Manually refreshes the entire Monarch library, currently only supports Steam, still WIP
 pub async fn refresh_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
@@ -28,6 +37,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
     games.append(&mut steam_games);
 
+    monarch_library::write_games(games.clone());
     return games
 }
 
