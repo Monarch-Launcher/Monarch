@@ -112,7 +112,7 @@ const Library = () => {
         ) : (
           filteredLibrary.map((game) => <GameCard key={game.id} {...game} />)
         )}
-        {!loading && results?.empty && <p>{results.message}</p>}
+        {!loading && results?.empty && <p>{results.emptyMessage}</p>}
         {error && (
           <Error description="Couldn't load library" onRetry={refreshLibrary} />
         )}

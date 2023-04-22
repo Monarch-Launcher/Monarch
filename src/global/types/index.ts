@@ -8,6 +8,6 @@ export type MonarchGame = {
 
 export type Result = {
   empty: boolean;
-  message: string;
+  emptyMessage: string;
   searchString?: string;
 };

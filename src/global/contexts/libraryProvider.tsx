@@ -38,7 +38,7 @@ const LibraryProvider = ({ children }: Props) => {
       const result: MonarchGame[] = await invoke('refresh_library');
       setResults({
         empty: result.length === 0,
-        message:
+        emptyMessage:
           "Couldn't find any games on your system. Try adding a custom folder.",
       });
       setLibrary([...result]);

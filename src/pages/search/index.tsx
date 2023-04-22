@@ -50,7 +50,7 @@ const Search = () => {
         ) : (
           searchedGames.map((game) => <GameCard key={game.id} {...game} />)
         )}
-        {!loading && results?.empty && <p>{results.message}</p>}
+        {!loading && results?.empty && <p>{results.emptyMessage}</p>}
         {!loading && error && (
           <Error description="Couldn't load games" onRetry={handleClick} />
         )}
