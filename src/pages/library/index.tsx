@@ -50,6 +50,8 @@ const Library = () => {
     try {
       setDialogError(false);
 
+      // @ts-ignore
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const path = await dialog.open({
         multiple: false,
         title: 'Choose a game folder',
