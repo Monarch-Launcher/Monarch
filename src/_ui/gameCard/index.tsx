@@ -3,8 +3,13 @@ import styled from 'styled-components';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import Drawer from 'react-modern-drawer';
 import 'react-modern-drawer/dist/index.css';
+import { invoke } from '@tauri-apps/api';
+import { FaPlay } from 'react-icons/fa';
+import { AiFillInfoCircle } from 'react-icons/ai';
+import { HiDownload } from 'react-icons/hi';
 import fallback from '../../assets/fallback.jpg';
 import Button from '../button';
+import { useLibrary } from '../../global/contexts/libraryProvider';
 
 const CardContainer = styled.div`
   display: inline-block;
@@ -35,6 +40,29 @@ const Thumbnail = styled.img<{ $isInfo: boolean }>`
   height: ${({ $isInfo }) => ($isInfo ? '16.625rem' : '6.5rem')};
 `;
 
+const ButtonContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
+const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
+  background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+  border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+  color: white;
+
+  &:hover {
+    background-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
+    border-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
+    color: white;
+  }
+
+  &:focus {
+    background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+    border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+    color: white;
+  }
+`;
+
 type GameCardProps = {
   id: number;
   executable_path: string;
@@ -51,6 +79,7 @@ const GameCard = ({
   thumbnail_path,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const { library } = useLibrary();
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
 
   const toggleDrawer = React.useCallback(() => {
@@ -78,6 +107,26 @@ const GameCard = ({
       borderRadius: '0.5rem',
     };
   }, []);
+
+  const handleLaunch = React.useCallback(async () => {
+    try {
+      await invoke('launch_game', { name, id, platform });
+    } catch (err) {
+      // TODO: Show modal with error
+    }
+  }, [name, id, platform]);
+
+  const handleDownload = React.useCallback(async () => {
+    try {
+      await invoke('download_game', { name, id, platform });
+    } catch (err) {
+      // TODO: Show modal with error
+    }
+  }, [id, name, platform]);
+
+  const hasGame = React.useMemo(() => {
+    return library.find((game) => game.id === id);
+  }, [id, library]);
 
   // Detect click outside drawer to close it
   React.useEffect(() => {
@@ -108,14 +157,34 @@ const GameCard = ({
         />
         <Info>{name}</Info>
         <Info>Platform: {platform}</Info>
-        <Button
-          variant="primary"
-          type="button"
-          onClick={toggleDrawer}
-          disabled={drawerOpen}
-        >
-          Info
-        </Button>
+        <ButtonContainer>
+          <StyledButton
+            variant="primary"
+            type="button"
+            onClick={toggleDrawer}
+            disabled={drawerOpen}
+            $isInfo
+          >
+            <AiFillInfoCircle size={24} />
+          </StyledButton>
+          {hasGame ? (
+            <StyledButton
+              variant="primary"
+              type="button"
+              onClick={handleLaunch}
+            >
+              <FaPlay size={20} />
+            </StyledButton>
+          ) : (
+            <StyledButton
+              variant="primary"
+              type="button"
+              onClick={handleDownload}
+            >
+              <HiDownload size={24} />
+            </StyledButton>
+          )}
+        </ButtonContainer>
       </CardContent>
       <div ref={drawerRef}>
         <Drawer
