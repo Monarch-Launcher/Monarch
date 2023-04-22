@@ -3,6 +3,24 @@
 version = 3
 
 [[package]]
+name = "Monarch"
+version = "0.0.1"
+dependencies = [
+ "image",
+ "json",
+ "log",
+ "log4rs",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tokio",
+ "winreg",
+]
+
+[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1830,24 +1848,6 @@ dependencies = [
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.45.0",
-]
-
-[[package]]
-name = "monarch"
-version = "0.0.0"
-dependencies = [
- "image",
- "json",
- "log",
- "log4rs",
- "reqwest",
- "scraper",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tokio",
- "winreg",
 ]
 
 [[package]]

@@ -1,10 +1,10 @@
 [package]
-name = "monarch"
-version = "0.0.0"
-description = "A Tauri App"
-authors = ["you"]
+name = "Monarch"
+version = "0.0.1"
+description = "A FOSS game launcher targeting Windows."
+authors = ["an0nymoos3", "Dre-Van-den-Hooff"]
 license = ""
-repository = ""
+repository = "https://github.com/an0nymoos3/Monarch"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
