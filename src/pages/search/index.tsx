@@ -28,12 +28,12 @@ const Search = () => {
   );
 
   const handleClick = React.useCallback(async () => {
-    // Return early if searchString is empty
-    if (!searchString) {
+    // Return early if searchString is empty or the same as previous searchString
+    if (!searchString || searchString === results?.searchString) {
       return;
     }
     await searchGames(searchString);
-  }, [searchGames, searchString]);
+  }, [searchGames, searchString, results?.searchString]);
 
   return (
     <Page title="Search">
@@ -42,6 +42,7 @@ const Search = () => {
         onChange={handleChange}
         onSearchClick={handleClick}
         placeholder="Search"
+        loading={loading}
       />
       <ResultsContainer>
         {loading ? (

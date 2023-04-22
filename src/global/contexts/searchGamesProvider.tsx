@@ -42,6 +42,7 @@ const SearchGamesProvider = ({ children }: Props) => {
       setResults({
         empty: result.length === 0,
         message: `Couldn't find any games for "${searchString}".`,
+        searchString,
       });
       setSearchedGames([...result]);
     } catch (err) {

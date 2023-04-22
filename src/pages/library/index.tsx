@@ -48,15 +48,15 @@ const Library = () => {
 
   const handleOpenDialog = React.useCallback(async () => {
     try {
+      setDialogError(false);
+
       const path = await dialog.open({
         multiple: false,
         title: 'Choose a game folder',
         directory: true,
       });
-
       // TODO: Invoke function that adds folder
       // await invoke('add_folder', { path });
-      setDialogError(false);
     } catch (err) {
       setDialogError(true);
     }
@@ -86,12 +86,14 @@ const Library = () => {
           onChange={handleChange}
           onSearchClick={() => {}}
           placeholder="Search"
+          loading={loading}
         />
         <Button
           type="button"
           variant="primary"
           onClick={refreshLibrary}
           title="Refresh"
+          loading={loading}
         >
           <StyledRefreshIcon $loading={loading} />
         </Button>

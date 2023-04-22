@@ -1,11 +1,12 @@
 import * as React from 'react';
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 import { type IconType } from 'react-icons';
 import { type ButtonVariant } from '../../global/theme';
 
 const MonarchButton = styled.button<{
   $variant: keyof ButtonVariant;
   $disabled: boolean;
+  $loading: boolean;
   $fullWidth: boolean;
 }>`
   border-radius: 0.5rem;
@@ -37,9 +38,19 @@ const MonarchButton = styled.button<{
     border: 0.2rem solid
       ${({ theme, $variant }) => theme.colors.button[$variant].hoverBorder};
 
-    cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'pointer')};
+    ${({ $disabled, $loading }) =>
+      css`
+        cursor: pointer;
+        ${$disabled &&
+        css`
+          cursor: not-allowed;
+        `}
+        ${$loading &&
+        css`
+          cursor: progress;
+        `}
+      `}
   }
-
   //Focus state
   &:focus {
     color: ${({ theme, $variant }) => theme.colors.button[$variant].focusText};
@@ -57,6 +68,7 @@ type ButtonProps = {
   variant: keyof ButtonVariant;
   onClick: () => void;
   disabled?: boolean;
+  loading?: boolean;
   children: React.ReactNode;
   leftIcon?: IconType;
   rightIcon?: IconType;
@@ -70,6 +82,7 @@ const Button = ({
   variant,
   onClick,
   disabled = false,
+  loading = false,
   children,
   leftIcon,
   rightIcon,
@@ -84,7 +97,8 @@ const Button = ({
       $variant={variant}
       $disabled={disabled}
       $fullWidth={fullWidth}
-      disabled={disabled}
+      $loading={loading}
+      disabled={disabled || loading}
       className={className}
       title={title}
     >
