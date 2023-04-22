@@ -8,8 +8,15 @@ mod monarch_games;
 
 use monarch_utils::monarch_fs::init_monarch_fs;
 use monarch_utils::monarch_logger::init_logger;
-use monarch_games::commands::{steam_downloader, search_games, refresh_library, blizzard_downloader, 
-                              launch_game, download_game, purchase_game, epic_downloader};
+use monarch_games::commands::{search_games, 
+                              refresh_library,
+                              get_library,  
+                              launch_game, 
+                              download_game, 
+                              purchase_game, 
+                              steam_downloader,
+                              blizzard_downloader,
+                              epic_downloader};
 
 fn main() {
     init_monarch_fs();
@@ -17,12 +24,13 @@ fn main() {
 
     let app_result = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            steam_downloader,
-            search_games,
+            search_games, 
             refresh_library,
-            launch_game,
-            download_game,
-            purchase_game,
+            get_library,  
+            launch_game, 
+            download_game, 
+            purchase_game, 
+            steam_downloader,
             blizzard_downloader,
             epic_downloader
             ])

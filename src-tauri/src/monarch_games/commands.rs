@@ -1,3 +1,5 @@
+use serde_json::value::Value;
+
 use super::monarchgame::MonarchGame;
 use super::monarch_library;
 use super::steam;
@@ -23,7 +25,7 @@ pub async fn search_games(name: String) -> Vec<MonarchGame> {
 
 #[tauri::command]
 /// Returns MonarchGames from library.json
-pub async fn get_library() -> Vec<MonarchGame> {
+pub async fn get_library() -> Value {
     monarch_library::get_games()
 }
 
