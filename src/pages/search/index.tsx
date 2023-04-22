@@ -1,9 +1,11 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import Page from '../../common/page';
-import GameCard from '../../common/gameCard';
-import SearchBar from '../../common/searchBar';
+import Page from '../../_ui/page';
+import GameCard from '../../_ui/gameCard';
+import SearchBar from '../../_ui/searchBar';
 import { useSearchGames } from '../../global/contexts/searchGamesProvider';
+import Spinner from '../../_ui/spinner';
+import Error from '../../_ui/error';
 
 const ResultsContainer = styled.div`
   width: 85%;
@@ -15,25 +17,23 @@ const ResultsContainer = styled.div`
 
 const Search = () => {
   const [searchString, setSearchString] = React.useState('');
-  const [noResults, setNoResults] = React.useState(false);
-  const { searchedGames, loading, error, searchGames } = useSearchGames();
+  const { searchedGames, loading, error, searchGames, results } =
+    useSearchGames();
 
   const handleChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setNoResults(false);
       setSearchString(e.target.value);
     },
     [],
   );
 
   const handleClick = React.useCallback(async () => {
-    // Return early if searchString is empty
-    if (!searchString) {
+    // Return early if searchString is empty or the same as previous searchString
+    if (!searchString || searchString === results?.searchString) {
       return;
     }
     await searchGames(searchString);
-    setNoResults(searchedGames.length === 0);
-  }, [searchGames, searchString, searchedGames]);
+  }, [searchGames, searchString, results?.searchString]);
 
   return (
     <Page title="Search">
@@ -41,16 +41,19 @@ const Search = () => {
         value={searchString}
         onChange={handleChange}
         onSearchClick={handleClick}
+        placeholder="Search"
+        loading={loading}
       />
       <ResultsContainer>
-        {searchedGames.map((game) => (
-          <GameCard key={game.id} {...game} />
-        ))}
-        {noResults && (
-          <p>Couldn&apos;t find any games for &quot;{searchString}&quot;</p>
+        {loading ? (
+          <Spinner />
+        ) : (
+          searchedGames.map((game) => <GameCard key={game.id} {...game} />)
         )}
-        {error && <p>Something went wrong</p>}
-        {loading && <p>Loading...</p>}
+        {!loading && results?.empty && <p>{results.emptyMessage}</p>}
+        {!loading && error && (
+          <Error description="Couldn't load games" onRetry={handleClick} />
+        )}
       </ResultsContainer>
     </Page>
   );

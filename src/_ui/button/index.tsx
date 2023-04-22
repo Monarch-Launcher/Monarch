@@ -1,18 +1,19 @@
 import * as React from 'react';
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 import { type IconType } from 'react-icons';
 import { type ButtonVariant } from '../../global/theme';
 
 const MonarchButton = styled.button<{
   $variant: keyof ButtonVariant;
   $disabled: boolean;
-  $width: string;
+  $loading: boolean;
+  $fullWidth: boolean;
 }>`
   border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 700;
   padding: 0.5rem 1rem;
-  width: ${({ $width }) => $width};
+  width: ${({ $fullWidth }) => ($fullWidth ? '100%' : 'fit-content')};
   transition: ease 0.2s;
   display: flex;
   align-items: center;
@@ -37,9 +38,19 @@ const MonarchButton = styled.button<{
     border: 0.2rem solid
       ${({ theme, $variant }) => theme.colors.button[$variant].hoverBorder};
 
-    cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'pointer')};
+    ${({ $disabled, $loading }) =>
+      css`
+        cursor: pointer;
+        ${$disabled &&
+        css`
+          cursor: not-allowed;
+        `}
+        ${$loading &&
+        css`
+          cursor: progress;
+        `}
+      `}
   }
-
   //Focus state
   &:focus {
     color: ${({ theme, $variant }) => theme.colors.button[$variant].focusText};
@@ -57,10 +68,13 @@ type ButtonProps = {
   variant: keyof ButtonVariant;
   onClick: () => void;
   disabled?: boolean;
+  loading?: boolean;
   children: React.ReactNode;
   leftIcon?: IconType;
   rightIcon?: IconType;
-  width?: string;
+  fullWidth?: boolean;
+  className?: string;
+  title?: string;
 };
 
 const Button = ({
@@ -68,10 +82,13 @@ const Button = ({
   variant,
   onClick,
   disabled = false,
+  loading = false,
   children,
   leftIcon,
   rightIcon,
-  width = 'fit-content',
+  fullWidth = false,
+  title,
+  className,
 }: ButtonProps) => {
   return (
     <MonarchButton
@@ -79,8 +96,11 @@ const Button = ({
       onClick={onClick}
       $variant={variant}
       $disabled={disabled}
-      $width={width}
-      disabled={disabled}
+      $fullWidth={fullWidth}
+      $loading={loading}
+      disabled={disabled || loading}
+      className={className}
+      title={title}
     >
       {leftIcon && leftIcon({ size: 24 })}
       {children}

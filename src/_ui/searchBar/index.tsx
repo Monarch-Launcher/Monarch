@@ -1,6 +1,7 @@
 import * as React from 'react';
-import styled, { css } from 'styled-components';
+import styled from 'styled-components';
 import { AiOutlineSearch } from 'react-icons/ai';
+import Button from '../button';
 
 const SearchContainer = styled.div`
   display: flex;
@@ -17,25 +18,20 @@ const StyledInput = styled.input`
   }
 `;
 
-const SearchButton = styled.button<{ $disabled: boolean }>`
+const SearchButton = styled(Button)`
   border-radius: 0 40% 40% 0;
-  transition: ease 0.2s;
-  color: ${({ theme }) => theme.colors.primary};
-  background-color: ${({ theme }) => theme.colors.secondary};
   border: none;
-  display: flex;
-  align-items: center;
   padding: 0.2rem 0.5rem;
 
-  ${({ $disabled }) =>
-    !$disabled &&
-    css`
-      &:hover {
-        cursor: pointer;
-        background-color: ${({ theme }) => theme.colors.primary};
-        color: ${({ theme }) => theme.colors.secondary};
-      }
-    `}
+  &:hover {
+    border: none;
+    background-color: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.secondary};
+  }
+
+  &:focus {
+    border: none;
+  }
 `;
 
 type SearchBarProps = {
@@ -43,6 +39,8 @@ type SearchBarProps = {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSearchClick: () => void;
   buttonDisabled?: boolean;
+  placeholder?: string;
+  loading?: boolean;
 };
 
 const SearchBar = ({
@@ -50,6 +48,8 @@ const SearchBar = ({
   onChange,
   onSearchClick,
   buttonDisabled = false,
+  placeholder,
+  loading = false,
 }: SearchBarProps) => {
   const handleKeyPressed = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -66,12 +66,14 @@ const SearchBar = ({
         value={value}
         onChange={onChange}
         onKeyDown={handleKeyPressed}
+        placeholder={placeholder}
       />
       <SearchButton
         type="button"
+        variant="secondary"
         onClick={onSearchClick}
         disabled={buttonDisabled}
-        $disabled={buttonDisabled}
+        loading={loading}
       >
         <AiOutlineSearch size={24} />
       </SearchButton>

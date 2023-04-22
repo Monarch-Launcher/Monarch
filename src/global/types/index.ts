@@ -5,3 +5,9 @@ export type MonarchGame = {
   platform: string;
   thumbnail_path: string;
 };
+
+export type Result = {
+  empty: boolean;
+  emptyMessage: string;
+  searchString?: string;
+};

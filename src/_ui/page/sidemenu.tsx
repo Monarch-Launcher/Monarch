@@ -64,7 +64,7 @@ const SideMenu = () => {
     [navigate],
   );
 
-  const tabs = React.useMemo((): Tab[] => {
+  const tabs = React.useMemo<Tab[]>(() => {
     return [
       {
         id: 1,
@@ -110,7 +110,7 @@ const SideMenu = () => {
                 variant="transparent"
                 type="button"
                 leftIcon={tab.leftIcon}
-                width="100%"
+                fullWidth
                 onClick={() => navigateTo(tab.path)}
               >
                 {tab.title}
@@ -123,7 +123,7 @@ const SideMenu = () => {
             variant="transparent"
             type="button"
             leftIcon={HiOutlineCog}
-            width="100%"
+            fullWidth
             onClick={() => navigateTo('/settings')}
           >
             Settings

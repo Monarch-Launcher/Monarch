@@ -3,11 +3,13 @@ import styled, { css } from 'styled-components';
 import { dialog } from '@tauri-apps/api';
 import { FiRefreshCcw } from 'react-icons/fi';
 import { FaFolderPlus } from 'react-icons/fa';
-import Page from '../../common/page';
-import SearchBar from '../../common/searchBar';
-import Button from '../../common/button';
+import Page from '../../_ui/page';
+import SearchBar from '../../_ui/searchBar';
+import Button from '../../_ui/button';
 import { useLibrary } from '../../global/contexts/libraryProvider';
-import GameCard from '../../common/gameCard';
+import GameCard from '../../_ui/gameCard';
+import Spinner from '../../_ui/spinner';
+import Error from '../../_ui/error';
 
 const LibraryContainer = styled.div`
   width: 85%;
@@ -39,24 +41,24 @@ const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
   }
 `;
 
-const LoadingText = styled.p``;
-
 const Library = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [dialogError, setDialogError] = React.useState(false);
-  const { library, loading, error, refreshLibrary } = useLibrary();
+  const { library, loading, error, refreshLibrary, results } = useLibrary();
 
   const handleOpenDialog = React.useCallback(async () => {
     try {
+      setDialogError(false);
+
+      // @ts-ignore
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const path = await dialog.open({
         multiple: false,
         title: 'Choose a game folder',
         directory: true,
       });
-
       // TODO: Invoke function that adds folder
       // await invoke('add_folder', { path });
-      setDialogError(false);
     } catch (err) {
       setDialogError(true);
     }
@@ -85,22 +87,42 @@ const Library = () => {
           value={searchTerm}
           onChange={handleChange}
           onSearchClick={() => {}}
+          placeholder="Search"
         />
-        <Button type="button" variant="primary" onClick={refreshLibrary}>
+        <Button
+          type="button"
+          variant="primary"
+          onClick={refreshLibrary}
+          title="Refresh"
+          loading={loading}
+        >
           <StyledRefreshIcon $loading={loading} />
         </Button>
-        <Button type="button" variant="primary" onClick={handleOpenDialog}>
+        <Button
+          type="button"
+          variant="primary"
+          onClick={handleOpenDialog}
+          title="Add game folder"
+        >
           <FaFolderPlus />
         </Button>
       </Row>
       <LibraryContainer>
-        {loading ? (
-          <LoadingText>Loading...</LoadingText>
+        {filteredLibrary.length === 0 && loading ? (
+          <Spinner />
         ) : (
           filteredLibrary.map((game) => <GameCard key={game.id} {...game} />)
         )}
-        {!loading && error && <p>Something went wrong</p>}
-        {dialogError && <p>Something went wrong when opening the explorer</p>}
+        {!loading && results?.empty && <p>{results.emptyMessage}</p>}
+        {error && (
+          <Error description="Couldn't load library" onRetry={refreshLibrary} />
+        )}
+        {dialogError && (
+          <Error
+            description="Couldn't open file explorer"
+            onRetry={handleOpenDialog}
+          />
+        )}
       </LibraryContainer>
     </Page>
   );
