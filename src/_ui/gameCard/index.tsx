@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import Drawer from 'react-modern-drawer';
 import 'react-modern-drawer/dist/index.css';
-import { invoke } from '@tauri-apps/api';
+import { invoke, dialog } from '@tauri-apps/api';
 import { FaPlay } from 'react-icons/fa';
 import { AiFillInfoCircle } from 'react-icons/ai';
 import { HiDownload } from 'react-icons/hi';
@@ -79,8 +79,8 @@ const GameCard = ({
   thumbnail_path,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
-  const { library } = useLibrary();
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
+  const { library } = useLibrary();
 
   const toggleDrawer = React.useCallback(() => {
     setDrawerOpen((prev) => !prev);
@@ -112,7 +112,10 @@ const GameCard = ({
     try {
       await invoke('launch_game', { name, id, platform });
     } catch (err) {
-      // TODO: Show modal with error
+      await dialog.message(`An error has occured: Could't launch ${name}`, {
+        title: 'Error',
+        type: 'error',
+      });
     }
   }, [name, id, platform]);
 
@@ -120,7 +123,10 @@ const GameCard = ({
     try {
       await invoke('download_game', { name, id, platform });
     } catch (err) {
-      // TODO: Show modal with error
+      await dialog.message(`An error has occured: Could't download ${name}`, {
+        title: 'Error',
+        type: 'error',
+      });
     }
   }, [id, name, platform]);
 

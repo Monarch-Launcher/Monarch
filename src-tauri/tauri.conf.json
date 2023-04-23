@@ -18,7 +18,10 @@
         "open": true
       },
       "dialog": {
-        "open": true
+        "open": true,
+        "message": true,
+        "ask": true,
+        "confirm": true
       },
       "fs": {
         "readFile": true
