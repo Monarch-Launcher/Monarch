@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::{process::exit, io, fs};
 use json::JsonValue;
 use log::error;
@@ -5,6 +6,7 @@ use std::env::VarError;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+use regex::Regex;
 
 /*
 ---------- General functions for filesystem tasks ----------
@@ -215,15 +217,14 @@ pub fn generate_library_image_name(name: &str) -> String {
     dir
 }
 
+/// Generates a filename without any special characters or spaces
 fn generate_image_filename(name: &str) -> String {
-    let ascii_name: String = name.to_lowercase() // Only keep ascii characters
-                                 .chars()
-                                 .filter(|c| c.is_ascii())
-                                 .collect::<String>();
+    let mut filename: String = String::from(name);
+    filename = filename.replace(" ", "_");
 
-    let mut filename: String = ascii_name.replace(&['(', ')', ',', '\"', '.', ';', ':', '\''][..], "") // Remove special characters
-                                         .replace(" ", "_"); // Replace space with _
+    let re: Regex = Regex::new(r"[^a-zA-Z0-9_]").unwrap();
+    filename = re.replace_all(&filename, "").to_string();
     filename.push_str(".jpg");
-    
+
     return filename
 }
