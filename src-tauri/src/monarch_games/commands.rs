@@ -15,10 +15,8 @@ use super::epic;
 pub async fn search_games(name: String) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     let mut steam_games: Vec<MonarchGame> = steam::find_game(&name).await;
-    let mut epic_games: Vec<MonarchGame> = epic::find_game(&name).await;
-
+    
     games.append(&mut steam_games);
-    games.append(&mut epic_games);
 
     return games
 }   
@@ -43,10 +41,10 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
 #[tauri::command]
 /// Launch a game
-pub fn launch_game(name: String, id: String, platform: String) {
+pub fn launch_game(name: String, platform_id: String, platform: String) {
     match platform.as_str() {
-        "steam" => { steam::launch_game(name.as_str(), id.as_str()); }
-        "blizzard" => { blizzard::launch_game(name.as_str(), id.as_str()); }
+        "steam" => { steam::launch_game(name.as_str(), platform_id.as_str()); }
+        "blizzard" => { blizzard::launch_game(name.as_str(), platform_id.as_str()); }
         "epic" => {}
         "monarch" => {}
         _ => {}
@@ -55,9 +53,9 @@ pub fn launch_game(name: String, id: String, platform: String) {
 
 #[tauri::command]
 /// Open "Download window" for a game
-pub fn download_game(name: String, id: String, platform: String) {
+pub fn download_game(name: String, platform_id: String, platform: String) {
     match platform.as_str() {
-        "steam" => { steam::download_game(name.as_str(), id.as_str()); }
+        "steam" => { steam::download_game(name.as_str(), platform_id.as_str()); }
         "blizzard" => {}
         "epic" => {}
         "monarch" => {}
@@ -67,9 +65,9 @@ pub fn download_game(name: String, id: String, platform: String) {
 
 #[tauri::command]
 /// Open "Purchase window" for a game
-pub fn purchase_game(name: String, id: String, platform: String) {
+pub fn purchase_game(name: String, platform_id: String, platform: String) {
     match platform.as_str() {
-        "steam" => { steam::purchase_game(name.as_str(), id.as_str()); }
+        "steam" => { steam::purchase_game(name.as_str(), platform_id.as_str()); }
         "blizzard" => {}
         "epic" => {}
         "monarch" => {}

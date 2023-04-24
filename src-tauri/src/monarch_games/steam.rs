@@ -136,12 +136,11 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
 
     for i in 0..titles.len() {
         let name = get_steam_name(titles[i]);
-        let id = get_steamid(ids[i]);
-        let image_link = get_img_link(&id);
+        let platform_id = get_steamid(ids[i]);
+        let image_link = get_img_link(&platform_id);
         let image_path = generate_cache_image_name(&name);
-    
-        let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
-        let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
+
+        let cur_game = MonarchGame::new(&name, "steam", &platform_id,"temp", &image_path);
         games.push(cur_game);
 
         // Workaround for [tauri::command] not working with download_image().await in same thread 
