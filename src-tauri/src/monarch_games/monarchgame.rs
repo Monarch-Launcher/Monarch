@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -12,15 +12,23 @@ pub struct MonarchGame {
 }
 
 impl MonarchGame {
-    pub fn new(name: &str, platform: &str, platform_id: &str,exec_path: &str, thumbnail_path: &str) -> Self {
-        Self { name: name.to_string(), 
-               id: generate_uuid(), 
-               platform: platform.to_string(),
-               platform_id: platform_id.to_string(),
-               executable_path: exec_path.to_string(),
-               thumbnail_path: thumbnail_path.to_string() }
+    pub fn new(
+        name: &str,
+        platform: &str,
+        platform_id: &str,
+        exec_path: &str,
+        thumbnail_path: &str,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            id: generate_uuid(),
+            platform: platform.to_string(),
+            platform_id: platform_id.to_string(),
+            executable_path: exec_path.to_string(),
+            thumbnail_path: thumbnail_path.to_string(),
+        }
     }
-    
+
     pub fn get_name(&self) -> &str {
         &self.name
     }
@@ -34,7 +42,7 @@ impl MonarchGame {
     }
 
     pub fn get_platform_id(&self) -> &str {
-        &self.platform
+        &self.platform_id
     }
 
     pub fn get_exec_path(&self) -> &str {
