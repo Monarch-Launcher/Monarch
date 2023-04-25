@@ -23,7 +23,7 @@ pub fn write_games(games: Vec<MonarchGame>) {
 pub fn game_to_json(game: MonarchGame) -> JsonValue {
     let data = object! {
         name: game.get_name(),
-        id: game.get_id(),
+        id: game.get_id().to_string(),
         platform: game.get_platform(),
         platform_id: game.get_platform_id(),
         thumbnail_path: game.get_thumbnail_path(),

@@ -18,7 +18,6 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tokio",
- "uuid 1.3.1",
  "winreg",
 ]
 
