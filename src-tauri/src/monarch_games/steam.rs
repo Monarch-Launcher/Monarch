@@ -8,7 +8,7 @@ use tokio;
 use crate::monarch_utils::{monarch_winreg::{is_installed, get_reg_folder_contents}, 
                            monarch_download::{download_and_run, download_image}, 
                            monarch_web::request_data,
-                           monarch_fs::{generate_cache_image_name, generate_library_image_name}};
+                           monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists}};
 use super::monarchgame::MonarchGame;
 
 /*
@@ -144,10 +144,13 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
         let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
         games.push(cur_game);
 
-        // Workaround for [tauri::command] not working with download_image().await in same thread 
-        tokio::task::spawn(async move {
-            download_image(image_link.as_str(), image_path.as_str()).await; 
-        });
+
+        if !path_exists(&image_path) { // Only download if image is not in cache dir
+            // Workaround for [tauri::command] not working with download_image().await in same thread 
+            tokio::task::spawn(async move {
+                download_image(image_link.as_str(), image_path.as_str()).await; 
+            });
+        }
     }
     return games
 }
@@ -172,11 +175,14 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
                 let game: MonarchGame = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
                 games.push(game);
 
-                // Workaround for [tauri::command] not working with download_image().await in same thread 
-                tokio::task::spawn(async move {
-                    download_image(image_link.as_str(), image_path.as_str()).await; 
-                });
-            } 
+                if !path_exists(&image_path) { // Only download if image is not in library dir
+                    // Workaround for [tauri::command] not working with download_image().await in same thread 
+                    tokio::task::spawn(async move {
+                        download_image(image_link.as_str(), image_path.as_str()).await; 
+                    });
+                
+                }
+            }
         }
     }      
     return games
