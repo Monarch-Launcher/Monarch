@@ -22,11 +22,16 @@ const CardContainer = styled.div`
 `;
 
 const CardContent = styled.div`
+  height: 90%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   margin: 0.5rem;
+`;
+
+const Header = styled.div`
+  text-align: center;
 `;
 
 const Info = styled.p`
@@ -161,20 +166,21 @@ const GameCard = ({
   return (
     <CardContainer>
       <CardContent>
-        <Thumbnail
-          alt="game-thumbnail"
-          src={imageSrc}
-          onError={handleImageError}
-          $isInfo={false}
-        />
-        <Info>{name}</Info>
-        <Info>Platform: {platform}</Info>
+        <Header>
+          <Thumbnail
+            alt="game-thumbnail"
+            src={imageSrc}
+            onError={handleImageError}
+            $isInfo={false}
+          />
+          <Info>{name}</Info>
+        </Header>
+        {/* <Info>Platform: {platform}</Info> */}
         <ButtonContainer>
           <StyledButton
             variant="primary"
             type="button"
             onClick={toggleDrawer}
-            disabled={drawerOpen}
             $isInfo
           >
             <AiFillInfoCircle size={24} />

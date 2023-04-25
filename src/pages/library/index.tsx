@@ -12,7 +12,7 @@ import Spinner from '../../_ui/spinner';
 import Error from '../../_ui/error';
 
 const LibraryContainer = styled.div`
-  width: 85%;
+  width: 100%;
   height: calc(100% - 7rem);
   overflow-y: auto;
   border-radius: 0.5rem;

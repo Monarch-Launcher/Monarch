@@ -8,7 +8,7 @@ import Spinner from '../../_ui/spinner';
 import Error from '../../_ui/error';
 
 const ResultsContainer = styled.div`
-  width: 85%;
+  width: 100%;
   height: calc(100% - 10rem);
   overflow-y: auto;
   border-radius: 0.5rem;
