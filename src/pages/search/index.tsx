@@ -48,7 +48,17 @@ const Search = () => {
         {loading ? (
           <Spinner />
         ) : (
-          searchedGames.map((game) => <GameCard key={game.id} {...game} />)
+          searchedGames.map((game) => (
+            <GameCard
+              key={game.id}
+              id={game.id}
+              executablePath={game.executable_path}
+              platform={game.platform}
+              name={game.name}
+              platformId={game.platform_id}
+              thumbnailPath={game.thumbnail_path}
+            />
+          ))
         )}
         {!loading && results?.empty && <p>{results.emptyMessage}</p>}
         {!loading && error && (

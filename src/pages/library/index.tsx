@@ -111,7 +111,17 @@ const Library = () => {
         {filteredLibrary.length === 0 && loading ? (
           <Spinner />
         ) : (
-          filteredLibrary.map((game) => <GameCard key={game.id} {...game} />)
+          filteredLibrary.map((game) => (
+            <GameCard
+              key={game.id}
+              id={game.id}
+              executablePath={game.executable_path}
+              platform={game.platform}
+              name={game.name}
+              platformId={game.platform_id}
+              thumbnailPath={game.thumbnail_path}
+            />
+          ))
         )}
         {!loading && results?.empty && <p>{results.emptyMessage}</p>}
         {error && (

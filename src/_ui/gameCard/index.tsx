@@ -65,20 +65,20 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
 
 type GameCardProps = {
   id: string;
-  platform_id: string;
-  executable_path: string;
+  platformId: string;
+  executablePath: string;
   name: string;
   platform: string;
-  thumbnail_path: string;
+  thumbnailPath: string;
 };
 
 const GameCard = ({
   id,
-  platform_id,
-  executable_path,
+  platformId,
+  executablePath,
   name,
   platform,
-  thumbnail_path,
+  thumbnailPath,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
@@ -89,12 +89,12 @@ const GameCard = ({
   }, []);
 
   const imageSrc = React.useMemo(() => {
-    if (!thumbnail_path || thumbnail_path === ('' || 'temp')) {
+    if (!thumbnailPath || thumbnailPath === ('' || 'temp')) {
       return fallback;
     }
 
-    return convertFileSrc(thumbnail_path);
-  }, [thumbnail_path]);
+    return convertFileSrc(thumbnailPath);
+  }, [thumbnailPath]);
 
   const handleImageError = React.useCallback(
     (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -112,20 +112,20 @@ const GameCard = ({
 
   const handleLaunch = React.useCallback(async () => {
     try {
-      await invoke('launch_game', { name, platform_id, platform });
+      await invoke('launch_game', { name, platformId, platform });
     } catch (err) {
       await dialog.message(`An error has occured: Could't launch ${name}`, {
         title: 'Error',
         type: 'error',
       });
     }
-  }, [name, platform_id, platform]);
+  }, [name, platformId, platform]);
 
   const handleDownload = React.useCallback(async () => {
     try {
       await invoke('download_game', {
         name,
-        platform_id,
+        platformId,
         platform,
       });
     } catch (err) {
@@ -134,7 +134,7 @@ const GameCard = ({
         type: 'error',
       });
     }
-  }, [name, platform_id, platform]);
+  }, [name, platformId, platform]);
 
   const hasGame = React.useMemo(() => {
     return library.find((game) => game.id === id);
