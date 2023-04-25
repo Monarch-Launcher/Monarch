@@ -25,6 +25,7 @@ pub fn game_to_json(game: MonarchGame) -> JsonValue {
         name: game.get_name(),
         id: game.get_id(),
         platform: game.get_platform(),
+        platform_id: game.get_platform_id(),
         thumbnail_path: game.get_thumbnail_path(),
         exec_path: game.get_exec_path(),
     };

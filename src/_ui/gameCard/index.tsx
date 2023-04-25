@@ -64,7 +64,8 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
 `;
 
 type GameCardProps = {
-  id: number;
+  id: string;
+  platform_id: string;
   executable_path: string;
   name: string;
   platform: string;
@@ -73,6 +74,7 @@ type GameCardProps = {
 
 const GameCard = ({
   id,
+  platform_id,
   executable_path,
   name,
   platform,
@@ -110,25 +112,29 @@ const GameCard = ({
 
   const handleLaunch = React.useCallback(async () => {
     try {
-      await invoke('launch_game', { name, id, platform });
+      await invoke('launch_game', { name, platformId: platform_id, platform });
     } catch (err) {
       await dialog.message(`An error has occured: Could't launch ${name}`, {
         title: 'Error',
         type: 'error',
       });
     }
-  }, [name, id, platform]);
+  }, [name, platform_id, platform]);
 
   const handleDownload = React.useCallback(async () => {
     try {
-      await invoke('download_game', { name, id, platform });
+      await invoke('download_game', {
+        name,
+        platformId: platform_id,
+        platform,
+      });
     } catch (err) {
       await dialog.message(`An error has occured: Could't download ${name}`, {
         title: 'Error',
         type: 'error',
       });
     }
-  }, [id, name, platform]);
+  }, [name, platform_id, platform]);
 
   const hasGame = React.useMemo(() => {
     return library.find((game) => game.id === id);
