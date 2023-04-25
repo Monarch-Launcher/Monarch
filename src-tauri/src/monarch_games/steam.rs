@@ -8,7 +8,7 @@ use tokio;
 use super::monarchgame::MonarchGame;
 use crate::monarch_utils::{
     monarch_download::{download_and_run, download_image},
-    monarch_fs::{generate_cache_image_name, generate_library_image_name},
+    monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists},
     monarch_web::request_data,
     monarch_winreg::{get_reg_folder_contents, is_installed},
 };
