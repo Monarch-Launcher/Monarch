@@ -112,7 +112,7 @@ const GameCard = ({
 
   const handleLaunch = React.useCallback(async () => {
     try {
-      await invoke('launch_game', { name, platformId: platform_id, platform });
+      await invoke('launch_game', { name, platform_id, platform });
     } catch (err) {
       await dialog.message(`An error has occured: Could't launch ${name}`, {
         title: 'Error',
@@ -125,7 +125,7 @@ const GameCard = ({
     try {
       await invoke('download_game', {
         name,
-        platformId: platform_id,
+        platform_id,
         platform,
       });
     } catch (err) {
