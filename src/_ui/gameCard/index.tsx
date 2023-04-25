@@ -131,8 +131,8 @@ const GameCard = ({
   }, [name, platform_id, platform]);
 
   const hasGame = React.useMemo(() => {
-    return library.find((game) => game.platform_id === platform_id);
-  }, [platform_id, library]);
+    return library.find((game) => game.id === id);
+  }, [id, library]);
 
   // Detect click outside drawer to close it
   React.useEffect(() => {
