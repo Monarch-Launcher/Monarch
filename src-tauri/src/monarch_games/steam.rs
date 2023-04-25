@@ -152,10 +152,12 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
         let cur_game = MonarchGame::new(&name, "steam", &platform_id, "temp", &image_path);
         games.push(cur_game);
 
-        // Workaround for [tauri::command] not working with download_image().await in same thread
-        tokio::task::spawn(async move {
-            download_image(image_link.as_str(), image_path.as_str()).await;
-        });
+        if !path_exists(&image_path) { // Only download if image is not in cache dir
+            // Workaround for [tauri::command] not working with download_image().await in same thread 
+            tokio::task::spawn(async move {
+                download_image(image_link.as_str(), image_path.as_str()).await; 
+            });
+        }
     }
     return games;
 }
@@ -180,10 +182,13 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
                 let game: MonarchGame = MonarchGame::new(&name, "steam", &id, "temp", &image_path);
                 games.push(game);
 
-                // Workaround for [tauri::command] not working with download_image().await in same thread
-                tokio::task::spawn(async move {
-                    download_image(image_link.as_str(), image_path.as_str()).await;
-                });
+                if !path_exists(&image_path) { // Only download if image is not in library dir
+                    // Workaround for [tauri::command] not working with download_image().await in same thread 
+                    tokio::task::spawn(async move {
+                        download_image(image_link.as_str(), image_path.as_str()).await; 
+                    });
+                
+                }
             }
         }
     }
