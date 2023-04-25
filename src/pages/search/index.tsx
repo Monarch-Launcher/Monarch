@@ -8,7 +8,7 @@ import Spinner from '../../_ui/spinner';
 import Error from '../../_ui/error';
 
 const ResultsContainer = styled.div`
-  width: 85%;
+  width: 100%;
   height: calc(100% - 10rem);
   overflow-y: auto;
   border-radius: 0.5rem;
@@ -48,7 +48,17 @@ const Search = () => {
         {loading ? (
           <Spinner />
         ) : (
-          searchedGames.map((game) => <GameCard key={game.id} {...game} />)
+          searchedGames.map((game) => (
+            <GameCard
+              key={game.id}
+              id={game.id}
+              executablePath={game.executable_path}
+              platform={game.platform}
+              name={game.name}
+              platformId={game.platform_id}
+              thumbnailPath={game.thumbnail_path}
+            />
+          ))
         )}
         {!loading && results?.empty && <p>{results.emptyMessage}</p>}
         {!loading && error && (

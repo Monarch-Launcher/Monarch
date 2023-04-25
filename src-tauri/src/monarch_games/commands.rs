@@ -1,10 +1,10 @@
 use serde_json::value::Value;
 
-use super::monarchgame::MonarchGame;
-use super::monarch_library;
-use super::steam;
 use super::blizzard;
 use super::epic;
+use super::monarch_library;
+use super::monarchgame::MonarchGame;
+use super::steam;
 
 /*
 ---------- General game related functions ----------
@@ -15,11 +15,11 @@ use super::epic;
 pub async fn search_games(name: String) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     let mut steam_games: Vec<MonarchGame> = steam::find_game(&name).await;
-    
+
     games.append(&mut steam_games);
 
-    return games
-}   
+    return games;
+}
 
 #[tauri::command]
 /// Returns MonarchGames from library.json
@@ -36,26 +36,32 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     games.append(&mut steam_games);
 
     monarch_library::write_games(games.clone());
-    return games
+    return games;
 }
 
-#[tauri::command(rename_all = "snake_case")]
+#[tauri::command]
 /// Launch a game
 pub fn launch_game(name: String, platform_id: String, platform: String) {
     match platform.as_str() {
-        "steam" => { steam::launch_game(name.as_str(), platform_id.as_str()); }
-        "blizzard" => { blizzard::launch_game(name.as_str(), platform_id.as_str()); }
+        "steam" => {
+            steam::launch_game(name.as_str(), platform_id.as_str());
+        }
+        "blizzard" => {
+            blizzard::launch_game(name.as_str(), platform_id.as_str());
+        }
         "epic" => {}
         "monarch" => {}
         _ => {}
     }
 }
 
-#[tauri::command(rename_all = "snake_case")]
+#[tauri::command]
 /// Open "Download window" for a game
 pub fn download_game(name: String, platform_id: String, platform: String) {
     match platform.as_str() {
-        "steam" => { steam::download_game(name.as_str(), platform_id.as_str()); }
+        "steam" => {
+            steam::download_game(name.as_str(), platform_id.as_str());
+        }
         "blizzard" => {}
         "epic" => {}
         "monarch" => {}
@@ -63,11 +69,13 @@ pub fn download_game(name: String, platform_id: String, platform: String) {
     }
 }
 
-#[tauri::command(rename_all = "snake_case")]
+#[tauri::command]
 /// Open "Purchase window" for a game
 pub fn purchase_game(name: String, platform_id: String, platform: String) {
     match platform.as_str() {
-        "steam" => { steam::purchase_game(name.as_str(), platform_id.as_str()); }
+        "steam" => {
+            steam::purchase_game(name.as_str(), platform_id.as_str());
+        }
         "blizzard" => {}
         "epic" => {}
         "monarch" => {}
