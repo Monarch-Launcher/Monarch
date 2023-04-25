@@ -39,7 +39,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     return games
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 /// Launch a game
 pub fn launch_game(name: String, platform_id: String, platform: String) {
     match platform.as_str() {
@@ -51,7 +51,7 @@ pub fn launch_game(name: String, platform_id: String, platform: String) {
     }
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 /// Open "Download window" for a game
 pub fn download_game(name: String, platform_id: String, platform: String) {
     match platform.as_str() {
@@ -63,7 +63,7 @@ pub fn download_game(name: String, platform_id: String, platform: String) {
     }
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 /// Open "Purchase window" for a game
 pub fn purchase_game(name: String, platform_id: String, platform: String) {
     match platform.as_str() {
