@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import Drawer from 'react-modern-drawer';
 import 'react-modern-drawer/dist/index.css';
-import { invoke } from '@tauri-apps/api';
+import { invoke, dialog } from '@tauri-apps/api';
 import { FaPlay } from 'react-icons/fa';
 import { AiFillInfoCircle } from 'react-icons/ai';
 import { HiDownload } from 'react-icons/hi';
@@ -22,11 +22,16 @@ const CardContainer = styled.div`
 `;
 
 const CardContent = styled.div`
+  height: 90%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   margin: 0.5rem;
+`;
+
+const Header = styled.div`
+  text-align: center;
 `;
 
 const Info = styled.p`
@@ -65,36 +70,36 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
 
 type GameCardProps = {
   id: string;
-  platform_id: string;
-  executable_path: string;
+  platformId: string;
+  executablePath: string;
   name: string;
   platform: string;
-  thumbnail_path: string;
+  thumbnailPath: string;
 };
 
 const GameCard = ({
   id,
-  platform_id,
-  executable_path,
+  platformId,
+  executablePath,
   name,
   platform,
-  thumbnail_path,
+  thumbnailPath,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
-  const { library } = useLibrary();
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
+  const { library } = useLibrary();
 
   const toggleDrawer = React.useCallback(() => {
     setDrawerOpen((prev) => !prev);
   }, []);
 
   const imageSrc = React.useMemo(() => {
-    if (!thumbnail_path || thumbnail_path === ('' || 'temp')) {
+    if (!thumbnailPath || thumbnailPath === ('' || 'temp')) {
       return fallback;
     }
 
-    return convertFileSrc(thumbnail_path);
-  }, [thumbnail_path]);
+    return convertFileSrc(thumbnailPath);
+  }, [thumbnailPath]);
 
   const handleImageError = React.useCallback(
     (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -112,23 +117,29 @@ const GameCard = ({
 
   const handleLaunch = React.useCallback(async () => {
     try {
-      await invoke('launch_game', { name, platformId: platform_id, platform });
+      await invoke('launch_game', { name, platformId, platform });
     } catch (err) {
-      // TODO: Show modal with error
+      await dialog.message(`An error has occured: Could't launch ${name}`, {
+        title: 'Error',
+        type: 'error',
+      });
     }
-  }, [name, platform_id, platform]);
+  }, [name, platformId, platform]);
 
   const handleDownload = React.useCallback(async () => {
     try {
       await invoke('download_game', {
         name,
-        platformId: platform_id,
+        platformId,
         platform,
       });
     } catch (err) {
-      // TODO: Show modal with error
+      await dialog.message(`An error has occured: Could't download ${name}`, {
+        title: 'Error',
+        type: 'error',
+      });
     }
-  }, [name, platform_id, platform]);
+  }, [name, platformId, platform]);
 
   const hasGame = React.useMemo(() => {
     return library.find((game) => game.id === id);
@@ -155,20 +166,21 @@ const GameCard = ({
   return (
     <CardContainer>
       <CardContent>
-        <Thumbnail
-          alt="game-thumbnail"
-          src={imageSrc}
-          onError={handleImageError}
-          $isInfo={false}
-        />
-        <Info>{name}</Info>
-        <Info>Platform: {platform}</Info>
+        <Header>
+          <Thumbnail
+            alt="game-thumbnail"
+            src={imageSrc}
+            onError={handleImageError}
+            $isInfo={false}
+          />
+          <Info>{name}</Info>
+        </Header>
+        {/* <Info>Platform: {platform}</Info> */}
         <ButtonContainer>
           <StyledButton
             variant="primary"
             type="button"
             onClick={toggleDrawer}
-            disabled={drawerOpen}
             $isInfo
           >
             <AiFillInfoCircle size={24} />
