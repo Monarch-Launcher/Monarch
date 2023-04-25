@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MonarchGame {
     name: String,
-    id: u64,
+    id: String, // Has to be string instead of u64 to avoid rounding when sent to frontend
     platform: String,
     platform_id: String,
     executable_path: String,
@@ -21,7 +21,7 @@ impl MonarchGame {
     ) -> Self {
         Self {
             name: name.to_string(),
-            id: generate_hash(&name.to_string(), &platform.to_string(), &platform_id.to_string()),
+            id: generate_hash(&name.to_string(), &platform.to_string(), &platform_id.to_string()).to_string(),
             platform: platform.to_string(),
             platform_id: platform_id.to_string(),
             executable_path: exec_path.to_string(),
@@ -33,7 +33,7 @@ impl MonarchGame {
         &self.name
     }
 
-    pub fn get_id(&self) -> &u64 {
+    pub fn get_id(&self) -> &str {
         &self.id
     }
 
