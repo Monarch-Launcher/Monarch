@@ -15,7 +15,9 @@ use super::steam;
 pub async fn search_games(name: String) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     let mut steam_games: Vec<MonarchGame> = steam::find_game(&name).await;
-
+    let mut blizz_games: Vec<MonarchGame> = blizzard::find_game(&name);
+    
+    games.append(&mut blizz_games);
     games.append(&mut steam_games);
 
     return games;
