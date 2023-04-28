@@ -93,7 +93,7 @@ const SideMenu = () => {
     ];
   }, []);
 
-  const isSettings = React.useMemo(() => {
+  const isSettings = React.useMemo<boolean>(() => {
     return pathname === '/settings';
   }, [pathname]);
 

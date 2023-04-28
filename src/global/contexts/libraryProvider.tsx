@@ -66,7 +66,7 @@ const LibraryProvider = ({ children }: Props) => {
     getLibrary();
   }, [getLibrary]);
 
-  const value = React.useMemo(() => {
+  const value = React.useMemo<LibraryContextType>(() => {
     return {
       library,
       refreshLibrary,

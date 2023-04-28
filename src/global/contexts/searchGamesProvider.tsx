@@ -52,7 +52,7 @@ const SearchGamesProvider = ({ children }: Props) => {
     }
   }, []);
 
-  const value = React.useMemo(() => {
+  const value = React.useMemo<SearchGamesContextType>(() => {
     return {
       searchedGames,
       searchGames,

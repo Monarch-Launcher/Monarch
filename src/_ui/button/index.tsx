@@ -12,7 +12,7 @@ const MonarchButton = styled.button<{
   border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 700;
-  padding: 0.5rem 1rem;
+  padding: ${({ $variant }) => ($variant === 'icon' ? '0' : '0.5rem 1rem')};
   width: ${({ $fullWidth }) => ($fullWidth ? '100%' : 'fit-content')};
   transition: ease 0.2s;
   display: flex;

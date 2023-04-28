@@ -64,6 +64,26 @@ export const colors = {
         hoverBackground: '',
       },
     },
+    icon: {
+      text: '',
+      border: 'transparent',
+      background: 'transparent',
+      hoverBorder: 'transparent',
+      hoverText: 'transparent',
+      hoverBackground: 'transparent',
+      focusText: 'transparent',
+      focusBorder: 'transparent',
+      focusBackground: 'transparent',
+      active: 'transparent',
+      disabled: {
+        text: '',
+        border: '',
+        background: '',
+        hoverBorder: '',
+        hoverText: '',
+        hoverBackground: '',
+      },
+    },
   },
 };
 

@@ -2,7 +2,7 @@ import * as React from 'react';
 import styled, { css } from 'styled-components';
 import { dialog } from '@tauri-apps/api';
 import { FiRefreshCcw } from 'react-icons/fi';
-import { FaFolderPlus } from 'react-icons/fa';
+import { FaFolderPlus, FaFolderOpen } from 'react-icons/fa';
 import Page from '../../_ui/page';
 import SearchBar from '../../_ui/searchBar';
 import Button from '../../_ui/button';
@@ -10,6 +10,7 @@ import { useLibrary } from '../../global/contexts/libraryProvider';
 import GameCard from '../../_ui/gameCard';
 import Spinner from '../../_ui/spinner';
 import Error from '../../_ui/error';
+import { MonarchGame } from '../../global/types';
 
 const LibraryContainer = styled.div`
   width: 100%;
@@ -71,7 +72,9 @@ const Library = () => {
     [],
   );
 
-  const filteredLibrary = React.useMemo(() => {
+  const createCollection = React.useCallback(() => {}, []);
+
+  const filteredLibrary = React.useMemo<MonarchGame[]>(() => {
     return library.filter((game) =>
       game.name
         .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
@@ -93,7 +96,7 @@ const Library = () => {
           type="button"
           variant="primary"
           onClick={refreshLibrary}
-          title="Refresh"
+          title={loading ? 'Loading...' : 'Refresh'}
           loading={loading}
         >
           <StyledRefreshIcon $loading={loading} />
@@ -101,10 +104,18 @@ const Library = () => {
         <Button
           type="button"
           variant="primary"
+          onClick={createCollection}
+          title="Add new collection"
+        >
+          <FaFolderPlus />
+        </Button>
+        <Button
+          type="button"
+          variant="primary"
           onClick={handleOpenDialog}
           title="Add game folder"
         >
-          <FaFolderPlus />
+          <FaFolderOpen />
         </Button>
       </Row>
       <LibraryContainer>
@@ -120,6 +131,7 @@ const Library = () => {
               name={game.name}
               platformId={game.platform_id}
               thumbnailPath={game.thumbnail_path}
+              isLibrary
             />
           ))
         )}
