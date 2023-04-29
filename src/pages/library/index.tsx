@@ -3,6 +3,8 @@ import styled, { css } from 'styled-components';
 import { dialog } from '@tauri-apps/api';
 import { FiRefreshCcw } from 'react-icons/fi';
 import { FaFolderPlus, FaFolderOpen } from 'react-icons/fa';
+import { useDisclosure } from '@mantine/hooks';
+import Modal from '../../_ui/modal';
 import Page from '../../_ui/page';
 import SearchBar from '../../_ui/searchBar';
 import Button from '../../_ui/button';
@@ -10,7 +12,7 @@ import { useLibrary } from '../../global/contexts/libraryProvider';
 import GameCard from '../../_ui/gameCard';
 import Spinner from '../../_ui/spinner';
 import Error from '../../_ui/error';
-import { MonarchGame } from '../../global/types';
+import type { MonarchGame } from '../../global/types';
 
 const LibraryContainer = styled.div`
   width: 100%;
@@ -45,6 +47,8 @@ const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
 const Library = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [dialogError, setDialogError] = React.useState(false);
+  const [opened, { open, close }] = useDisclosure(false);
+
   const { library, loading, error, refreshLibrary, results } = useLibrary();
 
   const handleOpenDialog = React.useCallback(async () => {
@@ -104,7 +108,7 @@ const Library = () => {
         <Button
           type="button"
           variant="primary"
-          onClick={createCollection}
+          onClick={open}
           title="Add new collection"
         >
           <FaFolderPlus />
@@ -117,6 +121,16 @@ const Library = () => {
         >
           <FaFolderOpen />
         </Button>
+        <Modal
+          title="Create new collection"
+          opened={opened}
+          onClose={close}
+          centered
+        >
+          <Button type="button" variant="primary" onClick={createCollection}>
+            Create collection
+          </Button>
+        </Modal>
       </Row>
       <LibraryContainer>
         {filteredLibrary.length === 0 && loading ? (

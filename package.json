@@ -12,6 +12,9 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@emotion/react": "^11.10.8",
+    "@mantine/core": "^6.0.9",
+    "@mantine/hooks": "^6.0.9",
     "@tauri-apps/api": "^1.2.0",
     "eslint": "^8.37.0",
     "react": "^18.2.0",

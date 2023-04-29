@@ -1,4 +1,5 @@
 import { ThemeProvider } from 'styled-components';
+import { MantineProvider } from '@mantine/core';
 import Routes from './global/routes';
 import GlobalStyles from './global/theme/globalStyles';
 import theme from './global/theme';
@@ -7,14 +8,16 @@ import LibraryProvider from './global/contexts/libraryProvider';
 
 const App = () => {
   return (
-    <LibraryProvider>
-      <SearchGamesProvider>
-        <ThemeProvider theme={theme}>
-          <GlobalStyles />
-          <Routes />
-        </ThemeProvider>
-      </SearchGamesProvider>
-    </LibraryProvider>
+    <MantineProvider>
+      <ThemeProvider theme={theme}>
+        <LibraryProvider>
+          <SearchGamesProvider>
+            <GlobalStyles />
+            <Routes />
+          </SearchGamesProvider>
+        </LibraryProvider>
+      </ThemeProvider>
+    </MantineProvider>
   );
 };
 
