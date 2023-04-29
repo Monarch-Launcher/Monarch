@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Modal } from '@mantine/core';
 import type { ModalProps, Styles, ModalBaseStylesNames } from '@mantine/core';
-import { colors } from '../../global/theme/index';
+import { colors } from '@global/theme/index';
 
 export default (props: ModalProps) => {
   const { children } = props;

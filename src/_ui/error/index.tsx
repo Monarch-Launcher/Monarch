@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import error from '../../assets/error.svg';
+import error from '@assets/error.svg';
 import Button from '../button';
 
 const ErrorContainer = styled.div`

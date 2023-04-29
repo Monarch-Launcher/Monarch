@@ -1,4 +1,4 @@
-import Page from '../../_ui/page';
+import Page from '@_ui/page';
 
 const Settings = () => {
   return (

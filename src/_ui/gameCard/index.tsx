@@ -7,9 +7,9 @@ import { invoke, dialog } from '@tauri-apps/api';
 import { FaPlay } from 'react-icons/fa';
 import { AiFillInfoCircle, AiOutlineStar, AiFillStar } from 'react-icons/ai';
 import { HiDownload } from 'react-icons/hi';
-import fallback from '../../assets/fallback.jpg';
+import fallback from '@assets/fallback.jpg';
+import { useLibrary } from '@global/contexts/libraryProvider';
 import Button from '../button';
-import { useLibrary } from '../../global/contexts/libraryProvider';
 
 const CardContainer = styled.div`
   display: inline-block;

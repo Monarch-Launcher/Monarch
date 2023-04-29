@@ -8,9 +8,10 @@ const SearchContainer = styled.div`
   max-height: 2rem;
 `;
 
-const StyledInput = styled.input`
-  border-radius: 0.5rem 0 0 0.5rem;
+const StyledInput = styled.input<{ $hideSearchButton: boolean }>`
   background-color: ${({ theme }) => theme.colors.black};
+  border-radius: ${({ $hideSearchButton }) =>
+    $hideSearchButton ? '0.5rem' : '0.5rem 0 0 0.5rem'};
   border: none;
   padding: 0.5rem;
   &:focus {
@@ -37,10 +38,11 @@ const SearchButton = styled(Button)`
 type SearchBarProps = {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSearchClick: () => void;
+  onSearchClick?: () => void;
   buttonDisabled?: boolean;
   placeholder?: string;
   loading?: boolean;
+  hideSearchButton?: boolean;
 };
 
 const SearchBar = ({
@@ -50,11 +52,12 @@ const SearchBar = ({
   buttonDisabled = false,
   placeholder,
   loading = false,
+  hideSearchButton = false,
 }: SearchBarProps) => {
   const handleKeyPressed = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
-        onSearchClick();
+        onSearchClick?.();
       }
     },
     [onSearchClick],
@@ -67,16 +70,19 @@ const SearchBar = ({
         onChange={onChange}
         onKeyDown={handleKeyPressed}
         placeholder={placeholder}
+        $hideSearchButton={hideSearchButton}
       />
-      <SearchButton
-        type="button"
-        variant="secondary"
-        onClick={onSearchClick}
-        disabled={buttonDisabled}
-        loading={loading}
-      >
-        <AiOutlineSearch size={24} />
-      </SearchButton>
+      {!hideSearchButton && (
+        <SearchButton
+          type="button"
+          variant="secondary"
+          onClick={onSearchClick}
+          disabled={buttonDisabled}
+          loading={loading}
+        >
+          <AiOutlineSearch size={24} />
+        </SearchButton>
+      )}
     </SearchContainer>
   );
 };

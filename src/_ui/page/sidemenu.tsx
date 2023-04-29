@@ -1,13 +1,13 @@
 import * as React from 'react';
-import styled from 'styled-components';
+import styled, { AnyStyledComponent } from 'styled-components';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BiHomeAlt, BiTestTube } from 'react-icons/bi';
 import { HiOutlineSquares2X2 } from 'react-icons/hi2';
 import { HiOutlineCog } from 'react-icons/hi';
 import { AiOutlineSearch } from 'react-icons/ai';
-import { type IconType } from 'react-icons';
+import type { IconType } from 'react-icons';
+import Logo from '@assets/logo.svg';
 import Button from '../button';
-import logo from '../../assets/logo.png';
 
 const Container = styled.div`
   background-color: ${({ theme }) => theme.colors.secondary};
@@ -42,8 +42,12 @@ const LinkWrapper = styled.div<{ $isActive: boolean }>`
       : theme.colors.button.transparent.background};
 `;
 
-const StyledLogo = styled.img`
-  width: 90px;
+// TODO: Proper svg setup for styled components
+const StyledLogo = styled(Logo as AnyStyledComponent)`
+  margin: 0.5rem 0.5rem 0;
+  .st0 {
+    fill: ${({ theme }) => theme.colors.primary};
+  }
 `;
 
 type Tab = {
@@ -100,7 +104,7 @@ const SideMenu = () => {
   return (
     <Container>
       <Header>
-        <StyledLogo alt="logo" src={logo} />
+        <StyledLogo />
       </Header>
       <NavContainer>
         <TabContainer>

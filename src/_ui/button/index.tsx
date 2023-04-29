@@ -1,7 +1,7 @@
 import * as React from 'react';
 import styled, { css } from 'styled-components';
-import { type IconType } from 'react-icons';
-import { type ButtonVariant } from '../../global/theme';
+import type { IconType } from 'react-icons';
+import type { ButtonVariant } from '@global/theme';
 
 const MonarchButton = styled.button<{
   $variant: keyof ButtonVariant;
@@ -66,7 +66,7 @@ const MonarchButton = styled.button<{
 type ButtonProps = {
   type: 'button' | 'submit' | 'reset';
   variant: keyof ButtonVariant;
-  onClick: () => void;
+  onClick?: () => void;
   disabled?: boolean;
   loading?: boolean;
   children: React.ReactNode;

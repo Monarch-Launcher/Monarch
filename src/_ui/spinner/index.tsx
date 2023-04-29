@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import spinner from '../../assets/spinner.svg';
+import spinner from '@assets/spinner.svg';
 
 const StyledSpinner = styled.img`
   width: 100px;
