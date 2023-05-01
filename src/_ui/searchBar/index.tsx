@@ -1,5 +1,5 @@
 import * as React from 'react';
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 import { AiOutlineSearch } from 'react-icons/ai';
 import Button from '../button';
 
@@ -8,7 +8,10 @@ const SearchContainer = styled.div`
   max-height: 2rem;
 `;
 
-const StyledInput = styled.input<{ $hideSearchButton: boolean }>`
+const StyledInput = styled.input<{
+  $hideSearchButton: boolean;
+  $fullWidth: boolean;
+}>`
   background-color: ${({ theme }) => theme.colors.black};
   border-radius: ${({ $hideSearchButton }) =>
     $hideSearchButton ? '0.5rem' : '0.5rem 0 0 0.5rem'};
@@ -17,6 +20,12 @@ const StyledInput = styled.input<{ $hideSearchButton: boolean }>`
   &:focus {
     outline: none;
   }
+
+  ${({ $fullWidth }) =>
+    $fullWidth &&
+    css`
+      width: 100%;
+    `}
 `;
 
 const SearchButton = styled(Button)`
@@ -43,6 +52,9 @@ type SearchBarProps = {
   placeholder?: string;
   loading?: boolean;
   hideSearchButton?: boolean;
+  autoFocus?: boolean;
+  fullWidth?: boolean;
+  maxLength?: number;
 };
 
 const SearchBar = ({
@@ -53,6 +65,9 @@ const SearchBar = ({
   placeholder,
   loading = false,
   hideSearchButton = false,
+  autoFocus = false,
+  fullWidth = false,
+  maxLength,
 }: SearchBarProps) => {
   const handleKeyPressed = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -71,6 +86,9 @@ const SearchBar = ({
         onKeyDown={handleKeyPressed}
         placeholder={placeholder}
         $hideSearchButton={hideSearchButton}
+        data-autofocus={autoFocus}
+        $fullWidth={fullWidth}
+        maxLength={maxLength}
       />
       {!hideSearchButton && (
         <SearchButton
