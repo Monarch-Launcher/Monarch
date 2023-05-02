@@ -1,17 +1,17 @@
-import * as React from 'react';
-import styled, { css } from 'styled-components';
-import { dialog } from '@tauri-apps/api';
-import { FiRefreshCcw } from 'react-icons/fi';
-import { FaFolderPlus, FaFolderOpen } from 'react-icons/fa';
-import { useDisclosure } from '@mantine/hooks';
-import type { MonarchGame } from '@global/types';
+import Button from '@_ui/button';
+import Error from '@_ui/error';
+import GameCard from '@_ui/gameCard';
 import Page from '@_ui/page';
 import SearchBar from '@_ui/searchBar';
-import Button from '@_ui/button';
-import { useLibrary } from '@global/contexts/libraryProvider';
-import GameCard from '@_ui/gameCard';
 import Spinner from '@_ui/spinner';
-import Error from '@_ui/error';
+import { useLibrary } from '@global/contexts/libraryProvider';
+import { FaFolderOpen, FaFolderPlus, FiRefreshCcw } from '@global/icons';
+import type { MonarchGame } from '@global/types';
+import { useDisclosure } from '@mantine/hooks';
+import { dialog } from '@tauri-apps/api';
+import * as React from 'react';
+import styled, { css } from 'styled-components';
+
 import Modal from './modal';
 
 const LibraryContainer = styled.div`

@@ -1,6 +1,7 @@
+import { AiOutlineSearch } from '@global/icons';
 import * as React from 'react';
 import styled, { css } from 'styled-components';
-import { AiOutlineSearch } from 'react-icons/ai';
+
 import Button from '../button';
 
 const SearchContainer = styled.div`

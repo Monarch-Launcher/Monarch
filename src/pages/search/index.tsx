@@ -1,11 +1,11 @@
+import Error from '@_ui/error';
+import GameCard from '@_ui/gameCard';
+import Page from '@_ui/page';
+import SearchBar from '@_ui/searchBar';
+import Spinner from '@_ui/spinner';
+import { useSearchGames } from '@global/contexts/searchGamesProvider';
 import * as React from 'react';
 import styled from 'styled-components';
-import Page from '@_ui/page';
-import GameCard from '@_ui/gameCard';
-import SearchBar from '@_ui/searchBar';
-import { useSearchGames } from '@global/contexts/searchGamesProvider';
-import Spinner from '@_ui/spinner';
-import Error from '@_ui/error';
 
 const ResultsContainer = styled.div`
   width: 100%;

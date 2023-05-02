@@ -1,9 +1,9 @@
+import Button from '@_ui/button';
+import Page from '@_ui/page';
+import Spinner from '@_ui/spinner';
+import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import styled from 'styled-components';
-import { invoke } from '@tauri-apps/api';
-import Page from '@_ui/page';
-import Button from '@_ui/button';
-import Spinner from '@_ui/spinner';
 
 const ResultContainer = styled.div`
   overflow-y: auto;

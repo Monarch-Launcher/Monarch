@@ -1,5 +1,6 @@
-import * as React from 'react';
 import { invoke } from '@tauri-apps/api';
+import * as React from 'react';
+
 import type { MonarchGame, Result } from '../types';
 
 type SearchGamesContextType = {

@@ -1,10 +1,10 @@
-import { ThemeProvider } from 'styled-components';
-import { MantineProvider } from '@mantine/core';
-import Routes from '@global/routes';
-import GlobalStyles from '@global/theme/globalStyles';
-import theme from '@global/theme';
-import SearchGamesProvider from '@global/contexts/searchGamesProvider';
 import LibraryProvider from '@global/contexts/libraryProvider';
+import SearchGamesProvider from '@global/contexts/searchGamesProvider';
+import Routes from '@global/routes';
+import theme from '@global/theme';
+import GlobalStyles from '@global/theme/globalStyles';
+import { MantineProvider } from '@mantine/core';
+import { ThemeProvider } from 'styled-components';
 
 const App = () => {
   return (

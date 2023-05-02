@@ -1,10 +1,12 @@
+import Button from '@_ui/button';
+import Modal from '@_ui/modal';
+import SearchBar from '@_ui/searchBar';
+import { MdClose } from '@global/icons';
+import { MonarchGame } from '@global/types';
 import * as React from 'react';
 import styled from 'styled-components';
-import { MdClose } from 'react-icons/md';
-import SearchBar from '@_ui/searchBar';
-import Modal from '@_ui/modal';
-import Button from '@_ui/button';
-import { MonarchGame } from '@global/types';
+
+import GameRow, { OperationEnum } from './gameRow';
 
 const ModalHeaderContainer = styled.div`
   display: flex;
@@ -41,14 +43,6 @@ const GameContainer = styled.div`
   margin-top: 1rem;
 `;
 
-const GameRow = styled.div`
-  display: flex;
-  flex-direction: row;
-  border: 1px solid black;
-  padding: 1rem;
-  border-radius: 0.5rem;
-`;
-
 type Props = {
   opened: boolean;
   close: () => void;
@@ -57,9 +51,10 @@ type Props = {
 
 export default ({ opened, close, library }: Props) => {
   const [collectionName, setCollectionName] = React.useState('');
-  const [nextClicked, setNextClicked] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [nextClicked, setNextClicked] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
+  const [selectedGames, setSelectedGames] = React.useState<string[]>([]);
 
   const toggleNext = React.useCallback(() => {
     if (collectionName.length === 0) {
@@ -70,11 +65,22 @@ export default ({ opened, close, library }: Props) => {
   }, [collectionName]);
 
   const createCollection = React.useCallback(() => {
-    // TODO: send request to backend with ${collectionName}
+    // TODO: send request to backend with ${collectionName} and ${selectedGames}
     close();
     setCollectionName('');
     setNextClicked(false);
   }, [close]);
+
+  const updateSelectedGames = React.useCallback(
+    (id: string, operation: OperationEnum) => {
+      if (operation === OperationEnum.ADD) {
+        setSelectedGames((prev) => [...prev, id]);
+        return;
+      }
+      setSelectedGames((prev) => prev.filter((el) => el !== id));
+    },
+    [],
+  );
 
   const handleCollectionNameChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,7 +160,12 @@ export default ({ opened, close, library }: Props) => {
             />
             <GameContainer>
               {filteredLibrary.map((game) => (
-                <GameRow>{game.name}</GameRow>
+                <GameRow
+                  key={game.id}
+                  id={game.id}
+                  name={game.name}
+                  updateSelectedGames={updateSelectedGames}
+                />
               ))}
             </GameContainer>
             <ModalButtons>

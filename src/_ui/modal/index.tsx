@@ -1,7 +1,7 @@
-import * as React from 'react';
-import { Modal } from '@mantine/core';
-import type { ModalProps, Styles, ModalBaseStylesNames } from '@mantine/core';
 import { colors } from '@global/theme/index';
+import type { ModalBaseStylesNames, ModalProps, Styles } from '@mantine/core';
+import { Modal } from '@mantine/core';
+import * as React from 'react';
 
 type Props = ModalProps & {
   maxHeight?: string;

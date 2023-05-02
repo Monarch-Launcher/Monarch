@@ -1,14 +1,20 @@
-import * as React from 'react';
-import styled from 'styled-components';
-import { convertFileSrc } from '@tauri-apps/api/tauri';
-import Drawer from 'react-modern-drawer';
 import 'react-modern-drawer/dist/index.css';
-import { invoke, dialog } from '@tauri-apps/api';
-import { FaPlay } from 'react-icons/fa';
-import { AiFillInfoCircle, AiOutlineStar, AiFillStar } from 'react-icons/ai';
-import { HiDownload } from 'react-icons/hi';
+
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
+import {
+  AiFillInfoCircle,
+  AiFillStar,
+  AiOutlineStar,
+  FaPlay,
+  HiDownload,
+} from '@global/icons';
+import { dialog, invoke } from '@tauri-apps/api';
+import { convertFileSrc } from '@tauri-apps/api/tauri';
+import * as React from 'react';
+import Drawer from 'react-modern-drawer';
+import styled from 'styled-components';
+
 import Button from '../button';
 
 const CardContainer = styled.div`

@@ -1,6 +1,9 @@
 {
   "extends": ["airbnb", "airbnb-typescript", "airbnb/hooks"],
+  "plugins": ["simple-import-sort"],
   "rules": {
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
     "react/jsx-uses-react": "off",
     "react/react-in-jsx-scope": "off",
     "import/no-extraneous-dependencies": "off",
