@@ -3,6 +3,7 @@ import Modal from '@_ui/modal';
 import SearchBar from '@_ui/searchBar';
 import { MdClose } from '@global/icons';
 import { MonarchGame } from '@global/types';
+import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import styled from 'styled-components';
 
@@ -64,12 +65,17 @@ export default ({ opened, close, library }: Props) => {
     setNextClicked((prev) => !prev);
   }, [collectionName]);
 
-  const createCollection = React.useCallback(() => {
+  const createCollection = React.useCallback(async () => {
     // TODO: send request to backend with ${collectionName} and ${selectedGames}
-    close();
-    setCollectionName('');
-    setNextClicked(false);
-  }, [close]);
+    try {
+      await invoke('create_collection', { collectionName, selectedGames });
+      close();
+      setCollectionName('');
+      setNextClicked(false);
+    } catch (err) {
+      // TODO: proper error and loading states
+    }
+  }, [close, collectionName, selectedGames]);
 
   const updateSelectedGames = React.useCallback(
     (id: string, operation: OperationEnum) => {

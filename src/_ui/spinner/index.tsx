@@ -1,12 +1,10 @@
-import spinner from '@assets/spinner.svg';
-import styled from 'styled-components';
+import Spinner from '@assets/spinner.svg';
+import styled, { AnyStyledComponent } from 'styled-components';
 
-const StyledSpinner = styled.img`
+const StyledSpinner = styled(Spinner as AnyStyledComponent)`
   width: 100px;
 `;
 
-const Spinner = () => {
-  return <StyledSpinner src={spinner} alt="loading-spinner" />;
+export default () => {
+  return <StyledSpinner />;
 };
-
-export default Spinner;
