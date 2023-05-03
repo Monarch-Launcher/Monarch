@@ -3,6 +3,8 @@ export const colors = {
   black: '#0F0F0F98',
   primary: '#FF6000',
   secondary: '#454545',
+  error: '#FF3333',
+  background: '#2F2F2F',
   button: {
     primary: {
       text: '#454545',

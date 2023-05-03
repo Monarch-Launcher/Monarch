@@ -8,25 +8,30 @@ const Row = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  border: 0.2rem solid black;
+  border: 0.2rem solid ${({ theme }) => theme.colors.secondary};
   border-radius: 0.5rem;
   transition: ease 0.2s;
+  background-color: ${({ theme }) => theme.colors.secondary};
+  color: ${({ theme }) => theme.colors.primary};
 
   &:hover {
     background-color: ${({ theme }) => theme.colors.primary};
-    color: black;
+    border-color: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.secondary};
     cursor: pointer;
   }
 
   &:focus {
     background-color: ${({ theme }) => theme.colors.primary};
-    color: black;
+    border-color: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.secondary};
   }
 `;
 
 const GameTitle = styled.p`
   margin: 0;
   max-width: 80%;
+  font-weight: 600;
 `;
 
 export enum OperationEnum {

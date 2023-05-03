@@ -27,14 +27,14 @@ const ModalButtons = styled.div`
   justify-content: right;
   align-items: center;
   gap: 1rem;
-  margin: 2rem 0 0.5rem;
+  margin: 2rem 0 1rem;
 `;
 
 const ModalContentContainer = styled.div``;
 
 const ErrorText = styled.p`
   margin: 0.2rem 0 0 0;
-  color: #ff3333;
+  color: ${({ theme }) => theme.colors.error};
 `;
 
 const GameContainer = styled.div`
@@ -42,6 +42,8 @@ const GameContainer = styled.div`
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 1rem;
+  height: 50vh;
+  overflow-y: scroll;
 `;
 
 type Props = {
@@ -51,11 +53,11 @@ type Props = {
 };
 
 export default ({ opened, close, library }: Props) => {
-  const [collectionName, setCollectionName] = React.useState('');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [nextClicked, setNextClicked] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
   const [selectedGames, setSelectedGames] = React.useState<string[]>([]);
+  const [collectionName, setCollectionName] = React.useState('');
 
   const toggleNext = React.useCallback(() => {
     if (collectionName.length === 0) {
