@@ -34,14 +34,11 @@ const SearchButton = styled(Button)`
   border: none;
   padding: 0.2rem 0.5rem;
 
-  &:hover {
+  &:hover,
+  &:focus {
     border: none;
     background-color: ${({ theme }) => theme.colors.primary};
     color: ${({ theme }) => theme.colors.secondary};
-  }
-
-  &:focus {
-    border: none;
   }
 `;
 

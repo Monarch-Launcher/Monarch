@@ -1,33 +1,28 @@
-import { colors } from '@global/theme/index';
-import type { ModalBaseStylesNames, ModalProps, Styles } from '@mantine/core';
+import type { ModalProps } from '@mantine/core';
 import { Modal } from '@mantine/core';
-import * as React from 'react';
+import styled from 'styled-components';
 
-type Props = ModalProps & {
-  maxHeight?: string;
-};
+const StyledModal = styled(Modal)`
+  .mantine-Paper-root {
+    overflow-y: hidden;
+  }
 
-export default (props: Props) => {
-  const { children, maxHeight } = props;
-  const modalStyles = React.useMemo<Styles<ModalBaseStylesNames>>(() => {
-    return {
-      content: {
-        borderRadius: '0.5rem',
-      },
-      header: {
-        backgroundColor: colors.black,
-        display: 'block',
-      },
-      body: {
-        backgroundColor: colors.black,
-        maxHeight,
-      },
-    };
-  }, [maxHeight]);
+  .mantine-Modal-content {
+    border-radius: 0.5rem;
+  }
 
-  return (
-    <Modal styles={modalStyles} {...props}>
-      {children}
-    </Modal>
-  );
+  .mantine-Modal-header {
+    display: block;
+    background-color: ${({ theme }) => theme.colors.black};
+  }
+
+  .mantine-Modal-body {
+    background-color: ${({ theme }) => theme.colors.black};
+  }
+`;
+
+export default (props: ModalProps) => {
+  const { children } = props;
+
+  return <StyledModal {...props}>{children}</StyledModal>;
 };

@@ -14,17 +14,20 @@ const Row = styled.div`
   background-color: ${({ theme }) => theme.colors.secondary};
   color: ${({ theme }) => theme.colors.primary};
 
-  &:hover {
-    background-color: ${({ theme }) => theme.colors.primary};
-    border-color: ${({ theme }) => theme.colors.primary};
-    color: ${({ theme }) => theme.colors.secondary};
-    cursor: pointer;
+  > svg {
+    fill: ${({ theme }) => theme.colors.lightgreen};
   }
 
+  &:hover,
   &:focus {
     background-color: ${({ theme }) => theme.colors.primary};
     border-color: ${({ theme }) => theme.colors.primary};
     color: ${({ theme }) => theme.colors.secondary};
+    cursor: pointer;
+
+    > svg {
+      fill: ${({ theme }) => theme.colors.darkgreen};
+    }
   }
 `;
 

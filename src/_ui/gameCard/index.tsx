@@ -62,15 +62,10 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
   border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
   color: white;
 
-  &:hover {
+  &:hover,
+  &:focus {
     background-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
     border-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
-    color: white;
-  }
-
-  &:focus {
-    background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
-    border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
     color: white;
   }
 `;
