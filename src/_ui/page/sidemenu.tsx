@@ -42,8 +42,8 @@ const LinkWrapper = styled.div<{ $isActive: boolean }>`
 
   background-color: ${({ theme, $isActive }) =>
     $isActive
-      ? theme.colors.button.transparent.active
-      : theme.colors.button.transparent.background};
+      ? theme.colors.button.menu.active
+      : theme.colors.button.menu.background};
 `;
 
 // TODO: Proper svg setup for styled components
@@ -115,7 +115,7 @@ const SideMenu = () => {
           {tabs.map((tab) => (
             <LinkWrapper key={tab.id} $isActive={pathname === tab.path}>
               <Button
-                variant="transparent"
+                variant="menu"
                 type="button"
                 leftIcon={tab.leftIcon}
                 fullWidth
@@ -128,7 +128,7 @@ const SideMenu = () => {
         </TabContainer>
         <LinkWrapper $isActive={isSettings}>
           <Button
-            variant="transparent"
+            variant="menu"
             type="button"
             leftIcon={HiOutlineCog}
             fullWidth

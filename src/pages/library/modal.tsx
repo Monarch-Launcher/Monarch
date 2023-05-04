@@ -1,7 +1,12 @@
 import Button from '@_ui/button';
 import Modal from '@_ui/modal';
 import SearchBar from '@_ui/searchBar';
-import { MdClose } from '@global/icons';
+import {
+  AiOutlinePlus,
+  BiLeftArrowAlt,
+  BiRightArrowAlt,
+  MdClose,
+} from '@global/icons';
 import { MonarchGame } from '@global/types';
 import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
@@ -151,10 +156,20 @@ export default ({ opened, close, library }: Props) => {
               <ErrorText>{errorMessage}</ErrorText>
             )}
             <ModalButtons>
-              <Button type="button" variant="secondary" onClick={close}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={close}
+                leftIcon={MdClose}
+              >
                 Cancel
               </Button>
-              <Button type="button" variant="primary" onClick={toggleNext}>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={toggleNext}
+                rightIcon={BiRightArrowAlt}
+              >
                 Next
               </Button>
             </ModalButtons>
@@ -177,15 +192,21 @@ export default ({ opened, close, library }: Props) => {
               ))}
             </GameContainer>
             <ModalButtons>
-              <Button type="button" variant="secondary" onClick={toggleNext}>
-                Previous
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={toggleNext}
+                leftIcon={BiLeftArrowAlt}
+              >
+                Back
               </Button>
               <Button
                 type="button"
                 variant="primary"
                 onClick={createCollection}
+                rightIcon={AiOutlinePlus}
               >
-                Create collection
+                Create
               </Button>
             </ModalButtons>
           </>

@@ -48,7 +48,7 @@ export const colors = {
         hoverBackground: '',
       },
     },
-    transparent: {
+    menu: {
       text: '#FF6000',
       border: 'transparent',
       background: 'transparent',

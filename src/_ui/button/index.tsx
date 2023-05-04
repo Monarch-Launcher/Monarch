@@ -8,19 +8,32 @@ const MonarchButton = styled.button<{
   $disabled: boolean;
   $loading: boolean;
   $fullWidth: boolean;
+  $hasLeftIcon: boolean;
+  $hasRightIcon: boolean;
 }>`
   border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 700;
-  padding: ${({ $variant }) => ($variant === 'icon' ? '0' : '0.5rem 1rem')};
   width: ${({ $fullWidth }) => ($fullWidth ? '100%' : 'fit-content')};
-  transition: ease 0.2s;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  transition: ease-in-out 0.2s;
   max-height: 2.5rem;
-
+  gap: ${({ $variant }) => ($variant === 'menu' ? '1.5rem' : '0.5rem')};
   color: ${({ theme, $variant }) => theme.colors.button[$variant].text};
+
+  padding: ${({ $variant, $hasLeftIcon, $hasRightIcon }) => {
+    if ($hasLeftIcon && $hasRightIcon) {
+      return '0.5rem';
+    }
+    if ($hasLeftIcon) {
+      return '0.5rem 1rem 0.5rem 0.5rem';
+    }
+    if ($hasRightIcon) {
+      return '0.5rem 0.5rem 0.5rem 1rem';
+    }
+    return $variant === 'icon' ? '0' : '0.5rem 1rem';
+  }};
 
   background-color: ${({ theme, $variant }) =>
     theme.colors.button[$variant].background};
@@ -94,13 +107,15 @@ const Button = ({
     <MonarchButton
       type={type}
       onClick={onClick}
+      disabled={disabled || loading}
+      title={title}
+      className={className}
+      $hasLeftIcon={leftIcon !== undefined}
+      $hasRightIcon={rightIcon !== undefined}
       $variant={variant}
       $disabled={disabled}
       $fullWidth={fullWidth}
       $loading={loading}
-      disabled={disabled || loading}
-      className={className}
-      title={title}
     >
       {leftIcon && leftIcon({ size: 24 })}
       {children}
