@@ -18,7 +18,7 @@ import styled from 'styled-components';
 import Button from '../button';
 
 const CardContainer = styled.div`
-  display: inline-block;
+  flex: 0 0 auto;
   vertical-align: top;
   width: 15rem;
   height: 20rem;

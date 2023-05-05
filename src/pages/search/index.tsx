@@ -13,6 +13,9 @@ const ResultsContainer = styled.div`
   overflow-y: auto;
   border-radius: 0.5rem;
   margin: 1rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
 `;
 
 const Search = () => {

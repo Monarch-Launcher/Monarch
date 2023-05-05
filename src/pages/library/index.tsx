@@ -12,7 +12,8 @@ import { dialog } from '@tauri-apps/api';
 import * as React from 'react';
 import styled, { css } from 'styled-components';
 
-import Modal from './modal';
+import Modal from './createCollection/modal';
+import Collection from './showCollection/collection';
 
 const LibraryContainer = styled.div`
   width: 100%;
@@ -44,11 +45,18 @@ const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
   }
 `;
 
+const GameContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+`;
+
 const Library = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [dialogError, setDialogError] = React.useState(false);
   const [opened, { open, close }] = useDisclosure(false);
-  const { library, loading, error, refreshLibrary, results } = useLibrary();
+  const { library, loading, error, refreshLibrary, results, collections } =
+    useLibrary();
 
   const handleOpenDialog = React.useCallback(async () => {
     try {
@@ -76,13 +84,20 @@ const Library = () => {
   );
 
   const filteredLibrary = React.useMemo<MonarchGame[]>(() => {
-    return library.filter((game) =>
+    // Contains all gameIds that are in a collection
+    const gamesInCollection = collections.map((col) => col.gameIds).flat();
+    // Contains games that are not in a collection
+    const notInCollection = library.filter(
+      (game) => !gamesInCollection.includes(game.id),
+    );
+
+    return notInCollection.filter((game) =>
       game.name
         .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
         .toLowerCase()
         .match(searchTerm.toLowerCase()),
     );
-  }, [library, searchTerm]);
+  }, [library, searchTerm, collections]);
 
   return (
     <Page title="Library">
@@ -120,22 +135,29 @@ const Library = () => {
         <Modal opened={opened} close={close} library={library} />
       </Row>
       <LibraryContainer>
-        {filteredLibrary.length === 0 && loading ? (
-          <Spinner />
-        ) : (
-          filteredLibrary.map((game) => (
-            <GameCard
-              key={game.id}
-              id={game.id}
-              executablePath={game.executable_path}
-              platform={game.platform}
-              name={game.name}
-              platformId={game.platform_id}
-              thumbnailPath={game.thumbnail_path}
-              isLibrary
-            />
-          ))
-        )}
+        <GameContainer>
+          {collections.length !== 0 &&
+            collections.map((collection) => (
+              <Collection key={collection.id} collection={collection} />
+            ))}
+          {filteredLibrary.length === 0 && loading ? (
+            <Spinner />
+          ) : (
+            filteredLibrary.map((game) => (
+              <GameCard
+                key={game.id}
+                id={game.id}
+                executablePath={game.executable_path}
+                platform={game.platform}
+                name={game.name}
+                platformId={game.platform_id}
+                thumbnailPath={game.thumbnail_path}
+                isLibrary
+              />
+            ))
+          )}
+        </GameContainer>
+
         {!loading && results?.empty && <p>{results.emptyMessage}</p>}
         {error && (
           <Error description="Couldn't load library" onRetry={refreshLibrary} />

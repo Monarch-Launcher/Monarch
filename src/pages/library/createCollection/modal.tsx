@@ -7,7 +7,7 @@ import {
   BiRightArrowAlt,
   MdClose,
 } from '@global/icons';
-import { MonarchGame } from '@global/types';
+import type { MonarchGame } from '@global/types';
 import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import styled from 'styled-components';

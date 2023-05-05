@@ -9,10 +9,17 @@ import {
   BiArrowBack,
   BiHomeAlt,
   BiLeftArrowAlt,
+  BiRename,
   BiRightArrowAlt,
   BiTestTube,
 } from 'react-icons/bi';
-import { FaCheck, FaFolderOpen, FaFolderPlus, FaPlay } from 'react-icons/fa';
+import {
+  FaCheck,
+  FaFolder,
+  FaFolderOpen,
+  FaFolderPlus,
+  FaPlay,
+} from 'react-icons/fa';
 import { FiRefreshCcw } from 'react-icons/fi';
 import { HiDownload, HiOutlineCog } from 'react-icons/hi';
 import { HiOutlineSquares2X2 } from 'react-icons/hi2';
@@ -27,9 +34,11 @@ export {
   BiArrowBack,
   BiHomeAlt,
   BiLeftArrowAlt,
+  BiRename,
   BiRightArrowAlt,
   BiTestTube,
   FaCheck,
+  FaFolder,
   FaFolderOpen,
   FaFolderPlus,
   FaPlay,
