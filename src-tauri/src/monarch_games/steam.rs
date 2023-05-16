@@ -8,7 +8,8 @@ use tokio;
 use crate::monarch_utils::{monarch_winreg::{is_installed, get_reg_folder_contents}, 
                            monarch_download::{download_and_run, download_image}, 
                            monarch_web::request_data,
-                           monarch_fs::{generate_cache_image_name, generate_library_image_name}};
+                           monarch_fs::{generate_cache_image_name, generate_library_image_name},
+                           monarch_vdf};
 use super::monarchgame::MonarchGame;
 
 /*
@@ -104,6 +105,8 @@ pub fn purchase_game(name: &str, id: &str) {
 
 /// Finds local steam library installed on current system via winreg
 pub async fn get_library() -> Vec<MonarchGame> {
+    monarch_vdf::parse_vdf_file("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
+    
     let mut games: Vec<MonarchGame> = Vec::new();
     if let Ok(library) = get_reg_folder_contents("Valve\\Steam\\Apps") {
         games = library_steam_game_parser(library).await;
