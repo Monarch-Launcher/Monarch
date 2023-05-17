@@ -4,13 +4,40 @@
 */
 
 use std::fs;
-use keyvalues_parser::Vdf;
 
-pub fn parse_vdf_file(path: &str) {
-    let content = fs::read_to_string(path).unwrap();    
-    let vdf_content = Vdf::parse(&content).unwrap();
+struct VdfObject {
+    key: String,
+    values: Vec<Value>
+}
 
-    for values in vdf_content.value.unwrap_obj().values() {
-        println!("{:?}", values)
+impl VdfObject {
+    pub fn new(key: &str, values: Vec<Value>) -> Self {
+        return Self { key: key.to_string(), values: values }
+    }
+
+    pub fn get_values(&self) -> &Vec<Value> {
+        return &self.values
+    }
+
+    pub fn get_key(&self) -> &str {
+        return &self.key
     }
 }
+
+enum Value {
+    Str(String),
+    Obj(VdfObject),
+}
+
+pub fn parse_library_file(path: &str) -> Vec<String> {
+    let games: Vec<String> = Vec::new();
+
+    if let Ok(content) = fs::read_to_string(path) {
+        
+        println!("{:?}", content.split("{"))
+
+    }
+
+    return games
+}
+
