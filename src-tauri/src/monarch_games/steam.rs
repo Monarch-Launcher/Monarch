@@ -105,12 +105,8 @@ pub fn purchase_game(name: &str, id: &str) {
 
 /// Finds local steam library installed on current system via winreg
 pub async fn get_library() -> Vec<MonarchGame> {
-    monarch_vdf::parse_library_file("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
-    
-    let mut games: Vec<MonarchGame> = Vec::new();
-    if let Ok(library) = get_reg_folder_contents("Valve\\Steam\\Apps") {
-        games = library_steam_game_parser(library).await;
-    }
+    let found_games: Vec<String> = monarch_vdf::parse_library_file("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf"); 
+    let games: Vec<MonarchGame> = library_steam_game_parser(found_games).await;
 
     return games
 }
