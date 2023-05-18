@@ -2,10 +2,12 @@ import Button from '@_ui/button';
 import GameCard from '@_ui/gameCard';
 import Modal from '@_ui/modal';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import { AiOutlinePlus, BiRename, MdClose } from '@global/icons';
+import { BiEdit, MdClose } from '@global/icons';
 import type { Collection, MonarchGame } from '@global/types';
 import * as React from 'react';
 import styled from 'styled-components';
+
+import EditCollectionForm from './editCollection';
 
 const ModalHeaderContainer = styled.div`
   display: flex;
@@ -45,17 +47,25 @@ type Props = {
 };
 
 const CollectionModal = ({ opened, close, collection }: Props) => {
+  const [isEditing, setIsEditing] = React.useState(false);
   const { library } = useLibrary();
+
   const modalHeader = React.useMemo<JSX.Element>(() => {
     return (
       <ModalHeaderContainer>
-        <ModalHeader>{collection.name}</ModalHeader>
+        <ModalHeader>
+          {!isEditing ? collection.name : `Edit ${collection.name}`}
+        </ModalHeader>
         <Button type="button" variant="icon" onClick={close}>
           <MdClose color="black" size={24} />
         </Button>
       </ModalHeaderContainer>
     );
-  }, [close, collection.name]);
+  }, [close, collection.name, isEditing]);
+
+  const toggleEditing = React.useCallback(() => {
+    setIsEditing((prev) => !prev);
+  }, []);
 
   const collectionGames = React.useMemo<MonarchGame[]>(() => {
     return library.filter((game) => collection.gameIds.includes(game.id));
@@ -71,38 +81,39 @@ const CollectionModal = ({ opened, close, collection }: Props) => {
       size="60vw"
     >
       <ContentContainer>
-        <GamesContainer>
-          {collectionGames.map((game) => (
-            <GameCard
-              key={game.id}
-              id={game.id}
-              executablePath={game.executable_path}
-              platform={game.platform}
-              name={game.name}
-              platformId={game.platform_id}
-              thumbnailPath={game.thumbnail_path}
-              isLibrary
-            />
-          ))}
-        </GamesContainer>
-        <ModalButtons>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={close}
-            rightIcon={BiRename}
-          >
-            Edit name
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => {}}
-            rightIcon={AiOutlinePlus}
-          >
-            Add games
-          </Button>
-        </ModalButtons>
+        {!isEditing ? (
+          <>
+            <GamesContainer>
+              {collectionGames.map((game) => (
+                <GameCard
+                  key={game.id}
+                  id={game.id}
+                  executablePath={game.executable_path}
+                  platform={game.platform}
+                  name={game.name}
+                  platformId={game.platform_id}
+                  thumbnailPath={game.thumbnail_path}
+                  isLibrary
+                />
+              ))}
+            </GamesContainer>
+            <ModalButtons>
+              <Button
+                type="button"
+                variant="primary"
+                rightIcon={BiEdit}
+                onClick={toggleEditing}
+              >
+                Edit
+              </Button>
+            </ModalButtons>
+          </>
+        ) : (
+          <EditCollectionForm
+            toggleEditing={toggleEditing}
+            collection={collection}
+          />
+        )}
       </ContentContainer>
     </Modal>
   );

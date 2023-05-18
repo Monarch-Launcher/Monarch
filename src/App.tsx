@@ -1,3 +1,4 @@
+import CollectionsProvider from '@global/contexts/collectionsProvider';
 import LibraryProvider from '@global/contexts/libraryProvider';
 import SearchGamesProvider from '@global/contexts/searchGamesProvider';
 import Routes from '@global/routes';
@@ -11,10 +12,12 @@ const App = () => {
     <MantineProvider>
       <ThemeProvider theme={theme}>
         <LibraryProvider>
-          <SearchGamesProvider>
-            <GlobalStyles />
-            <Routes />
-          </SearchGamesProvider>
+          <CollectionsProvider>
+            <SearchGamesProvider>
+              <GlobalStyles />
+              <Routes />
+            </SearchGamesProvider>
+          </CollectionsProvider>
         </LibraryProvider>
       </ThemeProvider>
     </MantineProvider>

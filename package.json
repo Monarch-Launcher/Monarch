@@ -19,6 +19,7 @@
     "eslint": "^8.37.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hook-form": "^7.43.9",
     "react-icons": "^4.8.0",
     "react-modern-drawer": "^1.2.0",
     "react-router-dom": "^6.10.0",

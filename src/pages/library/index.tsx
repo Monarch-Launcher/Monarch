@@ -4,6 +4,7 @@ import GameCard from '@_ui/gameCard';
 import Page from '@_ui/page';
 import SearchBar from '@_ui/searchBar';
 import Spinner from '@_ui/spinner';
+import { useCollections } from '@global/contexts/collectionsProvider';
 import { useLibrary } from '@global/contexts/libraryProvider';
 import { FaFolderOpen, FaFolderPlus, FiRefreshCcw } from '@global/icons';
 import type { MonarchGame } from '@global/types';
@@ -55,8 +56,8 @@ const Library = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [dialogError, setDialogError] = React.useState(false);
   const [opened, { open, close }] = useDisclosure(false);
-  const { library, loading, error, refreshLibrary, results, collections } =
-    useLibrary();
+  const { library, loading, error, refreshLibrary, results } = useLibrary();
+  const { collections } = useCollections();
 
   const handleOpenDialog = React.useCallback(async () => {
     try {
@@ -85,7 +86,7 @@ const Library = () => {
 
   const filteredLibrary = React.useMemo<MonarchGame[]>(() => {
     // Contains all gameIds that are in a collection
-    const gamesInCollection = collections.map((col) => col.gameIds).flat();
+    const gamesInCollection = collections.flatMap((col) => col.gameIds);
     // Contains games that are not in a collection
     const notInCollection = library.filter(
       (game) => !gamesInCollection.includes(game.id),

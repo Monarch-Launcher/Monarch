@@ -88,6 +88,26 @@ export const colors = {
         hoverBackground: '',
       },
     },
+    danger: {
+      text: '#FFF',
+      border: '#FF3333',
+      background: '#FF3333',
+      hoverBorder: '#FD1111',
+      hoverText: '#FFF',
+      hoverBackground: '#FD1111',
+      focusText: '#FFF',
+      focusBorder: '#FD1111',
+      focusBackground: '#FD1111',
+      active: '#FD1111',
+      disabled: {
+        text: '',
+        border: '',
+        background: '',
+        hoverBorder: '',
+        hoverText: '',
+        hoverBackground: '',
+      },
+    },
   },
 };
 
