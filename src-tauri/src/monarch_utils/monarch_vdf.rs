@@ -3,41 +3,37 @@
     It is used for reading content related to steam such as the users installed library, library locations in the filesystem, etc.
 */
 
+use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
 use std::fs;
+use vdf_serde::from_str;
 
-struct VdfObject {
-    key: String,
-    values: Vec<Value>
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename = "libraryfolders")]
+struct LibraryFolders {
+    #[serde(rename = "0")]
+    folder_0: LibraryLocation,
+
+    #[serde(rename = "1")]
+    folder_1: LibraryLocation,
 }
 
-impl VdfObject {
-    pub fn new(key: &str, values: Vec<Value>) -> Self {
-        return Self { key: key.to_string(), values: values }
-    }
-
-    pub fn get_values(&self) -> &Vec<Value> {
-        return &self.values
-    }
-
-    pub fn get_key(&self) -> &str {
-        return &self.key
-    }
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct LibraryLocation {
+    path: String,
+    label: String,
+    contentid: String,
+    totalsize: String,
+    update_clean_bytes_tally: String,
+    time_last_update_corruption: String,
+    apps: HashMap<String, String>,
 }
 
-enum Value {
-    Str(String),
-    Obj(VdfObject),
-}
-
-pub fn parse_library_file(path: &str) -> Vec<String> {
-    let games: Vec<String> = Vec::new();
-
-    if let Ok(content) = fs::read_to_string(path) {
-        
-        println!("{:?}", content.split("{"))
-
+pub fn parse_library_file(path: &str) {
+    let content = fs::read_to_string(path).unwrap();
+    
+    match from_str::<LibraryFolders>(&content) {
+        Ok(structs) => println!("{:?}", structs),
+        Err(e) => println!("Structs failed: {:?}", e)
     }
-
-    return games
 }
-
