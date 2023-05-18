@@ -10,13 +10,7 @@ use vdf_serde::from_str;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename = "libraryfolders")]
-struct LibraryFolders {
-    #[serde(rename = "0")]
-    folder_0: LibraryLocation,
-
-    #[serde(rename = "1")]
-    folder_1: LibraryLocation,
-}
+struct LibraryFolders(HashMap<String, LibraryLocation>); // Can take a variable amount of libraries
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct LibraryLocation {

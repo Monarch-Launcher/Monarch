@@ -1905,6 +1905,7 @@ dependencies = [
  "scraper",
  "serde",
  "serde_json",
+ "steamy-vdf",
  "tauri",
  "tauri-build",
  "tokio",

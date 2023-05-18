@@ -30,6 +30,9 @@ json = "0.12.4"
 vdf = "0.1.0"
 vdf-serde = "0.3.0"
 
+steamy-vdf = "0.2.0"
+
+
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
 # DO NOT REMOVE!!
