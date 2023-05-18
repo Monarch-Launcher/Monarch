@@ -3,8 +3,13 @@ import styled from 'styled-components';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import Drawer from 'react-modern-drawer';
 import 'react-modern-drawer/dist/index.css';
+import { invoke, dialog } from '@tauri-apps/api';
+import { FaPlay } from 'react-icons/fa';
+import { AiFillInfoCircle } from 'react-icons/ai';
+import { HiDownload } from 'react-icons/hi';
 import fallback from '../../assets/fallback.jpg';
 import Button from '../button';
+import { useLibrary } from '../../global/contexts/libraryProvider';
 
 const CardContainer = styled.div`
   display: inline-block;
@@ -17,11 +22,16 @@ const CardContainer = styled.div`
 `;
 
 const CardContent = styled.div`
+  height: 90%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   margin: 0.5rem;
+`;
+
+const Header = styled.div`
+  text-align: center;
 `;
 
 const Info = styled.p`
@@ -35,35 +45,61 @@ const Thumbnail = styled.img<{ $isInfo: boolean }>`
   height: ${({ $isInfo }) => ($isInfo ? '16.625rem' : '6.5rem')};
 `;
 
+const ButtonContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
+const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
+  background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+  border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+  color: white;
+
+  &:hover {
+    background-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
+    border-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
+    color: white;
+  }
+
+  &:focus {
+    background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+    border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+    color: white;
+  }
+`;
+
 type GameCardProps = {
-  id: number;
-  executable_path: string;
+  id: string;
+  platformId: string;
+  executablePath: string;
   name: string;
   platform: string;
-  thumbnail_path: string;
+  thumbnailPath: string;
 };
 
 const GameCard = ({
   id,
-  executable_path,
+  platformId,
+  executablePath,
   name,
   platform,
-  thumbnail_path,
+  thumbnailPath,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
+  const { library } = useLibrary();
 
   const toggleDrawer = React.useCallback(() => {
     setDrawerOpen((prev) => !prev);
   }, []);
 
   const imageSrc = React.useMemo(() => {
-    if (!thumbnail_path || thumbnail_path === ('' || 'temp')) {
+    if (!thumbnailPath || thumbnailPath === ('' || 'temp')) {
       return fallback;
     }
 
-    return convertFileSrc(thumbnail_path);
-  }, [thumbnail_path]);
+    return convertFileSrc(thumbnailPath);
+  }, [thumbnailPath]);
 
   const handleImageError = React.useCallback(
     (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -78,6 +114,36 @@ const GameCard = ({
       borderRadius: '0.5rem',
     };
   }, []);
+
+  const handleLaunch = React.useCallback(async () => {
+    try {
+      await invoke('launch_game', { name, platformId, platform });
+    } catch (err) {
+      await dialog.message(`An error has occured: Could't launch ${name}`, {
+        title: 'Error',
+        type: 'error',
+      });
+    }
+  }, [name, platformId, platform]);
+
+  const handleDownload = React.useCallback(async () => {
+    try {
+      await invoke('download_game', {
+        name,
+        platformId,
+        platform,
+      });
+    } catch (err) {
+      await dialog.message(`An error has occured: Could't download ${name}`, {
+        title: 'Error',
+        type: 'error',
+      });
+    }
+  }, [name, platformId, platform]);
+
+  const hasGame = React.useMemo(() => {
+    return library.find((game) => game.id === id);
+  }, [id, library]);
 
   // Detect click outside drawer to close it
   React.useEffect(() => {
@@ -100,22 +166,43 @@ const GameCard = ({
   return (
     <CardContainer>
       <CardContent>
-        <Thumbnail
-          alt="game-thumbnail"
-          src={imageSrc}
-          onError={handleImageError}
-          $isInfo={false}
-        />
-        <Info>{name}</Info>
-        <Info>Platform: {platform}</Info>
-        <Button
-          variant="primary"
-          type="button"
-          onClick={toggleDrawer}
-          disabled={drawerOpen}
-        >
-          Info
-        </Button>
+        <Header>
+          <Thumbnail
+            alt="game-thumbnail"
+            src={imageSrc}
+            onError={handleImageError}
+            $isInfo={false}
+          />
+          <Info>{name}</Info>
+        </Header>
+        {/* <Info>Platform: {platform}</Info> */}
+        <ButtonContainer>
+          <StyledButton
+            variant="primary"
+            type="button"
+            onClick={toggleDrawer}
+            $isInfo
+          >
+            <AiFillInfoCircle size={24} />
+          </StyledButton>
+          {hasGame ? (
+            <StyledButton
+              variant="primary"
+              type="button"
+              onClick={handleLaunch}
+            >
+              <FaPlay size={20} />
+            </StyledButton>
+          ) : (
+            <StyledButton
+              variant="primary"
+              type="button"
+              onClick={handleDownload}
+            >
+              <HiDownload size={24} />
+            </StyledButton>
+          )}
+        </ButtonContainer>
       </CardContent>
       <div ref={drawerRef}>
         <Drawer

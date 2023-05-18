@@ -1,16 +1,18 @@
-use log::{info, error};
-use std::process::{Command, Child};
-use std::io::Error;
+use log::{error, info};
 use reqwest::Response;
-use scraper::{Html, Selector, ElementRef};
+use scraper::{ElementRef, Html, Selector};
+use std::io::Error;
+use std::process::{Child, Command};
 use tokio;
 
-use crate::monarch_utils::{monarch_winreg::{is_installed}, 
-                           monarch_download::{download_and_run, download_image}, 
-                           monarch_web::request_data,
-                           monarch_fs::{generate_cache_image_name, generate_library_image_name},
-                           monarch_vdf};
 use super::monarchgame::MonarchGame;
+use crate::monarch_utils::{
+    monarch_download::{download_and_run, download_image},
+    monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists},
+    monarch_web::request_data,
+    monarch_winreg::{get_reg_folder_contents, is_installed},
+    monarch_vdf
+};
 
 /*
 ---------- Public functions ----------
@@ -22,9 +24,7 @@ pub async fn get_steam() {
 
     if is_installed {
         info!("Steam already installed!")
-        
-    }
-    else {
+    } else {
         let target_url: &str = "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe";
         download_and_run(target_url).await;
     }
@@ -38,11 +38,11 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 
     info!("Searching: {}", target);
 
-    if let Ok(response) = request_data(&target).await {    
+    if let Ok(response) = request_data(&target).await {
         games = steam_store_parser(response).await;
     }
 
-    return games
+    return games;
 }
 
 /// Opens the steam installer for a steam game
@@ -51,16 +51,19 @@ pub fn download_game(name: &str, id: &str) {
     game_command.push_str(id);
 
     let download_result: Result<Child, Error> = Command::new("PowerShell")
-                                                        .arg("start")
-                                                        .arg(&game_command)
-                                                        .spawn(); // Run steam installer for specified game 
+        .arg("start")
+        .arg(&game_command)
+        .spawn(); // Run steam installer for specified game
 
     match download_result {
         Ok(_) => {
             info!("Running steam installer for: {}", name);
-        },
+        }
         Err(e) => {
-            error!("Failed to run steam installer: {}(Game: {}) | Message: {:?}", game_command, name, e);
+            error!(
+                "Failed to run steam installer: {}(Game: {}) | Message: {:?}",
+                game_command, name, e
+            );
         }
     }
 }
@@ -71,15 +74,18 @@ pub fn launch_game(name: &str, id: &str) {
     game_command.push_str(id);
 
     let launch_result: Result<Child, Error> = Command::new("PowerShell")
-                                                        .arg("start")
-                                                        .arg(&game_command)
-                                                        .spawn(); // Run steam installer for specified game 
+        .arg("start")
+        .arg(&game_command)
+        .spawn(); // Run steam installer for specified game
     match launch_result {
         Ok(_) => {
             info!("Launching game: {}", name);
-        },
+        }
         Err(e) => {
-            error!("Failed to launch game: {}({}) | Message: {:?}", game_command, name, e);
+            error!(
+                "Failed to launch game: {}({}) | Message: {:?}",
+                game_command, name, e
+            );
         }
     }
 }
@@ -90,15 +96,18 @@ pub fn purchase_game(name: &str, id: &str) {
     game_command.push_str(id);
 
     let launch_result: Result<Child, Error> = Command::new("PowerShell")
-                                                        .arg("start")
-                                                        .arg(&game_command)
-                                                        .spawn(); // Run steam installer for specified game 
+        .arg("start")
+        .arg(&game_command)
+        .spawn(); // Run steam installer for specified game
     match launch_result {
         Ok(_) => {
             info!("Opening store page: {}", name);
         }
         Err(e) => {
-            error!("Failed to open store page: {}({}) | Message: {:?}", game_command, name, e);
+            error!(
+                "Failed to open store page: {}({}) | Message: {:?}",
+                game_command, name, e
+            );
         }
     }
 }
@@ -108,7 +117,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
     let found_games: Vec<String> = monarch_vdf::parse_library_file("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
     let games: Vec<MonarchGame> = library_steam_game_parser(found_games).await;
 
-    return games
+    return games;
 }
 
 
@@ -126,25 +135,27 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
 
     let title_selector: Selector = Selector::parse("span.title").unwrap();
     let id_selector: Selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap();
-    
+
     let titles: Vec<ElementRef> = document.select(&title_selector).collect();
     let ids: Vec<ElementRef> = document.select(&id_selector).collect();
 
     for i in 0..titles.len() {
         let name = get_steam_name(titles[i]);
-        let id = get_steamid(ids[i]);
-        let image_link = get_img_link(&id);
+        let platform_id = get_steamid(ids[i]);
+        let image_link = get_img_link(&platform_id);
         let image_path = generate_cache_image_name(&name);
 
-        let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
+        let cur_game = MonarchGame::new(&name, "steam", &platform_id, "temp", &image_path);
         games.push(cur_game);
 
-        // Workaround for [tauri::command] not working with download_image().await in same thread 
-        tokio::task::spawn(async move {
-            download_image(image_link.as_str(), image_path.as_str()).await; 
-        });
+        if !path_exists(&image_path) { // Only download if image is not in cache dir
+            // Workaround for [tauri::command] not working with download_image().await in same thread 
+            tokio::task::spawn(async move {
+                download_image(image_link.as_str(), image_path.as_str()).await; 
+            });
+        }
     }
-    return games
+    return games;
 }
 
 async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
@@ -158,23 +169,26 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
         if let Ok(content) = request_data(&target).await {
             let document = Html::parse_document(&content.text().await.unwrap());
             let name_refs: Vec<ElementRef> = document.select(&title_selector).collect();
-            
+
             if name_refs.len() >= 1 {
                 let name = get_steam_name(name_refs[0]);
                 let image_path = generate_library_image_name(&name);
                 let image_link = get_img_link(&id);
 
-                let game: MonarchGame = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
+                let game: MonarchGame = MonarchGame::new(&name, "steam", &id, "temp", &image_path);
                 games.push(game);
 
-                // Workaround for [tauri::command] not working with download_image().await in same thread 
-                tokio::task::spawn(async move {
-                    download_image(image_link.as_str(), image_path.as_str()).await; 
-                });
-            } 
+                if !path_exists(&image_path) { // Only download if image is not in library dir
+                    // Workaround for [tauri::command] not working with download_image().await in same thread 
+                    tokio::task::spawn(async move {
+                        download_image(image_link.as_str(), image_path.as_str()).await; 
+                    });
+                
+                }
+            }
         }
-    }      
-    return games
+    }
+    return games;
 }
 
 /// Extracts the name of the game from html element
@@ -185,19 +199,19 @@ fn get_steam_name(elem: ElementRef) -> String {
 /// Parses html of Steams website to extract either an app id or a bundle id
 fn get_steamid(elem: ElementRef) -> String {
     if let Some(app_id) = elem.value().attr("data-ds-appid") {
-        return app_id.to_string()
+        return app_id.to_string();
     }
     if let Some(bundle_id) = elem.value().attr("data-ds-bundleid") {
-        return bundle_id.to_string()
+        return bundle_id.to_string();
     }
     String::new() // Default returns empty String for now
 }
 
 /// Creates url for thumbnail based on app id
 fn get_img_link(id: &str) -> String {
-    let mut target = String::from("https://cdn.cloudflare.steamstatic.com/steam/apps/");    
+    let mut target = String::from("https://cdn.cloudflare.steamstatic.com/steam/apps/");
     target.push_str(id);
     target.push_str("/header.jpg");
 
-    return target
+    return target;
 }
