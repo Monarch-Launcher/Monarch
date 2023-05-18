@@ -11,6 +11,7 @@ use crate::monarch_utils::{
     monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists},
     monarch_web::request_data,
     monarch_winreg::{get_reg_folder_contents, is_installed},
+    monarch_vdf
 };
 
 /*
@@ -113,17 +114,12 @@ pub fn purchase_game(name: &str, id: &str) {
 
 /// Finds local steam library installed on current system via winreg
 pub async fn get_library() -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-    if let Ok(library) = get_reg_folder_contents("Valve\\Steam\\Apps") {
-        games = library_steam_game_parser(library).await;
-    }
+    let found_games: Vec<String> = monarch_vdf::parse_library_file("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
+    let games: Vec<MonarchGame> = library_steam_game_parser(found_games).await;
 
     return games;
 }
 
-/*
----------- Private functions ----------
-*/
 
 /// Returns whether or not Steam launcher is installed
 fn steam_is_installed() -> bool {

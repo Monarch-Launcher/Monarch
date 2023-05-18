@@ -28,6 +28,11 @@ log4rs = "1.2.0"
 regex = "1.8.1"
 image = "0.24.6"
 json = "0.12.4"
+vdf = "0.1.0"
+vdf-serde = "0.3.0"
+
+steamy-vdf = "0.2.0"
+
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
