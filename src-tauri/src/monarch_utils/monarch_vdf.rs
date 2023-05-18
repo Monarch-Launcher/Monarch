@@ -39,6 +39,9 @@ pub fn parse_library_file(path: &str) -> Vec<String> {
             Err(e) => error!("Failed to build structs from .vdf file in parse_library_file! | Message: {:?}", e)
         }
     }
+
+    // TODO: DEFINE BEHAVIOUR OF NOT FOUND FILE! (AND OTHER WIERD STUFF)
+
     return games
 }
 

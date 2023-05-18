@@ -5,7 +5,7 @@ use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
 use tokio;
 
-use crate::monarch_utils::{monarch_winreg::{is_installed, get_reg_folder_contents}, 
+use crate::monarch_utils::{monarch_winreg::{is_installed}, 
                            monarch_download::{download_and_run, download_image}, 
                            monarch_web::request_data,
                            monarch_fs::{generate_cache_image_name, generate_library_image_name},
@@ -105,15 +105,12 @@ pub fn purchase_game(name: &str, id: &str) {
 
 /// Finds local steam library installed on current system via winreg
 pub async fn get_library() -> Vec<MonarchGame> {
-    let found_games: Vec<String> = monarch_vdf::parse_library_file("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf"); 
+    let found_games: Vec<String> = monarch_vdf::parse_library_file("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
     let games: Vec<MonarchGame> = library_steam_game_parser(found_games).await;
 
     return games
 }
 
-/*
----------- Private functions ----------
-*/
 
 /// Returns whether or not Steam launcher is installed
 fn steam_is_installed() -> bool {
@@ -138,8 +135,7 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
         let id = get_steamid(ids[i]);
         let image_link = get_img_link(&id);
         let image_path = generate_cache_image_name(&name);
-    
-        let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
+
         let cur_game = MonarchGame::new(&name, &id, "steam", "temp", &image_path);
         games.push(cur_game);
 

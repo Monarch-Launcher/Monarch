@@ -5,7 +5,7 @@ use scraper::{Html, Selector, ElementRef};
 use crate::monarch_utils::{monarch_winreg::is_installed, 
                            monarch_download::{download_and_run, download_image}, 
                            monarch_web::request_data,
-                           monarch_fs::{generate_cache_image_name, generate_library_image_name}};
+                           monarch_fs::{generate_cache_image_name}};
 use super::monarchgame::MonarchGame;
 
 /// Installs Epic games launcher if not already installed
