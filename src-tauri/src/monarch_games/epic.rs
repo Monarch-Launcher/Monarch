@@ -1,11 +1,12 @@
 use log::info;
+use ini::Ini;
 use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
 
 use crate::monarch_utils::{monarch_winreg::is_installed, 
                            monarch_download::{download_and_run, download_image}, 
                            monarch_web::request_data,
-                           monarch_fs::{generate_cache_image_name}};
+                           monarch_fs::{generate_cache_image_name, get_app_data_path}};
 use super::monarchgame::MonarchGame;
 
 /// Installs Epic games launcher if not already installed
@@ -35,6 +36,28 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 
 
     return games
+}
+
+/// Finds local steam library installed on current system
+pub async fn get_library() -> Vec<MonarchGame> {
+    let mut path: String = get_app_data_path().unwrap();
+    println!("Path: {}", path);
+
+    path = path.replace("Roaming\\Monarch", "Local\\EpicGamesLauncher\\Saved\\Config\\Windows\\GameUserSettings.ini");
+
+    println!("Path: {}", path);
+
+    let i = Ini::load_from_file(path).unwrap();
+        
+    let settings = i.get_from(Some("Launcher"), "DefaultAppInstallLocation");
+        for (k, v) in prop.iter() {
+            println!("{}:{}", k, v);
+        }
+
+    let ids: Vec<String> = Vec::new();
+    let games = library_game_parser(ids);
+
+    return games;
 }
 
 /// Returns whether or not Epic games launcehr is installed
@@ -67,6 +90,12 @@ async fn epic_store_parser(response: Response) -> Vec<MonarchGame> {
             download_image(image_link.as_str(), image_path.as_str()).await; 
         });
     }
+    return games
+}
+
+fn library_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
+    let games: Vec<MonarchGame> = Vec::new();
+
     return games
 }
 
