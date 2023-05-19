@@ -1,11 +1,14 @@
 use log::info;
+use ini::Ini;
 use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
+use std::fs;
+use std::ffi::OsString;
 
 use crate::monarch_utils::{monarch_winreg::is_installed, 
                            monarch_download::{download_and_run, download_image}, 
                            monarch_web::request_data,
-                           monarch_fs::{generate_cache_image_name}};
+                           monarch_fs::{generate_cache_image_name, get_app_data_path}};
 use super::monarchgame::MonarchGame;
 
 /// Installs Epic games launcher if not already installed
@@ -36,6 +39,24 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 
     return games
 }
+
+/// Finds local steam library installed on current system
+pub async fn get_library() -> Vec<MonarchGame> {
+    let mut names: Vec<OsString> = Vec::new();
+    let mut path: String = get_app_data_path().unwrap();
+    path = path.replace("Roaming\\Monarch", "Local\\EpicGamesLauncher\\Saved\\Config\\Windows\\GameUserSettings.ini");
+
+    let i = Ini::load_from_file(path).unwrap();    
+    let default_location = i.get_from(Some("Launcher"), "DefaultAppInstallLocation").unwrap();
+    
+    for game in fs::read_dir(default_location).unwrap() {
+        names.push(game.unwrap().file_name())
+    }
+    
+    let games: Vec<MonarchGame> = library_game_parser(names).await;
+    return games;
+}
+
 
 /// Returns whether or not Epic games launcehr is installed
 fn epic_is_installed() -> bool {
@@ -75,9 +96,21 @@ fn get_epic_name(elem: ElementRef) -> String {
     elem.inner_html()
 }
 
+async fn library_game_parser(names: Vec<OsString>) -> Vec<MonarchGame> {
+    let mut games: Vec<MonarchGame> = Vec::new();
+
+    for name in names {
+        games.push(get_game_info(name.to_str().unwrap()).await);
+    }
+
+    return games
+}
+
+async fn get_game_info(name: &str) -> MonarchGame {
+    return MonarchGame::new(name, "epic", "unknown", "exec_path", "temp");
+}
+
 /// Creates url for thumbnail based on app id
 fn get_img_link(elem: ElementRef) -> String {
-    println!("{:?}", elem.inner_html());
-
-    return String::new()
+    return elem.inner_html()
 }
