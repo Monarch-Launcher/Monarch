@@ -80,6 +80,5 @@ pub async fn download_image(url: &str, path: &str) {
         Err(e) => {
             error!("Failed to download image file! Url:{} | Message: {:?}", url, e);
         }
-    }
-    
+    }   
 }

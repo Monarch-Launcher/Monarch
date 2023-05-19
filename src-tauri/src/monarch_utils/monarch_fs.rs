@@ -1,6 +1,5 @@
-use std::error::Error;
 use std::{process::exit, io, fs};
-use json::JsonValue;
+use serde_json::Value;
 use log::error;
 use std::env::VarError;
 use std::fs::DirEntry;
@@ -88,8 +87,17 @@ pub fn get_library_json_path() -> String {
     String::new()
 }
 
+/// Returns path to collections.json
+pub fn get_collections_json_path() -> String {
+    if let Ok(mut path) = get_app_data_path() {
+        path.push_str("\\collections.json");
+        return path
+    }
+    String::new()
+}
+
 /// Write JSON to file
-pub fn write_json_content(content: JsonValue, path: &str) -> io::Result<()> {
+pub fn write_json_content(content: Value, path: &str) -> io::Result<()> {
     if let Err(e) = fs::write(path, content.to_string()) {
         error!("Failed to write new library to: {} | Message: {:?}", path, e);
         return Err(e)

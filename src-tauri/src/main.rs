@@ -5,6 +5,7 @@ use log::error;
 
 mod monarch_utils;
 mod monarch_games;
+mod monarch_library;
 
 use monarch_utils::monarch_fs::init_monarch_fs;
 use monarch_utils::monarch_logger::init_logger;
@@ -17,6 +18,11 @@ use monarch_games::commands::{search_games,
                               steam_downloader,
                               blizzard_downloader,
                               epic_downloader};
+
+use monarch_library::commands::{create_collection,
+                                update_collection,
+                                delete_collection,
+                                get_collections};
 
 fn main() {
     init_monarch_fs();
@@ -32,7 +38,11 @@ fn main() {
             purchase_game, 
             steam_downloader,
             blizzard_downloader,
-            epic_downloader
+            epic_downloader,
+            create_collection,
+            update_collection,
+            delete_collection,
+            get_collections
             ])
         .run(tauri::generate_context!());
 
