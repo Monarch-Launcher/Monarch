@@ -36,35 +36,8 @@ type Props = {
   children: React.ReactNode;
 };
 
-// TODO: remove this
-const mockCollections: Collection[] = [
-  {
-    id: 'some kind of id',
-    name: 'cool games',
-    gameIds: [
-      '10006750510124000270',
-      '12745051691570522837',
-      '1947104710968256949',
-      '14536788471735206296',
-    ],
-  },
-  {
-    id: 'another id',
-    name: 'games with "ark"',
-    gameIds: [
-      '15098186198963317337',
-      '14747636517855909739',
-      '9667814351563258295',
-      '8826081208144110070',
-      '2930480368731506396',
-    ],
-  },
-];
-
 const CollectionsProvider = ({ children }: Props) => {
-  // TODO: Change mockCollections to empty array
-  const [collections, setCollections] =
-    React.useState<Collection[]>(mockCollections);
+  const [collections, setCollections] = React.useState<Collection[]>([]);
   const [error, setError] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
@@ -110,9 +83,6 @@ const CollectionsProvider = ({ children }: Props) => {
     }
   }, []);
 
-  // TODO: remove these comments
-  // @ts-ignore
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getCollections = React.useCallback(async () => {
     try {
       setLoading(true);
@@ -127,8 +97,8 @@ const CollectionsProvider = ({ children }: Props) => {
   }, []);
 
   React.useEffect(() => {
-    // getCollections();
-  }, []);
+    getCollections();
+  }, [getCollections]);
 
   const value = React.useMemo<CollectionsContextType>(() => {
     return {
