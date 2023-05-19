@@ -12,3 +12,9 @@ export type Result = {
   emptyMessage: string;
   searchString?: string;
 };
+
+export type Collection = {
+  id: string;
+  name: string;
+  gameIds: string[];
+};

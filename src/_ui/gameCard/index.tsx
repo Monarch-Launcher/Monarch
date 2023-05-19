@@ -1,18 +1,18 @@
-import * as React from 'react';
-import styled from 'styled-components';
-import { convertFileSrc } from '@tauri-apps/api/tauri';
-import Drawer from 'react-modern-drawer';
 import 'react-modern-drawer/dist/index.css';
-import { invoke, dialog } from '@tauri-apps/api';
-import { FaPlay } from 'react-icons/fa';
-import { AiFillInfoCircle } from 'react-icons/ai';
-import { HiDownload } from 'react-icons/hi';
-import fallback from '../../assets/fallback.jpg';
+
+import fallback from '@assets/fallback.jpg';
+import { useLibrary } from '@global/contexts/libraryProvider';
+import { AiFillInfoCircle, FaPlay, HiDownload } from '@global/icons';
+import { dialog, invoke } from '@tauri-apps/api';
+import { convertFileSrc } from '@tauri-apps/api/tauri';
+import * as React from 'react';
+import Drawer from 'react-modern-drawer';
+import styled from 'styled-components';
+
 import Button from '../button';
-import { useLibrary } from '../../global/contexts/libraryProvider';
 
 const CardContainer = styled.div`
-  display: inline-block;
+  flex: 0 0 auto;
   vertical-align: top;
   width: 15rem;
   height: 20rem;
@@ -31,6 +31,7 @@ const CardContent = styled.div`
 `;
 
 const Header = styled.div`
+  position: relative;
   text-align: center;
 `;
 
@@ -39,7 +40,7 @@ const Info = styled.p`
   color: ${({ theme }) => theme.colors.primary};
 `;
 
-const Thumbnail = styled.img<{ $isInfo: boolean }>`
+const Thumbnail = styled.img<{ $isInfo?: boolean }>`
   border-radius: 0.5rem;
   width: 100%;
   height: ${({ $isInfo }) => ($isInfo ? '16.625rem' : '6.5rem')};
@@ -55,15 +56,10 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
   border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
   color: white;
 
-  &:hover {
+  &:hover,
+  &:focus {
     background-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
     border-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
-    color: white;
-  }
-
-  &:focus {
-    background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
-    border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
     color: white;
   }
 `;
@@ -75,15 +71,19 @@ type GameCardProps = {
   name: string;
   platform: string;
   thumbnailPath: string;
+  isLibrary?: boolean;
 };
 
 const GameCard = ({
   id,
   platformId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   executablePath,
   name,
   platform,
   thumbnailPath,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  isLibrary = false,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
@@ -93,7 +93,7 @@ const GameCard = ({
     setDrawerOpen((prev) => !prev);
   }, []);
 
-  const imageSrc = React.useMemo(() => {
+  const imageSrc = React.useMemo<string>(() => {
     if (!thumbnailPath || thumbnailPath === ('' || 'temp')) {
       return fallback;
     }
@@ -108,7 +108,7 @@ const GameCard = ({
     [],
   );
 
-  const drawerStyles = React.useMemo(() => {
+  const drawerStyles = React.useMemo<React.CSSProperties>(() => {
     return {
       backgroundColor: 'rgba(15, 15, 15, 0.95)',
       borderRadius: '0.5rem',
@@ -141,8 +141,8 @@ const GameCard = ({
     }
   }, [name, platformId, platform]);
 
-  const hasGame = React.useMemo(() => {
-    return library.find((game) => game.id === id);
+  const hasGame = React.useMemo<boolean>(() => {
+    return !!library.find((game) => game.id === id);
   }, [id, library]);
 
   // Detect click outside drawer to close it
@@ -171,11 +171,9 @@ const GameCard = ({
             alt="game-thumbnail"
             src={imageSrc}
             onError={handleImageError}
-            $isInfo={false}
           />
           <Info>{name}</Info>
         </Header>
-        {/* <Info>Platform: {platform}</Info> */}
         <ButtonContainer>
           <StyledButton
             variant="primary"
@@ -185,23 +183,13 @@ const GameCard = ({
           >
             <AiFillInfoCircle size={24} />
           </StyledButton>
-          {hasGame ? (
-            <StyledButton
-              variant="primary"
-              type="button"
-              onClick={handleLaunch}
-            >
-              <FaPlay size={20} />
-            </StyledButton>
-          ) : (
-            <StyledButton
-              variant="primary"
-              type="button"
-              onClick={handleDownload}
-            >
-              <HiDownload size={24} />
-            </StyledButton>
-          )}
+          <StyledButton
+            variant="primary"
+            type="button"
+            onClick={hasGame ? handleLaunch : handleDownload}
+          >
+            {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
+          </StyledButton>
         </ButtonContainer>
       </CardContent>
       <div ref={drawerRef}>

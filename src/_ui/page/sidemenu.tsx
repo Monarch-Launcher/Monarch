@@ -1,13 +1,17 @@
+import Logo from '@assets/logo.svg';
+import {
+  AiOutlineSearch,
+  BiHomeAlt,
+  BiTestTube,
+  HiOutlineCog,
+  HiOutlineSquares2X2,
+} from '@global/icons';
 import * as React from 'react';
-import styled from 'styled-components';
+import type { IconType } from 'react-icons';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BiHomeAlt, BiTestTube } from 'react-icons/bi';
-import { HiOutlineSquares2X2 } from 'react-icons/hi2';
-import { HiOutlineCog } from 'react-icons/hi';
-import { AiOutlineSearch } from 'react-icons/ai';
-import { type IconType } from 'react-icons';
+import styled, { AnyStyledComponent } from 'styled-components';
+
 import Button from '../button';
-import logo from '../../assets/logo.png';
 
 const Container = styled.div`
   background-color: ${({ theme }) => theme.colors.secondary};
@@ -38,12 +42,16 @@ const LinkWrapper = styled.div<{ $isActive: boolean }>`
 
   background-color: ${({ theme, $isActive }) =>
     $isActive
-      ? theme.colors.button.transparent.active
-      : theme.colors.button.transparent.background};
+      ? theme.colors.button.menu.active
+      : theme.colors.button.menu.background};
 `;
 
-const StyledLogo = styled.img`
-  width: 90px;
+// TODO: Proper svg setup for styled components
+const StyledLogo = styled(Logo as AnyStyledComponent)`
+  margin: 0.5rem 0.5rem 0;
+  .st0 {
+    fill: ${({ theme }) => theme.colors.primary};
+  }
 `;
 
 type Tab = {
@@ -93,21 +101,21 @@ const SideMenu = () => {
     ];
   }, []);
 
-  const isSettings = React.useMemo(() => {
+  const isSettings = React.useMemo<boolean>(() => {
     return pathname === '/settings';
   }, [pathname]);
 
   return (
     <Container>
       <Header>
-        <StyledLogo alt="logo" src={logo} />
+        <StyledLogo />
       </Header>
       <NavContainer>
         <TabContainer>
           {tabs.map((tab) => (
             <LinkWrapper key={tab.id} $isActive={pathname === tab.path}>
               <Button
-                variant="transparent"
+                variant="menu"
                 type="button"
                 leftIcon={tab.leftIcon}
                 fullWidth
@@ -120,7 +128,7 @@ const SideMenu = () => {
         </TabContainer>
         <LinkWrapper $isActive={isSettings}>
           <Button
-            variant="transparent"
+            variant="menu"
             type="button"
             leftIcon={HiOutlineCog}
             fullWidth

@@ -1,9 +1,9 @@
+import Button from '@_ui/button';
+import Page from '@_ui/page';
+import Spinner from '@_ui/spinner';
+import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import styled from 'styled-components';
-import { invoke } from '@tauri-apps/api';
-import Page from '../../_ui/page';
-import Button from '../../_ui/button';
-import Spinner from '../../_ui/spinner';
 
 const ResultContainer = styled.div`
   overflow-y: auto;
@@ -22,7 +22,9 @@ const MooseTestPage = () => {
       // first parameters: string -> the name of the rust command to call (required)
       // second parameters: json object -> the parameter(s) the rust command takes (optional)
       // E.g. To call the function_name command: invoke('function_name', {arg1: 'foo', arg2: 'bar'})
-      const functionResult = await invoke('search_games', {name: "worldbox - god simulator"});
+      const functionResult = await invoke('search_games', {
+        name: 'worldbox - god simulator',
+      });
       //
       //
       // Don't edit the rest of this code
