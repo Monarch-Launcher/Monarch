@@ -45,10 +45,11 @@ export enum OperationEnum {
 type Props = {
   id: string;
   name: string;
+  isSelected?: boolean;
   updateSelectedGames: (id: string, operation: OperationEnum) => void;
 };
 
-const GameRow = ({ id, name, updateSelectedGames }: Props) => {
+const GameRow = ({ id, name, isSelected, updateSelectedGames }: Props) => {
   const [gameSelected, setGameSelected] = React.useState(false);
 
   const toggleGameSelected = React.useCallback(() => {
@@ -65,7 +66,7 @@ const GameRow = ({ id, name, updateSelectedGames }: Props) => {
   return (
     <Row onClick={toggleGameSelected}>
       <GameTitle>{name}</GameTitle>
-      {gameSelected && <FaCheck />}
+      {(gameSelected || isSelected) && <FaCheck />}
     </Row>
   );
 };

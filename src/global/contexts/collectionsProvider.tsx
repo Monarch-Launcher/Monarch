@@ -7,16 +7,25 @@ type CollectionsContextType = {
   collections: Collection[];
   error: boolean;
   loading: boolean;
-  updateName: (id: string, newName: string) => Promise<void>;
+  updateCollection: (
+    id: string,
+    newName: string,
+    gameIds: string[],
+  ) => Promise<void>;
   deleteCollection: (id: string) => Promise<void>;
+  createCollection: (
+    collectionName: string,
+    gameIds: string[],
+  ) => Promise<void>;
 };
 
 const initialState: CollectionsContextType = {
   collections: [],
   error: false,
   loading: false,
-  updateName: async () => {},
+  updateCollection: async () => {},
   deleteCollection: async () => {},
+  createCollection: async () => {},
 };
 
 const CollectionsContext =
@@ -59,17 +68,35 @@ const CollectionsProvider = ({ children }: Props) => {
   const [error, setError] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
-  const updateName = React.useCallback(async (id: string, newName: string) => {
-    try {
-      setError(false);
-      setLoading(true);
-      await invoke('update_collection_name', { id, newName });
-    } catch (err) {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const createCollection = React.useCallback(
+    async (collectionName: string, gameIds: string[]) => {
+      try {
+        setError(false);
+        setLoading(true);
+        await invoke('create_collection', { collectionName, gameIds });
+      } catch (err) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const updateCollection = React.useCallback(
+    async (id: string, newName: string, gameIds: string[]) => {
+      try {
+        setError(false);
+        setLoading(true);
+        await invoke('update_collection', { id, newName, gameIds });
+      } catch (err) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   const deleteCollection = React.useCallback(async (id: string) => {
     try {
@@ -108,10 +135,18 @@ const CollectionsProvider = ({ children }: Props) => {
       collections,
       error,
       loading,
-      updateName,
+      updateCollection,
       deleteCollection,
+      createCollection,
     };
-  }, [collections, error, loading, updateName, deleteCollection]);
+  }, [
+    collections,
+    error,
+    loading,
+    updateCollection,
+    deleteCollection,
+    createCollection,
+  ]);
 
   return (
     <CollectionsContext.Provider value={value}>

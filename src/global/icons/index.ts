@@ -7,12 +7,14 @@ import {
 } from 'react-icons/ai';
 import {
   BiArrowBack,
+  BiCheck,
   BiEdit,
   BiHomeAlt,
   BiLeftArrowAlt,
   BiRename,
   BiRightArrowAlt,
   BiTestTube,
+  BiTrash,
 } from 'react-icons/bi';
 import {
   FaCheck,
@@ -34,12 +36,14 @@ export {
   AiOutlineSearch,
   AiOutlineStar,
   BiArrowBack,
+  BiCheck,
   BiEdit,
   BiHomeAlt,
   BiLeftArrowAlt,
   BiRename,
   BiRightArrowAlt,
   BiTestTube,
+  BiTrash,
   FaCheck,
   FaFolder,
   FaFolderOpen,

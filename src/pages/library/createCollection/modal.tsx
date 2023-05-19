@@ -1,6 +1,7 @@
 import Button from '@_ui/button';
 import Modal from '@_ui/modal';
 import SearchBar from '@_ui/searchBar';
+import { useCollections } from '@global/contexts/collectionsProvider';
 import {
   AiOutlinePlus,
   BiLeftArrowAlt,
@@ -8,7 +9,6 @@ import {
   MdClose,
 } from '@global/icons';
 import type { MonarchGame } from '@global/types';
-import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import styled from 'styled-components';
 
@@ -64,6 +64,8 @@ export default ({ opened, close, library }: Props) => {
   const [selectedGames, setSelectedGames] = React.useState<string[]>([]);
   const [collectionName, setCollectionName] = React.useState('');
 
+  const { createCollection } = useCollections();
+
   const toggleNext = React.useCallback(() => {
     if (collectionName.length === 0) {
       setErrorMessage('Collection name must be at least 1 character.');
@@ -72,17 +74,12 @@ export default ({ opened, close, library }: Props) => {
     setNextClicked((prev) => !prev);
   }, [collectionName]);
 
-  const createCollection = React.useCallback(async () => {
-    // TODO: send request to backend with ${collectionName} and ${selectedGames}
-    try {
-      await invoke('create_collection', { collectionName, selectedGames });
-      close();
-      setCollectionName('');
-      setNextClicked(false);
-    } catch (err) {
-      // TODO: proper error and loading states
-    }
-  }, [close, collectionName, selectedGames]);
+  const handleCreateCollection = React.useCallback(async () => {
+    await createCollection(collectionName, selectedGames);
+    close();
+    setCollectionName('');
+    setNextClicked(false);
+  }, [close, collectionName, selectedGames, createCollection]);
 
   const updateSelectedGames = React.useCallback(
     (id: string, operation: OperationEnum) => {
@@ -203,7 +200,7 @@ export default ({ opened, close, library }: Props) => {
               <Button
                 type="button"
                 variant="primary"
-                onClick={createCollection}
+                onClick={handleCreateCollection}
                 rightIcon={AiOutlinePlus}
               >
                 Create

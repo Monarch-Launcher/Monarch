@@ -2,13 +2,7 @@ import 'react-modern-drawer/dist/index.css';
 
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import {
-  AiFillInfoCircle,
-  AiFillStar,
-  AiOutlineStar,
-  FaPlay,
-  HiDownload,
-} from '@global/icons';
+import { AiFillInfoCircle, FaPlay, HiDownload } from '@global/icons';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import * as React from 'react';
@@ -70,11 +64,6 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
   }
 `;
 
-const FavouriteButton = styled(Button)`
-  position: absolute;
-  left: 85%;
-`;
-
 type GameCardProps = {
   id: string;
   platformId: string;
@@ -93,19 +82,15 @@ const GameCard = ({
   name,
   platform,
   thumbnailPath,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   isLibrary = false,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
-  const [isFavourite, setIsFavourite] = React.useState(false);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
   const { library } = useLibrary();
 
   const toggleDrawer = React.useCallback(() => {
     setDrawerOpen((prev) => !prev);
-  }, []);
-
-  const toggleFavourite = React.useCallback(() => {
-    setIsFavourite((prev) => !prev);
   }, []);
 
   const imageSrc = React.useMemo<string>(() => {
@@ -182,22 +167,6 @@ const GameCard = ({
     <CardContainer>
       <CardContent>
         <Header>
-          {isLibrary && (
-            <FavouriteButton
-              type="button"
-              variant="icon"
-              onClick={toggleFavourite}
-              title={
-                isFavourite ? 'Remove from favourites' : 'Add to Favourites'
-              }
-            >
-              {isFavourite ? (
-                <AiFillStar size={24} color="yellow" transform="scale(1.2)" />
-              ) : (
-                <AiOutlineStar size={24} color="yellow" />
-              )}
-            </FavouriteButton>
-          )}
           <Thumbnail
             alt="game-thumbnail"
             src={imageSrc}
