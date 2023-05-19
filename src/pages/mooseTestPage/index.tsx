@@ -10,9 +10,15 @@ const ResultContainer = styled.div`
   height: calc(100% - 10rem);
 `;
 
+const Buttons = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
 const MooseTestPage = () => {
   const [result, setResult] = React.useState<unknown>();
   const [loading, setLoading] = React.useState(false);
+  const [logsError, setLogsError] = React.useState(false);
 
   // This function will be called when the button is clicked
   const handleClick = React.useCallback(async () => {
@@ -38,19 +44,40 @@ const MooseTestPage = () => {
     }
   }, []);
 
+  const printLogs = React.useCallback(async () => {
+    try {
+      setLogsError(false);
+      await invoke('get_logs');
+    } catch (err) {
+      setLogsError(true);
+    }
+  }, []);
+
   return (
     <Page title="Moose's test page">
-      <Button
-        variant="primary"
-        type="button"
-        onClick={handleClick}
-        loading={loading}
-      >
-        Call command
-      </Button>
+      <Buttons>
+        <Button
+          variant="primary"
+          type="button"
+          onClick={handleClick}
+          loading={loading}
+        >
+          Call command
+        </Button>
+        <Button
+          variant="primary"
+          type="button"
+          onClick={printLogs}
+          loading={loading}
+        >
+          Print logs
+        </Button>
+      </Buttons>
+
       <h3>Result of called rust command:</h3>
       <ResultContainer>
         {loading ? <Spinner /> : JSON.stringify(result)}
+        {logsError && <p>There was an error opening logs</p>}
       </ResultContainer>
     </Page>
   );
