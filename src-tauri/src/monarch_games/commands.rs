@@ -20,7 +20,7 @@ pub async fn search_games(name: String) -> Vec<MonarchGame> {
     games.append(&mut blizz_games);
     games.append(&mut steam_games);
 
-    return games;
+    return games
 }
 
 #[tauri::command]

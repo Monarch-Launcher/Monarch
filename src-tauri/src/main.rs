@@ -18,7 +18,6 @@ use monarch_games::commands::{search_games,
                               steam_downloader,
                               blizzard_downloader,
                               epic_downloader};
-
 use monarch_library::commands::{create_collection,
                                 update_collection,
                                 delete_collection,
