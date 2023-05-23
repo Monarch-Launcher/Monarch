@@ -47,7 +47,7 @@ const MooseTestPage = () => {
   const printLogs = React.useCallback(async () => {
     try {
       setLogsError(false);
-      await invoke('get_logs');
+      await invoke('open_logs');
     } catch (err) {
       setLogsError(true);
     }
