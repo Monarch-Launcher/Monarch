@@ -7,7 +7,7 @@ mod monarch_utils;
 mod monarch_games;
 mod monarch_library;
 
-use monarch_utils::commands::get_logs;
+use monarch_utils::commands::open_logs;
 use monarch_utils::monarch_fs::init_monarch_fs;
 use monarch_utils::monarch_logger::init_logger;
 use monarch_games::commands::{search_games, 
@@ -42,8 +42,8 @@ fn main() {
             create_collection,
             update_collection,
             delete_collection,
-            get_collections
-            get_logs
+            get_collections,
+            open_logs
             ])
         .run(tauri::generate_context!());
 
