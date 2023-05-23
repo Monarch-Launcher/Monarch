@@ -2,9 +2,9 @@ use serde_json::value::Value;
 
 use super::blizzard;
 use super::epic;
-use super::monarch_library;
 use super::monarchgame::MonarchGame;
 use super::steam;
+use crate::monarch_library::games_library;
 
 /*
 ---------- General game related functions ----------
@@ -20,13 +20,13 @@ pub async fn search_games(name: String) -> Vec<MonarchGame> {
     games.append(&mut blizz_games);
     games.append(&mut steam_games);
 
-    return games;
+    return games
 }
 
 #[tauri::command]
 /// Returns MonarchGames from library.json
 pub async fn get_library() -> Value {
-    monarch_library::get_games()
+    games_library::get_games()
 }
 
 #[tauri::command]
@@ -39,7 +39,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     games.append(&mut steam_games);
     games.append(&mut epic_games);
 
-    monarch_library::write_games(games.clone());
+    games_library::write_games(games.clone());
     return games;
 }
 
