@@ -177,6 +177,7 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
 
                 let game: MonarchGame = MonarchGame::new(&name, "steam", &id, "temp", &image_path);
                 games.push(game);
+                info!("Found Steam game: {}", name);
 
                 if !path_exists(&image_path) { // Only download if image is not in library dir
                     // Workaround for [tauri::command] not working with download_image().await in same thread 

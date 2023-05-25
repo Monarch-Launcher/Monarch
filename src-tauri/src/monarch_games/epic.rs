@@ -1,4 +1,4 @@
-use log::info;
+use log::{info, error};
 use ini::Ini;
 use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
@@ -36,21 +36,47 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
         games = epic_store_parser(response).await;
     }
 
-
     return games
 }
 
 /// Finds local steam library installed on current system
 pub async fn get_library() -> Vec<MonarchGame> {
-    let mut names: Vec<OsString> = Vec::new();
+    let mut games: Vec<MonarchGame> = Vec::new();
     let mut path: String = get_app_data_path().unwrap();
     path = path.replace("Roaming\\Monarch", "Local\\EpicGamesLauncher\\Saved\\Config\\Windows\\GameUserSettings.ini");
 
-    let i = Ini::load_from_file(path).unwrap();    
-    let default_location = i.get_from(Some("Launcher"), "DefaultAppInstallLocation").unwrap();
-    
-    for game in fs::read_dir(default_location).unwrap() {
-        names.push(game.unwrap().file_name())
+    match Ini::load_from_file(path) {
+        Ok(i) => {
+            match i.get_from(Some("Launcher"), "DefaultAppInstallLocation") {
+                Some(default_location) => {
+                    games = get_names(default_location).await;
+                }
+                None => {
+                    error!("Failed to find DefaultAppInstallLocation!");
+                }
+            }
+        } 
+        Err(e) => {
+            error!("Failed to load ini file! | Message: {:?}", e);
+        }
+    }
+
+    return games
+}
+
+/// Returns games names found in default Epic Games location
+async fn get_names(default_location: &str) -> Vec<MonarchGame> {
+    let mut names: Vec<OsString> = Vec::new();
+    match fs::read_dir(default_location) {
+        Ok(games) => {
+            for game in games {
+                names.push(game.unwrap().file_name())
+            }
+            info!("Found Epic Games games: {:?}", names);
+        }
+        Err(e) => {
+            error!("Failed to read Epic Games GameUserSettings.ini in default location! | Message: {:?}", e);
+        }
     }
     
     let games: Vec<MonarchGame> = library_game_parser(names).await;
@@ -101,6 +127,7 @@ async fn library_game_parser(names: Vec<OsString>) -> Vec<MonarchGame> {
 
     for name in names {
         games.push(get_game_info(name.to_str().unwrap()).await);
+        info!("Found Epic Games game: {}", name.to_str().unwrap());
     }
 
     return games
