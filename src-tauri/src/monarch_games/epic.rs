@@ -39,10 +39,16 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
     return games
 }
 
-/// Finds local steam library installed on current system
+/// Finds local epic games library installed on current system
 pub async fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     let mut path: String = get_app_data_path().unwrap();
+    
+    if !epic_is_installed() {
+        info!("Epic Games not installed! Skipping...");
+        return games
+    }
+
     path = path.replace("Roaming\\Monarch", "Local\\EpicGamesLauncher\\Saved\\Config\\Windows\\GameUserSettings.ini");
 
     match Ini::load_from_file(path) {

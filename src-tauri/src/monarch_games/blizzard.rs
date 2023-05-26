@@ -74,6 +74,18 @@ pub fn find_game(name: &str) -> Vec<MonarchGame> {
     return games
 }
 
+/// Finds local steam library installed on current system
+pub async fn get_library() -> Vec<MonarchGame> {
+    let games: Vec<MonarchGame> = Vec::new();
+    
+    if !blizzard_is_installed() {
+        info!("Battle.net not installed! Skipping...");
+        return games
+    }
+
+    return games
+}
+
 /*
 ----------- Private Blizzard related function -----------
 */

@@ -1,4 +1,4 @@
-use log::{info, error};
+use log::error;
 use std::fs;
 use serde_json::{value::Value, json};
 
@@ -18,9 +18,17 @@ pub fn get_games() -> Value {
     let mut games: Value = json!({});
     let path: String = get_library_json_path();
 
-    if let Ok(file) = fs::File::open(path) {
-        if let Ok(json_content) = serde_json::from_reader(file) {
-            games = json_content;
+    match fs::File::open(path.clone()) {
+        Ok(file) => {
+            match serde_json::from_reader(file) {
+                Ok(json_content) => { games = json_content }
+                Err(e) => {
+                    error!("Failed to parse json content! | Message: {:?}", e);
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to open file: {} | Message: {:?}", path, e);
         }
     }
 
