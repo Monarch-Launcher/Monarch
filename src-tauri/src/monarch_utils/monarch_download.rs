@@ -81,6 +81,8 @@ pub async fn download_and_run(url: &str) -> MonarchResult<(), MonarchErr> {
             Err(err) => { error!("Failed to run '{}' | Message: {:?}", installer_path.display(), err) }
         }
     }
+
+    MonarchResult::Ok(())
 }
 
 /*
