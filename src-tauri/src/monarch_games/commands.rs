@@ -30,7 +30,7 @@ pub async fn get_library() -> Value {
 }
 
 #[tauri::command]
-/// Manually refreshes the entire Monarch library, currently only supports Steam, still WIP
+/// Manually refreshes the entire Monarch library, currently only supports Steam & Epic Games (kinda) still WIP
 pub async fn refresh_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     let mut steam_games: Vec<MonarchGame> = steam::get_library().await;
