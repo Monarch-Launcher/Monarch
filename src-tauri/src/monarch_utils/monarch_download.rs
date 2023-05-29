@@ -9,7 +9,9 @@ use log::{info, error};
 use image;
 
 use super::monarch_web::request_data;
-use super::monarch_results::{MonarchResult, MonarchErr};
+use super::monarch_results::{MonarchResult, 
+                             MonarchErr,
+                             MonarchErr::{IOErr}};
 
 /// Creates a tmp path name for file to install.
 async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {
@@ -40,10 +42,10 @@ async fn write_content(installer_path: &PathBuf, content: Response) {
             match &content.bytes().await {
                 Ok(buf) => {
                     if let Err(e) = file.write_all(buf) {
-                        error!("Failed to write content file! (write_content()) | Message: {:?}", e);
+                        error!("Failed to write_all to file: {} (write_content()) | Message: {:?}",  installer_path.display(), e);
                     }
                     if let Err(e) = file.sync_all() {
-                        error!("Failed to write content to file! (write_content()) | Message: {:?}", e);
+                        error!("Failed to sync_all to file: {} (write_content()) | Message: {:?}",  installer_path.display(), e);
                     }
                 }
                Err(e) => {
@@ -60,10 +62,21 @@ async fn write_content(installer_path: &PathBuf, content: Response) {
 /// Downloads and attempts to run the downloaded file.
 pub async fn download_and_run(url: &str) -> MonarchResult<(), MonarchErr> {
     let system_tmp_dir = env::temp_dir();
-    let tmp_dir: PathBuf = [system_tmp_dir.to_str().unwrap(), r"moose_launcher_download\"].iter().collect();
+    let tmp_dir: PathBuf;
+
+    match system_tmp_dir.to_str() {
+        Some(dir_name) => {
+            tmp_dir = [dir_name, "Monarch\\Downloads\\"].iter().collect();
+        }
+        None => {
+            error!("Failed to convert system temporary folder name to string! (download_and_run())");
+            return MonarchResult::MonarchErr(IOErr("Failed to get system temporary folder!".to_string()))
+        }
+    }
     
     if let Err(e) = create_dir(&tmp_dir) {
         error!("Failed to create new directory: {} (download_and_run()) | Message: {:?}", tmp_dir.display(), e);
+        return MonarchResult::MonarchErr(IOErr("Failed to create temporary directory!".to_string()))
     }
 
     if let Ok(response) = request_data(url).await {
