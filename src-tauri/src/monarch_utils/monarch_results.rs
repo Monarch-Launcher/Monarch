@@ -6,8 +6,9 @@ pub enum MonarchResult<T, E> {
 
 #[derive(Debug)]
 pub enum MonarchErr {
+    RequestErr(String),
     FunctionErr(String),
-    ConnectionErr(String),
     IOErr(String),
+    SystemErr(String),
     UnknownErr(String),
 }

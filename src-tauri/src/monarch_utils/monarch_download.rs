@@ -11,7 +11,7 @@ use image;
 use super::monarch_web::request_data;
 use super::monarch_results::{MonarchResult, 
                              MonarchErr,
-                             MonarchErr::{IOErr}};
+                             MonarchErr::{IOErr, SystemErr, RequestErr}};
 
 /// Creates a tmp path name for file to install.
 async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {
@@ -63,6 +63,7 @@ async fn write_content(installer_path: &PathBuf, content: Response) {
 pub async fn download_and_run(url: &str) -> MonarchResult<(), MonarchErr> {
     let system_tmp_dir = env::temp_dir();
     let tmp_dir: PathBuf;
+    let installer_path: &str;
 
     match system_tmp_dir.to_str() {
         Some(dir_name) => {
@@ -79,22 +80,37 @@ pub async fn download_and_run(url: &str) -> MonarchResult<(), MonarchErr> {
         return MonarchResult::MonarchErr(IOErr("Failed to create temporary directory!".to_string()))
     }
 
-    if let Ok(response) = request_data(url).await {
-        let installer_path = create_file_path(&response, &tmp_dir).await;
+    match request_data(url).await {
+        Ok(response) => {
+            
+            let installer_pathbuf: PathBuf = create_file_path(&response, &tmp_dir).await;
+            match installer_pathbuf.to_str() {
+                Some(path) => { installer_path = path; }
+                None => {
+                    return MonarchResult::MonarchErr(IOErr("Failed to parse installer path to string!".to_string()))
+                }
+            }
 
-        info!("Downloading to: {}", installer_path.display());
-        write_content(&installer_path, response).await;
-
-        let result = Command::new("PowerShell")
-            .arg(&installer_path.to_str().unwrap())
-            .spawn();
-
-        match result {
-            Ok(_) => { info!("Executing '{}'", installer_path.display()) }
-            Err(err) => { error!("Failed to run '{}' | Message: {:?}", installer_path.display(), err) }
+            info!("Downloading to: {}", installer_path);
+            write_content(&installer_pathbuf, response).await;
+    
+            let result = Command::new("PowerShell")
+                .arg(&installer_path)
+                .spawn();
+    
+            match result {
+                Ok(_) => { info!("Executing '{}'", installer_path) }
+                Err(e) => { 
+                    error!("Failed to run '{}' | Message: {:?}", installer_path, e);
+                    return MonarchResult::MonarchErr(SystemErr("Failed to execute downloaded file!".to_string()))
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to get response from: {} | Message: {:?}", url, e);
+            return MonarchResult::MonarchErr(RequestErr("Failed to get response from url!".to_string()))
         }
     }
-
     MonarchResult::Ok(())
 }
 
