@@ -10,6 +10,7 @@ use image;
 use core::result::Result;
 
 use super::monarch_web::request_data;
+use super::monarch_run::run_file;
 
 /// Creates a tmp path name for file to install.
 async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {
@@ -59,19 +60,9 @@ async fn write_content(installer_path: &PathBuf, content: Response) {
 
 /// Downloads and attempts to run the downloaded file.
 pub async fn download_and_run(url: &str) -> Result<(), String> {
-    let system_tmp_dir = env::temp_dir();
-    let tmp_dir: PathBuf;
-    let installer_path: &str;
-
-    match system_tmp_dir.to_str() {
-        Some(dir_name) => {
-            tmp_dir = [dir_name, "Monarch\\Downloads\\"].iter().collect();
-        }
-        None => {
-            error!("Failed to convert system temporary folder name to string! (download_and_run())");
-            return Err("Failed to get system temporary folder!".to_string())
-        }
-    }
+    let mut tmp_dir = env::temp_dir();
+    tmp_dir.push("monarch");
+    tmp_dir.push("downloads");
     
     if let Err(e) = create_dir(&tmp_dir) {
         error!("Failed to create new directory: {} (download_and_run()) | Message: {:?}", tmp_dir.display(), e);
@@ -81,35 +72,19 @@ pub async fn download_and_run(url: &str) -> Result<(), String> {
     match request_data(url).await {
         Ok(response) => {
             
-            let installer_pathbuf: PathBuf = create_file_path(&response, &tmp_dir).await;
-            match installer_pathbuf.to_str() {
-                Some(path) => { installer_path = path; }
-                None => {
-                    return Err("Failed to parse installer path to string!".to_string())
-                }
-            }
+            let installer_path: PathBuf = create_file_path(&response, &tmp_dir).await;
 
-            info!("Downloading to: {}", installer_path);
-            write_content(&installer_pathbuf, response).await;
-    
-            let result = Command::new("PowerShell")
-                .arg(&installer_path)
-                .spawn();
-    
-            match result {
-                Ok(_) => { info!("Executing '{}'", installer_path) }
-                Err(e) => { 
-                    error!("Failed to run '{}' | Message: {:?}", installer_path, e);
-                    return Err("Failed to execute downloaded file!".to_string())
-                }
-            }
+            info!("Downloading to: {}", installer_path.display());
+            write_content(&installer_path, response).await;
+
+           return run_file(installer_path) // Returns Result<(), String> indicating how execution went
+            
         }
         Err(e) => {
             error!("Failed to get response from: {} | Message: {:?}", url, e);
             return Err("Failed to get response from url!".to_string())
         }
     }
-    Ok(())
 }
 
 /*
