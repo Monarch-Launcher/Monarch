@@ -6,8 +6,7 @@ use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use regex::Regex;
-
-use super::monarch_results::{MonarchResult, MonarchErr, MonarchErr::{IOErr, UnknownErr}};
+use core::result::Result;
 
 /*
 ---------- General functions for filesystem tasks ----------
@@ -221,10 +220,13 @@ fn time_to_remove(file: PathBuf) -> bool {
 pub fn clear_all_cache() {
     match get_resources_cache() {
         Ok(resources) => {
-            match fs::read_dir(resources) {
+            match fs::read_dir(resources.clone()) {
                 Ok(files) => {
-                    for Ok(file) in files {
-                        remove_thumbnail(file);
+                    for file in files {
+                        match file {
+                            Ok(f) => { remove_thumbnail(f); }
+                            Err(e) => { error!("Failed to read file! | Message: {:?}", e); }
+                        }
                     }
                 }
                 Err(e) => {
@@ -240,45 +242,45 @@ pub fn clear_all_cache() {
 
 /// Create a name for image file in cache directory
 /// Can be used to download image and check if an image already exists
-pub fn generate_cache_image_name(name: &str) -> MonarchResult<String, MonarchErr> {
+pub fn generate_cache_image_name(name: &str) -> Result<String, String> {
     let filename: String;
 
     match generate_image_filename(name) {
         Ok(name) => { filename = name }
-        Err(e) => { return MonarchResult::MonarchErr(UnknownErr("Failed to build name from regex!".to_string())) }
+        Err(e) => { return Err("Failed to build name from regex!".to_string()) }
     }
 
     match get_resources_cache() {
         Ok(mut dir) => {
             dir.push_str("\\");
             dir.push_str(&filename);
-            return MonarchResult::Ok(dir)
+            return Ok(dir)
         }
         Err(e) => {
             error!("Failed to get cached thumbnails folder! | Message: {}", e);
-            return MonarchResult::MonarchErr(IOErr("Failed to get cached thumbnails folder!".to_string()))
+            return Err("Failed to get cached thumbnails folder!".to_string())
         }
     }
 }
 
 /// Create a name for image file in cache directory
-pub fn generate_library_image_name(name: &str) -> MonarchResult<String, MonarchErr> {
+pub fn generate_library_image_name(name: &str) -> Result<String, String> {
     let filename: String;
 
     match generate_image_filename(name) {
         Ok(name) => { filename = name }
-        Err(e) => { return MonarchResult::MonarchErr(UnknownErr("Failed to build name from regex!".to_string())) }
+        Err(e) => { return Err("Failed to build name from regex!".to_string()) }
     }
 
     match get_resources_library() {
         Ok(mut dir) => {
             dir.push_str("\\");
             dir.push_str(&filename);
-            return MonarchResult::Ok(dir)
+            return Ok(dir)
         }
         Err(e) => {
             error!("Failed to get library thumbnails folder! (generate_library_image_name()) | Message: {}", e);
-            return MonarchResult::MonarchErr(IOErr("Failed to get library thumbnails library!".to_string()))
+            return Err("Failed to get library thumbnails library!".to_string())
         }
     }
 }

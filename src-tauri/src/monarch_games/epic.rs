@@ -4,6 +4,7 @@ use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
 use std::fs;
 use std::ffi::OsString;
+use core::result::Result;
 
 use crate::monarch_utils::{monarch_winreg::is_installed, 
                            monarch_download::{download_and_run, download_image}, 
@@ -108,13 +109,21 @@ async fn epic_store_parser(response: Response) -> Vec<MonarchGame> {
     let images: Vec<ElementRef> = document.select(&image_selector).collect();
 
     for i in 0..titles.len() {
-        let name = get_epic_name(titles[i]);
-        let image_link = get_img_link(images[i]);
-        let image_path = generate_cache_image_name(&name);
+        let name: String = get_epic_name(titles[i]);
+        let image_link: String = get_img_link(images[i]);
+        let image_path: String;
 
-        let cur_game = MonarchGame::new(&name, "unknown", "epic", "temp", &image_path);
+        match generate_cache_image_name(&name) {
+            Ok(path) => { image_path = path; }
+            Err(e) => {
+                error!("Failed to get image cache path! | Message: {:?}", e);
+                image_path = "unkown".to_string();
+            }
+        }
+
+        let cur_game: MonarchGame = MonarchGame::new(&name, "epic", "epic", "temp", &image_path);
         games.push(cur_game);
-
+        
         // Workaround for [tauri::command] not working with download_image().await in same thread 
         tokio::task::spawn(async move {
             download_image(image_link.as_str(), image_path.as_str()).await; 

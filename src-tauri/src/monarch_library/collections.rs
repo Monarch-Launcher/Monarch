@@ -24,7 +24,15 @@ impl MonarchCollection {
 
 /// Creates a new collection.
 pub fn new_collection(collection_name: String, game_ids: Vec<String>) -> Result<Value, String> {
-    let path: String = get_collections_json_path();
+    let path: String;
+    match get_collections_json_path() {
+        Ok(json_path) => { path = json_path; }
+        Err(e) => {
+            error!("Failed to get collections path! | Message: {:?}", e);
+            return Err("Failed to get collections path!".to_string())
+        }
+    }
+
     let new_collec: MonarchCollection = MonarchCollection::new(&collection_name, game_ids);
 
     match get_collections_as_struct() {
@@ -86,7 +94,14 @@ pub fn delete_collections(id: &str) -> Result<Value, String> {
 
 /// Returns JSON of collections in library
 pub fn get_collections() -> Result<Value, String> {
-    let path: String = get_collections_json_path();
+    let path: String;
+    match get_collections_json_path() {
+        Ok(json_path) => { path = json_path; }
+        Err(e) => {
+            error!("Failed to get collections path! | Message: {:?}", e);
+            return Err("Failed to get collections path!".to_string())
+        }
+    }
 
     match fs::File::open(path.clone()) {
         Ok(file) => {

@@ -25,7 +25,7 @@ pub async fn search_games(name: String) -> Vec<MonarchGame> {
 
 #[tauri::command]
 /// Returns MonarchGames from library.json
-pub async fn get_library() -> Value {
+pub async fn get_library() -> Result<Value, String> {
     games_library::get_games()
 }
 

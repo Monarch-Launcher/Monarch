@@ -7,11 +7,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use log::{info, error};
 use image;
+use core::result::Result;
 
 use super::monarch_web::request_data;
-use super::monarch_results::{MonarchResult, 
-                             MonarchErr,
-                             MonarchErr::{IOErr, SystemErr, RequestErr}};
 
 /// Creates a tmp path name for file to install.
 async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {
@@ -60,7 +58,7 @@ async fn write_content(installer_path: &PathBuf, content: Response) {
 }
 
 /// Downloads and attempts to run the downloaded file.
-pub async fn download_and_run(url: &str) -> MonarchResult<(), MonarchErr> {
+pub async fn download_and_run(url: &str) -> Result<(), String> {
     let system_tmp_dir = env::temp_dir();
     let tmp_dir: PathBuf;
     let installer_path: &str;
@@ -71,13 +69,13 @@ pub async fn download_and_run(url: &str) -> MonarchResult<(), MonarchErr> {
         }
         None => {
             error!("Failed to convert system temporary folder name to string! (download_and_run())");
-            return MonarchResult::MonarchErr(IOErr("Failed to get system temporary folder!".to_string()))
+            return Err("Failed to get system temporary folder!".to_string())
         }
     }
     
     if let Err(e) = create_dir(&tmp_dir) {
         error!("Failed to create new directory: {} (download_and_run()) | Message: {:?}", tmp_dir.display(), e);
-        return MonarchResult::MonarchErr(IOErr("Failed to create temporary directory!".to_string()))
+        return Err("Failed to create temporary directory!".to_string())
     }
 
     match request_data(url).await {
@@ -87,7 +85,7 @@ pub async fn download_and_run(url: &str) -> MonarchResult<(), MonarchErr> {
             match installer_pathbuf.to_str() {
                 Some(path) => { installer_path = path; }
                 None => {
-                    return MonarchResult::MonarchErr(IOErr("Failed to parse installer path to string!".to_string()))
+                    return Err("Failed to parse installer path to string!".to_string())
                 }
             }
 
@@ -102,16 +100,16 @@ pub async fn download_and_run(url: &str) -> MonarchResult<(), MonarchErr> {
                 Ok(_) => { info!("Executing '{}'", installer_path) }
                 Err(e) => { 
                     error!("Failed to run '{}' | Message: {:?}", installer_path, e);
-                    return MonarchResult::MonarchErr(SystemErr("Failed to execute downloaded file!".to_string()))
+                    return Err("Failed to execute downloaded file!".to_string())
                 }
             }
         }
         Err(e) => {
             error!("Failed to get response from: {} | Message: {:?}", url, e);
-            return MonarchResult::MonarchErr(RequestErr("Failed to get response from url!".to_string()))
+            return Err("Failed to get response from url!".to_string())
         }
     }
-    MonarchResult::Ok(())
+    Ok(())
 }
 
 /*

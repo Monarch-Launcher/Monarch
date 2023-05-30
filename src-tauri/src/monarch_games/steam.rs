@@ -4,6 +4,7 @@ use scraper::{ElementRef, Html, Selector};
 use std::io::Error;
 use std::process::{Child, Command};
 use tokio;
+use core::result::Result;
 
 use super::monarchgame::MonarchGame;
 use crate::monarch_utils::{
@@ -13,6 +14,7 @@ use crate::monarch_utils::{
     monarch_winreg::is_installed,
     monarch_vdf
 };
+
 
 /*
 ---------- Public functions ----------
@@ -61,9 +63,7 @@ pub fn download_game(name: &str, id: &str) {
         }
         Err(e) => {
             error!(
-                "Failed to run steam installer: {}(Game: {}) | Message: {:?}",
-                game_command, name, e
-            );
+                "Failed to run steam installer: {}(Game: {}) | Message: {:?}", game_command, name, e);
         }
     }
 }
@@ -145,10 +145,18 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
     let ids: Vec<ElementRef> = document.select(&id_selector).collect();
 
     for i in 0..titles.len() {
-        let name = get_steam_name(titles[i]);
-        let platform_id = get_steamid(ids[i]);
-        let image_link = get_img_link(&platform_id);
-        let image_path = generate_cache_image_name(&name);
+        let name: String = get_steam_name(titles[i]);
+        let platform_id: String = get_steamid(ids[i]);
+        let image_link: String = get_img_link(&platform_id);
+        let image_path: String;
+        
+        match generate_cache_image_name(&name) {
+            Ok(path) => { image_path = path; } 
+            Err(e) => {
+                error!("Failed to get cache image path! | Message: {:?}", e);
+                image_path = "unkown".to_string();
+            }
+        }
 
         let cur_game = MonarchGame::new(&name, "steam", &platform_id, "temp", &image_path);
         games.push(cur_game);
@@ -177,8 +185,16 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
 
             if name_refs.len() >= 1 {
                 let name = get_steam_name(name_refs[0]);
-                let image_path = generate_library_image_name(&name);
                 let image_link = get_img_link(&id);
+                let image_path: String;
+        
+                match generate_library_image_name(&name) {
+                    Ok(path) => { image_path = path; } 
+                    Err(e) => {
+                        error!("Failed to get library image path! | Message: {:?}", e);
+                        image_path = "unkown".to_string();
+                    }
+                }
 
                 let game: MonarchGame = MonarchGame::new(&name, "steam", &id, "temp", &image_path);
                 games.push(game);

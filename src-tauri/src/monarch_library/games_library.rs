@@ -5,18 +5,37 @@ use serde_json::{value::Value, json};
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_fs::{write_json_content, get_library_json_path};
 
-pub fn write_games(games: Vec<MonarchGame>) {
-    let path = get_library_json_path();
+pub fn write_games(games: Vec<MonarchGame>) -> Result<(), String> {
+    let path: String;
+
+    match get_library_json_path() {
+        Ok(json_path) => { path = json_path; }
+        Err(e) => {
+            error!("Failed to get path to library.json! | Message: {:?}", e);
+            return Err("Failed to get path to library.json!".to_string())
+        } 
+    }
 
     if let Err(e) = write_json_content(json!(games), &path) {
         error!("Failed to write new library to: {} | Message: {:?}", path, e);
+        return Err("Failed to write content to library.json!".to_string())
     }
+
+    Ok(())
 }
 
 /// Returns JSON of games from library
-pub fn get_games() -> Value {
+pub fn get_games() -> Result<Value, String> {
     let mut games: Value = json!({});
-    let path: String = get_library_json_path();
+    let path: String;
+
+    match get_library_json_path() {
+        Ok(json_path) => { path = json_path; }
+        Err(e) => {
+            error!("Failed to get path to library.json! | Message: {:?}", e);
+            return Err("Failed to get path to library.json!".to_string())
+        } 
+    }
 
     match fs::File::open(path.clone()) {
         Ok(file) => {
@@ -24,13 +43,15 @@ pub fn get_games() -> Value {
                 Ok(json_content) => { games = json_content }
                 Err(e) => {
                     error!("Failed to parse json content! | Message: {:?}", e);
+                    return Err("Failed to parse library.json content!".to_string())
                 }
             }
         }
         Err(e) => {
             error!("Failed to open file: {} | Message: {:?}", path, e);
+            return Err("Failed to open library.json!".to_string())
         }
     }
 
-    return games
+    return Ok(games)
 }
