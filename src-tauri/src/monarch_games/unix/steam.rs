@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_utils::{
     monarch_download::{download_and_run, download_image},
-    monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists},
+    monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists, get_app_data_path},
     monarch_web::request_data,
     monarch_vdf
 };
@@ -120,16 +120,22 @@ pub async fn get_library() -> Vec<MonarchGame> {
         info!("Steam not installed! Skipping...");
         return Vec::new();
     }
-
-    let found_games: Vec<String> = monarch_vdf::parse_library_file("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
-    let games: Vec<MonarchGame> = library_steam_game_parser(found_games).await;
-
-    return games;
+    
+    let found_games: Vec<String>;
+    match get_default_location() {
+        Ok(path) => { found_games = monarch_vdf::parse_library_file(path); }
+        Err(e) => {
+            error!("Failed to get default path to Steam library.vdf! | Message: {:?}", e);
+            found_games = Vec::new();
+        }   
+    }
+    
+    return library_steam_game_parser(found_games).await;
 }
 
 
 /// Returns whether or not Steam launcher is installed
-fn steam_is_installed() -> Result<bool, String> {
+fn steam_is_installed() -> bool {
     let result: Result<Output, Error> = Command::new("find")
                                                 .arg("/usr/bin")
                                                 .arg("-name")
@@ -138,16 +144,16 @@ fn steam_is_installed() -> Result<bool, String> {
 
     match result {
         Ok(output) => {
-            if output.stdout.contains(String::from("steam")) {
-                return Ok(true);
+            if !output.stdout.is_empty() { // Assume that if result is empty Steam is not on System
+                return true
             }
         }
         Err(e) => {
             error!("Failed to search for Steam on system using 'find /usr/bin -name steam' | Message: {:?}", e);
-            return Err("Failed to find Steam using 'find'!".to_string())
+            info!("Assuming Steam is not installed on System.");
         }
     }
-    return Ok(false)
+    return false
 }
 
 /// Returns a HashMap of games with their respective Steam IDs.
@@ -255,4 +261,19 @@ fn get_img_link(id: &str) -> String {
     target.push_str("/header.jpg");
 
     return target;
+}
+
+fn get_default_location() -> Result<PathBuf, String> {
+    match get_app_data_path() {
+        Ok(mut path) => {
+            path.pop();
+            path.push(".steam/steam/steamapps/libraryfolders.vdf");
+
+            return Ok(path)
+        }
+        Err(e) => {
+            error!("Failed to get $HOME directory! | Message: {:?}", e);
+            return Err("Failed to get $HOME directory!".to_string())
+        }
+    }
 }

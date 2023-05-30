@@ -11,3 +11,13 @@ pub async fn open_logs() {
            .spawn()
            .unwrap();
 }
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+pub async fn open_logs() {
+   let path: PathBuf = get_log_dir();
+   Command::new("xdg-open")
+           .arg(path)
+           .spawn()
+           .unwrap();
+}

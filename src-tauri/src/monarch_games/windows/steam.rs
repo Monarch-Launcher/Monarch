@@ -122,7 +122,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
         return Vec::new();
     }
 
-    let found_games: Vec<String> = monarch_vdf::parse_library_file("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
+    let found_games: Vec<String> = monarch_vdf::parse_library_file(PathBuf::from("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf"));
     let games: Vec<MonarchGame> = library_steam_game_parser(found_games).await;
 
     return games;

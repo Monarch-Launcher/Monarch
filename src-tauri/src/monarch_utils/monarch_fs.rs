@@ -61,7 +61,7 @@ pub fn check_resources_folder() {
     }
 }
 
-/// Gets the users %appdata% directory and adds \Monarch to the end of it to generate Monarch path
+/// Gets the users %appdata% or $HOME directory and adds Monarch to the end of it to generate Monarch path
 pub fn get_app_data_path() -> Result<PathBuf, VarError> {
     let appdata_path_res: Result<String, VarError>;
     let folder_name: &str;
