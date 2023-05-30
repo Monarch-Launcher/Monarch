@@ -1,8 +1,8 @@
 use log::{error, info};
 use reqwest::Response;
 use scraper::{ElementRef, Html, Selector};
-use std::io::Error;
-use std::process::{Child, Command};
+use std::io::{Error, stdout};
+use std::process::{Child, Command, Output};
 use tokio;
 use core::result::Result;
 use std::path::PathBuf;
@@ -129,8 +129,25 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
 
 /// Returns whether or not Steam launcher is installed
-fn steam_is_installed() -> bool {
-    return false;
+fn steam_is_installed() -> Result<bool, String> {
+    let result: Result<Output, Error> = Command::new("find")
+                                                .arg("/usr/bin")
+                                                .arg("-name")
+                                                .arg("steam")
+                                                .output();
+
+    match result {
+        Ok(output) => {
+            if output.stdout.contains(String::from("steam")) {
+                return Ok(true);
+            }
+        }
+        Err(e) => {
+            error!("Failed to search for Steam on system using 'find /usr/bin -name steam' | Message: {:?}", e);
+            return Err("Failed to find Steam using 'find'!".to_string())
+        }
+    }
+    return Ok(false)
 }
 
 /// Returns a HashMap of games with their respective Steam IDs.

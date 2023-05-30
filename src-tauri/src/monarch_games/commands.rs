@@ -1,5 +1,5 @@
 use serde_json::value::Value;
-use log::{info, error};
+use log::error;
 
 #[cfg(target_os = "windows")]
 use super::windows::{steam, blizzard, epic};
