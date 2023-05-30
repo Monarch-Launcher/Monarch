@@ -6,11 +6,11 @@ use std::fs;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use crate::monarch_utils::{monarch_winreg::is_installed, 
+use crate::monarch_utils::{monarch_winreg::is_installed,
                            monarch_download::{download_and_run, download_image}, 
                            monarch_web::request_data,
                            monarch_fs::{generate_cache_image_name, get_app_data_path}};
-use super::monarchgame::MonarchGame;
+use super::super::monarchgame::MonarchGame;
 
 /// Installs Epic games launcher if not already installed
 pub async fn get_epic() {

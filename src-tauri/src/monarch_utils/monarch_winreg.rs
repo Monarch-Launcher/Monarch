@@ -1,8 +1,6 @@
-#[cfg(target_os = "windows")]
 use winreg::enums::*;
 use winreg::RegKey;
 
-#[cfg(target_os = "windows")]
 /// Return whether a program is found in windows registery.
 /// Only checks under Software of each user in HKEY_USERS
 pub fn is_installed(program_name: &str) -> bool {

@@ -7,7 +7,9 @@ mod monarch_utils;
 mod monarch_games;
 mod monarch_library;
 
+#[cfg(target_os = "windows")]
 use monarch_utils::commands::open_logs;
+
 use monarch_utils::monarch_fs::{check_appdata_folder,
                                 check_resources_folder};
 use monarch_utils::monarch_logger::init_logger;
@@ -43,7 +45,6 @@ fn main() {
             update_collection,
             delete_collection,
             get_collections,
-            open_logs
             ])
         .run(tauri::generate_context!());
 

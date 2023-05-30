@@ -7,12 +7,11 @@ use tokio;
 use core::result::Result;
 use std::path::PathBuf;
 
-use super::monarchgame::MonarchGame;
+use super::super::monarchgame::MonarchGame;
 use crate::monarch_utils::{
     monarch_download::{download_and_run, download_image},
     monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists},
     monarch_web::request_data,
-    monarch_winreg::is_installed,
     monarch_vdf
 };
 
@@ -131,7 +130,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
 /// Returns whether or not Steam launcher is installed
 fn steam_is_installed() -> bool {
-    return is_installed(r"Valve\Steam");
+    return false;
 }
 
 /// Returns a HashMap of games with their respective Steam IDs.

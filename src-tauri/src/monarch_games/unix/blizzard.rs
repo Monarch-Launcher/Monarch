@@ -5,10 +5,13 @@ use std::collections::HashMap;
 use core::result::Result;
 use std::path::PathBuf;
 
-use crate::monarch_utils::{monarch_winreg::is_installed, monarch_download::download_and_run};
+use crate::monarch_utils::monarch_download::download_and_run;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists};
 use crate::monarch_utils::monarch_download::download_image;
-use super::monarchgame::MonarchGame;
+use super::super::monarchgame::MonarchGame;
+
+#[cfg(target_os = "windows")]
+use crate::monarch_utils::monarch_winreg::is_installed;
 
 /*
 This is hopefully not a long time solution. For now running battlenet://<game> only opens battlenet page and doesn't run game.
@@ -26,6 +29,7 @@ Here are game codes:
 ---------- Public Blizzard related functions ----------
 */
 
+#[cfg(target_os = "windows")]
 /// Installs Battle.net launcher
 pub async fn get_blizzard() {
     let is_installed: bool = blizzard_is_installed();
@@ -43,21 +47,7 @@ pub async fn get_blizzard() {
 
 /// Attempts to run Blizzard game
 pub fn launch_game(name: &str, id: &str) {
-    let mut game_command: String = String::from("battlenet://");
-    game_command.push_str(id);
-
-    let exec_result: Result<Child, Error> = Command::new("PowerShell")
-                                                    .arg("start")
-                                                    .arg(&game_command)
-                                                    .spawn(); // Run steam installer for specified game
-    match exec_result {
-        Ok(_) => {
-            info!("Launching game: {}", name);
-        }
-        Err(e) => {
-            error!("Failed to launch game: {}({}) | Message: {:?}", game_command, name, e);
-        }
-    }
+    
 }
 
 /// Attempt to find blizzard game matching search term
@@ -82,11 +72,6 @@ pub fn find_game(name: &str) -> Vec<MonarchGame> {
 /// Finds local steam library installed on current system
 pub async fn get_library() -> Vec<MonarchGame> {
     let games: Vec<MonarchGame> = Vec::new();
-    
-    if !blizzard_is_installed() {
-        info!("Battle.net not installed! Skipping...");
-        return games
-    }
 
     return games
 }
@@ -97,7 +82,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
 /// Sepcifically checks if Battle.net is installed
 fn blizzard_is_installed() -> bool {
-    return is_installed(r"Blizzard Entertainment\Battle.net");
+    return false;
 }
 
 /// Creates and returns Blizzard owned MonarchGame
