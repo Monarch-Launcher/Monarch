@@ -3,6 +3,7 @@ use std::io::Error;
 use std::process::{Command, Child};
 use std::collections::HashMap;
 use core::result::Result;
+use std::path::PathBuf;
 
 use crate::monarch_utils::{monarch_winreg::is_installed, monarch_download::download_and_run};
 use crate::monarch_utils::monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists};
@@ -34,7 +35,9 @@ pub async fn get_blizzard() {
     }
     else {
         let target_url: &str = "https://eu.battle.net/download/getInstaller?os=win&installer=Battle.net-Setup.exe";
-        download_and_run(target_url).await;
+        if let Err(e) = download_and_run(target_url).await {
+            error!("Error occured while attempting to download and run Battle.net installer! | Message: {:?}", e);
+        }
     }
 }
 
@@ -99,7 +102,6 @@ fn blizzard_is_installed() -> bool {
 
 /// Creates and returns Blizzard owned MonarchGame
 fn get_blizz_game(name: &str, is_library: bool) -> Result<MonarchGame, String> {
-    let path: String;
     let names_and_ids: HashMap<&str, &str> = HashMap::from([
         ("Destiny 2", "DST2"),
         ("Diablo 3", "D3"),
@@ -120,13 +122,15 @@ fn get_blizz_game(name: &str, is_library: bool) -> Result<MonarchGame, String> {
         ("World of Warcraft", "https://wallpaperaccess.com/full/1692125.jpg")
     ]);
 
+    let path: PathBuf;
+
     if is_library {
         match generate_library_image_name(name) {
             Ok(image_path) => {
                 path = image_path;
             }
             Err(e) => {
-                path = "unknown".to_string();
+                path = PathBuf::from("unknown");
                 error!("Failed to get library image name! | Message: {:?}", e);
             }
         }
@@ -136,14 +140,13 @@ fn get_blizz_game(name: &str, is_library: bool) -> Result<MonarchGame, String> {
                 path = image_path;
             }
             Err(e) => {
-                path = "unknown".to_string();
+                path = PathBuf::from("unknown");
                 error!("Failed to get cache image name! | Message: {:?}", e);
             }
         }
     }
 
     let link: &str;
-    let path_clone: String = path.clone();
     match names_and_links.get(name) {
         Some(map_link) => { link = map_link; }
         None => {
@@ -152,12 +155,13 @@ fn get_blizz_game(name: &str, is_library: bool) -> Result<MonarchGame, String> {
         }
     }
 
-    if !path_exists(&path_clone) { // Only download if image is not in cache dir
+    let path_clone: PathBuf = path.clone();
+    if !path_exists(path.clone()) { // Only download if image is not in cache dir
         // Workaround for [tauri::command] not working with download_image().await in same thread 
         tokio::task::spawn(async move {
-            download_image(link, &path_clone).await; 
+            download_image(link, path_clone).await; 
         });
     }
 
-    return Ok(MonarchGame::new(name, "blizzard", names_and_ids.get(name).unwrap(), "temp", &path))
+    return Ok(MonarchGame::new(name, "blizzard", names_and_ids.get(name).unwrap(), "temp", path.to_str().unwrap()))
 }

@@ -5,6 +5,7 @@ use std::io::Error;
 use std::process::{Child, Command};
 use tokio;
 use core::result::Result;
+use std::path::PathBuf;
 
 use super::monarchgame::MonarchGame;
 use crate::monarch_utils::{
@@ -28,7 +29,9 @@ pub async fn get_steam() {
         info!("Steam already installed!")
     } else {
         let target_url: &str = "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe";
-        download_and_run(target_url).await;
+        if let Err(e) = download_and_run(target_url).await {
+            error!("Error occured while attempting to download and run Steam installer! | Message: {:?}", e);
+        }
     }
 }
 
@@ -148,23 +151,23 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
         let name: String = get_steam_name(titles[i]);
         let platform_id: String = get_steamid(ids[i]);
         let image_link: String = get_img_link(&platform_id);
-        let image_path: String;
+        let image_path: PathBuf;
         
         match generate_cache_image_name(&name) {
             Ok(path) => { image_path = path; } 
             Err(e) => {
                 error!("Failed to get cache image path! | Message: {:?}", e);
-                image_path = "unkown".to_string();
+                image_path = PathBuf::from("unknown");
             }
         }
 
-        let cur_game = MonarchGame::new(&name, "steam", &platform_id, "temp", &image_path);
+        let cur_game = MonarchGame::new(&name, "steam", &platform_id, "temp", image_path.to_str().unwrap());
         games.push(cur_game);
 
-        if !path_exists(&image_path) { // Only download if image is not in cache dir
+        if !path_exists(image_path.clone()) { // Only download if image is not in cache dir
             // Workaround for [tauri::command] not working with download_image().await in same thread 
             tokio::task::spawn(async move {
-                download_image(image_link.as_str(), image_path.as_str()).await; 
+                download_image(image_link.as_str(), image_path).await; 
             });
         }
     }
@@ -184,26 +187,26 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
             let name_refs: Vec<ElementRef> = document.select(&title_selector).collect();
 
             if name_refs.len() >= 1 {
-                let name = get_steam_name(name_refs[0]);
-                let image_link = get_img_link(&id);
-                let image_path: String;
+                let name: String = get_steam_name(name_refs[0]);
+                let image_link: String = get_img_link(&id);
+                let image_path: PathBuf;
         
                 match generate_library_image_name(&name) {
                     Ok(path) => { image_path = path; } 
                     Err(e) => {
                         error!("Failed to get library image path! | Message: {:?}", e);
-                        image_path = "unkown".to_string();
+                        image_path = PathBuf::from("unknown");
                     }
                 }
 
-                let game: MonarchGame = MonarchGame::new(&name, "steam", &id, "temp", &image_path);
+                let game: MonarchGame = MonarchGame::new(&name, "steam", &id, "temp", image_path.to_str().unwrap());
                 games.push(game);
                 info!("Found Steam game: {}", name);
 
-                if !path_exists(&image_path) { // Only download if image is not in library dir
+                if !path_exists(image_path.clone()) { // Only download if image is not in library dir
                     // Workaround for [tauri::command] not working with download_image().await in same thread 
                     tokio::task::spawn(async move {
-                        download_image(image_link.as_str(), image_path.as_str()).await; 
+                        download_image(image_link.as_str(), image_path).await; 
                     });
                 
                 }

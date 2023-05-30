@@ -117,7 +117,7 @@ pub async fn download_and_run(url: &str) -> Result<(), String> {
 */
 
 /// Tells Monarch to attempt to download url content as image
-pub async fn download_image(url: &str, path: &str) {
+pub async fn download_image(url: &str, path: PathBuf) {
     let request: Result<Response, reqwest::Error> = request_data(url).await;
     let thumbnail_path: PathBuf = PathBuf::from(path);
 

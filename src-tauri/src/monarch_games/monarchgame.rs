@@ -28,30 +28,6 @@ impl MonarchGame {
             thumbnail_path: thumbnail_path.to_string(),
         }
     }
-
-    pub fn get_name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn get_id(&self) -> &str {
-        &self.id
-    }
-
-    pub fn get_platform(&self) -> &str {
-        &self.platform
-    }
-
-    pub fn get_platform_id(&self) -> &str {
-        &self.platform_id
-    }
-
-    pub fn get_exec_path(&self) -> &str {
-        &self.executable_path
-    }
-
-    pub fn get_thumbnail_path(&self) -> &str {
-        &self.thumbnail_path
-    }
 }
 
 /// Creates a unique hash for a MonarchGame based on its name, platform and platform_id
