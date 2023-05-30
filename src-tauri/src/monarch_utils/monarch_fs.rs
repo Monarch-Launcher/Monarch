@@ -131,7 +131,7 @@ pub fn path_exists(path: PathBuf) -> bool {
 
 /// Attempts to create an empty directory and returns result
 pub fn create_dir(path: PathBuf) -> io::Result<()> {
-    if let Err(e) = fs::create_dir(path.as_path()) {
+    if let Err(e) = fs::create_dir_all(path.as_path()) {
         error!("Failed to create new directory: {} | Message: {:?}", path.display(), e);
         return Err(e)
     }

@@ -1,16 +1,16 @@
 use reqwest;
 use reqwest::Response;
 use std::env;
-use std::fs::{File, create_dir};
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use std::process::Command;
 use log::{info, error};
 use image;
 use core::result::Result;
 
 use super::monarch_web::request_data;
 use super::monarch_run::run_file;
+use super::monarch_fs::create_dir;
 
 /// Creates a tmp path name for file to install.
 async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {
@@ -64,7 +64,7 @@ pub async fn download_and_run(url: &str) -> Result<(), String> {
     tmp_dir.push("monarch");
     tmp_dir.push("downloads");
     
-    if let Err(e) = create_dir(&tmp_dir) {
+    if let Err(e) = create_dir(tmp_dir.clone()) {
         error!("Failed to create new directory: {} (download_and_run()) | Message: {:?}", tmp_dir.display(), e);
         return Err("Failed to create temporary directory!".to_string())
     }
@@ -78,6 +78,33 @@ pub async fn download_and_run(url: &str) -> Result<(), String> {
             write_content(&installer_path, response).await;
 
            return run_file(installer_path) // Returns Result<(), String> indicating how execution went
+            
+        }
+        Err(e) => {
+            error!("Failed to get response from: {} | Message: {:?}", url, e);
+            return Err("Failed to get response from url!".to_string())
+        }
+    }
+}
+
+pub async fn download_file(url: &str) -> Result<PathBuf, String> {
+    let mut tmp_dir = env::temp_dir();
+    tmp_dir.push("monarch");
+    tmp_dir.push("downloads");
+    
+    if let Err(e) = create_dir(tmp_dir.clone()) {
+        error!("Failed to create new directory: {} (download_file()) | Message: {:?}", tmp_dir.display(), e);
+        return Err("Failed to create temporary directory!".to_string())
+    }
+
+    match request_data(url).await {
+        Ok(response) => {
+            
+            let installer_path: PathBuf = create_file_path(&response, &tmp_dir).await;
+
+            info!("Downloading to: {}", installer_path.display());
+            write_content(&installer_path, response).await;
+            return Ok(installer_path)
             
         }
         Err(e) => {

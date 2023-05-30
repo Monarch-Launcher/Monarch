@@ -94,3 +94,8 @@ pub fn purchase_game(name: String, platform_id: String, platform: String) {
         _ => {}
     }
 }
+
+#[tauri::command]
+pub async fn get_battlenet() {
+    blizzard::get_blizzard().await.unwrap()
+}

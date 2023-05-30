@@ -7,7 +7,6 @@ mod monarch_utils;
 mod monarch_games;
 mod monarch_library;
 
-
 use monarch_utils::commands::open_logs;
 use monarch_utils::monarch_fs::{check_appdata_folder,
                                 check_resources_folder};
@@ -17,7 +16,8 @@ use monarch_games::commands::{search_games,
                               get_library,  
                               launch_game, 
                               download_game, 
-                              purchase_game};
+                              purchase_game,
+                              get_battlenet};
 use monarch_library::commands::{create_collection,
                                 update_collection,
                                 delete_collection,
@@ -45,6 +45,7 @@ fn main() {
             delete_collection,
             get_collections,
             open_logs,
+            get_battlenet
             ])
         .run(tauri::generate_context!());
 

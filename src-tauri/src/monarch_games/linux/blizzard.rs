@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use core::result::Result;
 use std::path::PathBuf;
 
-use crate::monarch_utils::monarch_download::download_and_run;
+use crate::monarch_utils::monarch_download::{download_and_run, download_image, download_file};
 use crate::monarch_utils::monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists};
-use crate::monarch_utils::monarch_download::download_image;
+use crate::monarch_utils::monarch_run::run_file_wine;
 use super::super::monarchgame::MonarchGame;
 
 #[cfg(target_os = "windows")]
@@ -30,16 +30,23 @@ Here are game codes:
 */
 
 /// Installs Battle.net launcher
-pub async fn get_blizzard() {
+pub async fn get_blizzard() -> Result<(), String> {
     let is_installed: bool = blizzard_is_installed();
 
     if is_installed {
         info!("Battle.net already installed!");
+        return Ok(())
     }
     else {
         let target_url: &str = "https://eu.battle.net/download/getInstaller?os=win&installer=Battle.net-Setup.exe";
-        if let Err(e) = download_and_run(target_url).await {
-            error!("Error occured while attempting to download and run Battle.net installer! | Message: {:?}", e);
+        match download_file(target_url).await {
+            Ok(file) => {
+                return run_file_wine(file)
+            }
+            Err(e) => {
+                error!("Error occured while attempting to download and run Battle.net installer! | Message: {:?}", e);
+                return Err("Filed to download battle.net".to_string())
+            }
         }
     }
 }
@@ -47,6 +54,13 @@ pub async fn get_blizzard() {
 /// Attempts to run Blizzard game
 pub fn launch_game(name: &str, id: &str) {
     
+}
+
+/// Finds local steam library installed on current system
+pub async fn get_library() -> Vec<MonarchGame> {
+    let games: Vec<MonarchGame> = Vec::new();
+
+    return games
 }
 
 /// Attempt to find blizzard game matching search term
@@ -64,13 +78,6 @@ pub fn find_game(name: &str) -> Vec<MonarchGame> {
             }
         }
     }
-
-    return games
-}
-
-/// Finds local steam library installed on current system
-pub async fn get_library() -> Vec<MonarchGame> {
-    let games: Vec<MonarchGame> = Vec::new();
 
     return games
 }

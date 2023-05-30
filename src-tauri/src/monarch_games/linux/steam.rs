@@ -27,27 +27,11 @@ pub async fn get_steam() {
     if is_installed {
         info!("Steam already installed!")
     } else {
-        let target_url: &str = "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe";
-        if let Err(e) = download_and_run(target_url).await {
-            error!("Error occured while attempting to download and run Steam installer! | Message: {:?}", e);
-        }
+        info!("Can't automatically install Steam on Linux! You need to install it yourself via your package manager.")
     }
 }
 
-/// Search function to find steam games
-pub async fn find_game(name: &str) -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-    let mut target: String = String::from("https://store.steampowered.com/search/?term=");
-    target.push_str(name);
 
-    info!("Searching: {}", target);
-
-    if let Ok(response) = request_data(&target).await {
-        games = steam_store_parser(response).await;
-    }
-
-    return games;
-}
 
 /// Opens the steam installer for a steam game
 pub fn download_game(name: &str, id: &str) {
@@ -154,6 +138,21 @@ fn steam_is_installed() -> bool {
         }
     }
     return false
+}
+
+/// Search function to find steam games
+pub async fn find_game(name: &str) -> Vec<MonarchGame> {
+    let mut games: Vec<MonarchGame> = Vec::new();
+    let mut target: String = String::from("https://store.steampowered.com/search/?term=");
+    target.push_str(name);
+
+    info!("Searching: {}", target);
+
+    if let Ok(response) = request_data(&target).await {
+        games = steam_store_parser(response).await;
+    }
+
+    return games;
 }
 
 /// Returns a HashMap of games with their respective Steam IDs.
