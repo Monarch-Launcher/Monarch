@@ -4,8 +4,8 @@ use log::error;
 #[cfg(target_os = "windows")]
 use super::windows::{steam, blizzard, epic};
 
-#[cfg(not(target_os = "windows"))]
-use super::unix::{steam, blizzard, epic};
+#[cfg(target_os = "linux")]
+use super::linux::{steam, blizzard, epic};
 
 use super::monarchgame::MonarchGame;
 use crate::monarch_library::games_library;

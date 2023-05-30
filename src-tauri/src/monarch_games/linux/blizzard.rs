@@ -29,7 +29,6 @@ Here are game codes:
 ---------- Public Blizzard related functions ----------
 */
 
-#[cfg(target_os = "windows")]
 /// Installs Battle.net launcher
 pub async fn get_blizzard() {
     let is_installed: bool = blizzard_is_installed();

@@ -14,7 +14,7 @@ use core::result::Result;
 
 /// Create Monarch folder in users %appdata% directory
 pub fn check_appdata_folder() {
-    let appdata_path = get_app_data_path();
+    let appdata_path: Result<PathBuf, VarError> = get_app_data_path();
 
     match appdata_path {  
         Ok(path) =>  {
@@ -35,9 +35,9 @@ pub fn check_appdata_folder() {
 /// Folder to store image resources for game thumbnails etc...
 pub fn check_resources_folder() {
     // Can't be bothered rn, and honestly if it passes the appdata check this should pass
-    let resources_dir = get_resources_path().unwrap(); 
-    let cache_dir = get_resources_cache().unwrap();
-    let lib_img_dir = get_resources_library().unwrap();
+    let resources_dir: PathBuf = get_resources_path().unwrap(); 
+    let cache_dir: PathBuf = get_resources_cache().unwrap();
+    let lib_img_dir: PathBuf = get_resources_library().unwrap();
         
     if !path_exists(resources_dir.clone()) {
         if let Err(e) = create_dir(resources_dir.clone()) {
