@@ -63,16 +63,21 @@ pub fn check_resources_folder() {
 
 /// Gets the users %appdata% directory and adds \Monarch to the end of it to generate Monarch path
 pub fn get_app_data_path() -> Result<PathBuf, VarError> {
-    #[cfg(target_os="windows")]
-    let appdata_path_res = std::env::var("APPDATA");
-    
-    #[cfg(not(target_os="windows"))]
-    let appdata_path_res = std::env::var("HOME");
+    let appdata_path_res: Result<String, VarError>;
+    let folder_name: &str;
+
+    if cfg!(windows) {
+        appdata_path_res = std::env::var("APPDATA");
+        folder_name = "Monarch";
+    } else { // Easiest way to avoid "possibly-uninitialized variables"
+        appdata_path_res = std::env::var("HOME");
+        folder_name= ".monarch";
+    }
 
     match appdata_path_res {
         Ok(appdata_path) => {
             let mut path: PathBuf = PathBuf::from(appdata_path);
-            path = path.join("Monarch");
+            path = path.join(folder_name);
             return Ok(path) 
         },
         Err(e) => Err(e)
@@ -155,7 +160,7 @@ pub fn get_resources_path() -> Result<PathBuf, VarError> {
 
 /// Returns path to store temporary images
 pub fn get_resources_cache() -> Result<PathBuf, VarError> {
-    match get_app_data_path() {
+    match get_resources_path() {
         Ok(mut path) => {
             path = path.join("cache");
             return Ok(path)
@@ -169,7 +174,7 @@ pub fn get_resources_cache() -> Result<PathBuf, VarError> {
 
 /// Returns path to store thumbnails for games in library
 pub fn get_resources_library() -> Result<PathBuf, VarError> {
-    match get_app_data_path() {
+    match get_resources_path() {
         Ok(mut path) => {
             path = path.join("library");
             return Ok(path)
