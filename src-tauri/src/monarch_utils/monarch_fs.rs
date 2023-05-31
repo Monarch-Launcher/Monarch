@@ -96,11 +96,25 @@ pub fn get_home_path() -> Result<PathBuf, String> {
     }
 }
 
+/// Returns path to settings.json
+pub fn get_settings_json_path() -> Result<PathBuf, VarError> {
+    match get_app_data_path() {
+        Ok(mut path) => {
+            path.push("settings.json");
+            return Ok(path)
+        }
+        Err(e) => {
+            error!("Failed to get %appdata% path! | Message: {:?}", e);
+            return Err(e)
+        }
+    }
+}
+
 /// Returns path to library.json
 pub fn get_library_json_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path = path.join("library.json");
+            path.push("library.json");
             return Ok(path)
         }
         Err(e) => {
@@ -114,7 +128,7 @@ pub fn get_library_json_path() -> Result<PathBuf, VarError> {
 pub fn get_collections_json_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path = path.join("collections.json");
+            path.push("collections.json");
             return Ok(path)
         }
         Err(e) => {
@@ -160,7 +174,7 @@ pub fn create_dir(path: PathBuf) -> io::Result<()> {
 pub fn get_resources_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path = path.join("resources");
+            path.push("resources");
             return Ok(path)
         }
         Err(e) => {
@@ -174,7 +188,7 @@ pub fn get_resources_path() -> Result<PathBuf, VarError> {
 pub fn get_resources_cache() -> Result<PathBuf, VarError> {
     match get_resources_path() {
         Ok(mut path) => {
-            path = path.join("cache");
+            path.push("cache");
             return Ok(path)
         }
         Err(e) => {
@@ -188,7 +202,7 @@ pub fn get_resources_cache() -> Result<PathBuf, VarError> {
 pub fn get_resources_library() -> Result<PathBuf, VarError> {
     match get_resources_path() {
         Ok(mut path) => {
-            path = path.join("library");
+            path.push("library");
             return Ok(path)
         }
         Err(e) => {
@@ -274,7 +288,7 @@ pub fn generate_cache_image_name(name: &str) -> Result<PathBuf, String> {
 
     match get_resources_cache() {
         Ok(mut dir) => {
-            dir = dir.join(&filename);
+            dir.push(&filename);
             return Ok(dir)
         }
         Err(e) => {
@@ -295,7 +309,7 @@ pub fn generate_library_image_name(name: &str) -> Result<PathBuf, String> {
 
     match get_resources_library() {
         Ok(mut dir) => {
-            dir = dir.join(&filename);
+            dir.push(&filename);
             return Ok(dir)
         }
         Err(e) => {
