@@ -7,6 +7,9 @@ use super::windows::{steam, blizzard, epic};
 #[cfg(target_os = "linux")]
 use super::linux::{steam, blizzard, epic};
 
+#[cfg(target_os = "macos")]
+use super::linux::{steam, blizzard, epic};
+
 use super::monarchgame::MonarchGame;
 use crate::monarch_library::games_library;
 

@@ -45,8 +45,7 @@ pub fn run_file_wine(path: PathBuf) -> Result<(), String> {
         return Err("Cannot run a file in wine in Windows!".to_string())
     }
 
-    let result: Result<Child, Error> = Command::new("sh")
-                                               .arg("wine")
+    let result: Result<Child, Error> = Command::new("wine")
                                                .arg(path.clone())
                                                .spawn();
     
