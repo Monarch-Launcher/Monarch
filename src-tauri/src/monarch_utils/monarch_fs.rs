@@ -84,6 +84,18 @@ pub fn get_app_data_path() -> Result<PathBuf, VarError> {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
+// Returns $HOME on unix systems
+pub fn get_home_path() -> Result<PathBuf, String> {
+    match std::env::var("$HOME") {
+        Ok(str_path) => { return Ok(PathBuf::from(str_path)) }
+        Err(e) => {
+            error!("Failed to get $HOME path! | Message: {:?}", e);
+            return Err("Failed to get $HOME path!".to_string())
+        }
+    }
+}
+
 /// Returns path to library.json
 pub fn get_library_json_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {

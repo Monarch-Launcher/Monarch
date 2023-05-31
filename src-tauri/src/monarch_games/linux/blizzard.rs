@@ -1,17 +1,12 @@
 use log::{info, error};
-use std::io::Error;
-use std::process::{Command, Child};
 use std::collections::HashMap;
 use core::result::Result;
 use std::path::PathBuf;
 
-use crate::monarch_utils::monarch_download::{download_and_run, download_image, download_file};
-use crate::monarch_utils::monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists};
+use crate::monarch_utils::monarch_download::{download_image, download_file};
+use crate::monarch_utils::monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists, get_home_path};
 use crate::monarch_utils::monarch_run::run_file_wine;
 use super::super::monarchgame::MonarchGame;
-
-#[cfg(target_os = "windows")]
-use crate::monarch_utils::monarch_winreg::is_installed;
 
 /*
 This is hopefully not a long time solution. For now running battlenet://<game> only opens battlenet page and doesn't run game.
@@ -52,7 +47,28 @@ pub async fn get_blizzard() -> Result<(), String> {
 }
 
 /// Attempts to run Blizzard game
-pub fn launch_game(name: &str, id: &str) {
+pub fn launch_game(_name: &str, _id: &str) -> Result<(), String> {
+    let battlenet_path: PathBuf = [".wine", "drive_c", "Program Files (x86)", "Battle.net", "Battle.net.exe"].iter().collect();
+    
+    match get_home_path() {
+        Ok(mut path) => {
+            path = path.join(battlenet_path);
+            match run_file_wine(path) {
+                Ok(_) => { 
+                    info!("Launching Battle.net!");
+                    return Ok(())
+                }
+                Err(e) => {
+                    error!("Failed to launch Battle.net! (blizzard::launch_game()) | Message: {:?}", e);
+                    return Err("Failed to launch Battle.net!".to_string())
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to get $HOME path! (blizzard::launch_game())| Message: {:?}", e);
+            return Err("Failed to get $HOME path!".to_string())
+        }
+    }
     
 }
 
@@ -88,7 +104,18 @@ pub fn find_game(name: &str) -> Vec<MonarchGame> {
 
 /// Sepcifically checks if Battle.net is installed
 fn blizzard_is_installed() -> bool {
-    return false;
+    let battlenet_path: PathBuf = [".wine", "drive_c", "Program Files (x86)", "Battle.net"].iter().collect();
+
+    match get_home_path() {
+        Ok(mut path) => {
+            path = path.join(battlenet_path);
+            return path_exists(path)
+        }
+        Err(e) => {
+            error!("Failed to get appdata folder! (blizzard_is_installed())| Message: {:?}", e);
+            return false;
+        }
+    }
 }
 
 /// Creates and returns Blizzard owned MonarchGame
