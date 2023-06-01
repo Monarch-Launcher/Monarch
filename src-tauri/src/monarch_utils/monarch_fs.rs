@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use regex::Regex;
 use core::result::Result;
+use core::result::Result;
 
 /*
 ---------- General functions for filesystem tasks ----------
@@ -25,6 +26,8 @@ pub fn check_appdata_folder() {
                 }
             }
         }
+        Err(e) => { // If Monarch fails to create its own %appdata% directory
+            println!("Something went wrong looking for %appdata% folder! \nErr: {:?} \nExiting... ", e); // Only really useful rn for debugging
         Err(e) => { // If Monarch fails to create its own %appdata% directory
             println!("Something went wrong looking for %appdata% folder! \nErr: {:?} \nExiting... ", e); // Only really useful rn for debugging
             exit(1); // Exit out of app!
@@ -148,6 +151,7 @@ pub fn create_dir(path: PathBuf) -> io::Result<()> {
         return Err(e)
     }
     Ok(())
+    Ok(())
 }
 
 /*
@@ -199,7 +203,24 @@ pub fn get_resources_library() -> Result<PathBuf, VarError> {
 }
 
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
+/// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 pub fn clear_cached_thumbnails() {
+    match get_resources_cache() {
+        Ok(cache) => {
+            if let Ok(files) = fs::read_dir(cache) {
+                for file in files {
+                    if let Ok(file_path) = file {
+                        remove_thumbnail(file_path);
+                    }       
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to get cache directory! | Message: {}", e);
+        }
+    }
+    
+}
     match get_resources_cache() {
         Ok(cache) => {
             if let Ok(files) = fs::read_dir(cache) {
@@ -221,6 +242,7 @@ pub fn clear_cached_thumbnails() {
 fn remove_thumbnail(file: DirEntry) {
     if time_to_remove(file.path()) {
         if let Err(e) = fs::remove_file(file.path()) {
+            error!("Failed to remove file: {}! | Message: {:?}", file.path().display(), e);
             error!("Failed to remove file: {}! | Message: {:?}", file.path().display(), e);
         }
     }
@@ -307,9 +329,21 @@ pub fn generate_library_image_name(name: &str) -> Result<PathBuf, String> {
 
 /// Generates a filename without any special characters or spaces
 fn generate_image_filename(name: &str) -> Result<String, regex::Error> {
+fn generate_image_filename(name: &str) -> Result<String, regex::Error> {
     let mut filename: String = String::from(name);
     filename = filename.replace(" ", "_");
 
+    match Regex::new(r"[^a-zA-Z0-9_]") {
+        Ok(re) => {
+            filename = re.replace_all(&filename, "").to_string();
+            filename.push_str(".jpg");
+            return Ok(filename)
+        }
+        Err(e) => {
+            error!("Failed to build new regex! (generate_image_filename()) | Message: {}", e);
+            return Err(e)
+        }
+    }
     match Regex::new(r"[^a-zA-Z0-9_]") {
         Ok(re) => {
             filename = re.replace_all(&filename, "").to_string();

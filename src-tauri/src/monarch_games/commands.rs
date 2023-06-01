@@ -42,9 +42,11 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     let mut steam_games: Vec<MonarchGame> = steam::get_library().await;
     let mut blizzard_games: Vec<MonarchGame> = blizzard::get_library().await;
+    let mut blizzard_games: Vec<MonarchGame> = blizzard::get_library().await;
     let mut epic_games: Vec<MonarchGame> = epic::get_library().await;
 
     games.append(&mut steam_games);
+    games.append(&mut blizzard_games);
     games.append(&mut blizzard_games);
     games.append(&mut epic_games);
 

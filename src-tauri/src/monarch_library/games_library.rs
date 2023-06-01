@@ -23,6 +23,8 @@ pub fn write_games(games: Vec<MonarchGame>) -> Result<(), String> {
     }
 
     Ok(())
+
+    Ok(())
 }
 
 /// Returns JSON of games from library
@@ -54,5 +56,6 @@ pub fn get_games() -> Result<Value, String> {
         }
     }
 
+    return Ok(games)
     return Ok(games)
 }
