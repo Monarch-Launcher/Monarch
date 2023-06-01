@@ -8,7 +8,8 @@ mod monarch_games;
 mod monarch_library;
 
 use monarch_utils::commands::open_logs;
-use monarch_utils::monarch_fs::init_monarch_fs;
+use monarch_utils::monarch_fs::{check_appdata_folder,
+                                check_resources_folder};
 use monarch_utils::monarch_logger::init_logger;
 use monarch_games::commands::{search_games, 
                               refresh_library,
@@ -24,9 +25,14 @@ use monarch_library::commands::{create_collection,
                                 delete_collection,
                                 get_collections};
 
-fn main() {
-    init_monarch_fs();
+fn init() {
+    check_appdata_folder();
     init_logger();
+    check_resources_folder();
+}
+
+fn main() {
+    init();
 
     let app_result = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![

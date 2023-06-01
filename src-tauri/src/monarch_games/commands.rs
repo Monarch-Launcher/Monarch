@@ -25,18 +25,20 @@ pub async fn search_games(name: String) -> Vec<MonarchGame> {
 
 #[tauri::command]
 /// Returns MonarchGames from library.json
-pub async fn get_library() -> Value {
+pub async fn get_library() -> Result<Value, String> {
     games_library::get_games()
 }
 
 #[tauri::command]
-/// Manually refreshes the entire Monarch library, currently only supports Steam, still WIP
+/// Manually refreshes the entire Monarch library, currently only supports Steam & Epic Games (kinda) still WIP
 pub async fn refresh_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     let mut steam_games: Vec<MonarchGame> = steam::get_library().await;
+    let mut blizzard_games: Vec<MonarchGame> = blizzard::get_library().await;
     let mut epic_games: Vec<MonarchGame> = epic::get_library().await;
 
     games.append(&mut steam_games);
+    games.append(&mut blizzard_games);
     games.append(&mut epic_games);
 
     games_library::write_games(games.clone());

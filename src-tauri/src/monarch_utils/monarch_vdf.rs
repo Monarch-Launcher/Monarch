@@ -29,18 +29,21 @@ struct LibraryLocation {
 pub fn parse_library_file(path: &str) -> Vec<String> {
     let mut games: Vec<String> = Vec::new();
 
-    if let Ok(mut content) = fs::read_to_string(path) {
-        content = content.replace("\"\"", "\" \" ");
+    match fs::read_to_string(path) {
+        Ok(mut content) =>  {
+            content = content.replace("\"\"", "\" \" ");
 
-        match from_str::<LibraryFolders>(&content) {
-            Ok(libraryfolders) => {
-                games = found_games(libraryfolders);
+            match from_str::<LibraryFolders>(&content) {
+                Ok(libraryfolders) => {
+                    games = found_games(libraryfolders);
+                }
+                Err(e) => error!("Failed to build structs from .vdf file in parse_library_file()! | Message: {:?}", e)
             }
-            Err(e) => error!("Failed to build structs from .vdf file in parse_library_file! | Message: {:?}", e)
+        }
+        Err(e) => {
+            error!("Failed to open file: {} | Message: {:?}", path, e);
         }
     }
-
-    // TODO: DEFINE BEHAVIOUR OF NOT FOUND FILE! (AND OTHER WIERD STUFF)
 
     return games
 }

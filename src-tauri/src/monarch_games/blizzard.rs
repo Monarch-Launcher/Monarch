@@ -2,6 +2,7 @@ use log::{info, error};
 use std::io::Error;
 use std::process::{Command, Child};
 use std::collections::HashMap;
+use core::result::Result;
 
 use crate::monarch_utils::{monarch_winreg::is_installed, monarch_download::download_and_run};
 use crate::monarch_utils::monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists};
@@ -66,9 +67,22 @@ pub fn find_game(name: &str) -> Vec<MonarchGame> {
         let lower_input_name: String = name.to_lowercase().replace(" ", "");
         
         if lower_known_name.contains(lower_input_name.as_str()) {
-            let game: MonarchGame = get_blizz_game(game_name, false);
-            games.push(game)
+            if let Ok(game) = get_blizz_game(game_name, false) {
+                games.push(game);
+            }
         }
+    }
+
+    return games
+}
+
+/// Finds local steam library installed on current system
+pub async fn get_library() -> Vec<MonarchGame> {
+    let games: Vec<MonarchGame> = Vec::new();
+    
+    if !blizzard_is_installed() {
+        info!("Battle.net not installed! Skipping...");
+        return games
     }
 
     return games
@@ -84,7 +98,7 @@ fn blizzard_is_installed() -> bool {
 }
 
 /// Creates and returns Blizzard owned MonarchGame
-fn get_blizz_game(name: &str, is_library: bool) -> MonarchGame {
+fn get_blizz_game(name: &str, is_library: bool) -> Result<MonarchGame, String> {
     let path: String;
     let names_and_ids: HashMap<&str, &str> = HashMap::from([
         ("Destiny 2", "DST2"),
@@ -107,22 +121,43 @@ fn get_blizz_game(name: &str, is_library: bool) -> MonarchGame {
     ]);
 
     if is_library {
-        path = generate_library_image_name(name);
+        match generate_library_image_name(name) {
+            Ok(image_path) => {
+                path = image_path;
+            }
+            Err(e) => {
+                path = "unknown".to_string();
+                error!("Failed to get library image name! | Message: {:?}", e);
+            }
+        }
     } else {
-        path = generate_cache_image_name(name);
+        match generate_cache_image_name(name) {
+            Ok(image_path) => {
+                path = image_path;
+            }
+            Err(e) => {
+                path = "unknown".to_string();
+                error!("Failed to get cache image name! | Message: {:?}", e);
+            }
+        }
     }
 
-    let link = names_and_links.get(name).unwrap().clone();
-    let send_path = path.clone();
+    let link: &str;
+    let path_clone: String = path.clone();
+    match names_and_links.get(name) {
+        Some(map_link) => { link = map_link; }
+        None => {
+            error!("Failed to get game from HashMap! (get_blizz_game())");
+            return Err("Failed to get game from known Blizzard games!".to_string())
+        }
+    }
 
-    println!("{}, {}", link, send_path);
-
-    if !path_exists(&path) { // Only download if image is not in cache dir
+    if !path_exists(&path_clone) { // Only download if image is not in cache dir
         // Workaround for [tauri::command] not working with download_image().await in same thread 
         tokio::task::spawn(async move {
-            download_image(link, &send_path).await; 
+            download_image(link, &path_clone).await; 
         });
     }
 
-    MonarchGame::new(name, "blizzard", names_and_ids.get(name).unwrap(), "temp", &path)
+    return Ok(MonarchGame::new(name, "blizzard", names_and_ids.get(name).unwrap(), "temp", &path))
 }

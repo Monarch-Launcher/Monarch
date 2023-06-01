@@ -1,9 +1,10 @@
-use log::info;
+use log::{info, error};
 use ini::Ini;
 use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
 use std::fs;
 use std::ffi::OsString;
+use core::result::Result;
 
 use crate::monarch_utils::{monarch_winreg::is_installed, 
                            monarch_download::{download_and_run, download_image}, 
@@ -36,21 +37,53 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
         games = epic_store_parser(response).await;
     }
 
+    return games
+}
+
+/// Finds local epic games library installed on current system
+pub async fn get_library() -> Vec<MonarchGame> {
+    let mut games: Vec<MonarchGame> = Vec::new();
+    let mut path: String = get_app_data_path().unwrap();
+    
+    if !epic_is_installed() {
+        info!("Epic Games not installed! Skipping...");
+        return games
+    }
+
+    path = path.replace("Roaming\\Monarch", "Local\\EpicGamesLauncher\\Saved\\Config\\Windows\\GameUserSettings.ini");
+
+    match Ini::load_from_file(path) {
+        Ok(i) => {
+            match i.get_from(Some("Launcher"), "DefaultAppInstallLocation") {
+                Some(default_location) => {
+                    games = get_names(default_location).await;
+                }
+                None => {
+                    error!("Failed to find DefaultAppInstallLocation!");
+                }
+            }
+        } 
+        Err(e) => {
+            error!("Failed to load ini file! | Message: {:?}", e);
+        }
+    }
 
     return games
 }
 
-/// Finds local steam library installed on current system
-pub async fn get_library() -> Vec<MonarchGame> {
+/// Returns games names found in default Epic Games location
+async fn get_names(default_location: &str) -> Vec<MonarchGame> {
     let mut names: Vec<OsString> = Vec::new();
-    let mut path: String = get_app_data_path().unwrap();
-    path = path.replace("Roaming\\Monarch", "Local\\EpicGamesLauncher\\Saved\\Config\\Windows\\GameUserSettings.ini");
-
-    let i = Ini::load_from_file(path).unwrap();    
-    let default_location = i.get_from(Some("Launcher"), "DefaultAppInstallLocation").unwrap();
-    
-    for game in fs::read_dir(default_location).unwrap() {
-        names.push(game.unwrap().file_name())
+    match fs::read_dir(default_location) {
+        Ok(games) => {
+            for game in games {
+                names.push(game.unwrap().file_name())
+            }
+            info!("Found Epic Games games: {:?}", names);
+        }
+        Err(e) => {
+            error!("Failed to read Epic Games GameUserSettings.ini in default location! | Message: {:?}", e);
+        }
     }
     
     let games: Vec<MonarchGame> = library_game_parser(names).await;
@@ -76,13 +109,21 @@ async fn epic_store_parser(response: Response) -> Vec<MonarchGame> {
     let images: Vec<ElementRef> = document.select(&image_selector).collect();
 
     for i in 0..titles.len() {
-        let name = get_epic_name(titles[i]);
-        let image_link = get_img_link(images[i]);
-        let image_path = generate_cache_image_name(&name);
+        let name: String = get_epic_name(titles[i]);
+        let image_link: String = get_img_link(images[i]);
+        let image_path: String;
 
-        let cur_game = MonarchGame::new(&name, "unknown", "epic", "temp", &image_path);
+        match generate_cache_image_name(&name) {
+            Ok(path) => { image_path = path; }
+            Err(e) => {
+                error!("Failed to get image cache path! | Message: {:?}", e);
+                image_path = "unkown".to_string();
+            }
+        }
+
+        let cur_game: MonarchGame = MonarchGame::new(&name, "epic", "epic", "temp", &image_path);
         games.push(cur_game);
-
+        
         // Workaround for [tauri::command] not working with download_image().await in same thread 
         tokio::task::spawn(async move {
             download_image(image_link.as_str(), image_path.as_str()).await; 
@@ -101,6 +142,7 @@ async fn library_game_parser(names: Vec<OsString>) -> Vec<MonarchGame> {
 
     for name in names {
         games.push(get_game_info(name.to_str().unwrap()).await);
+        info!("Found Epic Games game: {}", name.to_str().unwrap());
     }
 
     return games
