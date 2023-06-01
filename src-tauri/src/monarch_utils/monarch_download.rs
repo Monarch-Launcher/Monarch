@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use log::{info, error};
 use image;
 use core::result::Result;
-use core::result::Result;
 
 use super::monarch_web::request_data;
 use super::monarch_run::run_file;
@@ -38,26 +37,6 @@ async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {
 /// Writes downloaded content to file, has to be it's own function to 
 /// close file and avoid "file used by another process" error.
 async fn write_content(installer_path: &PathBuf, content: Response) {
-    match File::create(installer_path) {
-        Ok(mut file) => {
-            match &content.bytes().await {
-                Ok(buf) => {
-                    if let Err(e) = file.write_all(buf) {
-                        error!("Failed to write_all to file: {} (write_content()) | Message: {:?}",  installer_path.display(), e);
-                    }
-                    if let Err(e) = file.sync_all() {
-                        error!("Failed to sync_all to file: {} (write_content()) | Message: {:?}",  installer_path.display(), e);
-                    }
-                }
-               Err(e) => {
-                    error!("Failed to read content as bytes! (write_content()) | Message: {:?}", e);
-                }
-            }
-        }
-        Err(e) => {
-            error!("Failed to create temporary file: {} (write_content()) | Message: {:?}", installer_path.display(), e)
-        }
-    }
     match File::create(installer_path) {
         Ok(mut file) => {
             match &content.bytes().await {
@@ -134,7 +113,6 @@ pub async fn download_file(url: &str) -> Result<PathBuf, String> {
             return Err("Failed to get response from url!".to_string())
         }
     }
-    Ok(())
 }
 
 /*
@@ -169,25 +147,11 @@ async fn get_image_content(response: Response, path: PathBuf) {
                 Err(e) => {
                     error!("Failed to read image from bytes! (get_image_content()) | Message: {:?}", e);
                 }
-/// Saves the content from response to file
-async fn get_image_content(response: Response, path: PathBuf) {
-    match response.bytes().await {
-        Ok(image_bytes) => {
-            match image::load_from_memory(&image_bytes) {
-                Ok(image) => {
-                    if let Err(e) = image.save(path) {
-                        error!("Failed to save image file! (get_image_content()) | Message: {:?}", e);
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to read image from bytes! (get_image_content()) | Message: {:?}", e);
-                }
             }
         }
         Err(e) => {
             error!("Failed to read image as bytes! (get_image_content()) | Message: {:?}", e);
             error!("Failed to read image as bytes! (get_image_content()) | Message: {:?}", e);
         }
-    }
     }
 }
