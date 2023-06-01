@@ -1,14 +1,27 @@
 use serde_json::value::Value;
+use log::error;
 
-use super::blizzard;
-use super::epic;
+#[cfg(target_os = "windows")]
+use super::windows::{steam, blizzard, epic};
+
+#[cfg(target_os = "linux")]
+use super::linux::{steam, blizzard, epic};
+
+#[cfg(target_os = "macos")]
+use super::linux::{steam, blizzard, epic};
+
 use super::monarchgame::MonarchGame;
-use super::steam;
 use crate::monarch_library::games_library;
 
 /*
 ---------- General game related functions ----------
 */
+
+#[tauri::command]
+/// Returns MonarchGames from library.json
+pub async fn get_library() -> Result<Value, String> {
+    games_library::get_games()
+}
 
 #[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
@@ -24,12 +37,6 @@ pub async fn search_games(name: String) -> Vec<MonarchGame> {
 }
 
 #[tauri::command]
-/// Returns MonarchGames from library.json
-pub async fn get_library() -> Result<Value, String> {
-    games_library::get_games()
-}
-
-#[tauri::command]
 /// Manually refreshes the entire Monarch library, currently only supports Steam & Epic Games (kinda) still WIP
 pub async fn refresh_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
@@ -41,7 +48,9 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     games.append(&mut blizzard_games);
     games.append(&mut epic_games);
 
-    games_library::write_games(games.clone());
+    if let Err(e) = games_library::write_games(games.clone()) {
+        error!("Failed to write new games to library.json! | Message: {:?}", e);
+    }
     return games;
 }
 
@@ -89,32 +98,7 @@ pub fn purchase_game(name: String, platform_id: String, platform: String) {
     }
 }
 
-/*
----------- Steam related functions ----------
-*/
-
 #[tauri::command]
-/// Manually download Steam
-pub async fn steam_downloader() {
-    steam::get_steam().await;
-}
-
-/*
----------- Blizzard related functions ----------
-*/
-
-#[tauri::command]
-/// Manually download Battle.net
-pub async fn blizzard_downloader() {
-    blizzard::get_blizzard().await;
-}
-
-/*
----------- Epic Games related functions ----------
-*/
-
-#[tauri::command]
-/// Manually download Epic Games
-pub async fn epic_downloader() {
-    epic::get_epic().await;
+pub async fn get_battlenet() {
+    blizzard::get_blizzard().await.unwrap()
 }

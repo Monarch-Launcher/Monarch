@@ -20,7 +20,6 @@ serde_json = "1.0"
 
 # Monarch dependencies
 tokio = { version = "1", features = ["full"] }
-winreg = "0.10.1"
 reqwest = "0.11.0"
 scraper = "0.15.0"
 log = "0.4.17"
@@ -29,7 +28,8 @@ regex = "1.8.1"
 image = "0.24.6"
 vdf-serde = "0.3.0"
 rust-ini = "0.19.0"
-
+[target.'cfg(windows)'.dependencies]
+winreg = "0.10.1"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

@@ -5,6 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::fs;
 use core::result::Result;
 use log::{info, error};
+use std::path::PathBuf;
 
 use crate::monarch_utils::monarch_fs::{write_json_content, get_collections_json_path};
 
@@ -24,7 +25,7 @@ impl MonarchCollection {
 
 /// Creates a new collection.
 pub fn new_collection(collection_name: String, game_ids: Vec<String>) -> Result<Value, String> {
-    let path: String;
+    let path: PathBuf;
     match get_collections_json_path() {
         Ok(json_path) => { path = json_path; }
         Err(e) => {
@@ -39,7 +40,7 @@ pub fn new_collection(collection_name: String, game_ids: Vec<String>) -> Result<
         Ok(mut collecs) => {
             collecs.push(new_collec);
             
-            if let Err(e) = write_json_content(json!(collecs), &path) {
+            if let Err(e) = write_json_content(json!(collecs), path) {
                 error!("Failed to write new collections to collections.json! | Message: {}", e);
                 return Err("Failed to write new collection!".to_string())
             }
@@ -94,7 +95,7 @@ pub fn delete_collections(id: &str) -> Result<Value, String> {
 
 /// Returns JSON of collections in library
 pub fn get_collections() -> Result<Value, String> {
-    let path: String;
+    let path: PathBuf;
     match get_collections_json_path() {
         Ok(json_path) => { path = json_path; }
         Err(e) => {
@@ -114,8 +115,8 @@ pub fn get_collections() -> Result<Value, String> {
                     info!("Attempting to write new empty collection array!");
 
                     let monarch_collecs: Value = json!(Vec::<MonarchCollection>::new());
-                    if let Err(e) = write_json_content(monarch_collecs.clone(), &path) {
-                        error!("Failed to write new collections to file: {} | Message: {}", path, e);
+                    if let Err(e) = write_json_content(monarch_collecs.clone(), path.clone()) {
+                        error!("Failed to write new collections to file: {} | Message: {}", path.display(), e);
                         return Err("Failed to create a new collections.json file!".to_string())
                     }
                     Ok(monarch_collecs) // If it succeeds at creating new collections.json
@@ -124,16 +125,16 @@ pub fn get_collections() -> Result<Value, String> {
 
         } Err(e) => {
             error!("Failed to read json file in get_collections() | Message: {}", e);
-            info!("Attempting to create a new empty file! ({})", path);
+            info!("Attempting to create a new empty file! ({})", path.display());
 
             let monarch_collecs: Value = json!(Vec::<MonarchCollection>::new());
         
             if let Err(e) = fs::File::create(path.clone()) {
-                error!("Failed to create empty file: {} | Message: {}", path, e);
+                error!("Failed to create empty file: {} | Message: {}", path.display(), e);
                 return Err("Failed to create a new collections.json file!".to_string())
             }
-            if let Err(e) = write_json_content(monarch_collecs.clone(), &path) {
-                error!("Failed to write new collections to file: {} | Message: {}", path, e);
+            if let Err(e) = write_json_content(monarch_collecs.clone(), path.clone()) {
+                error!("Failed to write new collections to file: {} | Message: {}", path.display(), e);
                 return Err("Failed to create a new collections.json file!".to_string())
             }
             

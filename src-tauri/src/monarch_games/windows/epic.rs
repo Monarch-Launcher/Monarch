@@ -4,13 +4,13 @@ use reqwest::Response;
 use scraper::{Html, Selector, ElementRef};
 use std::fs;
 use std::ffi::OsString;
-use core::result::Result;
+use std::path::PathBuf;
 
-use crate::monarch_utils::{monarch_winreg::is_installed, 
+use crate::monarch_utils::{monarch_winreg::is_installed,
                            monarch_download::{download_and_run, download_image}, 
                            monarch_web::request_data,
                            monarch_fs::{generate_cache_image_name, get_app_data_path}};
-use super::monarchgame::MonarchGame;
+use super::super::monarchgame::MonarchGame;
 
 /// Installs Epic games launcher if not already installed
 pub async fn get_epic() {
@@ -21,7 +21,9 @@ pub async fn get_epic() {
     }
     else {
         let target_url: &str = "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncherInstaller.msi";
-        download_and_run(target_url).await;
+        if let Err(e) = download_and_run(target_url).await {
+            error!("Error occured while attempting to download and run Epic Games installer! | Message: {:?}", e);
+        }
     }
 }
 
@@ -43,14 +45,14 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 /// Finds local epic games library installed on current system
 pub async fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
-    let mut path: String = get_app_data_path().unwrap();
+    let path: PathBuf = get_app_data_path().unwrap();
     
     if !epic_is_installed() {
         info!("Epic Games not installed! Skipping...");
         return games
     }
 
-    path = path.replace("Roaming\\Monarch", "Local\\EpicGamesLauncher\\Saved\\Config\\Windows\\GameUserSettings.ini");
+    //path = path.replace("Roaming\\Monarch", "Local\\EpicGamesLauncher\\Saved\\Config\\Windows\\GameUserSettings.ini");
 
     match Ini::load_from_file(path) {
         Ok(i) => {
@@ -111,22 +113,22 @@ async fn epic_store_parser(response: Response) -> Vec<MonarchGame> {
     for i in 0..titles.len() {
         let name: String = get_epic_name(titles[i]);
         let image_link: String = get_img_link(images[i]);
-        let image_path: String;
+        let image_path: PathBuf;
 
         match generate_cache_image_name(&name) {
             Ok(path) => { image_path = path; }
             Err(e) => {
                 error!("Failed to get image cache path! | Message: {:?}", e);
-                image_path = "unkown".to_string();
+                image_path = PathBuf::from("unknown");
             }
         }
 
-        let cur_game: MonarchGame = MonarchGame::new(&name, "epic", "epic", "temp", &image_path);
+        let cur_game: MonarchGame = MonarchGame::new(&name, "epic", "epic", "temp", image_path.to_str().unwrap());
         games.push(cur_game);
         
         // Workaround for [tauri::command] not working with download_image().await in same thread 
         tokio::task::spawn(async move {
-            download_image(image_link.as_str(), image_path.as_str()).await; 
+            download_image(image_link.as_str(), image_path).await; 
         });
     }
     return games

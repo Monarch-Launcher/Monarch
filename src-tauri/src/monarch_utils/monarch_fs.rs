@@ -14,12 +14,12 @@ use core::result::Result;
 
 /// Create Monarch folder in users %appdata% directory
 pub fn check_appdata_folder() {
-    let appdata_path = get_app_data_path();
+    let appdata_path: Result<PathBuf, VarError> = get_app_data_path();
 
     match appdata_path {  
         Ok(path) =>  {
-            if !path_exists(&path) {
-                if let Err(e) = create_dir(&path) { // Returns result of creating directory
+            if !path_exists(path.clone()) {
+                if let Err(e) = create_dir(path) { // Returns result of creating directory
                     println!("Failed to create Monarch %appdata% folder! | Message: {:?}", e); // Only really useful rn for debugging
                     exit(1);
                 }
@@ -35,50 +35,72 @@ pub fn check_appdata_folder() {
 /// Folder to store image resources for game thumbnails etc...
 pub fn check_resources_folder() {
     // Can't be bothered rn, and honestly if it passes the appdata check this should pass
-    let resources_dir = get_resources_path().unwrap(); 
-    let cache_dir = get_resources_cache().unwrap();
-    let lib_img_dir = get_resources_library().unwrap();
+    let resources_dir: PathBuf = get_resources_path().unwrap(); 
+    let cache_dir: PathBuf = get_resources_cache().unwrap();
+    let lib_img_dir: PathBuf = get_resources_library().unwrap();
         
-    if !path_exists(&resources_dir) {
-        if let Err(e) = create_dir(&resources_dir) {
-            error!("Failed to create empty folder: {}! | Message: {:?}", resources_dir, e);
+    if !path_exists(resources_dir.clone()) {
+        if let Err(e) = create_dir(resources_dir.clone()) {
+            error!("Failed to create empty folder: {}! | Message: {:?}", resources_dir.display(), e);
             exit(1);
         }
     }
 
-    if !path_exists(&cache_dir) {
-        if let Err(e) = create_dir(&cache_dir) {
-            error!("Failed to create empty folder: {}! | Message: {:?}", cache_dir, e);
+    if !path_exists(cache_dir.clone()) {
+        if let Err(e) = create_dir(cache_dir.clone()) {
+            error!("Failed to create empty folder: {}! | Message: {:?}", cache_dir.display(), e);
             exit(1);
         }
     }
 
-    if !path_exists(&lib_img_dir) {
-        if let Err(e) = create_dir(&lib_img_dir) {
-            error!("Failed to create empty folder: {}! | Message: {:?}", lib_img_dir, e);
+    if !path_exists(lib_img_dir.clone()) {
+        if let Err(e) = create_dir(lib_img_dir.clone()) {
+            error!("Failed to create empty folder: {}! | Message: {:?}", lib_img_dir.display(), e);
             exit(1);
         }
     }
 }
 
-/// Gets the users %appdata% directory and adds \Monarch to the end of it to generate Monarch path
-pub fn get_app_data_path() -> Result<String, VarError> {
-    let app_data_path_res = std::env::var("APPDATA");
-    
-    match app_data_path_res {
-        Ok(mut app_data_path) => {
-            app_data_path.push_str("\\Monarch");
-            return Ok(app_data_path) 
+/// Gets the users %appdata% or $HOME directory and adds Monarch to the end of it to generate Monarch path
+pub fn get_app_data_path() -> Result<PathBuf, VarError> {
+    let appdata_path_res: Result<String, VarError>;
+    let folder_name: &str;
+
+    if cfg!(windows) {
+        appdata_path_res = std::env::var("APPDATA");
+        folder_name = "Monarch";
+    } else { // Easiest way to avoid "possibly-uninitialized variables"
+        appdata_path_res = std::env::var("HOME");
+        folder_name= ".monarch";
+    }
+
+    match appdata_path_res {
+        Ok(appdata_path) => {
+            let mut path: PathBuf = PathBuf::from(appdata_path);
+            path = path.join(folder_name);
+            return Ok(path) 
         },
         Err(e) => Err(e)
     }
 }
 
+#[cfg(not(target_os = "windows"))]
+// Returns $HOME on unix systems
+pub fn get_home_path() -> Result<PathBuf, String> {
+    match std::env::var("$HOME") {
+        Ok(str_path) => { return Ok(PathBuf::from(str_path)) }
+        Err(e) => {
+            error!("Failed to get $HOME path! | Message: {:?}", e);
+            return Err("Failed to get $HOME path!".to_string())
+        }
+    }
+}
+
 /// Returns path to library.json
-pub fn get_library_json_path() -> Result<String, VarError> {
+pub fn get_library_json_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path.push_str("\\library.json");
+            path = path.join("library.json");
             return Ok(path)
         }
         Err(e) => {
@@ -89,10 +111,10 @@ pub fn get_library_json_path() -> Result<String, VarError> {
 }
 
 /// Returns path to collections.json
-pub fn get_collections_json_path() -> Result<String, VarError> {
+pub fn get_collections_json_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path.push_str("\\collections.json");
+            path = path.join("collections.json");
             return Ok(path)
         }
         Err(e) => {
@@ -103,26 +125,26 @@ pub fn get_collections_json_path() -> Result<String, VarError> {
 }
 
 /// Write JSON to file
-pub fn write_json_content(content: Value, path: &str) -> io::Result<()> {
-    if let Err(e) = fs::write(path, content.to_string()) {
-        error!("Failed to write new library to: {} | Message: {:?}", path, e);
+pub fn write_json_content(content: Value, path: PathBuf) -> io::Result<()> {
+    if let Err(e) = fs::write(path.clone(), content.to_string()) {
+        error!("Failed to write new library to: {} | Message: {:?}", path.display(), e);
         return Err(e)
     }
     return Ok(())
 }
 
 /// Checks whether a given path exists already or not
-pub fn path_exists(path: &str) -> bool {
-    if Path::new(path).exists() {
+pub fn path_exists(path: PathBuf) -> bool {
+    if Path::new(path.as_path()).exists() {
         return true
     }
     return false
 }
 
 /// Attempts to create an empty directory and returns result
-pub fn create_dir(path: &str) -> io::Result<()> {
-    if let Err(e) = fs::create_dir(path) {
-        error!("Failed to create new directory: {} | Message: {:?}", path, e);
+pub fn create_dir(path: PathBuf) -> io::Result<()> {
+    if let Err(e) = fs::create_dir_all(path.as_path()) {
+        error!("Failed to create new directory: {} | Message: {:?}", path.display(), e);
         return Err(e)
     }
     Ok(())
@@ -135,10 +157,10 @@ pub fn create_dir(path: &str) -> io::Result<()> {
 /// Returns path to resources folder.
 /// Should never fail during runtime because of init_monarch_fs,
 /// but if it does it returns an empty string.
-pub fn get_resources_path() -> Result<String, VarError> {
+pub fn get_resources_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path.push_str("\\resources");
+            path = path.join("resources");
             return Ok(path)
         }
         Err(e) => {
@@ -149,10 +171,10 @@ pub fn get_resources_path() -> Result<String, VarError> {
 }
 
 /// Returns path to store temporary images
-pub fn get_resources_cache() -> Result<String, VarError> {
-    match get_app_data_path() {
+pub fn get_resources_cache() -> Result<PathBuf, VarError> {
+    match get_resources_path() {
         Ok(mut path) => {
-            path.push_str("\\cache");
+            path = path.join("cache");
             return Ok(path)
         }
         Err(e) => {
@@ -163,10 +185,10 @@ pub fn get_resources_cache() -> Result<String, VarError> {
 }
 
 /// Returns path to store thumbnails for games in library
-pub fn get_resources_library() -> Result<String, VarError> {
-    match get_app_data_path() {
+pub fn get_resources_library() -> Result<PathBuf, VarError> {
+    match get_resources_path() {
         Ok(mut path) => {
-            path.push_str("\\library");
+            path = path.join("library");
             return Ok(path)
         }
         Err(e) => {
@@ -176,6 +198,7 @@ pub fn get_resources_library() -> Result<String, VarError> {
     }
 }
 
+/// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 pub fn clear_cached_thumbnails() {
     match get_resources_cache() {
@@ -199,6 +222,7 @@ pub fn clear_cached_thumbnails() {
 fn remove_thumbnail(file: DirEntry) {
     if time_to_remove(file.path()) {
         if let Err(e) = fs::remove_file(file.path()) {
+            error!("Failed to remove file: {}! | Message: {:?}", file.path().display(), e);
             error!("Failed to remove file: {}! | Message: {:?}", file.path().display(), e);
         }
     }
@@ -230,7 +254,7 @@ pub fn clear_all_cache() {
                     }
                 }
                 Err(e) => {
-                    error!("Failed to get files from folder: {} | Message: {}", resources, e);
+                    error!("Failed to get files from folder: {} | Message: {}", resources.display(), e);
                 }
             }
         }
@@ -242,18 +266,17 @@ pub fn clear_all_cache() {
 
 /// Create a name for image file in cache directory
 /// Can be used to download image and check if an image already exists
-pub fn generate_cache_image_name(name: &str) -> Result<String, String> {
+pub fn generate_cache_image_name(name: &str) -> Result<PathBuf, String> {
     let filename: String;
 
     match generate_image_filename(name) {
         Ok(name) => { filename = name }
-        Err(e) => { return Err("Failed to build name from regex!".to_string()) }
+        Err(_) => { return Err("Failed to build name from regex!".to_string()) }
     }
 
     match get_resources_cache() {
         Ok(mut dir) => {
-            dir.push_str("\\");
-            dir.push_str(&filename);
+            dir = dir.join(&filename);
             return Ok(dir)
         }
         Err(e) => {
@@ -264,18 +287,17 @@ pub fn generate_cache_image_name(name: &str) -> Result<String, String> {
 }
 
 /// Create a name for image file in cache directory
-pub fn generate_library_image_name(name: &str) -> Result<String, String> {
+pub fn generate_library_image_name(name: &str) -> Result<PathBuf, String> {
     let filename: String;
 
     match generate_image_filename(name) {
         Ok(name) => { filename = name }
-        Err(e) => { return Err("Failed to build name from regex!".to_string()) }
+        Err(_) => { return Err("Failed to build name from regex!".to_string()) }
     }
 
     match get_resources_library() {
         Ok(mut dir) => {
-            dir.push_str("\\");
-            dir.push_str(&filename);
+            dir = dir.join(&filename);
             return Ok(dir)
         }
         Err(e) => {

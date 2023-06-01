@@ -8,6 +8,7 @@ use vdf_serde::from_str;
 use std::collections::HashMap;
 use std::fs;
 use log::error;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename = "libraryfolders")]
@@ -26,10 +27,10 @@ struct LibraryLocation {
 
 /// Parses steams libraryfolders.vdf file to structs that can be used to find
 /// installed games, folder locations, etc...
-pub fn parse_library_file(path: &str) -> Vec<String> {
+pub fn parse_library_file(path: PathBuf) -> Vec<String> {
     let mut games: Vec<String> = Vec::new();
 
-    match fs::read_to_string(path) {
+    match fs::read_to_string(path.clone()) {
         Ok(mut content) =>  {
             content = content.replace("\"\"", "\" \" ");
 
@@ -41,7 +42,7 @@ pub fn parse_library_file(path: &str) -> Vec<String> {
             }
         }
         Err(e) => {
-            error!("Failed to open file: {} | Message: {:?}", path, e);
+            error!("Failed to open file: {} | Message: {:?}", path.display(), e);
         }
     }
 

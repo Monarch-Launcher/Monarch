@@ -28,9 +28,7 @@ const MooseTestPage = () => {
       // first parameters: string -> the name of the rust command to call (required)
       // second parameters: json object -> the parameter(s) the rust command takes (optional)
       // E.g. To call the function_name command: invoke('function_name', {arg1: 'foo', arg2: 'bar'})
-      const functionResult = await invoke('search_games', {
-        name: 'worldbox - god simulator',
-      });
+      const functionResult = await invoke('get_battlenet');
       //
       //
       // Don't edit the rest of this code
