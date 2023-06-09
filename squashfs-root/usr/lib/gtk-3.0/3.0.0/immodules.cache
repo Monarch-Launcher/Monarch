@@ -1,0 +1,46 @@
+# GTK+ Input Method Modules file
+# Automatically generated file, do not edit
+# Created by /usr/bin/gtk-query-immodules-3.0 from gtk+-3.24.38
+#
+# ModulesPath = /usr/lib/gtk-3.0/3.0.0/linux/immodules:/usr/lib/gtk-3.0/3.0.0/immodules:/usr/lib/gtk-3.0/linux/immodules:/usr/lib/gtk-3.0/immodules
+#
+"im-am-et.so" 
+"am_et" "Amharic (EZ+)" "gtk30" "/usr/share/locale" "am" 
+
+"im-broadway.so" 
+"broadway" "Broadway" "gtk30" "/usr/share/locale" "" 
+
+"im-cedilla.so" 
+"cedilla" "Cedilla" "gtk30" "/usr/share/locale" "az:ca:co:fr:gv:oc:pt:sq:tr:wa" 
+
+"im-cyrillic-translit.so" 
+"cyrillic_translit" "Cyrillic (Transliterated)" "gtk30" "/usr/share/locale" "" 
+
+"im-inuktitut.so" 
+"inuktitut" "Inuktitut (Transliterated)" "gtk30" "/usr/share/locale" "iu" 
+
+"im-ipa.so" 
+"ipa" "IPA" "gtk30" "/usr/share/locale" "" 
+
+"im-multipress.so" 
+"multipress" "Multipress" "gtk30" "/usr/share/locale" "" 
+
+"im-thai.so" 
+"thai" "Thai-Lao" "gtk30" "/usr/share/locale" "lo:th" 
+
+"im-ti-er.so" 
+"ti_er" "Tigrigna-Eritrean (EZ+)" "gtk30" "/usr/share/locale" "ti" 
+
+"im-ti-et.so" 
+"ti_et" "Tigrigna-Ethiopian (EZ+)" "gtk30" "/usr/share/locale" "ti" 
+
+"im-viqr.so" 
+"viqr" "Vietnamese (VIQR)" "gtk30" "/usr/share/locale" "" 
+
+"im-wayland.so" 
+"wayland" "Wayland" "gtk30" "/usr/share/locale" "" 
+
+"im-xim.so" 
+"xim" "X Input Method" "gtk30" "/usr/share/locale" "ko:ja:th:zh" 
+
+

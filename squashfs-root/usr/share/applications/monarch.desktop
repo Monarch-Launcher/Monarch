@@ -1,0 +1,8 @@
+[Desktop Entry]
+Categories=
+Comment=A FOSS game launcher targeting Windows.
+Exec=monarch
+Icon=monarch
+Name=Monarch
+Terminal=false
+Type=Application
