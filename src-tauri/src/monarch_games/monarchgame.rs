@@ -9,6 +9,7 @@ pub struct MonarchGame {
     platform_id: String,
     executable_path: String,
     thumbnail_path: String,
+    launch_args: Vec<String>,
 }
 
 impl MonarchGame {
@@ -18,7 +19,8 @@ impl MonarchGame {
               platform: platform.to_string(),
               platform_id: platform_id.to_string(),
               executable_path: exec_path.to_string(),
-              thumbnail_path: thumbnail_path.to_string(),}
+              thumbnail_path: thumbnail_path.to_string(),
+              launch_args: Vec::new(), }
     }
 }
 
