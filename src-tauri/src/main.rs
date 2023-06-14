@@ -16,8 +16,7 @@ use monarch_games::commands::{search_games,
                               get_library,  
                               launch_game, 
                               download_game, 
-                              purchase_game,
-                              get_battlenet};
+                              purchase_game};
 use monarch_library::commands::{create_collection,
                                 update_collection,
                                 delete_collection,
@@ -45,7 +44,6 @@ fn main() {
             delete_collection,
             get_collections,
             open_logs,
-            get_battlenet
             ])
         .run(tauri::generate_context!());
 

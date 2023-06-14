@@ -65,7 +65,7 @@ pub fn check_resources_folder() {
             exit(1);
         }
     }
-
+  
     if !path_exists(settings_path.clone()) {
         info!("No settings.json detected! Creating new...");
         let settings: Value = serde_json::to_value(MonarchSettings::new()).unwrap();
