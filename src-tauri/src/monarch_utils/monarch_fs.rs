@@ -1,12 +1,14 @@
 use std::{process::exit, io, fs};
 use serde_json::Value;
-use log::error;
+use log::{info, error};
 use std::env::VarError;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use regex::Regex;
 use core::result::Result;
+
+use super::monarch_settings::{MonarchSettings, write_settings};
 
 /*
 ---------- General functions for filesystem tasks ----------
@@ -38,8 +40,10 @@ pub fn check_resources_folder() {
     let resources_dir: PathBuf = get_resources_path().unwrap(); 
     let cache_dir: PathBuf = get_resources_cache().unwrap();
     let lib_img_dir: PathBuf = get_resources_library().unwrap();
+    let settings_path: PathBuf = get_settings_json_path().unwrap();
         
     if !path_exists(resources_dir.clone()) {
+        info!("No resources folder detected! Creating new...");
         if let Err(e) = create_dir(resources_dir.clone()) {
             error!("Failed to create empty folder: {}! | Message: {:?}", resources_dir.display(), e);
             exit(1);
@@ -47,6 +51,7 @@ pub fn check_resources_folder() {
     }
 
     if !path_exists(cache_dir.clone()) {
+        info!("No cache folder detected for thumbnails! Creating new...");
         if let Err(e) = create_dir(cache_dir.clone()) {
             error!("Failed to create empty folder: {}! | Message: {:?}", cache_dir.display(), e);
             exit(1);
@@ -54,8 +59,18 @@ pub fn check_resources_folder() {
     }
 
     if !path_exists(lib_img_dir.clone()) {
+        info!("No library folder detected for thumbnails! Creating new...");
         if let Err(e) = create_dir(lib_img_dir.clone()) {
             error!("Failed to create empty folder: {}! | Message: {:?}", lib_img_dir.display(), e);
+            exit(1);
+        }
+    }
+
+    if !path_exists(settings_path.clone()) {
+        info!("No settings.json detected! Creating new...");
+        let settings: Value = serde_json::to_value(MonarchSettings::new()).unwrap();
+        if let Err(e) = write_settings(settings) {
+            error!("Failed to write default settings to: {}! | Message: {:?}", settings_path.display(), e);
             exit(1);
         }
     }

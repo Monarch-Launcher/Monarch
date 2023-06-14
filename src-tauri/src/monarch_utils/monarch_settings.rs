@@ -14,6 +14,10 @@ pub struct MonarchSettings {
 }
 
 impl MonarchSettings {
+    pub fn new() -> Self {
+        Self { platform_settings: HashMap::new() }
+    }
+
     pub fn _get_launcher_settings(self, name: &str) -> PlatformSettings {
         self.platform_settings.get(name).unwrap().clone()
     }
