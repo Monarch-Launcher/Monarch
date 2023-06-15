@@ -4,6 +4,7 @@ pub mod monarch_fs;
 pub mod monarch_web;
 pub mod monarch_vdf;
 pub mod monarch_run;
+pub mod monarch_settings;
 pub mod commands;
 
 #[cfg(target_os="windows")]

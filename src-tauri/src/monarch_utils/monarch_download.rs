@@ -22,7 +22,6 @@ async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {
         .unwrap_or("tmp.bin");
 
     // If file doesn't have an extension, assume its an executable.
-    // If file doesn't have an extension, assume its an executable.
     if !fname.contains(".") {
         let mut string_fname: String = String::from(fname);
         string_fname.push_str(".exe");
@@ -150,7 +149,6 @@ async fn get_image_content(response: Response, path: PathBuf) {
             }
         }
         Err(e) => {
-            error!("Failed to read image as bytes! (get_image_content()) | Message: {:?}", e);
             error!("Failed to read image as bytes! (get_image_content()) | Message: {:?}", e);
         }
     }

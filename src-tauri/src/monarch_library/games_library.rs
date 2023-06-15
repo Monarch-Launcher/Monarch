@@ -36,8 +36,6 @@ pub fn get_games() -> Result<Value, String> {
             error!("Failed to get path to library.json! | Message: {:?}", e);
             return Err("Failed to get path to library.json!".to_string())
         } 
-    }
-
     match fs::File::open(path.clone()) {
         Ok(file) => {
             match serde_json::from_reader(file) {

@@ -1,12 +1,14 @@
 use std::{process::exit, io, fs};
 use serde_json::Value;
-use log::error;
+use log::{info, error};
 use std::env::VarError;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use regex::Regex;
 use core::result::Result;
+
+use super::monarch_settings::{MonarchSettings, write_settings};
 
 /*
 ---------- General functions for filesystem tasks ----------
@@ -38,8 +40,10 @@ pub fn check_resources_folder() {
     let resources_dir: PathBuf = get_resources_path().unwrap(); 
     let cache_dir: PathBuf = get_resources_cache().unwrap();
     let lib_img_dir: PathBuf = get_resources_library().unwrap();
+    let settings_path: PathBuf = get_settings_json_path().unwrap();
         
     if !path_exists(resources_dir.clone()) {
+        info!("No resources folder detected! Creating new...");
         if let Err(e) = create_dir(resources_dir.clone()) {
             error!("Failed to create empty folder: {}! | Message: {:?}", resources_dir.display(), e);
             exit(1);
@@ -47,6 +51,7 @@ pub fn check_resources_folder() {
     }
 
     if !path_exists(cache_dir.clone()) {
+        info!("No cache folder detected for thumbnails! Creating new...");
         if let Err(e) = create_dir(cache_dir.clone()) {
             error!("Failed to create empty folder: {}! | Message: {:?}", cache_dir.display(), e);
             exit(1);
@@ -54,8 +59,18 @@ pub fn check_resources_folder() {
     }
 
     if !path_exists(lib_img_dir.clone()) {
+        info!("No library folder detected for thumbnails! Creating new...");
         if let Err(e) = create_dir(lib_img_dir.clone()) {
             error!("Failed to create empty folder: {}! | Message: {:?}", lib_img_dir.display(), e);
+            exit(1);
+        }
+    }
+  
+    if !path_exists(settings_path.clone()) {
+        info!("No settings.json detected! Creating new...");
+        let settings: Value = serde_json::to_value(MonarchSettings::new()).unwrap();
+        if let Err(e) = write_settings(settings) {
+            error!("Failed to write default settings to: {}! | Message: {:?}", settings_path.display(), e);
             exit(1);
         }
     }
@@ -96,11 +111,25 @@ pub fn get_home_path() -> Result<PathBuf, String> {
     }
 }
 
+/// Returns path to settings.json
+pub fn get_settings_json_path() -> Result<PathBuf, VarError> {
+    match get_app_data_path() {
+        Ok(mut path) => {
+            path.push("settings.json");
+            return Ok(path)
+        }
+        Err(e) => {
+            error!("Failed to get %appdata% path! | Message: {:?}", e);
+            return Err(e)
+        }
+    }
+}
+
 /// Returns path to library.json
 pub fn get_library_json_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path = path.join("library.json");
+            path.push("library.json");
             return Ok(path)
         }
         Err(e) => {
@@ -114,7 +143,7 @@ pub fn get_library_json_path() -> Result<PathBuf, VarError> {
 pub fn get_collections_json_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path = path.join("collections.json");
+            path.push("collections.json");
             return Ok(path)
         }
         Err(e) => {
@@ -160,7 +189,7 @@ pub fn create_dir(path: PathBuf) -> io::Result<()> {
 pub fn get_resources_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path = path.join("resources");
+            path.push("resources");
             return Ok(path)
         }
         Err(e) => {
@@ -174,7 +203,7 @@ pub fn get_resources_path() -> Result<PathBuf, VarError> {
 pub fn get_resources_cache() -> Result<PathBuf, VarError> {
     match get_resources_path() {
         Ok(mut path) => {
-            path = path.join("cache");
+            path.push("cache");
             return Ok(path)
         }
         Err(e) => {
@@ -188,7 +217,7 @@ pub fn get_resources_cache() -> Result<PathBuf, VarError> {
 pub fn get_resources_library() -> Result<PathBuf, VarError> {
     match get_resources_path() {
         Ok(mut path) => {
-            path = path.join("library");
+            path.push("library");
             return Ok(path)
         }
         Err(e) => {
@@ -198,7 +227,6 @@ pub fn get_resources_library() -> Result<PathBuf, VarError> {
     }
 }
 
-/// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 pub fn clear_cached_thumbnails() {
     match get_resources_cache() {
@@ -222,7 +250,6 @@ pub fn clear_cached_thumbnails() {
 fn remove_thumbnail(file: DirEntry) {
     if time_to_remove(file.path()) {
         if let Err(e) = fs::remove_file(file.path()) {
-            error!("Failed to remove file: {}! | Message: {:?}", file.path().display(), e);
             error!("Failed to remove file: {}! | Message: {:?}", file.path().display(), e);
         }
     }
@@ -276,7 +303,7 @@ pub fn generate_cache_image_name(name: &str) -> Result<PathBuf, String> {
 
     match get_resources_cache() {
         Ok(mut dir) => {
-            dir = dir.join(&filename);
+            dir.push(&filename);
             return Ok(dir)
         }
         Err(e) => {
@@ -297,7 +324,7 @@ pub fn generate_library_image_name(name: &str) -> Result<PathBuf, String> {
 
     match get_resources_library() {
         Ok(mut dir) => {
-            dir = dir.join(&filename);
+            dir.push(&filename);
             return Ok(dir)
         }
         Err(e) => {
