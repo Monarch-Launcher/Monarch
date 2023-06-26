@@ -151,6 +151,7 @@ pub fn get_collections() -> Result<Value, String> {
     }
 }
 
+/// Overwrites existing content in collections.json with the new content
 fn write_collection_changes(collections: Value) -> Result<(), String> {
     match get_collections_json_path() {
         Ok(path) => {
