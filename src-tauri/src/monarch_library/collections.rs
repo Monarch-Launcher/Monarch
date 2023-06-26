@@ -56,11 +56,16 @@ pub fn new_collection(collection_name: String, game_ids: Vec<String>) -> Result<
 /// Updates info about a collection.
 pub fn update_collections( id: &str, new_name: &str, game_ids: Vec<String>) -> Result<Value, String> {
     match get_collections_as_struct() {
-        Ok(collecs) => {
-            match find_collection(id, collecs) {
-                Some(mut collection) => {
+        Ok(mut collecs) => {
+            match find_collection_index(id, &collecs) {
+                Some(index) => {
+                    let mut collection: &mut MonarchCollection = collecs.get_mut(index).unwrap();
                     collection.name = new_name.to_string();
                     collection.gameIds = game_ids;
+                    println!("{}", json!(collecs));
+                    if let Err(e) = write_collection_changes(json!(collecs)) {
+                        return Err(e)
+                    }
                     get_collections()
 
                 } None => {
@@ -78,7 +83,7 @@ pub fn update_collections( id: &str, new_name: &str, game_ids: Vec<String>) -> R
 pub fn delete_collections(id: &str) -> Result<Value, String> {
     match get_collections_as_struct() {
         Ok(mut collecs) => {
-            match find_collection_index(id, collecs.clone()) {
+            match find_collection_index(id, &collecs) {
                 Some(index) => {
                     collecs.remove(index);
                     if let Err(e) = write_collection_changes(json!(collecs)) {
@@ -194,17 +199,7 @@ fn get_collections_as_struct() -> Result<Vec<MonarchCollection>, String> {
     }
 }
 
-/// Returns the correct MonarchCollection from a Vec<MonarchCollection>.
-fn find_collection(id: &str, collections: Vec<MonarchCollection>) -> Option<MonarchCollection> {
-    for collection in collections {
-        if id == collection.id {
-            return Some(collection)
-        }
-    }
-    None
-}
-
 /// Returns index of MonarchCollection with matching id.
-fn find_collection_index(id: &str, collections: Vec<MonarchCollection>) -> Option<usize> {
+fn find_collection_index(id: &str, collections: &Vec<MonarchCollection>) -> Option<usize> {
     collections.iter().position(|x| *x.id == *id)
 }
