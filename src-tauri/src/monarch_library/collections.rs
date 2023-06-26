@@ -81,6 +81,9 @@ pub fn delete_collections(id: &str) -> Result<Value, String> {
             match find_collection_index(id, collecs.clone()) {
                 Some(index) => {
                     collecs.remove(index);
+                    if let Err(e) = write_collection_changes(json!(collecs)) {
+                        return Err(e)
+                    }
                     get_collections()
                 } None => {
                     Err("Failed to find specified collection!".to_string())
@@ -139,6 +142,27 @@ pub fn get_collections() -> Result<Value, String> {
             }
             
             Ok(monarch_collecs) // If it succeeds at creating new collections.json
+        }
+    }
+}
+
+fn write_collection_changes(collections: Value) -> Result<(), String> {
+    match get_collections_json_path() {
+        Ok(path) => {
+            match write_json_content(collections, path) {
+                Ok(_) => { 
+                    info!("Updated collections.json content!");
+                    Ok(())
+                }
+                Err(e) => {
+                    error!("Failed to write changes to collections.json! | Message: {:?}", e);
+                    return Err("Failed to write changes to collections.json!".to_string())
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to get path to collections.json! | Message: {:?}", e);
+            return Err("Failed to get path to collections.json!".to_string())
         }
     }
 }
