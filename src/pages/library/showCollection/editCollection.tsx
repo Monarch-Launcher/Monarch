@@ -76,6 +76,7 @@ const ModalHeader = styled.h2`
 type Props = {
   collection: Collection;
   toggleEditing: () => void;
+  closeCollection: () => void;
 };
 
 type FormValues = {
@@ -83,7 +84,11 @@ type FormValues = {
   gameIds: string[];
 };
 
-const EditCollectionForm = ({ collection, toggleEditing }: Props) => {
+const EditCollectionForm = ({
+  collection,
+  toggleEditing,
+  closeCollection,
+}: Props) => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [opened, { open, close }] = useDisclosure(false);
 
@@ -123,7 +128,9 @@ const EditCollectionForm = ({ collection, toggleEditing }: Props) => {
 
   const handleDelete = React.useCallback(async () => {
     await deleteCollection(collection.id);
-  }, [deleteCollection, collection.id]);
+    close();
+    closeCollection();
+  }, [deleteCollection, collection.id, closeCollection, close]);
 
   const onSubmit = React.useCallback(
     async (formvalues: FormValues) => {

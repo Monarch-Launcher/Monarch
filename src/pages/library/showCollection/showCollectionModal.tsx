@@ -110,6 +110,7 @@ const CollectionModal = ({ opened, close, collection }: Props) => {
           </>
         ) : (
           <EditCollectionForm
+            closeCollection={close}
             toggleEditing={toggleEditing}
             collection={collection}
           />
