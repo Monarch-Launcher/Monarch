@@ -1,8 +1,10 @@
+import './styles.css';
+
+import { appWindow, LogicalSize } from '@tauri-apps/api/window';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { appWindow, LogicalSize } from '@tauri-apps/api/window';
+
 import App from './App';
-import './styles.css';
 
 // Set minimum size of window
 await appWindow.setMinSize(new LogicalSize(800, 500));
