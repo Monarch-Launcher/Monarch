@@ -62,7 +62,7 @@ pub fn update_collections( id: &str, new_name: &str, game_ids: Vec<String>) -> R
                     let mut collection: &mut MonarchCollection = collecs.get_mut(index).unwrap();
                     collection.name = new_name.to_string();
                     collection.gameIds = game_ids;
-                    println!("{}", json!(collecs));
+                    
                     if let Err(e) = write_collection_changes(json!(collecs)) {
                         return Err(e)
                     }
