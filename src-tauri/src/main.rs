@@ -7,7 +7,9 @@ mod monarch_utils;
 mod monarch_games;
 mod monarch_library;
 
-use monarch_utils::commands::open_logs;
+use monarch_utils::commands::{open_logs,
+                              clear_cached_images};
+use monarch_utils::housekeeping::HouseKeeper;
 use monarch_utils::monarch_fs::{check_appdata_folder,
                                 check_resources_folder};
 use monarch_utils::monarch_logger::init_logger;
@@ -26,6 +28,9 @@ fn init() {
     check_appdata_folder();
     init_logger();
     check_resources_folder();
+
+    let housekeeper: HouseKeeper = HouseKeeper::new();
+    housekeeper.start(); // Start housekeeper on new thread
 }
 
 fn main() {
@@ -44,6 +49,7 @@ fn main() {
             delete_collection,
             get_collections,
             open_logs,
+            clear_cached_images,
             ])
         .run(tauri::generate_context!());
 

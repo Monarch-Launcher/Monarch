@@ -4,12 +4,48 @@
  */
 
 use log::{info, error};
-use std::fs;
+use std::{fs, time::Duration};
 use std::fs::DirEntry;
 use std::path::PathBuf;
 use std::time::SystemTime;
+use std::thread::sleep;
+use std::thread;
 
-use super::monarch_fs::{get_resources_cache};
+use super::monarch_fs::get_resources_cache;
+
+pub struct HouseKeeper {
+
+}
+
+impl HouseKeeper {
+    pub fn new() -> Self {
+        return Self { }
+    }
+
+    /// Runs HouseKeeper loop on seperate thread
+    pub fn start(self) {
+        thread::spawn(move || { 
+            loop {
+                sleep(Duration::new(3600, 0));
+
+                if self.low_system_usage() {
+                    clear_cached_thumbnails();
+
+                    break;
+                }
+            }
+        });
+    }
+
+    /// Checks if system usage is sufficiently low to clear resources
+    fn low_system_usage(&self) -> bool {
+        return false
+    }
+}
+
+/*
+    Clearing images
+ */
 
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 pub fn clear_cached_thumbnails() {
@@ -45,7 +81,7 @@ fn time_to_remove(file: PathBuf) -> bool {
     if let Ok(metadata) = fs::metadata(file) {
         if let Ok(time) = metadata.modified() {
             if let Ok(age) = SystemTime::now().duration_since(time) {
-                return age.as_secs() >= 1209600 // Return if file is older than 14 days
+                return age.as_secs() >= 1209600 // Return if file is older than 14 days [REPLACE WITH CUSTOM SETTING USER CAN CAHNGE FOR HOW LONG TO STORE IMAGES]
             }
         }
     }
@@ -75,3 +111,8 @@ pub fn clear_all_cache() {
         }
     }
 }
+
+/*
+    Clearing temporary files
+ */
+
