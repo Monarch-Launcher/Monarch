@@ -52,6 +52,8 @@ pub fn clear_cached_thumbnails() {
     match get_resources_cache() {
         Ok(cache) => {
             if let Ok(files) = fs::read_dir(cache) {
+                info!("Removing cached images...");
+                
                 for file in files {
                     if let Ok(file_path) = file {
                         remove_thumbnail(file_path);
@@ -69,9 +71,8 @@ pub fn clear_cached_thumbnails() {
 /// Removes old cache file if old enough
 fn remove_thumbnail(file: DirEntry) {
     if time_to_remove(file.path()) {
-        info!("Clearing cached images...");
         if let Err(e) = fs::remove_file(file.path()) {
-            error!("Failed to remove file: {}! | Message: {:?}", file.path().display(), e);
+            error!("Failed to remove file: {} | Message: {:?}", file.path().display(), e);
         }
     }
 }
