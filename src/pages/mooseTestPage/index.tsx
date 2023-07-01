@@ -28,7 +28,7 @@ const MooseTestPage = () => {
       // first parameters: string -> the name of the rust command to call (required)
       // second parameters: json object -> the parameter(s) the rust command takes (optional)
       // E.g. To call the function_name command: invoke('function_name', {arg1: 'foo', arg2: 'bar'})
-      const functionResult = await invoke('refresh_library');
+      const functionResult = await invoke('get_settings');
       //
       //
       // Don't edit the rest of this code
