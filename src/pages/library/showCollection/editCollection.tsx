@@ -37,7 +37,7 @@ const GameContainer = styled.div`
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 1rem;
-  height: 50vh;
+  height: 40vh;
   overflow-y: scroll;
 `;
 
@@ -46,7 +46,6 @@ const ButtonContainer = styled.div<{ $justify: string }>`
   align-items: center;
   justify-content: ${({ $justify }) => $justify};
   gap: 1rem;
-  margin: 2rem 0 1rem;
 `;
 
 const Row = styled.div`
@@ -140,8 +139,9 @@ const EditCollectionForm = ({
         formvalues.newName,
         formvalues.gameIds,
       );
+      toggleEditing();
     },
-    [collection.id, updateCollection],
+    [collection.id, updateCollection, toggleEditing],
   );
 
   const handleUpdateGameIds = React.useCallback(
