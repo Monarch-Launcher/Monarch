@@ -41,48 +41,6 @@ const CollectionsProvider = ({ children }: Props) => {
   const [error, setError] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
-  const createCollection = React.useCallback(
-    async (collectionName: string, gameIds: string[]) => {
-      try {
-        setError(false);
-        setLoading(true);
-        await invoke('create_collection', { collectionName, gameIds });
-      } catch (err) {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const updateCollection = React.useCallback(
-    async (id: string, newName: string, gameIds: string[]) => {
-      try {
-        setError(false);
-        setLoading(true);
-        await invoke('update_collection', { id, newName, gameIds });
-      } catch (err) {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const deleteCollection = React.useCallback(async (id: string) => {
-    try {
-      setError(false);
-      setLoading(true);
-      await invoke('delete_collection', { id });
-    } catch (err) {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const getCollections = React.useCallback(async () => {
     try {
       setLoading(true);
@@ -95,6 +53,54 @@ const CollectionsProvider = ({ children }: Props) => {
       setLoading(false);
     }
   }, []);
+
+  const createCollection = React.useCallback(
+    async (collectionName: string, gameIds: string[]) => {
+      try {
+        setError(false);
+        setLoading(true);
+        await invoke('create_collection', { collectionName, gameIds });
+        await getCollections();
+      } catch (err) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getCollections],
+  );
+
+  const updateCollection = React.useCallback(
+    async (id: string, newName: string, gameIds: string[]) => {
+      try {
+        setError(false);
+        setLoading(true);
+        await invoke('update_collection', { id, newName, gameIds });
+        await getCollections();
+      } catch (err) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getCollections],
+  );
+
+  const deleteCollection = React.useCallback(
+    async (id: string) => {
+      try {
+        setError(false);
+        setLoading(true);
+        await invoke('delete_collection', { id });
+        await getCollections();
+      } catch (err) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getCollections],
+  );
 
   React.useEffect(() => {
     getCollections();
