@@ -1,5 +1,5 @@
 use std::{process::Command, path::PathBuf};
-use toml::{map::Map, Value};
+use toml::Table;
 
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{read_settings, write_settings};
@@ -29,12 +29,12 @@ pub async fn open_logs() {
 
 #[tauri::command]
 /// Returns settings read from settings.toml
-pub fn get_settings() -> Result<Map<String, Value>, String> {
+pub fn get_settings() -> Result<Table, String> {
     read_settings()
 }
 
 #[tauri::command]
 /// Write setting to settings.toml
-pub fn set_setting(){
-
+pub fn set_setting(header: &str, key: &str, value: &str) -> Result<(), String> {
+    write_settings(header, key, value)
 }

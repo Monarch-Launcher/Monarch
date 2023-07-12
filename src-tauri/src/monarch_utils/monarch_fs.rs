@@ -67,7 +67,7 @@ pub fn check_resources_folder() {
     }
   
     if !path_exists(settings_path.clone()) {
-        info!("No settings.ini detected! Creating new...");
+        info!("No settings.toml detected! Creating new...");
         if let Err(e) = set_default_settings() {
             error!("Failed to write default settings to: {}! | Message: {:?}", settings_path.display(), e);
             exit(1);
@@ -114,7 +114,7 @@ pub fn get_home_path() -> Result<PathBuf, String> {
 pub fn get_settings_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path.push("settings.ini");
+            path.push("settings.toml");
             return Ok(path)
         }
         Err(e) => {
