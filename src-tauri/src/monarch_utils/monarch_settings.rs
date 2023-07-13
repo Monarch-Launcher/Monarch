@@ -4,12 +4,12 @@ use std::path::PathBuf;
 use log::{error, debug};
 use toml::{map::Map, Table, Value};
 
-use super::monarch_fs::{get_settings_path, path_exists};
+use super::monarch_fs::{get_settings_path, path_exists, get_app_data_path};
 
 /// Writes default settings to settings.ini
 pub fn set_default_settings() -> Result<(), String> {
     let path: PathBuf;
-    let settings: Table = Table::new();
+    let settings: Table = get_default_settings();
 
     match get_settings_path() {
         Ok(settings_path) => { path = settings_path }
@@ -26,12 +26,7 @@ pub fn set_default_settings() -> Result<(), String> {
         }
     }
 
-    if let Err(e) = fs::write(path, settings.to_string()) {
-        error!("Failed to write default settings to settings.toml! | Message: {:?}", e);
-        return Err("Failed to write default settings to settings.toml!".to_string())
-    }
-
-    return Ok(())
+    return write_toml_content(path, settings.to_string())
 }
 
 /// Write settings to file where header is the "header" you want to change under,
@@ -144,4 +139,28 @@ fn read_settings_section(header: &str, settings: &Map<String, Value>) -> Result<
             return Err("Failed to get section in settings!".to_string())
         }
     }
+}
+
+/// Returns default Monarch settings in the form of a TOML Table.
+/// .into() is used to avoid ugly syntax of e.g. Value::Boolean(true) - instead becomes true.into()
+fn get_default_settings() -> Table {
+    let mut settings: Table = Table::new();
+
+    let mut quicklaunch_settings: Table = Table::new();
+    quicklaunch_settings.insert("enabled".to_string(), true.into());
+    quicklaunch_settings.insert("open_shortcut".to_string(), "Super+Enter".into());
+    quicklaunch_settings.insert("open_shortcut".to_string(), "Esc".into());
+    quicklaunch_settings.insert("size".to_string(), "medium".into());
+
+    let mut monarch_general: Table = Table::new();
+    let appdata_path = get_app_data_path().unwrap();
+    let appdata_path_str = appdata_path.to_str().unwrap();
+    monarch_general.insert("appdata".to_string(), appdata_path_str.into());
+    monarch_general.insert("send crash logs".to_string(), true.into());
+    monarch_general.insert("start on startup".to_string(), false.into());
+    monarch_general.insert("start minimized".to_string(), false.into());
+
+    settings.insert("quicklaunch".to_string(), quicklaunch_settings.into());
+
+    return settings
 }
