@@ -7,7 +7,9 @@ mod monarch_utils;
 mod monarch_games;
 mod monarch_library;
 
-use monarch_utils::commands::open_logs;
+use monarch_utils::commands::{open_logs,
+                              clear_cached_images};
+use monarch_utils::housekeeping;
 use monarch_utils::monarch_fs::{check_appdata_folder,
                                 check_resources_folder};
 use monarch_utils::monarch_logger::init_logger;
@@ -23,9 +25,10 @@ use monarch_library::commands::{create_collection,
                                 get_collections};
 
 fn init() {
-    check_appdata_folder();
-    init_logger();
-    check_resources_folder();
+    check_appdata_folder(); // Verifies %appdata% (windows) or $HOME (unix) folder exists
+    init_logger(); // Starts logger
+    check_resources_folder(); // Verify folder structure
+    housekeeping::start(); // Starts housekeeping loop
 }
 
 fn main() {
@@ -44,6 +47,7 @@ fn main() {
             delete_collection,
             get_collections,
             open_logs,
+            clear_cached_images,
             ])
         .run(tauri::generate_context!());
 
