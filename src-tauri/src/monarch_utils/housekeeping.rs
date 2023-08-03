@@ -10,42 +10,40 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 use std::thread::sleep;
 use std::thread;
+use sysinfo::{System, SystemExt};
 
 use super::monarch_fs::get_resources_cache;
 
-pub struct HouseKeeper {
+/// Runs HouseKeeper loop on seperate thread
+pub fn start() {
+    thread::spawn(move || {
+        let mut sys = System::new();
 
+        loop {
+            sys.refresh_cpu();
+
+            if low_system_usage(&sys) {
+                clear_cached_thumbnails();
+
+                break; // For now assume that program will be restarted at some point within next few days.
+                // Can therefor stop the housekeeping service
+            }
+
+            sleep(Duration::new(3600, 0));
+        }
+    });
 }
 
-impl HouseKeeper {
-    pub fn new() -> Self {
-        return Self { }
-    }
-
-    /// Runs HouseKeeper loop on seperate thread
-    pub fn start(self) {
-        thread::spawn(move || { 
-            loop {
-                sleep(Duration::new(3600, 0));
-
-                if self.low_system_usage() {
-                    clear_cached_thumbnails();
-
-                    break;
-                }
-            }
-        });
-    }
-
-    /// Checks if system usage is sufficiently low to clear resources
-    fn low_system_usage(&self) -> bool {
-        return false
-    }
+/// Checks if system usage is sufficiently low to clear resources.
+/// Currently only checks a certain level of CPU usage, will possibly update later
+/// to check more metrics such as disk usage, memory, etc...
+fn low_system_usage(system: &System) -> bool {
+    return system.load_average().one < 30.0 // Check that system CPU usage 1 min ago is below 30% 
 }
 
 /*
     Clearing images
- */
+*/
 
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 pub fn clear_cached_thumbnails() {
@@ -89,11 +87,14 @@ fn time_to_remove(file: PathBuf) -> bool {
     false
 }
 
-/// Removes all files in \resources\cache, meant for UI so that user can clear folder if wanted
+/// Removes all files in /resources/cache, meant for UI so that user can clear folder if wanted
 pub fn clear_all_cache() {
+    info!("Manually clearing all cached images...");
+
     match get_resources_cache() {
-        Ok(resources) => {
-            match fs::read_dir(resources.clone()) {
+
+        Ok(cache) => {
+            match fs::read_dir(cache.clone()) {
                 Ok(files) => {
                     for file in files {
                         match file {
@@ -103,7 +104,7 @@ pub fn clear_all_cache() {
                     }
                 }
                 Err(e) => {
-                    error!("Failed to get files from folder: {} | Message: {}", resources.display(), e);
+                    error!("Failed to get files from folder: {} | Message: {}", cache.display(), e);
                 }
             }
         }
@@ -115,5 +116,5 @@ pub fn clear_all_cache() {
 
 /*
     Clearing temporary files
- */
+*/
 
