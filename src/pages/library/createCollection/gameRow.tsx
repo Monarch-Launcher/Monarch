@@ -50,7 +50,7 @@ type Props = {
 };
 
 const GameRow = ({ id, name, isSelected, updateSelectedGames }: Props) => {
-  const [gameSelected, setGameSelected] = React.useState(false);
+  const [gameSelected, setGameSelected] = React.useState(isSelected);
 
   const toggleGameSelected = React.useCallback(() => {
     // If game is already selected, remove it; else add it
@@ -66,7 +66,7 @@ const GameRow = ({ id, name, isSelected, updateSelectedGames }: Props) => {
   return (
     <Row onClick={toggleGameSelected}>
       <GameTitle>{name}</GameTitle>
-      {(gameSelected || isSelected) && <FaCheck />}
+      {gameSelected && <FaCheck />}
     </Row>
   );
 };

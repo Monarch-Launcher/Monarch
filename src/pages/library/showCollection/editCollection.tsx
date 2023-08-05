@@ -37,7 +37,7 @@ const GameContainer = styled.div`
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 1rem;
-  height: 50vh;
+  height: 40vh;
   overflow-y: scroll;
 `;
 
@@ -46,7 +46,6 @@ const ButtonContainer = styled.div<{ $justify: string }>`
   align-items: center;
   justify-content: ${({ $justify }) => $justify};
   gap: 1rem;
-  margin: 2rem 0 1rem;
 `;
 
 const Row = styled.div`
@@ -76,6 +75,7 @@ const ModalHeader = styled.h2`
 type Props = {
   collection: Collection;
   toggleEditing: () => void;
+  closeCollection: () => void;
 };
 
 type FormValues = {
@@ -83,7 +83,11 @@ type FormValues = {
   gameIds: string[];
 };
 
-const EditCollectionForm = ({ collection, toggleEditing }: Props) => {
+const EditCollectionForm = ({
+  collection,
+  toggleEditing,
+  closeCollection,
+}: Props) => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [opened, { open, close }] = useDisclosure(false);
 
@@ -123,7 +127,9 @@ const EditCollectionForm = ({ collection, toggleEditing }: Props) => {
 
   const handleDelete = React.useCallback(async () => {
     await deleteCollection(collection.id);
-  }, [deleteCollection, collection.id]);
+    close();
+    closeCollection();
+  }, [deleteCollection, collection.id, closeCollection, close]);
 
   const onSubmit = React.useCallback(
     async (formvalues: FormValues) => {
@@ -133,8 +139,9 @@ const EditCollectionForm = ({ collection, toggleEditing }: Props) => {
         formvalues.newName,
         formvalues.gameIds,
       );
+      toggleEditing();
     },
-    [collection.id, updateCollection],
+    [collection.id, updateCollection, toggleEditing],
   );
 
   const handleUpdateGameIds = React.useCallback(

@@ -32,12 +32,11 @@ const GamesContainer = styled.div`
   overflow-y: scroll;
 `;
 
-const ModalButtons = styled.div`
+const Flex = styled.div`
   display: flex;
-  justify-content: right;
+  justify-content: center;
   align-items: center;
   gap: 1rem;
-  margin: 1rem 0 0.5rem;
 `;
 
 type Props = {
@@ -50,22 +49,34 @@ const CollectionModal = ({ opened, close, collection }: Props) => {
   const [isEditing, setIsEditing] = React.useState(false);
   const { library } = useLibrary();
 
+  const toggleEditing = React.useCallback(() => {
+    setIsEditing((prev) => !prev);
+  }, []);
+
   const modalHeader = React.useMemo<JSX.Element>(() => {
     return (
       <ModalHeaderContainer>
         <ModalHeader>
-          {!isEditing ? collection.name : `Edit ${collection.name}`}
+          <Flex>
+            {!isEditing ? collection.name : `Edit ${collection.name}`}
+            {!isEditing && (
+              <Button
+                type="button"
+                variant="primary"
+                rightIcon={BiEdit}
+                onClick={toggleEditing}
+              >
+                Edit
+              </Button>
+            )}
+          </Flex>
         </ModalHeader>
         <Button type="button" variant="icon" onClick={close}>
           <MdClose color="black" size={24} />
         </Button>
       </ModalHeaderContainer>
     );
-  }, [close, collection.name, isEditing]);
-
-  const toggleEditing = React.useCallback(() => {
-    setIsEditing((prev) => !prev);
-  }, []);
+  }, [close, collection.name, isEditing, toggleEditing]);
 
   const collectionGames = React.useMemo<MonarchGame[]>(() => {
     return library.filter((game) => collection.gameIds.includes(game.id));
@@ -82,34 +93,23 @@ const CollectionModal = ({ opened, close, collection }: Props) => {
     >
       <ContentContainer>
         {!isEditing ? (
-          <>
-            <GamesContainer>
-              {collectionGames.map((game) => (
-                <GameCard
-                  key={game.id}
-                  id={game.id}
-                  executablePath={game.executable_path}
-                  platform={game.platform}
-                  name={game.name}
-                  platformId={game.platform_id}
-                  thumbnailPath={game.thumbnail_path}
-                  isLibrary
-                />
-              ))}
-            </GamesContainer>
-            <ModalButtons>
-              <Button
-                type="button"
-                variant="primary"
-                rightIcon={BiEdit}
-                onClick={toggleEditing}
-              >
-                Edit
-              </Button>
-            </ModalButtons>
-          </>
+          <GamesContainer>
+            {collectionGames.map((game) => (
+              <GameCard
+                key={game.id}
+                id={game.id}
+                executablePath={game.executable_path}
+                platform={game.platform}
+                name={game.name}
+                platformId={game.platform_id}
+                thumbnailPath={game.thumbnail_path}
+                isLibrary
+              />
+            ))}
+          </GamesContainer>
         ) : (
           <EditCollectionForm
+            closeCollection={close}
             toggleEditing={toggleEditing}
             collection={collection}
           />

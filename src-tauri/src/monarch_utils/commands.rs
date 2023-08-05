@@ -4,9 +4,12 @@ use toml::Table;
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{read_settings, write_settings};
 
+use super::monarch_logger::get_log_dir;
+use super::housekeeping::clear_all_cache;
+
 #[cfg(target_os = "windows")]
 #[tauri::command]
-/// Opens log folder on windows
+/// Use OS default option to open log directory
 pub async fn open_logs() {
    let path: PathBuf = get_log_dir();
    Command::new("PowerShell")
@@ -18,7 +21,7 @@ pub async fn open_logs() {
 
 #[cfg(target_os = "linux")]
 #[tauri::command]
-/// Opens log file on linux
+/// Use OS default option to open log directory
 pub async fn open_logs() {
    let path: PathBuf = get_log_dir();
    Command::new("xdg-open")
@@ -37,4 +40,10 @@ pub fn get_settings() -> Result<Table, String> {
 /// Write setting to settings.toml
 pub fn set_setting(header: &str, key: &str, value: &str) -> Result<(), String> {
     write_settings(header, key, value)
+}
+
+#[tauri::command]
+/// Manually clear all images in the resources/cache directory
+pub fn clear_cached_images() {
+    clear_all_cache();
 }

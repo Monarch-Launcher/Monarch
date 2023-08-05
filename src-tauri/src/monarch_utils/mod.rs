@@ -6,6 +6,7 @@ pub mod monarch_vdf;
 pub mod monarch_run;
 pub mod monarch_settings;
 pub mod commands;
+pub mod housekeeping;
 
 #[cfg(target_os="windows")]
 pub mod monarch_winreg;
