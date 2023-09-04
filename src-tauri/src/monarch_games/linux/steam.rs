@@ -1,7 +1,7 @@
 use log::{error, info};
 use reqwest::Response;
 use scraper::{ElementRef, Html, Selector};
-use std::io::{Error, stdout};
+use std::io::Error;
 use std::process::{Child, Command, Output};
 use tokio;
 use core::result::Result;
@@ -9,37 +9,29 @@ use std::path::PathBuf;
 
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_utils::{
-    monarch_download::{download_and_run, download_image},
+    monarch_download::download_image,
     monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists, get_app_data_path},
     monarch_web::request_data,
     monarch_vdf
 };
 
-
 /*
 ---------- Public functions ----------
 */
 
-/// Downloads Steam launcher if not already installed
-pub async fn get_steam() {
-    let is_installed: bool = steam_is_installed();
-
-    if is_installed {
-        info!("Steam already installed!")
-    } else {
-        info!("Can't automatically install Steam on Linux! You need to install it yourself via your package manager.")
-    }
+/// Tells user to install Steam manually on Linux
+pub async fn get_steam() -> Result<(), String> {
+    info!("Can't automatically install Steam on Linux! You need to install it yourself via your package manager.");
+    return Err("Can't automatically install Steam on Linux!".to_string());
 }
-
-
 
 /// Opens the steam installer for a steam game
 pub fn download_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://install/");
     game_command.push_str(id);
 
-    let download_result: Result<Child, Error> = Command::new("PowerShell")
-        .arg("start")
+    let download_result: Result<Child, Error> = Command::new("sh")
+        .arg("steam")
         .arg(&game_command)
         .spawn(); // Run steam installer for specified game
 
@@ -49,29 +41,28 @@ pub fn download_game(name: &str, id: &str) {
         }
         Err(e) => {
             error!(
-                "Failed to run steam installer: {}(Game: {}) | Message: {:?}", game_command, name, e);
+                "Failed to run steam installer: {} (Game: {}) | Message: {:?}", game_command, name, e);
         }
     }
 }
 
 /// Launches steam game
-pub fn launch_game(name: &str, id: &str){
+pub fn launch_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://rungameid/");
     game_command.push_str(id);
 
-    let launch_result: Result<Child, Error> = Command::new("PowerShell")
-        .arg("start")
+    let launch_result: Result<Child, Error> = Command::new("sh")
+        .arg("steam")
         .arg(&game_command)
         .spawn(); // Run steam installer for specified game
+
     match launch_result {
         Ok(_) => {
             info!("Launching game: {}", name);
         }
         Err(e) => {
             error!(
-                "Failed to launch game: {}({}) | Message: {:?}",
-                game_command, name, e
-            );
+                "Failed to launch game: {} (Game: {}) | Message: {:?}", game_command, name, e);
         }
     }
 }
@@ -81,19 +72,18 @@ pub fn purchase_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://purchase/");
     game_command.push_str(id);
 
-    let launch_result: Result<Child, Error> = Command::new("PowerShell")
-        .arg("start")
+    let launch_result: Result<Child, Error> = Command::new("sh")
+        .arg("steam")
         .arg(&game_command)
         .spawn(); // Run steam installer for specified game
+
     match launch_result {
         Ok(_) => {
             info!("Opening store page: {}", name);
         }
         Err(e) => {
             error!(
-                "Failed to open store page: {}({}) | Message: {:?}",
-                game_command, name, e
-            );
+                "Failed to open store page: {} (Game: {}) | Message: {:?}", game_command, name, e);
         }
     }
 }
@@ -117,7 +107,6 @@ pub async fn get_library() -> Vec<MonarchGame> {
     return library_steam_game_parser(found_games).await;
 }
 
-
 /// Returns whether or not Steam launcher is installed
 fn steam_is_installed() -> bool {
     let result: Result<Output, Error> = Command::new("find")
@@ -128,7 +117,7 @@ fn steam_is_installed() -> bool {
 
     match result {
         Ok(output) => {
-            if !output.stdout.is_empty() { // Assume that if result is empty Steam is not on System
+            if !output.stdout.is_empty() { // Assume that if result is empty Steam is not installed on System
                 return true
             }
         }
@@ -156,6 +145,7 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 }
 
 /// Returns a HashMap of games with their respective Steam IDs.
+/// TODO: Replace with cleaner version possibly using HTTP requests mimicking the official Steam Client
 async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
 
@@ -195,6 +185,7 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
     return games;
 }
 
+/// TODO: Replace with cleaner version possibly using HTTP requests mimicking the official Steam Client
 async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     let title_selector: Selector = Selector::parse("div.apphub_AppName").unwrap();
@@ -262,6 +253,7 @@ fn get_img_link(id: &str) -> String {
     return target;
 }
 
+/// Returns default path used by steam on Linux systems ($HOME/.steam)
 fn get_default_location() -> Result<PathBuf, String> {
     match get_app_data_path() {
         Ok(mut path) => {
