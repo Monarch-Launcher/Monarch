@@ -38,8 +38,8 @@ pub fn download_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://install/");
     game_command.push_str(id);
 
-    let download_result: Result<Child, Error> = Command::new("PowerShell")
-        .arg("start")
+    let download_result: Result<Child, Error> = Command::new("sh")
+        .arg("steam")
         .arg(&game_command)
         .spawn(); // Run steam installer for specified game
 
@@ -49,18 +49,18 @@ pub fn download_game(name: &str, id: &str) {
         }
         Err(e) => {
             error!(
-                "Failed to run steam installer: {}(Game: {}) | Message: {:?}", game_command, name, e);
+                "Failed to run steam installer: {} (Game: {}) | Message: {:?}", game_command, name, e);
         }
     }
 }
 
 /// Launches steam game
-pub fn launch_game(name: &str, id: &str){
+pub fn launch_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://rungameid/");
     game_command.push_str(id);
 
-    let launch_result: Result<Child, Error> = Command::new("PowerShell")
-        .arg("start")
+    let launch_result: Result<Child, Error> = Command::new("sh")
+        .arg("steam")
         .arg(&game_command)
         .spawn(); // Run steam installer for specified game
     match launch_result {
@@ -69,7 +69,7 @@ pub fn launch_game(name: &str, id: &str){
         }
         Err(e) => {
             error!(
-                "Failed to launch game: {}({}) | Message: {:?}",
+                "Failed to launch game: {} (Game: {}) | Message: {:?}",
                 game_command, name, e
             );
         }
@@ -81,8 +81,8 @@ pub fn purchase_game(name: &str, id: &str) {
     let mut game_command: String = String::from("steam://purchase/");
     game_command.push_str(id);
 
-    let launch_result: Result<Child, Error> = Command::new("PowerShell")
-        .arg("start")
+    let launch_result: Result<Child, Error> = Command::new("sh")
+        .arg("steam")
         .arg(&game_command)
         .spawn(); // Run steam installer for specified game
     match launch_result {
