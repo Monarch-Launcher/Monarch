@@ -16,22 +16,12 @@ use crate::monarch_utils::{
     monarch_vdf
 };
 
-
-/*
----------- Public functions ----------
-*/
-
-/// Downloads Steam launcher if not already installed
+/// Downloads and executes Steam installer
 pub async fn get_steam() {
-    let is_installed: bool = steam_is_installed();
+    let target_url: &str = "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe";
 
-    if is_installed {
-        info!("Steam already installed!")
-    } else {
-        let target_url: &str = "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe";
-        if let Err(e) = download_and_run(target_url).await {
-            error!("Error occured while attempting to download and run Steam installer! | Message: {:?}", e);
-        }
+    if let Err(e) = download_and_run(target_url).await {
+        error!("Error occured while attempting to download and run Steam installer! | Message: {:?}", e);
     }
 }
 
