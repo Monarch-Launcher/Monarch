@@ -3,8 +3,6 @@ use toml::Table;
 
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{read_settings, write_settings};
-
-use super::monarch_logger::get_log_dir;
 use super::housekeeping::clear_all_cache;
 
 #[cfg(target_os = "windows")]

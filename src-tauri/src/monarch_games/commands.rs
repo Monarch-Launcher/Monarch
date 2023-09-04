@@ -62,7 +62,7 @@ pub fn launch_game(name: String, platform_id: String, platform: String) {
             steam::launch_game(name.as_str(), platform_id.as_str());
         }
         "blizzard" => {
-            blizzard::launch_game(name.as_str(), platform_id.as_str());
+            let _ = blizzard::launch_game(name.as_str(), platform_id.as_str());
         }
         "epic" => {}
         "monarch" => {}

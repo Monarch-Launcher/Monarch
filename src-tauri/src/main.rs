@@ -9,7 +9,7 @@ mod monarch_library;
 
 use monarch_utils::commands::{open_logs,
                               get_settings,
-                              set_setting};
+                              set_setting,
                               clear_cached_images};
 use monarch_utils::housekeeping;
 use monarch_utils::monarch_fs::{check_appdata_folder,

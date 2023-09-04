@@ -55,7 +55,7 @@ pub fn download_game(name: &str, id: &str) {
 }
 
 /// Launches steam game
-pub fn launch_game(name: &str, id: &str) {
+pub fn launch_game(name: &str, id: &str){
     let mut game_command: String = String::from("steam://rungameid/");
     game_command.push_str(id);
 
