@@ -20,6 +20,7 @@ serde_json = "1.0"
 
 # Monarch dependencies
 tokio = { version = "1", features = ["full"] }
+toml = "0.7.6"
 reqwest = "0.11.0"
 scraper = "0.15.0"
 log = "0.4.17"

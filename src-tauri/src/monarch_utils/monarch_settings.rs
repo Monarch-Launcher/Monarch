@@ -1,116 +1,166 @@
-use serde::{Serialize, Deserialize};
-use serde_json::{value::Value, json};
-use log::{info, error};
+use core::result::Result;
 use std::fs;
-use std::fs::File;
 use std::path::PathBuf;
-use std::collections::HashMap;
+use log::{error, debug};
+use toml::{map::Map, Table, Value};
 
-use super::monarch_fs::{get_settings_json_path, write_json_content};
+use super::monarch_fs::{get_settings_path, path_exists, get_app_data_path};
 
-#[derive(Serialize, Deserialize)]
-pub struct MonarchSettings {
-    platform_settings: HashMap<String, PlatformSettings> // Store settings with <name, settings>
+/// Writes default settings to settings.ini
+pub fn set_default_settings() -> Result<(), String> {
+    let path: PathBuf;
+    let settings: Table = get_default_settings();
+
+    match get_settings_path() {
+        Ok(settings_path) => { path = settings_path }
+        Err(e) => {
+            error!("Failed to get path to settings.toml! | Message: {:?}", e);
+            return Err("Failed to get path to settings.toml!".to_string())
+        }
+    }
+
+    if !path_exists(path.clone()) {
+        if let Err(e) = fs::File::create(path.clone()) {
+            error!("Failed to create new file: {} | Message: {:?}", path.display(), e);
+            return Err("Failed to create new settings.toml!".to_string())
+        }
+    }
+
+    return write_toml_content(path, settings.to_string())
 }
 
-impl MonarchSettings {
-    pub fn new() -> Self {
-        Self { platform_settings: HashMap::new() }
-    }
-
-    pub fn _get_launcher_settings(self, name: &str) -> PlatformSettings {
-        self.platform_settings.get(name).unwrap().clone()
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct PlatformSettings {
-    library_file_path: String, // File location of a launchers library (ex. Steam: library.vdf)
-    default_folder_path: String, // Default game folder location for launcher
-    other_game_folders: Vec<String>, // Other folder locations to look for games
-}
-
-impl PlatformSettings {
-    pub fn _get_library_file_path(self) -> String {
-        return self.library_file_path
-    }
-
-    pub fn _set_library_file_path(mut self, path: &str) {
-        self.library_file_path = path.to_string()
-    }
-
-    pub fn _get_default_library_path(self) -> String {
-        return self.default_folder_path
-    }
-
-    pub fn _set_default_library_path(mut self, path: &str) {
-        self.default_folder_path = path.to_string()
-    }
-
-    pub fn _get_other_game_folders(self) -> Vec<String> {
-        return self.other_game_folders
-    }
-
-    pub fn _add_other_game_folder(mut self, path: &str) {
-        self.other_game_folders.push(path.to_string())
-    }
-
-    pub fn _remove_other_game_folder(mut self, path: &str) {
-        let index = self.other_game_folders.iter().position(|x| *x == path.to_string()).unwrap();
-        self.other_game_folders.remove(index);
-    } 
-
-
-}
-
-/// Read settings from JSON file
-pub fn read_settings() -> Result<MonarchSettings, String> {
-    match get_settings_json_path() {
+/// Write settings to file where header is the "header" you want to change under,
+/// key is the name of the setting and value is the new value the setting should have.
+pub fn write_settings(header: &str, key: &str, value: &str) -> Result<(), String> {
+    match get_settings_path() {
         Ok(path) => {
-            return parse_json_content(path)
+            return write_settings_content(path, header, key, value)
         }
         Err(e) => {
-            error!("Failed to get path to settings.json! | Message: {:?}", e);
-            return Err("Failed to get path to settings.json!".to_string())
+            error!("Failed to get path to settings.toml! | Message: {:?}", e);
+            return Err("Failed to get path to settings.toml!".to_string())
         }
     }
 }
 
-/// Converts json format to MonarchSettings struct
-fn parse_json_content(path: PathBuf) -> Result<MonarchSettings, String> {
-    match fs::File::open(path.clone()) {
-        Ok(reader) => {
-            match serde_json::from_reader::<File, MonarchSettings>(reader) {
-                Ok(content) => {
-                    return Ok(content)
+/// Writes setting to settings.toml
+fn write_settings_content(file: PathBuf, header: &str, key: &str, value: &str) -> Result<(), String> {
+    match read_settings_content(&file) {
+        Ok(mut settings) => {
+            println!("Settings: {:?}", settings);
+            if let Ok(mut settings_sec) = read_settings_section(header, &settings) {
+                settings_sec.insert(key.into(), value.into());
+                settings.insert(header.into(), settings_sec.into());
+                return write_toml_content(file, toml::to_string(&settings).unwrap())
+            }
+
+            // If no section exists, create a new one
+            let mut settings_sec: Table = Table::new();
+            settings_sec.insert(key.into(), value.into());
+            settings.insert(header.into(), settings_sec.into());
+            return write_toml_content(file, toml::to_string(&settings).unwrap())
+        }
+        Err(e) => {
+            error!("Failed to read settings from settings.toml! | Message: {:?}", e);
+            return Err("Failed to read settings.toml!".to_string())
+        }
+    }
+}
+
+/// Writes changes to settings.toml
+fn write_toml_content(path: PathBuf, content: String) -> Result<(), String> {
+    if let Err(e) = fs::write(path, content) {
+        error!("Failed to write settings to settings.toml | Message: {:?}",e );
+        return Err("Failed to write changes to settings.toml!".to_string())
+    }
+    Ok(())
+}
+
+/// Read all settings from file
+pub fn read_settings() -> Result<Table, String> {
+    match get_settings_path() {
+        Ok(path) => {
+            return read_settings_content(&path)        
+        }
+        Err(e) => {
+            error!("Failed to get path to settings.ini! | Message: {:?}", e);
+            return Err("Failed to get path to settings.toml!".to_string())
+        }
+    }
+}
+
+/// Parses content in settings.toml
+fn read_settings_content(file: &PathBuf) -> Result<Table, String> {
+    match fs::read_to_string(&file) {
+        Ok(content) => {
+            if !content.is_empty() {
+                return parse_table(content)
+            }
+
+            return Ok(Table::new())
+        }
+        Err(e) => {
+            error!("Failed to read content from: {} | Message: {:?}", file.display(), e);
+            return Err("Failed to read settings.toml!".to_string())
+        }
+    }
+}
+
+/// Returns String content as TOML Table
+fn parse_table(content: String) -> Result<Table, String> {
+    match content.parse::<Table>() {
+        Ok(settings) => {
+            return Ok(settings)
+        }
+        Err(e) => {
+            error!("Failed to parse content in settings.toml! | Message: {:?}", e);
+            debug!("CONTENT: {:?}", content);
+            return Err("Failed to parse settings.toml content!".to_string())
+        }
+    }
+}
+
+/// Returns a speicif section in settings TOML Table
+fn read_settings_section(header: &str, settings: &Map<String, Value>) -> Result<Table, String> {
+    match settings.get(header) {
+        Some(settings_sec) => {
+            match settings_sec.as_table() {
+                Some(settings_table) => {
+                    return Ok(settings_table.clone())
                 }
-                Err(e) => {
-                    error!("Failed to parse json to MonarchSettings! | Message: {:?}", e);
-                    return Err("Failed to parse json content to settings!".to_string())
+                None => {
+                    error!("Failed to parse section as TOML Table!");
+                    return Err("Failed to parse section as table!".to_string())
                 }
             }
         }
-        Err(e) => {
-            error!("Failed to open file: {} | Message: {:?}", path.display(), e);
-            return Err("Failed to open settings.json file!".to_string())
+        None => {
+            error!("Failed to get section in settings: {} ", header);
+            return Err("Failed to get section in settings!".to_string())
         }
     }
 }
 
-/// Writes settings (in json format) to settings.json which is where Monarch stores it's settings.
-pub fn write_settings(content: Value) -> Result<(), String> {
-    match get_settings_json_path() {
-        Ok(path) => {
-            if let Err(e) = write_json_content(content, path) {
-                error!("Failed to write content to settings.json! (write_settings()) | Message: {:?}", e);
-                return Err("Failed to write content to settings.json!".to_string())
-            }
-            return Ok(())
-        }
-        Err(e) => {
-            error!("Failed to get path to settings.json! (write_settings()) | Message: {:?}", e);
-            return Err("Failed to get path to settings.json!".to_string());
-        }
-    }
-}
+/// Returns default Monarch settings in the form of a TOML Table.
+/// .into() is used to avoid ugly syntax of e.g. Value::Boolean(true) - instead becomes true.into()
+fn get_default_settings() -> Table {
+    let mut settings: Table = Table::new();
 
+    let mut quicklaunch_settings: Table = Table::new();
+    quicklaunch_settings.insert("enabled".to_string(), true.into());
+    quicklaunch_settings.insert("open_shortcut".to_string(), "Super+Enter".into());
+    quicklaunch_settings.insert("open_shortcut".to_string(), "Esc".into());
+    quicklaunch_settings.insert("size".to_string(), "medium".into());
+
+    let mut monarch_general: Table = Table::new();
+    let appdata_path = get_app_data_path().unwrap();
+    let appdata_path_str = appdata_path.to_str().unwrap();
+    monarch_general.insert("appdata".to_string(), appdata_path_str.into());
+    monarch_general.insert("send crash logs".to_string(), true.into());
+    monarch_general.insert("start on startup".to_string(), false.into());
+    monarch_general.insert("start minimized".to_string(), false.into());
+
+    settings.insert("quicklaunch".to_string(), quicklaunch_settings.into());
+
+    return settings
+}

@@ -8,7 +8,7 @@ use std::time::SystemTime;
 use regex::Regex;
 use core::result::Result;
 
-use super::monarch_settings::{MonarchSettings, write_settings};
+use super::monarch_settings::{set_default_settings, write_settings};
 
 /*
 ---------- General functions for filesystem tasks ----------
@@ -40,7 +40,7 @@ pub fn check_resources_folder() {
     let resources_dir: PathBuf = get_resources_path().unwrap(); 
     let cache_dir: PathBuf = get_resources_cache().unwrap();
     let lib_img_dir: PathBuf = get_resources_library().unwrap();
-    let settings_path: PathBuf = get_settings_json_path().unwrap();
+    let settings_path: PathBuf = get_settings_path().unwrap();
         
     if !path_exists(resources_dir.clone()) {
         info!("No resources folder detected! Creating new...");
@@ -67,9 +67,8 @@ pub fn check_resources_folder() {
     }
   
     if !path_exists(settings_path.clone()) {
-        info!("No settings.json detected! Creating new...");
-        let settings: Value = serde_json::to_value(MonarchSettings::new()).unwrap();
-        if let Err(e) = write_settings(settings) {
+        info!("No settings.toml detected! Creating new...");
+        if let Err(e) = set_default_settings() {
             error!("Failed to write default settings to: {}! | Message: {:?}", settings_path.display(), e);
             exit(1);
         }
@@ -112,10 +111,10 @@ pub fn get_home_path() -> Result<PathBuf, String> {
 }
 
 /// Returns path to settings.json
-pub fn get_settings_json_path() -> Result<PathBuf, VarError> {
+pub fn get_settings_path() -> Result<PathBuf, VarError> {
     match get_app_data_path() {
         Ok(mut path) => {
-            path.push("settings.json");
+            path.push("settings.toml");
             return Ok(path)
         }
         Err(e) => {
@@ -223,70 +222,6 @@ pub fn get_resources_library() -> Result<PathBuf, VarError> {
         Err(e) => {
             error!("Failed to get %appdata% path! | Message: {:?}", e);
             return Err(e)
-        }
-    }
-}
-
-/// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
-pub fn clear_cached_thumbnails() {
-    match get_resources_cache() {
-        Ok(cache) => {
-            if let Ok(files) = fs::read_dir(cache) {
-                for file in files {
-                    if let Ok(file_path) = file {
-                        remove_thumbnail(file_path);
-                    }       
-                }
-            }
-        }
-        Err(e) => {
-            error!("Failed to get cache directory! | Message: {}", e);
-        }
-    }
-    
-}
-
-/// Removes old cache file if old enough
-fn remove_thumbnail(file: DirEntry) {
-    if time_to_remove(file.path()) {
-        if let Err(e) = fs::remove_file(file.path()) {
-            error!("Failed to remove file: {}! | Message: {:?}", file.path().display(), e);
-        }
-    }
-}
-
-/// Checks if it's time to remove cached thumbnail
-fn time_to_remove(file: PathBuf) -> bool {
-    if let Ok(metadata) = fs::metadata(file) {
-        if let Ok(time) = metadata.modified() {
-            if let Ok(age) = SystemTime::now().duration_since(time) {
-                return age.as_secs() >= 1209600 // Return if file is older than 14 days
-            }
-        }
-    }
-    false
-}
-
-/// Removes all files in \resources\cache, meant for UI so that user can clear folder if wanted
-pub fn clear_all_cache() {
-    match get_resources_cache() {
-        Ok(resources) => {
-            match fs::read_dir(resources.clone()) {
-                Ok(files) => {
-                    for file in files {
-                        match file {
-                            Ok(f) => { remove_thumbnail(f); }
-                            Err(e) => { error!("Failed to read file! | Message: {:?}", e); }
-                        }
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to get files from folder: {} | Message: {}", resources.display(), e);
-                }
-            }
-        }
-        Err(e) => {
-            error!("Failed to get resources path! | Message: {}", e);
         }
     }
 }

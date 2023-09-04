@@ -1,4 +1,8 @@
 use std::{process::Command, path::PathBuf};
+use toml::Table;
+
+use super::monarch_logger::get_log_dir;
+use super::monarch_settings::{read_settings, write_settings};
 
 use super::monarch_logger::get_log_dir;
 use super::housekeeping::clear_all_cache;
@@ -15,7 +19,7 @@ pub async fn open_logs() {
            .unwrap();
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
 #[tauri::command]
 /// Use OS default option to open log directory
 pub async fn open_logs() {
@@ -26,6 +30,17 @@ pub async fn open_logs() {
            .unwrap();
 }
 
+#[tauri::command]
+/// Returns settings read from settings.toml
+pub fn get_settings() -> Result<Table, String> {
+    read_settings()
+}
+
+#[tauri::command]
+/// Write setting to settings.toml
+pub fn set_setting(header: &str, key: &str, value: &str) -> Result<(), String> {
+    write_settings(header, key, value)
+}
 
 #[tauri::command]
 /// Manually clear all images in the resources/cache directory
