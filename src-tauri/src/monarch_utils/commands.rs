@@ -17,6 +17,17 @@ pub async fn open_logs() {
            .unwrap();
 }
 
+#[cfg(target_os = "macos")]
+#[tauri::command]
+/// Use OS default option to open log directory
+pub async fn open_logs() {
+   let path: PathBuf = get_log_dir();
+   Command::new("open")
+           .arg(path)
+           .spawn()
+           .unwrap();
+}
+
 #[cfg(target_os = "linux")]
 #[tauri::command]
 /// Use OS default option to open log directory
