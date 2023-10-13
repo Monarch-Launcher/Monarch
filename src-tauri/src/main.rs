@@ -1,8 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::process::exit;
-
 use log::error;
 
 mod monarch_games;
@@ -24,7 +22,7 @@ fn init() {
     check_appdata_folder(); // Verifies %appdata% (windows) or $HOME (unix) folder exists
     init_logger(); // Starts logger
     check_resources_folder(); // Verify folder structure
-    let _ = monarch_settings::init();
+    monarch_settings::init().expect("Error during settings initialization!");
     housekeeping::start(); // Starts housekeeping loop
 }
 
@@ -55,4 +53,3 @@ fn main() {
         error!("Failed to build Tauri app! | Message: {:?}", e);
     }
 }
-

@@ -4,21 +4,28 @@ use std::fs;
 use std::path::PathBuf;
 use toml::{map::Map, Table, Value};
 
-use std::sync::OnceLock;
-
 use super::monarch_fs::{get_app_data_path, get_settings_path, path_exists};
 
-static SETTINGS: OnceLock<Settings> = OnceLock::new();
-
-pub fn init() -> Result<(), Settings> {
-    SETTINGS.set(Settings {})
+/// Checks that a settings.toml file exists, otherwise attempts to create new file and populate
+/// with default settings
+pub fn init() -> Result<(), String> {
+    match get_settings_path() {
+        Ok(path) => {
+            if !path_exists(path) {
+                // If settings.toml doesn't exist, create a new file and fill
+                // with default settings
+                return set_default_settings();
+            }
+            Ok(())
+        }
+        Err(e) => {
+            error!("Cannot get path to settings.toml! | Message: {e}");
+            Err("Failed to get path to settings.toml!".to_string())
+        }
+    }
 }
 
-pub struct Settings {}
-
-impl Settings {}
-
-/// Writes default settings to settings.ini
+/// Writes default settings to settings.toml
 pub fn set_default_settings() -> Result<(), String> {
     let path: PathBuf;
     let settings: Table = get_default_settings();
@@ -42,17 +49,21 @@ pub fn set_default_settings() -> Result<(), String> {
         }
     }
 
-    return write_toml_content(path, settings.to_string());
+    write_toml_content(path, settings.to_string())
 }
+
+/*
+* ----- Frontend settings fuctionality -----
+*/
 
 /// Write settings to file where header is the "header" you want to change under,
 /// key is the name of the setting and value is the new value the setting should have.
-pub fn write_settings(header: &str, key: &str, value: &str) -> Result<(), String> {
+pub fn write_settings(settings: String) -> Result<(), String> {
     match get_settings_path() {
-        Ok(path) => return write_settings_content(path, header, key, value),
+        Ok(path) => write_settings_content(path, header, key, value),
         Err(e) => {
             error!("Failed to get path to settings.toml! | Message: {:?}", e);
-            return Err("Failed to get path to settings.toml!".to_string());
+            Err("Failed to get path to settings.toml!".to_string())
         }
     }
 }
@@ -77,14 +88,14 @@ fn write_settings_content(
             let mut settings_sec: Table = Table::new();
             settings_sec.insert(key.into(), value.into());
             settings.insert(header.into(), settings_sec.into());
-            return write_toml_content(file, toml::to_string(&settings).unwrap());
+            write_toml_content(file, toml::to_string(&settings).unwrap())
         }
         Err(e) => {
             error!(
                 "Failed to read settings from settings.toml! | Message: {:?}",
                 e
             );
-            return Err("Failed to read settings.toml!".to_string());
+            Err("Failed to read settings.toml!".to_string())
         }
     }
 }
@@ -104,23 +115,34 @@ fn write_toml_content(path: PathBuf, content: String) -> Result<(), String> {
 /// Read all settings from file
 pub fn read_settings() -> Result<Table, String> {
     match get_settings_path() {
-        Ok(path) => return read_settings_content(&path),
+        Ok(path) => read_settings_content(&path),
         Err(e) => {
             error!("Failed to get path to settings.ini! | Message: {:?}", e);
-            return Err("Failed to get path to settings.toml!".to_string());
+            Err("Failed to get path to settings.toml!".to_string())
         }
     }
 }
 
+/*
+* ----- Backend functionality -----
+*
+* This section is mostly helpful to read smaller parts of settings for some backend
+* functionality when needed and not meant to be run a lot.
+*/
+
+/*
+* ----- settings.rs shit -----
+*/
+
 /// Parses content in settings.toml
 fn read_settings_content(file: &PathBuf) -> Result<Table, String> {
-    match fs::read_to_string(&file) {
+    match fs::read_to_string(file) {
         Ok(content) => {
             if !content.is_empty() {
                 return parse_table(content);
             }
 
-            return Ok(Table::new());
+            Ok(Table::new())
         }
         Err(e) => {
             error!(
@@ -128,7 +150,7 @@ fn read_settings_content(file: &PathBuf) -> Result<Table, String> {
                 file.display(),
                 e
             );
-            return Err("Failed to read settings.toml!".to_string());
+            Err("Failed to read settings.toml!".to_string())
         }
     }
 }
@@ -136,14 +158,14 @@ fn read_settings_content(file: &PathBuf) -> Result<Table, String> {
 /// Returns String content as TOML Table
 fn parse_table(content: String) -> Result<Table, String> {
     match content.parse::<Table>() {
-        Ok(settings) => return Ok(settings),
+        Ok(settings) => Ok(settings),
         Err(e) => {
             error!(
                 "Failed to parse content in settings.toml! | Message: {:?}",
                 e
             );
             debug!("CONTENT: {:?}", content);
-            return Err("Failed to parse settings.toml content!".to_string());
+            Err("Failed to parse settings.toml content!".to_string())
         }
     }
 }
@@ -152,15 +174,15 @@ fn parse_table(content: String) -> Result<Table, String> {
 fn read_settings_section(header: &str, settings: &Map<String, Value>) -> Result<Table, String> {
     match settings.get(header) {
         Some(settings_sec) => match settings_sec.as_table() {
-            Some(settings_table) => return Ok(settings_table.clone()),
+            Some(settings_table) => Ok(settings_table.clone()),
             None => {
                 error!("Failed to parse section as TOML Table!");
-                return Err("Failed to parse section as table!".to_string());
+                Err("Failed to parse section as table!".to_string())
             }
         },
         None => {
             error!("Failed to get section in settings: {} ", header);
-            return Err("Failed to get section in settings!".to_string());
+            Err("Failed to get section in settings!".to_string())
         }
     }
 }
@@ -184,8 +206,8 @@ fn get_default_settings() -> Table {
     monarch_general.insert("start on startup".to_string(), false.into());
     monarch_general.insert("start minimized".to_string(), false.into());
 
+    settings.insert("monarch".to_string(), monarch_general.into());
     settings.insert("quicklaunch".to_string(), quicklaunch_settings.into());
 
-    return settings;
+    settings
 }
-
