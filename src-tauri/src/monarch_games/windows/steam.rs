@@ -11,7 +11,6 @@ use super::super::monarchgame::MonarchGame;
 use crate::monarch_utils::{
     monarch_download::{download_and_run, download_image},
     monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists},
-    monarch_web::request_data,
     monarch_winreg::is_installed,
     monarch_vdf
 };
@@ -33,7 +32,7 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 
     info!("Searching: {}", target);
 
-    if let Ok(response) = request_data(&target).await {
+    if let Ok(response) = reqwest::get(&target).await {
         games = steam_store_parser(response).await;
     }
 
@@ -172,7 +171,7 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
         let mut target: String = String::from("https://store.steampowered.com/app/");
         target.push_str(&id);
 
-        if let Ok(content) = request_data(&target).await {
+        if let Ok(content) = reqwest::get(&target).await {
             let document = Html::parse_document(&content.text().await.unwrap());
             let name_refs: Vec<ElementRef> = document.select(&title_selector).collect();
 

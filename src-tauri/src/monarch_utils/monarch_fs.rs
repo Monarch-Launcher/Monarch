@@ -20,15 +20,15 @@ pub fn check_appdata_folder() {
 
     match appdata_path {  
         Ok(path) =>  {
-            if !path_exists(path.clone()) {
-                if let Err(e) = create_dir(path) { // Returns result of creating directory
-                    println!("Failed to create Monarch %appdata% folder! | Message: {:?}", e); // Only really useful rn for debugging
+            if !path_exists(&path) {
+                if let Err(e) = create_dir(&path) { // Returns result of creating directory
+                    println!("Failed to create Monarch %appdata% folder! | Message: {e}"); // Only really useful rn for debugging
                     exit(1);
                 }
             }
         }
         Err(e) => { // If Monarch fails to create its own %appdata% directory
-            println!("Something went wrong looking for %appdata% folder! \nErr: {:?} \nExiting... ", e); // Only really useful rn for debugging
+            println!("Something went wrong looking for %appdata% folder! \nErr: {e} \nExiting... "); // Only really useful rn for debugging
             exit(1); // Exit out of app!
         }
     }
@@ -42,34 +42,34 @@ pub fn check_resources_folder() {
     let lib_img_dir: PathBuf = get_resources_library().unwrap();
     let settings_path: PathBuf = get_settings_path().unwrap();
         
-    if !path_exists(resources_dir.clone()) {
+    if !path_exists(&resources_dir) {
         info!("No resources folder detected! Creating new...");
-        if let Err(e) = create_dir(resources_dir.clone()) {
-            error!("Failed to create empty folder: {}! | Message: {:?}", resources_dir.display(), e);
+        if let Err(e) = create_dir(&resources_dir) {
+            error!("Failed to create empty folder: {dir}! | Message: {e}", dir = resources_dir.display());
             exit(1);
         }
     }
 
-    if !path_exists(cache_dir.clone()) {
+    if !path_exists(&cache_dir) {
         info!("No cache folder detected for thumbnails! Creating new...");
-        if let Err(e) = create_dir(cache_dir.clone()) {
-            error!("Failed to create empty folder: {}! | Message: {:?}", cache_dir.display(), e);
+        if let Err(e) = create_dir(&cache_dir) {
+            error!("Failed to create empty folder: {dir}! | Message: {e}", dir = cache_dir.display());
             exit(1);
         }
     }
 
-    if !path_exists(lib_img_dir.clone()) {
+    if !path_exists(&lib_img_dir) {
         info!("No library folder detected for thumbnails! Creating new...");
-        if let Err(e) = create_dir(lib_img_dir.clone()) {
-            error!("Failed to create empty folder: {}! | Message: {:?}", lib_img_dir.display(), e);
+        if let Err(e) = create_dir(&lib_img_dir) {
+            error!("Failed to create empty folder: {dir}! | Message: {e}", dir = lib_img_dir.display());
             exit(1);
         }
     }
   
-    if !path_exists(settings_path.clone()) {
+    if !path_exists(&settings_path) {
         info!("No settings.toml detected! Creating new...");
         if let Err(e) = set_default_settings() {
-            error!("Failed to write default settings to: {}! | Message: {:?}", settings_path.display(), e);
+            error!("Failed to write default settings to: {dir}! | Message: {e}", dir = settings_path.display());
             exit(1);
         }
     }
@@ -153,25 +153,22 @@ pub fn get_collections_json_path() -> Result<PathBuf, VarError> {
 }
 
 /// Write JSON to file
-pub fn write_json_content(content: Value, path: PathBuf) -> io::Result<()> {
-    if let Err(e) = fs::write(path.clone(), content.to_string()) {
-        error!("Failed to write new library to: {} | Message: {:?}", path.display(), e);
+pub fn write_json_content(content: Value, path: &Path) -> io::Result<()> {
+    if let Err(e) = fs::write(path, content.to_string()) {
+        error!("Failed to write new library to: {file} | Message: {e}", file = path.display());
         return Err(e)
     }
     return Ok(())
 }
 
-/// Checks whether a given path exists already or not
-pub fn path_exists(path: PathBuf) -> bool {
-    if Path::new(path.as_path()).exists() {
-        return true
-    }
-    return false
+/// Abstraction to check whether a given path exists already or not
+pub fn path_exists(path: &Path) -> bool {
+    Path::new(path).exists()
 }
 
 /// Attempts to create an empty directory and returns result
-pub fn create_dir(path: PathBuf) -> io::Result<()> {
-    if let Err(e) = fs::create_dir_all(path.as_path()) {
+pub fn create_dir(path: &Path) -> io::Result<()> {
+    if let Err(e) = fs::create_dir_all(path) {
         error!("Failed to create new directory: {} | Message: {:?}", path.display(), e);
         return Err(e)
     }

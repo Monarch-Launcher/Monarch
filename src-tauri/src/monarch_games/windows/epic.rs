@@ -7,8 +7,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use crate::monarch_utils::{monarch_winreg::is_installed,
-                           monarch_download::{download_and_run, download_image}, 
-                           monarch_web::request_data,
+                           monarch_download::{download_and_run, download_image},
                            monarch_fs::{generate_cache_image_name, get_app_data_path}};
 use super::super::monarchgame::MonarchGame;
 
@@ -35,7 +34,7 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 
     info!("Searching: {}", target);
 
-    if let Ok(response) = request_data(&target).await {    
+    if let Ok(response) = reqwest::get(&target).await {    
         games = epic_store_parser(response).await;
     }
 

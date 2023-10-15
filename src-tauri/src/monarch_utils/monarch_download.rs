@@ -8,7 +8,6 @@ use log::{info, error};
 use image;
 use core::result::Result;
 
-use super::monarch_web::request_data;
 use super::monarch_run::run_file;
 use super::monarch_fs::create_dir;
 
@@ -69,7 +68,7 @@ pub async fn download_and_run(url: &str) -> Result<(), String> {
         return Err("Failed to create temporary directory!".to_string())
     }
 
-    match request_data(url).await {
+    match reqwest::get(url).await {
         Ok(response) => {
             
             let installer_path: PathBuf = create_file_path(&response, &tmp_dir).await;
@@ -97,7 +96,7 @@ pub async fn download_file(url: &str) -> Result<PathBuf, String> {
         return Err("Failed to create temporary directory!".to_string())
     }
 
-    match request_data(url).await {
+    match reqwest::get(url).await {
         Ok(response) => {
             
             let installer_path: PathBuf = create_file_path(&response, &tmp_dir).await;
@@ -120,7 +119,7 @@ pub async fn download_file(url: &str) -> Result<PathBuf, String> {
 
 /// Tells Monarch to attempt to download url content as image
 pub async fn download_image(url: &str, path: PathBuf) {
-    let request: Result<Response, reqwest::Error> = request_data(url).await;
+    let request: Result<Response, reqwest::Error> = reqwest::get(url).await;
     let thumbnail_path: PathBuf = PathBuf::from(path);
 
     match request {

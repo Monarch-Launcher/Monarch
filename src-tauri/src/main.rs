@@ -22,7 +22,7 @@ fn init() {
     check_appdata_folder(); // Verifies %appdata% (windows) or $HOME (unix) folder exists
     init_logger(); // Starts logger
     check_resources_folder(); // Verify folder structure
-    monarch_settings::init().expect("Error during settings initialization!");
+    monarch_settings::init().expect("Error during settings initialization!"); // Crash program if this fails
     housekeeping::start(); // Starts housekeeping loop
 }
 
