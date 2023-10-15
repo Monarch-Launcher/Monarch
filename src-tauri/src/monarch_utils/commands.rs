@@ -2,7 +2,7 @@ use std::{process::Command, path::PathBuf};
 use toml::Table;
 
 use super::monarch_logger::get_log_dir;
-use super::monarch_settings::{read_settings, write_settings};
+use super::monarch_settings::{read_settings, write_settings, set_default_settings};
 use super::housekeeping::clear_all_cache;
 
 #[cfg(target_os = "windows")]
@@ -39,6 +39,12 @@ pub async fn open_logs() {
            .unwrap();
 }
 
+/*
+    All settings related commands return the new settings as read by the backend to ensure both
+    frontend and backend agree on current settings.
+    Settings are wrapped in Result<> type to also tell frontend the success or failure of the command.
+*/
+
 #[tauri::command]
 /// Returns settings read from settings.toml
 pub fn get_settings() -> Result<Table, String> {
@@ -47,8 +53,14 @@ pub fn get_settings() -> Result<Table, String> {
 
 #[tauri::command]
 /// Write setting to settings.toml
-pub fn set_setting(header: &str, key: &str, value: &str) -> Result<(), String> {
-    write_settings(header, key, value)
+pub fn set_settings(settings: Table) -> Result<Table, Table> {
+    write_settings(settings)
+}
+
+#[tauri::command]
+/// Write default settings to settings.toml
+pub fn revert_settings() -> Result<Table, Table> {
+    set_default_settings()
 }
 
 #[tauri::command]
