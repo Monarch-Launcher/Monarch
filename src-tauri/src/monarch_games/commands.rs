@@ -33,7 +33,7 @@ pub async fn search_games(name: String) -> Vec<MonarchGame> {
     games.append(&mut blizz_games);
     games.append(&mut steam_games);
 
-    return games
+    games
 }
 
 #[tauri::command]
@@ -49,9 +49,9 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     games.append(&mut epic_games);
 
     if let Err(e) = games_library::write_games(games.clone()) {
-        error!("Failed to write new games to library.json! | Message: {:?}", e);
+        error!("monarch_games::commands::refresh_library() failed! Failed to write new games to library.json! | Error: {e}");
     }
-    return games;
+    games
 }
 
 #[tauri::command]

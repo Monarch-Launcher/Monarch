@@ -21,7 +21,7 @@ pub fn check_appdata_folder() {
             if !path_exists(&path) {
                 if let Err(e) = create_dir(&path) {
                     // Returns result of creating directory
-                    println!("monarch_fs::check_appdata_folder() failed! Failed to create Monarchs %appdata% / $HOME folder! | Message: {e}"); // Only really useful rn for debugging
+                    println!("monarch_fs::check_appdata_folder() failed! Failed to create Monarchs %appdata% / $HOME folder! | Error: {e}"); // Only really useful rn for debugging
                     exit(1);
                 }
             }
@@ -47,7 +47,7 @@ pub fn check_resources_folder() {
         info!("Creating folder...");
         if let Err(e) = create_dir(&resources_dir) {
             error!(
-                "monarch_fs::check_resources_folder() failed! Something went wrong trying to create empty folder: {dir}! | Message: {e}",
+                "monarch_fs::check_resources_folder() failed! Something went wrong trying to create empty folder: {dir}! | Error: {e}",
                 dir = resources_dir.display()
             );
             exit(1);
@@ -59,7 +59,7 @@ pub fn check_resources_folder() {
         info!("Creating folder...");
         if let Err(e) = create_dir(&cache_dir) {
             error!(
-                "monarch_fs::check_resources_folder() failed! Something went wrong trying to create empty folder: {dir}! | Message: {e}",
+                "monarch_fs::check_resources_folder() failed! Something went wrong trying to create empty folder: {dir}! | Error: {e}",
                 dir = cache_dir.display()
             );
             exit(1);
@@ -71,7 +71,7 @@ pub fn check_resources_folder() {
         info!("Creating folder...");
         if let Err(e) = create_dir(&lib_img_dir) {
             error!(
-                "monarch_fs::check_resources_folder() failed! Something went wrong trying to create empty folder: {dir}! | Message: {e}",
+                "monarch_fs::check_resources_folder() failed! Something went wrong trying to create empty folder: {dir}! | Error: {e}",
                 dir = lib_img_dir.display()
             );
             exit(1);
@@ -83,7 +83,7 @@ pub fn check_resources_folder() {
         info!("Creating new settings.toml with default settings...");
         if let Err(e) = set_default_settings() {
             error!(
-                "monarch_fs::check_resources_folder() failed! Something went wrong trying to write default settings to: {dir}! | Message: {e}",
+                "monarch_fs::check_resources_folder() failed! Something went wrong trying to write default settings to: {dir}! | Error: {e}",
                 dir = settings_path.display()
             );
             exit(1);
@@ -123,7 +123,7 @@ pub fn get_home_path() -> Result<PathBuf, String> {
     match std::env::var("$HOME") {
         Ok(str_path) => return Ok(PathBuf::from(str_path)),
         Err(e) => {
-            error!("monarch_fs::get_home_path() failed! | Message: {e}");
+            error!("monarch_fs::get_home_path() failed! | Error: {e}");
             return Err("Failed to get $HOME path!".to_string());
         }
     }
@@ -137,7 +137,7 @@ pub fn get_settings_path() -> Result<PathBuf, VarError> {
             return Ok(path);
         }
         Err(e) => {
-            error!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Message: {e}");
+            error!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
             return Err(e);
         }
     }
@@ -151,7 +151,7 @@ pub fn get_library_json_path() -> Result<PathBuf, VarError> {
             return Ok(path);
         }
         Err(e) => {
-            error!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Message: {e}");
+            error!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
             return Err(e);
         }
     }
@@ -165,7 +165,7 @@ pub fn get_collections_json_path() -> Result<PathBuf, VarError> {
             return Ok(path);
         }
         Err(e) => {
-            error!("monarch_fs::get_collections_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Message: {e}");
+            error!("monarch_fs::get_collections_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
             return Err(e);
         }
     }
@@ -175,7 +175,7 @@ pub fn get_collections_json_path() -> Result<PathBuf, VarError> {
 pub fn write_json_content(content: Value, path: &Path) -> io::Result<()> {
     if let Err(e) = fs::write(path, content.to_string()) {
         error!(
-            "monarch_fs::write_json_content() failed! Something went wrong trying to write new library to: {file} | Message: {e}",
+            "monarch_fs::write_json_content() failed! Something went wrong trying to write new library to: {file} | Error: {e}",
             file = path.display()
         );
         return Err(e);
@@ -192,7 +192,7 @@ pub fn path_exists(path: &Path) -> bool {
 pub fn create_dir(path: &Path) -> io::Result<()> {
     if let Err(e) = fs::create_dir_all(path) {
         error!(
-            "monarch_fs::create_dir() failed! Something went wrong while creating new directory: {dir} | Message: {e}",
+            "monarch_fs::create_dir() failed! Something went wrong while creating new directory: {dir} | Error: {e}",
             dir = path.display()
         );
         return Err(e);
@@ -214,7 +214,7 @@ pub fn get_resources_path() -> Result<PathBuf, VarError> {
             return Ok(path);
         }
         Err(e) => {
-            error!("monarch_fs::get_resources_path() failed! Something went wrong while getting %appdata%/$HOME path. | Message: {e}");
+            error!("monarch_fs::get_resources_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
             return Err(e);
         }
     }
@@ -228,7 +228,7 @@ pub fn get_resources_cache() -> Result<PathBuf, VarError> {
             return Ok(path);
         }
         Err(e) => {
-            error!("monarch_fs::get_resources_cache() failed! Something went wrong while getting resources/ path. | Message: {e}");
+            error!("monarch_fs::get_resources_cache() failed! Something went wrong while getting resources/ path. | Error: {e}");
             return Err(e);
         }
     }
@@ -242,7 +242,7 @@ pub fn get_resources_library() -> Result<PathBuf, VarError> {
             return Ok(path);
         }
         Err(e) => {
-            error!("monarch_fs::get_resources_library() failed! Something went wrong while getting resources/ path. | Message: {e}");
+            error!("monarch_fs::get_resources_library() failed! Something went wrong while getting resources/ path. | Error: {e}");
             return Err(e);
         }
     }
@@ -256,7 +256,7 @@ pub fn generate_cache_image_name(name: &str) -> Result<PathBuf, String> {
     match generate_image_filename(name) {
         Ok(name) => filename = name,
         Err(e) => {
-            error!("monarch_fs::generate_cache_image_name() failed! Failed to build name from regex and {name}. | Message: {e}");
+            error!("monarch_fs::generate_cache_image_name() failed! Failed to build name from regex and {name}. | Error: {e}");
             return Err("Failed to build name from regex!".to_string());
         }
     }
@@ -267,7 +267,7 @@ pub fn generate_cache_image_name(name: &str) -> Result<PathBuf, String> {
             return Ok(dir);
         }
         Err(e) => {
-            error!("monarch_fs::generate_cache_image_name() failed! Something went wrong while trying to get resources/cache/ ! | Message: {e}");
+            error!("monarch_fs::generate_cache_image_name() failed! Something went wrong while trying to get resources/cache/ ! | Error: {e}");
             return Err("Failed to get cached thumbnails folder!".to_string());
         }
     }
@@ -280,7 +280,7 @@ pub fn generate_library_image_name(name: &str) -> Result<PathBuf, String> {
     match generate_image_filename(name) {
         Ok(name) => filename = name,
         Err(e) => {
-            error!("monarch_fs::generate_library_image_name() failed! Failed to build name from regex and {name}. | Message: {e}");
+            error!("monarch_fs::generate_library_image_name() failed! Failed to build name from regex and {name}. | Error: {e}");
             return Err("Failed to build name from regex!".to_string());
         }
     }
@@ -291,7 +291,7 @@ pub fn generate_library_image_name(name: &str) -> Result<PathBuf, String> {
             return Ok(dir);
         }
         Err(e) => {
-            error!("monarch_fs::generate_cache_image_name() failed! Something went wrong while trying to get resources/library/ ! | Message: {e}");
+            error!("monarch_fs::generate_cache_image_name() failed! Something went wrong while trying to get resources/library/ ! | Error: {e}");
             return Err("Failed to get library thumbnails library!".to_string());
         }
     }
@@ -310,7 +310,7 @@ fn generate_image_filename(name: &str) -> Result<String, regex::Error> {
         }
         Err(e) => {
             error!(
-                "monarch_fs::generate_image_filename() failed! Failed to build new regex! | Message: {}",
+                "monarch_fs::generate_image_filename() failed! Failed to build new regex! | Error: {}",
                 e
             );
             return Err(e);

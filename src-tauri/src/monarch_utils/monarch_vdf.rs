@@ -38,11 +38,11 @@ pub fn parse_library_file(path: &Path) -> Vec<String> {
                 Ok(libraryfolders) => {
                     games = found_games(libraryfolders);
                 }
-                Err(e) => error!("monarch_vdf::parse_library_file() failed! Could not automatically parse file content to LibraryFolders using vdf_serde! | Message: {e}")
+                Err(e) => error!("monarch_vdf::parse_library_file() failed! Could not automatically parse file content to LibraryFolders using vdf_serde! | Error: {e}")
             }
         }
         Err(e) => {
-            error!("monarch_vdf::parse_library_file() failed! Failed to open file: {file} | Message: {e}", file = path.display());
+            error!("monarch_vdf::parse_library_file() failed! Failed to open file: {file} | Error: {e}", file = path.display());
         }
     }
 

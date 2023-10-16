@@ -12,22 +12,22 @@ use crate::monarch_utils::monarch_fs::{get_app_data_path, create_dir, path_exist
 pub fn init_logger() {
     let log_path: PathBuf = get_log_dir();
 
-    if !path_exists(log_path.clone()) {
-        create_dir(log_path).unwrap();
+    if !path_exists(&log_path) {
+        create_dir(&log_path).unwrap();
     }
 
     let monarch_logs: PathBuf = get_log_file();
 
     let logfile = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} [{l}] - {m}\n")))
-        .build(monarch_logs).expect("Failed to build logfile during init_logger()");
+        .build(monarch_logs).expect("monarch_logger::init_logger() failed! Failed to build logfile!");
 
     let config = Config::builder()
         .appender(Appender::builder().build("logfile", Box::new(logfile)))
         .build(Root::builder()
                         .appender("logfile")
                         .build(LevelFilter::Info))
-                        .expect("Failed to build logger config during init_logger()");
+                        .expect("monarch_logger::init_logger() failed! Failed to build log config!");
 
     log4rs::init_config(config).unwrap();
 }

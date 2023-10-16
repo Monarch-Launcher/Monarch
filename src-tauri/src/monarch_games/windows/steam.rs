@@ -5,7 +5,7 @@ use std::io::Error;
 use std::process::{Child, Command};
 use tokio;
 use core::result::Result;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_utils::{
@@ -111,7 +111,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
         return Vec::new();
     }
 
-    let found_games: Vec<String> = monarch_vdf::parse_library_file(PathBuf::from("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf"));
+    let found_games: Vec<String> = monarch_vdf::parse_library_file(&Path::new("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf"));
     let games: Vec<MonarchGame> = library_steam_game_parser(found_games).await;
 
     return games;
@@ -153,7 +153,7 @@ async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
         let cur_game = MonarchGame::new(&name, "steam", &platform_id, "temp", image_path.to_str().unwrap());
         games.push(cur_game);
 
-        if !path_exists(image_path.clone()) { // Only download if image is not in cache dir
+        if !path_exists(&image_path) { // Only download if image is not in cache dir
             // Workaround for [tauri::command] not working with download_image().await in same thread 
             tokio::task::spawn(async move {
                 download_image(image_link.as_str(), image_path).await; 
@@ -192,7 +192,7 @@ async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
                 games.push(game);
                 info!("Found Steam game: {}", name);
 
-                if !path_exists(image_path.clone()) { // Only download if image is not in library dir
+                if !path_exists(&image_path) { // Only download if image is not in library dir
                     // Workaround for [tauri::command] not working with download_image().await in same thread 
                     tokio::task::spawn(async move {
                         download_image(image_link.as_str(), image_path).await; 

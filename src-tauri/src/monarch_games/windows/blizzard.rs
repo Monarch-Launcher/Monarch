@@ -152,7 +152,7 @@ fn get_blizz_game(name: &str, is_library: bool) -> Result<MonarchGame, String> {
     }
 
     let path_clone: PathBuf = path.clone();
-    if !path_exists(path.clone()) { // Only download if image is not in cache dir
+    if !path_exists(&path) { // Only download if image is not in cache dir
         // Workaround for [tauri::command] not working with download_image().await in same thread 
         tokio::task::spawn(async move {
             download_image(link, path_clone).await; 

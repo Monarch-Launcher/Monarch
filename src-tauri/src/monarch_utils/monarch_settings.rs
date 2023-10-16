@@ -33,7 +33,7 @@ fn set_settings_state(settings: Table) {
 
 /// Function to do unsafe read of SETTINGS_STATE
 fn get_settings_state() -> Table {
-    unsafe { SETTINGS_STATE.settings }
+    unsafe { SETTINGS_STATE.settings.clone() }
 }
 
 /// Checks that a settings.toml file exists, otherwise attempts to create new file and populate
@@ -45,16 +45,14 @@ pub fn init() -> Result<(), String> {
                 // If settings.toml doesn't exist, create a new file and fill
                 // with default settings
                 if let Err(e) = set_default_settings() {
-                    error!("monarch_settings::init() failed! | Message: {e}");
+                    error!("monarch_settings::init() failed! | Error: {e}");
                     return Err("Failed to write default settings to settings.toml".to_string());
                 }
             }
             Ok(())
         }
         Err(e) => {
-            error!(
-                "monarch_settings::init() failed! Cannot get path to settings.toml! | Message: {e}"
-            );
+            error!("monarch_settings::init() failed! Cannot get path to settings.toml! | Error: {e}");
             Err("Failed to get path to settings.toml!".to_string())
         }
     }
@@ -69,7 +67,7 @@ pub fn set_default_settings() -> Result<Table, Table> {
     match get_settings_path() {
         Ok(settings_path) => path = settings_path,
         Err(e) => {
-            error!("monarch_settings::set_default_settings() failed! Cannot get path to settings.toml! | Message: {e}");
+            error!("monarch_settings::set_default_settings() failed! Cannot get path to settings.toml! | Error: {e}");
             return Err(settings);
         }
     }
@@ -77,7 +75,7 @@ pub fn set_default_settings() -> Result<Table, Table> {
     if !path_exists(&path) {
         if let Err(e) = fs::File::create(&path) {
             error!(
-                "monarch_settings::set_default_settings() failed! Something went wrong while trying to create new file: {dir} | Message: {e}",
+                "monarch_settings::set_default_settings() failed! Something went wrong while trying to create new file: {dir} | Error: {e}",
                 dir = path.display()
             );
             return Err(settings);
@@ -97,7 +95,7 @@ pub fn write_settings(settings: Table) -> Result<Table, Table> {
     match get_settings_path() {
         Ok(path) => write_toml_content(&path, settings),
         Err(e) => {
-            error!("monarch_settings::write_settings() failed! Cannot get path to settings.toml! | Message: {e}");
+            error!("monarch_settings::write_settings() failed! Cannot get path to settings.toml! | Error: {e}");
             Err(get_settings_state())
         }
     }
@@ -106,7 +104,7 @@ pub fn write_settings(settings: Table) -> Result<Table, Table> {
 /// Writes changes to settings.toml
 fn write_toml_content(path: &Path, table: Table) -> Result<Table, Table> {
     if let Err(e) = fs::write(path, table.to_string()) {
-        error!("monarch_settings::write_toml_content() failed! Something went wrong while writing settings to settings.toml | Message: {e}");
+        error!("monarch_settings::write_toml_content() failed! Something went wrong while writing settings to settings.toml | Error: {e}");
         return Err(get_settings_state());
     }
     set_settings_state(table);
@@ -118,7 +116,7 @@ pub fn read_settings() -> Result<Table, String> {
     match get_settings_path() {
         Ok(path) => read_settings_content(&path),
         Err(e) => {
-            error!("monarch_settings::read_settings() failed! Cannot get path to settings.toml! | Message: {e}");
+            error!("monarch_settings::read_settings() failed! Cannot get path to settings.toml! | Error: {e}");
             Err("Failed to get path to settings.toml!".to_string())
         }
     }
@@ -166,11 +164,7 @@ fn read_settings_content(file: &PathBuf) -> Result<Table, String> {
             Ok(Table::new())
         }
         Err(e) => {
-            error!(
-                "Failed to read content from: {} | Message: {:?}",
-                file.display(),
-                e
-            );
+            error!("monarch_settings::read_settings_content() failed! Error reading: {path} | Error: {e}", path = file.display());
             Err("Failed to read settings.toml!".to_string())
         }
     }
@@ -181,11 +175,7 @@ fn parse_table(content: String) -> Result<Table, String> {
     match content.parse::<Table>() {
         Ok(settings) => Ok(settings),
         Err(e) => {
-            error!(
-                "Failed to parse content in settings.toml! | Message: {:?}",
-                e
-            );
-            debug!("CONTENT: {:?}", content);
+            error!("monarch_settings::parse_table() failed! Failed to parse content in settings.toml! | Error: {e}");
             Err("Failed to parse settings.toml content!".to_string())
         }
     }
