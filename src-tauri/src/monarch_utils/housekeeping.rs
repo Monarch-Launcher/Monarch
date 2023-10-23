@@ -1,6 +1,8 @@
 /*
     This file is for routines that just keep Monarch fast and clean, such as
     clearing old cached images, temporary downloads, etc...
+
+    Also meant to help maintain a smaller footprint on users OS.
  */
 
 use log::{info, error};
@@ -27,6 +29,8 @@ pub fn start() {
 
                 break; // For now assume that program will be restarted at some point within next few days.
                 // Can therefor stop the housekeeping service
+                // Housekeeping also doesn't do anything rn except clear images. Can implement more logic later
+                // as it's needed.
             }
 
             sleep(Duration::new(3600, 0));
@@ -60,7 +64,7 @@ pub fn clear_cached_thumbnails() {
             }
         }
         Err(e) => {
-            error!("Failed to get cache directory! | Message: {}", e);
+            error!("housekeeping::clear_cached_thumbnails() failed! Cannot get resources/cache/ ! | Error: {e}");
         }
     }
     
@@ -70,7 +74,7 @@ pub fn clear_cached_thumbnails() {
 fn remove_thumbnail(file: DirEntry) {
     if time_to_remove(file.path()) {
         if let Err(e) = fs::remove_file(file.path()) {
-            error!("Failed to remove file: {} | Message: {:?}", file.path().display(), e);
+            error!("housekeeping::remove_thumbnail() failed! Error while removing: {path} | Error: {e}", path = file.path().display());
         }
     }
 }
@@ -99,17 +103,17 @@ pub fn clear_all_cache() {
                     for file in files {
                         match file {
                             Ok(f) => { remove_thumbnail(f); }
-                            Err(e) => { error!("Failed to read file! | Message: {:?}", e); }
+                            Err(e) => { error!("housekeeping::clear_all_cache() failed! Could not read file! | Error: {e}"); }
                         }
                     }
                 }
                 Err(e) => {
-                    error!("Failed to get files from folder: {} | Message: {}", cache.display(), e);
+                    error!("housekeeping::clear_all_cache() failed! Error while reading files from: {dir} | Error: {e}", dir = cache.display());
                 }
             }
         }
         Err(e) => {
-            error!("Failed to get resources path! | Message: {}", e);
+            error!("housekeeping::clear_all_cache() failed! Cannot get path to resources/ ! | Error: {e}");
         }
     }
 }

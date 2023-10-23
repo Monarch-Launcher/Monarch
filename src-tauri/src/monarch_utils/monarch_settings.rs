@@ -1,9 +1,9 @@
 use core::result::Result;
 use log::{debug, error};
-use std::fs;
-use std::path::PathBuf;
-use toml::Table;
 use once_cell::sync::Lazy;
+use std::fs;
+use std::path::{Path, PathBuf};
+use toml::Table;
 
 use super::monarch_fs::{get_app_data_path, get_settings_path, path_exists};
 
@@ -12,13 +12,15 @@ static mut SETTINGS_STATE: Lazy<Settings> = Lazy::<Settings>::new(|| Settings::n
 
 /// Struct for storing a persistent state of settings
 struct Settings {
-    settings: Table
+    settings: Table,
 }
 
 impl Settings {
     /// Returns new blank Settings struct
     fn new() -> Self {
-        Self { settings: Table::new() }
+        Self {
+            settings: Table::new(),
+        }
     }
 }
 
@@ -31,9 +33,7 @@ fn set_settings_state(settings: Table) {
 
 /// Function to do unsafe read of SETTINGS_STATE
 fn get_settings_state() -> Table {
-    unsafe {
-        SETTINGS_STATE.settings.clone()
-    }
+    unsafe { SETTINGS_STATE.settings.clone() }
 }
 
 /// Checks that a settings.toml file exists, otherwise attempts to create new file and populate
@@ -41,18 +41,18 @@ fn get_settings_state() -> Table {
 pub fn init() -> Result<(), String> {
     match get_settings_path() {
         Ok(path) => {
-            if !path_exists(path) {
+            if !path_exists(&path) {
                 // If settings.toml doesn't exist, create a new file and fill
                 // with default settings
-                if let Err(_) = set_default_settings() {
-                    error!("monarch_settings::init() failed!");
+                if let Err(e) = set_default_settings() {
+                    error!("monarch_settings::init() failed! | Error: {e}");
                     return Err("Failed to write default settings to settings.toml".to_string());
                 }
             }
             Ok(())
         }
         Err(e) => {
-            error!("Cannot get path to settings.toml! | Message: {e}");
+            error!("monarch_settings::init() failed! Cannot get path to settings.toml! | Error: {e}");
             Err("Failed to get path to settings.toml!".to_string())
         }
     }
@@ -67,23 +67,22 @@ pub fn set_default_settings() -> Result<Table, Table> {
     match get_settings_path() {
         Ok(settings_path) => path = settings_path,
         Err(e) => {
-            error!("Failed to get path to settings.toml! | Message: {:?}", e);
+            error!("monarch_settings::set_default_settings() failed! Cannot get path to settings.toml! | Error: {e}");
             return Err(settings);
         }
     }
 
-    if !path_exists(path.clone()) {
-        if let Err(e) = fs::File::create(path.clone()) {
+    if !path_exists(&path) {
+        if let Err(e) = fs::File::create(&path) {
             error!(
-                "Failed to create new file: {} | Message: {:?}",
-                path.display(),
-                e
+                "monarch_settings::set_default_settings() failed! Something went wrong while trying to create new file: {dir} | Error: {e}",
+                dir = path.display()
             );
             return Err(settings);
         }
     }
-    
-    write_toml_content(path, settings)
+
+    write_toml_content(&path, settings)
 }
 
 /*
@@ -94,21 +93,18 @@ pub fn set_default_settings() -> Result<Table, Table> {
 /// key is the name of the setting and value is the new value the setting should have.
 pub fn write_settings(settings: Table) -> Result<Table, Table> {
     match get_settings_path() {
-        Ok(path) => write_toml_content(path, settings),
+        Ok(path) => write_toml_content(&path, settings),
         Err(e) => {
-            error!("Failed to get path to settings.toml! | Message: {:?}", e);
+            error!("monarch_settings::write_settings() failed! Cannot get path to settings.toml! | Error: {e}");
             Err(get_settings_state())
         }
     }
 }
 
 /// Writes changes to settings.toml
-fn write_toml_content(path: PathBuf, table: Table) -> Result<Table, Table> {
+fn write_toml_content(path: &Path, table: Table) -> Result<Table, Table> {
     if let Err(e) = fs::write(path, table.to_string()) {
-        error!(
-            "Failed to write settings to settings.toml | Message: {:?}",
-            e
-        );
+        error!("monarch_settings::write_toml_content() failed! Something went wrong while writing settings to settings.toml | Error: {e}");
         return Err(get_settings_state());
     }
     set_settings_state(table);
@@ -120,7 +116,7 @@ pub fn read_settings() -> Result<Table, String> {
     match get_settings_path() {
         Ok(path) => read_settings_content(&path),
         Err(e) => {
-            error!("Failed to get path to settings.ini! | Message: {:?}", e);
+            error!("monarch_settings::read_settings() failed! Cannot get path to settings.toml! | Error: {e}");
             Err("Failed to get path to settings.toml!".to_string())
         }
     }
@@ -168,11 +164,7 @@ fn read_settings_content(file: &PathBuf) -> Result<Table, String> {
             Ok(Table::new())
         }
         Err(e) => {
-            error!(
-                "Failed to read content from: {} | Message: {:?}",
-                file.display(),
-                e
-            );
+            error!("monarch_settings::read_settings_content() failed! Error reading: {path} | Error: {e}", path = file.display());
             Err("Failed to read settings.toml!".to_string())
         }
     }
@@ -183,11 +175,7 @@ fn parse_table(content: String) -> Result<Table, String> {
     match content.parse::<Table>() {
         Ok(settings) => Ok(settings),
         Err(e) => {
-            error!(
-                "Failed to parse content in settings.toml! | Message: {:?}",
-                e
-            );
-            debug!("CONTENT: {:?}", content);
+            error!("monarch_settings::parse_table() failed! Failed to parse content in settings.toml! | Error: {e}");
             Err("Failed to parse settings.toml content!".to_string())
         }
     }
@@ -207,8 +195,11 @@ fn get_default_settings() -> Table {
     monarch.insert("send_logs".to_string(), true.into());
     monarch.insert("run_on_startup".to_string(), false.into());
     monarch.insert("start_minimized".to_string(), false.into());
-    monarch.insert("game_folders".to_string(), vec![default_game_folder_str].into());
-    
+    monarch.insert(
+        "game_folders".to_string(),
+        vec![default_game_folder_str].into(),
+    );
+
     let mut quicklaunch_settings: Table = Table::new();
     quicklaunch_settings.insert("enabled".to_string(), true.into());
     quicklaunch_settings.insert("open_shortcut".to_string(), "Super+Enter".into());

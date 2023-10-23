@@ -13,9 +13,9 @@ pub fn run_file(path: PathBuf) -> Result<(), String> {
                 .spawn();
     
         match result {
-            Ok(_) => { info!("Executing '{}' via PowerShell...", path.display()) }
+            Ok(_) => { info!("Executing '{file}' via PowerShell...", file = path.display()) }
             Err(e) => { 
-                error!("Failed to run '{}' in PowerShell! | Message: {:?}", path.display(), e);
+                error!("monarch_run::run_file() failed! Error while running '{file}' in PowerShell! | Error: {e}", file = path.display());
                 return Err("Failed to execute file!".to_string())
             }
         }
@@ -27,21 +27,22 @@ pub fn run_file(path: PathBuf) -> Result<(), String> {
                 .spawn();
     
         match result {
-            Ok(_) => { info!("Executing '{}'...", path.display()) }
+            Ok(_) => { info!("Executing '{file}'...", file = path.display()) }
             Err(e) => { 
-                error!("Failed to run '{}' | Message: {:?}", path.display(), e);
+                error!("monarch_run::run_file() failed! Error while running '{file}' with sh! | Error: {e}", file = path.display());
                 return Err("Failed to execute file!".to_string())
             }
         }
         return Ok(())
     }
+    warn!("monarch_run::run_file() not executed! No matching OS!");
     return Err("No matching OS! Don't know how to execute file!".to_string())
 }
 
 /// Exectutes a file of given path under the translation layer Wine
 pub fn run_file_wine(path: PathBuf) -> Result<(), String> {
     if cfg!(windows) {
-        warn!("Attempting to run a file in wine in windows is not allowed! Cancelling...");
+        warn!("monarch_run::run_file_wine() not executed! Attempting to run a file in wine in windows is not allowed!");
         return Err("Cannot run a file in wine in Windows!".to_string())
     }
 
@@ -50,9 +51,9 @@ pub fn run_file_wine(path: PathBuf) -> Result<(), String> {
                                                .spawn();
     
     match result {
-        Ok(_) => { info!("Executing '{}' in Wine...", path.display()) }
+        Ok(_) => { info!("Executing '{file}' in Wine...", file = path.display()) }
         Err(e) => { 
-            error!("Failed to run '{}' in Wine! | Message: {:?}", path.display(), e);
+            error!("monarch_run::run_file_wine() failed! Error while executing: '{file}' in Wine! | Error: {e}", file = path.display());
             return Err("Failed to execute file!".to_string())
         }
     }

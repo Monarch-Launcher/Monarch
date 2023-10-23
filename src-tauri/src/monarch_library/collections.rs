@@ -4,7 +4,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::fs;
 use core::result::Result;
-use log::{info, error};
+use log::{info, error, warn};
 use std::path::PathBuf;
 
 use crate::monarch_utils::monarch_fs::{write_json_content, get_collections_json_path};
@@ -29,7 +29,7 @@ pub fn new_collection(collection_name: String, game_ids: Vec<String>) -> Result<
     match get_collections_json_path() {
         Ok(json_path) => { path = json_path; }
         Err(e) => {
-            error!("Failed to get collections path! | Message: {:?}", e);
+            error!("collections::new_collection failed! Cannot get path to collections.json! | Error: {e}");
             return Err("Failed to get collections path!".to_string())
         }
     }
@@ -40,14 +40,14 @@ pub fn new_collection(collection_name: String, game_ids: Vec<String>) -> Result<
         Ok(mut collecs) => {
             collecs.push(new_collec);
             
-            if let Err(e) = write_json_content(json!(collecs), path) {
-                error!("Failed to write new collections to collections.json! | Message: {}", e);
+            if let Err(e) = write_json_content(json!(collecs), &path) {
+                error!("collections::new_collection() failed! Error writing new collections to collections.json! | Error: {e}");
                 return Err("Failed to write new collection!".to_string())
             }
             get_collections() // Refresh and return to frontend
 
         } Err(e) => {
-            error!("Failed to get collections or parsing to json! | Message: {}", e);
+            error!("collections::new_collection() failed! Failed to get collections/parse json! | Error: {e}");
             Err("Failed to get existing collections!".to_string())
         }
     }
@@ -69,11 +69,12 @@ pub fn update_collections( id: &str, new_name: &str, game_ids: Vec<String>) -> R
                     get_collections()
 
                 } None => {
+                    warn!("collections::update_collections() Could not find id: {id} in collections.json! Doing nothing.");
                     Err("Failed to find specified collection!".to_string())
                 }
             }
         } Err(e) => {
-            error!("Failed to get collections or parsing to json! | Message: {}", e);
+            error!("collections::update_collections() failed! Failed to get collections/parse json! | Error: {e}");
             Err("Failed to get existing collections!".to_string())
         }
     }
@@ -91,11 +92,12 @@ pub fn delete_collections(id: &str) -> Result<Value, String> {
                     }
                     get_collections()
                 } None => {
+                    warn!("collections::delete_collections() Could not find id: {id} in collections.json! Doing nothing.");
                     Err("Failed to find specified collection!".to_string())
                 }
             }
         } Err(e) => {
-            error!("Failed to get collections or parsing to json! | Message: {}", e);
+            error!("collections::delete_collections() failed! Failed to get collections/parse json! | Error: {e}");
             Err("Failed to get existing collections!".to_string())
         }
     }
@@ -107,24 +109,24 @@ pub fn get_collections() -> Result<Value, String> {
     match get_collections_json_path() {
         Ok(json_path) => { path = json_path; }
         Err(e) => {
-            error!("Failed to get collections path! | Message: {:?}", e);
+            error!("collections::get_collections() failed! Cannot get collections path! | Error: {e}");
             return Err("Failed to get collections path!".to_string())
         }
     }
 
-    match fs::File::open(path.clone()) {
+    match fs::File::open(&path) {
         Ok(file) => {
             match serde_json::from_reader(file) {
                 Ok(json_content) => {
                     return Ok(json_content) // Finds existing collections.json
 
                 } Err(e) => {
-                    error!("Failed to parse file content to json in get_collections() | Message: {}", e);
+                    error!("collections::get_collections() failed! Failed to parse file content to json! | Error: {e}");
                     info!("Attempting to write new empty collection array!");
 
                     let monarch_collecs: Value = json!(Vec::<MonarchCollection>::new());
-                    if let Err(e) = write_json_content(monarch_collecs.clone(), path.clone()) {
-                        error!("Failed to write new collections to file: {} | Message: {}", path.display(), e);
+                    if let Err(e) = write_json_content(monarch_collecs.clone(), &path) {
+                        error!("collections::get_collections() failed! Erro while writing collections to: {file_path} | Error: {e}", file_path = path.display());
                         return Err("Failed to create a new collections.json file!".to_string())
                     }
                     Ok(monarch_collecs) // If it succeeds at creating new collections.json
@@ -132,17 +134,17 @@ pub fn get_collections() -> Result<Value, String> {
             }
 
         } Err(e) => {
-            error!("Failed to read json file in get_collections() | Message: {}", e);
-            info!("Attempting to create a new empty file! ({})", path.display());
+            error!("collections::get_collections() failed! Could not open: {file} | Error: {e}", file = path.display());
+            info!("Attempting to create a new empty file: {}", path.display());
 
             let monarch_collecs: Value = json!(Vec::<MonarchCollection>::new());
         
-            if let Err(e) = fs::File::create(path.clone()) {
-                error!("Failed to create empty file: {} | Message: {}", path.display(), e);
+            if let Err(e) = fs::File::create(&path) {
+                error!("collections::get_collections() failed! Failed to create: {file} | Error: {e}", file = path.display());
                 return Err("Failed to create a new collections.json file!".to_string())
             }
-            if let Err(e) = write_json_content(monarch_collecs.clone(), path.clone()) {
-                error!("Failed to write new collections to file: {} | Message: {}", path.display(), e);
+            if let Err(e) = write_json_content(monarch_collecs.clone(), &path) {
+                error!("collections::get_collections() failed! Error while writing collections to : {file} | Error: {e}", file = path.display());
                 return Err("Failed to create a new collections.json file!".to_string())
             }
             
@@ -155,19 +157,19 @@ pub fn get_collections() -> Result<Value, String> {
 fn write_collection_changes(collections: Value) -> Result<(), String> {
     match get_collections_json_path() {
         Ok(path) => {
-            match write_json_content(collections, path) {
+            match write_json_content(collections, &path) {
                 Ok(_) => { 
                     info!("Updated collections.json content!");
                     Ok(())
                 }
                 Err(e) => {
-                    error!("Failed to write changes to collections.json! | Message: {:?}", e);
+                    error!("collections::write_collection_changes() failed! Error while writing changes to collections.json! | Error: {e}");
                     return Err("Failed to write changes to collections.json!".to_string())
                 }
             }
         }
         Err(e) => {
-            error!("Failed to get path to collections.json! | Message: {:?}", e);
+            error!("collections::write_collection_changes() failed! Cannot get path to collections.json! | Error: {e}");
             return Err("Failed to get path to collections.json!".to_string())
         }
     }
@@ -178,7 +180,7 @@ fn generate_hash<T: Hash>(name: &T) -> u64 {
     let mut hasher = DefaultHasher::new();
     name.hash(&mut hasher);
 
-    return hasher.finish()
+    hasher.finish()
 }
 
 /// Returns a Vec<MonarchCollection> instead of a json value to remove indentation in functions above.
@@ -189,13 +191,13 @@ fn get_collections_as_struct() -> Result<Vec<MonarchCollection>, String> {
                 Ok(collections) => {
                     Ok(collections)
                 } Err(e) => {
-                    error!("Failed to parse from json! | Message: {}", e);
+                    error!("collections::get_collections_as_struct() failed! Error while parsing from json! | Error: {e}");
                     Err("Failed to parse from json!".to_string())
                 }
             }
         } Err(e) => {
-            error!("Failed to get collections! | Message: {}", e);
-            Err("Failed to get existing collections!".to_string())
+            error!("collections::get_collections_as_struct() failed! Failed to get collections! | Error: {e}");
+            Err("Failed to get collections!".to_string())
         }
     }
 }

@@ -31,5 +31,5 @@ fn generate_hash<T: Hash>(name: &T, platform: &T, platform_id: &T) -> u64 {
     platform.hash(&mut hasher);
     platform_id.hash(&mut hasher);
 
-    return hasher.finish()
+    hasher.finish()
 }

@@ -12,13 +12,13 @@ pub fn write_games(games: Vec<MonarchGame>) -> Result<(), String> {
     match get_library_json_path() {
         Ok(json_path) => { path = json_path; }
         Err(e) => {
-            error!("Failed to get path to library.json! | Message: {:?}", e);
+            error!("games_library::write_games() failed! Cannot get path to library.json! | Error: {e}");
             return Err("Failed to get path to library.json!".to_string())
         } 
     }
 
-    if let Err(e) = write_json_content(json!(games), path.clone()) {
-        error!("Failed to write new library to: {} | Message: {:?}", path.display(), e);
+    if let Err(e) = write_json_content(json!(games), &path) {
+        error!("games_library::write_games() failed! Error while writing library to: {file} | Error: {e}", file = path.display());
         return Err("Failed to write content to library.json!".to_string())
     }
 
@@ -33,7 +33,7 @@ pub fn get_games() -> Result<Value, String> {
     match get_library_json_path() {
         Ok(json_path) => { path = json_path; }
         Err(e) => {
-            error!("Failed to get path to library.json! | Message: {:?}", e);
+            error!("games_library::get_games() failed! Cannot get path to library.json! | Error: {e}");
             return Err("Failed to get path to library.json!".to_string())
         }
     }
@@ -42,13 +42,13 @@ pub fn get_games() -> Result<Value, String> {
             match serde_json::from_reader(file) {
                 Ok(json_content) => { games = json_content }
                 Err(e) => {
-                    error!("Failed to parse json content! | Message: {:?}", e);
+                    error!("games_library::get_games() failed! Failed to parse json! | Error: {e}");
                     return Err("Failed to parse library.json content!".to_string())
                 }
             }
         }
         Err(e) => {
-            error!("Failed to open file: {} | Message: {:?}", path.display(), e);
+            error!("games_library::get_games() failed! Error opening: {file} | Error: {e}", file = path.display());
             return Err("Failed to open library.json!".to_string())
         }
     }
