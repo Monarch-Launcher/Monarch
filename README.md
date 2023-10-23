@@ -34,6 +34,9 @@ We believe in transparency, which is why Monarch is open-sourced. This allows an
 ### Quicklaunch
 One of our goals with Monarch is to make the gaming experience as easy as possible and focused on the important parts, which is gaming. Therefor we implemented a feature we nicknamed Quicklaunch. Quicklaunch allows you to use a keyboard shortcut to open a small search window, the quicklaunch window, where you can type the name of the game you want to play and launch by simply highlighting it and pressing Enter. If you allow Monarch to run at start-up (given it's low resource usage) you could have your favourite game up and running in only a few seconds.
 
+### Cross-platform
+Tauri allows us to build Monarch cross-platform meaning that you can download Monarch on Windows, MacOS and Linux. However, given that the majority of gamers use Windows, they will likely have the latest and greatest features first, since it makes the most sense to build for Windows first. However, we still aim to fully support MacOS and Linux. 
+
 ## How do I get it?
 There are two ways of getting Monarch:
 1. Download the latest version from [releases](https://github.com/an0nymoos3/Monarch/releases) (Recommended for most).
