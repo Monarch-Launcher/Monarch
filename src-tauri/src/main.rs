@@ -8,7 +8,7 @@ mod monarch_library;
 mod monarch_utils;
 
 use monarch_games::commands::{
-    download_game, get_library, launch_game, purchase_game, refresh_library, search_games,
+    download_game, get_library, launch_game, open_store, refresh_library, search_games,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
@@ -36,7 +36,7 @@ fn main() {
             get_library,
             launch_game,
             download_game,
-            purchase_game,
+            open_store,
             create_collection,
             update_collection,
             delete_collection,

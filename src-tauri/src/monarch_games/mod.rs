@@ -1,4 +1,6 @@
 pub mod monarchgame;
+pub mod monarch_client;
+pub mod steam_client;
 pub mod commands;
 
 #[cfg(target_os="windows")]

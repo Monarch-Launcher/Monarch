@@ -1,6 +1,7 @@
 use log::{info, error};
 use ini::Ini;
 use reqwest::Response;
+use reqwest;
 use scraper::{Html, Selector, ElementRef};
 use std::fs;
 use std::ffi::OsString;

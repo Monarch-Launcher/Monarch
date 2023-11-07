@@ -6,6 +6,8 @@ pub mod monarch_run;
 pub mod monarch_settings;
 pub mod commands;
 pub mod housekeeping;
+pub mod monarch_miniwindow;
+pub mod monarch_credentials;
 
 #[cfg(target_os="windows")]
 pub mod monarch_winreg;

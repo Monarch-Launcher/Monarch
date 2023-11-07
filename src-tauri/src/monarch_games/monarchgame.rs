@@ -1,7 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-#[derive(Serialize, Deserialize, Clone, Debug)]
+use std::path::PathBuf;
+
+use crate::monarch_utils::monarch_download::download_image;
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct MonarchGame {
     name: String,
     id: String, // Has to be string instead of u64 to avoid rounding when sent to frontend
@@ -13,14 +17,37 @@ pub struct MonarchGame {
 }
 
 impl MonarchGame {
-    pub fn new(name: &str, platform: &str, platform_id: &str, exec_path: &str, thumbnail_path: &str,) -> Self {
-        Self {name: name.to_string(),
-              id: generate_hash(&name.to_string(), &platform.to_string(), &platform_id.to_string()).to_string(),
-              platform: platform.to_string(),
-              platform_id: platform_id.to_string(),
-              executable_path: exec_path.to_string(),
-              thumbnail_path: thumbnail_path.to_string(),
-              launch_args: Vec::new(), }
+    pub fn new(
+        name: &str,
+        platform: &str,
+        platform_id: &str,
+        exec_path: &str,
+        thumbnail_path: &str,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            id: generate_hash(
+                &name.to_string(),
+                &platform.to_string(),
+                &platform_id.to_string(),
+            )
+            .to_string(),
+            platform: platform.to_string(),
+            platform_id: platform_id.to_string(),
+            executable_path: exec_path.to_string(),
+            thumbnail_path: thumbnail_path.to_string(),
+            launch_args: Vec::new(),
+        }
+    }
+
+    /// Download thumbnail for MonarchGame
+    pub fn download_thumbnail(&self, url: &str) {
+        let path: PathBuf = PathBuf::from(self.thumbnail_path.clone());
+        let owned_url: String = url.to_string();
+
+        tokio::task::spawn(async move {
+            download_image(&owned_url, path).await;
+        });
     }
 }
 
