@@ -47,7 +47,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 /// Launch a game
 pub fn launch_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
     info!("Launching game: {name}");
-    monarch_client::launch_game(&platform_id, &platform)
+    monarch_client::launch_game(&platform, &platform_id)
 }
 
 #[tauri::command]

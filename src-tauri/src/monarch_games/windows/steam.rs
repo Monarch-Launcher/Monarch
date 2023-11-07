@@ -99,7 +99,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
 /// Runs specified command via Steam
 pub fn run_command(args: &str) -> Result<(), String> {
-    match Command::new(args).spawn() {
+    match Command::new("PowerShell").arg("start").arg(args).spawn() {
         Ok(_) => Ok(()),
         Err(e) => {
             error!("steam::run_command() failed! Failed to run Steam command {args} | Message: {e}");

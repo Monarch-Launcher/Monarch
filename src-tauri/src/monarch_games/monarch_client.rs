@@ -21,7 +21,8 @@ pub fn launch_game(platform: &str, platform_id: &str) -> Result<(), String> {
             return steam_client::launch_cmd_game(platform_id)
         }
         &_ => {
-            todo!()
+            error!("monarch_client::launch_game() failed! Invalid platform passed as argument: {platform}");
+            return Err("Invalid platform!".to_string())
         }
     }
 }

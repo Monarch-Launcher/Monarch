@@ -1,4 +1,4 @@
-use log::{error, warn};
+use log::{error, warn, info};
 use serde_json::Value;
 use reqwest;
 use scraper::{Html, Selector};
