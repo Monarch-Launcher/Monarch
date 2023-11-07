@@ -5,7 +5,7 @@ use std::process::Command;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_download::download_file;
-use crate::monarch_utils::monarch_fs::{get_app_data_path, path_exists, create_dir};
+use crate::monarch_utils::monarch_fs::{get_appdata_path, path_exists, create_dir};
 use crate::monarch_utils::monarch_vdf;
 use crate::monarch_utils::monarch_winreg::is_installed;
 use crate::monarch_games::steam_client::parse_steam_ids;
@@ -18,7 +18,7 @@ use crate::monarch_games::steam_client::parse_steam_ids;
 
 /// Returns path to Monarchs installed version of SteamCMD
 fn get_steamcmd_dir() -> PathBuf {
-    let mut path: PathBuf = get_app_data_path().unwrap();
+    let mut path: PathBuf = get_appdata_path().unwrap();
     path.push("SteamCMD");
     path
 }

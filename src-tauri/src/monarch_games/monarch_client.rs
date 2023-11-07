@@ -1,12 +1,20 @@
 use super::steam_client;
 use crate::monarch_utils::monarch_fs;
+use crate::monarch_utils::monarch_fs::get_appdata_path;
 use std::path::PathBuf;
 use log::{warn, error, info};
 
 /// Temporary solutio until settings work 100%
 /// Creates a directory to store games in
 pub fn generate_default_folder() -> PathBuf {
-    let mut path: PathBuf = monarch_fs::get_app_data_path().unwrap();
+    let mut path: PathBuf;
+    
+    if cfg!(windows) {
+        path = PathBuf::from("C:\\")
+    } else {
+        path = get_appdata_path().unwrap() // Otherwise put games in Monarchs home folder
+    }
+
     path.push("games");
     path
 }

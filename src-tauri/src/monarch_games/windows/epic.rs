@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use crate::monarch_utils::{monarch_winreg::is_installed,
                            monarch_download::{download_and_run, download_image},
-                           monarch_fs::{generate_cache_image_name, get_app_data_path}};
+                           monarch_fs::{generate_cache_image_name, get_appdata_path}};
 use super::super::monarchgame::MonarchGame;
 
 /// Installs Epic games launcher if not already installed
@@ -45,7 +45,7 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 /// Finds local epic games library installed on current system
 pub async fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
-    let path: PathBuf = get_app_data_path().unwrap();
+    let path: PathBuf = get_appdata_path().unwrap();
     
     if !epic_is_installed() {
         info!("Epic Games not installed! Skipping...");
