@@ -1,9 +1,12 @@
-use log::error;
+use log::{error, warn};
 use serde_json::Value;
 use reqwest;
 use scraper::{Html, Selector};
+use toml;
 
+use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::generate_library_image_name;
+use crate::monarch_utils::monarch_settings::get_steam_settings;
 use super::monarch_client::generate_default_folder;
 use super::monarchgame::MonarchGame;
 use std::collections::HashMap;
@@ -67,21 +70,48 @@ pub fn launch_cmd_game(id: &str) -> Result<(), String> {
 
 /// Download a Steam game via Monarch and SteamCMD.
 pub fn download_game(id: &str) -> Result<(), String> {
+    let settings: toml::Value;
+    let username: String;
+    let password: String;
+
+    match get_steam_settings() {
+        Some(settings_res) => { settings = settings_res; }
+        None => {
+            error!("steam_client::download_game() failed! get_steam_settings() returned None!");
+            return Err("No steam settings found!".to_string())
+        }
+    }
+
+    if can_manage_steam(&settings) {
+        match get_username(&settings) {
+            Some(username_res) => { username = username_res}
+            None => {
+                error!("steam_client::download_game() failed! get_username() returned None!");
+                return Err("No Steam username found!".to_string())
+            }
+        }
+    } else {
+        warn!("steam_client::download_game() User tried to install game without allowing Monarch to manage Steam! Cancelling download...");
+        return Err("Not allowed to download games! Check settings!".to_string())
+    }
+
+    match get_password("steam", &username) {
+        Ok(password_res) => { password = password_res}
+        Err(e) => {
+            error!("steam_client::download_game() failed! Could not get password for Steam from secure store! | Error: {e}");
+            return Err("Failed to get Steam password from secure store!".to_string())
+        }
+    }
+
     // Directory argument
     let mut install_dir: String = String::from(" +force_install_dir ");
     install_dir.push_str(generate_default_folder().to_str().unwrap());
 
-    let username: String = todo!();
-    let password: String = todo!();
-    let two_factor: String = todo!();
-
     // Login argument
     let mut login = String::from(" +login ");
-    login.push_str(&username.trim());
+    login.push_str(&username);
     login.push(' ');
-    login.push_str(&password.trim());
-    login.push(' ');
-    login.push_str(&two_factor.trim());
+    login.push_str(&password);
 
     // App ID argument
     let mut download = String::from(" +app_update ");
@@ -94,6 +124,33 @@ pub fn download_game(id: &str) -> Result<(), String> {
     command.push_str(&download);
 
     steam::steamcmd_command(&command) // Tell SteamCMD to download game
+}
+
+/// Returns whether or not Monarch is allowed to manage a users Steam games
+fn can_manage_steam(settings: &toml::Value) -> bool {
+    match settings.get("manage") {
+        Some(value) => {
+            return value == &toml::Value::Boolean(true)
+        }
+        None => {
+            return false
+        } 
+    }
+}
+
+/// Returns username from toml::Value
+fn get_username(settings: &toml::Value) -> Option<String> {
+    match settings.get("username") {
+        Some(value) => {
+            match value.as_str() {
+                Some(value_str) => {
+                    return Some(value_str.to_string())
+                }
+                None => None
+            }
+        }
+        None => None
+    }
 }
 
 /// Converts SteamApp ids into MonarchGames

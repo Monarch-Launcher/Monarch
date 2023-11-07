@@ -208,11 +208,13 @@ fn get_default_settings() -> Table {
 
     let mut steam_settings: Table = Table::new();
     steam_settings.insert("game_folders".to_string(), Vec::<String>::new().into());
-    steam_settings.insert("manage".to_string(), true.into());
+    steam_settings.insert("manage".to_string(), false.into());
+    steam_settings.insert("username".to_string(), "".into());
 
     let mut epic_settings: Table = Table::new();
     epic_settings.insert("game_folders".to_string(), Vec::<String>::new().into());
-    epic_settings.insert("manage".to_string(), true.into());
+    epic_settings.insert("manage".to_string(), false.into());
+    epic_settings.insert("username".to_string(), "".into());
 
     settings.insert("monarch".to_string(), monarch.into());
     settings.insert("quicklaunch".to_string(), quicklaunch_settings.into());

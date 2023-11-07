@@ -4,6 +4,7 @@ use toml::Table;
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{read_settings, write_settings, set_default_settings};
 use super::housekeeping::clear_all_cache;
+use super::monarch_credentials::{set_credentials, delete_credentials};
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
@@ -67,4 +68,16 @@ pub fn revert_settings() -> Result<Table, Table> {
 /// Manually clear all images in the resources/cache directory
 pub fn clear_cached_images() {
     clear_all_cache();
+}
+
+#[tauri::command]
+/// Set password in secure store
+pub fn set_password(platform: String, username: String, password: String) -> Result<(), String> {
+    set_credentials(&platform, &username, &password)
+}
+
+#[tauri::command]
+/// Delete password in secure store
+pub fn delete_password(platform: String, username: String) -> Result<(), String> {
+    delete_credentials(&platform, &username)
 }

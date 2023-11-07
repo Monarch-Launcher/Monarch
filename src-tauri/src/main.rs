@@ -13,7 +13,7 @@ use monarch_games::commands::{
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
 };
-use monarch_utils::commands::{clear_cached_images, get_settings, open_logs, set_settings, revert_settings};
+use monarch_utils::commands::{clear_cached_images, get_settings, open_logs, set_settings, revert_settings, set_password, delete_password};
 use monarch_utils::monarch_fs::{check_appdata_folder, check_resources_folder};
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
@@ -46,6 +46,8 @@ fn main() {
             set_settings,
             revert_settings,
             clear_cached_images,
+            set_password,
+            delete_password,
         ])
         .run(tauri::generate_context!());
 
