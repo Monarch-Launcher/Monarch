@@ -9,17 +9,18 @@ As stated above Monarch is still in development (not even an alpha), therefor fe
 ## Features:
 These are some of the features we want to include in Monarch and their development status. Not all are going to be developed in the order below and not all will be in the first official release of Monarch, but the core features planned in the first release are **game management**, **quicklaunch**, **game collections** and some **quality of life** features. 
 
-| Feature                  | Status |
-| -------                  | ------ |
+| Feature |                | Status |
+| ------- |                | ------ |
 | Find games automatically | 🟡 Developing |
 | Launch games             | 🟡 Developing |
-| Manage Steam/Epic games  | 🟡 Developing |
+| Manage Steam games       | 🟡 Developing |
+| Manage Epic games        | 🟡 Developing |
 | Game collections/folders | 🟢 Done       |
-| Quick launch             | 🟡 Developing |
+| Quicklaunch              | 🟡 Developing |
 | Launch arguments         | 🔴 Planned    |
 | Download scripting       | 🔴 Planned    |
 | UI overhaul              | 🔴 Planned    |
-| Better stats/descriptions| 🔴 Planned    |
+| User stats               | 🔴 Planned    |
 | Friends                  | 🔴 Planned    |
 | Plugin system            | 🔴 Planned    |
 
