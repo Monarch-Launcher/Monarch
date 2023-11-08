@@ -23,7 +23,7 @@ pub async fn get_library() -> Result<Value, String> {
 /// Search for games on Monarch, currently only support Steam search
 pub async fn search_games(name: String) -> HashMap<String, MonarchGame> {
     let games: HashMap<String, MonarchGame> = steam::find_game(&name).await;
-    return games
+    return games;
 }
 
 #[tauri::command]
@@ -52,7 +52,11 @@ pub fn launch_game(name: String, platform: String, platform_id: String) -> Resul
 
 #[tauri::command]
 /// Tells Monarch to download specified game
-pub async fn download_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
+pub async fn download_game(
+    name: String,
+    platform: String,
+    platform_id: String,
+) -> Result<(), String> {
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
     info!("Attempting to install: {name}");
