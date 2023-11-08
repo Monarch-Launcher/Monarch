@@ -94,7 +94,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
     let path = Path::new("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
     let found_games: Vec<String> = monarch_vdf::parse_library_file(&path);
     
-    parse_steam_ids(found_games).await
+    parse_steam_ids(found_games, false).await
 }
 
 /// Runs specified command via Steam

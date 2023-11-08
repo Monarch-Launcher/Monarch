@@ -5,7 +5,7 @@ use scraper::{Html, Selector};
 use toml;
 
 use crate::monarch_utils::monarch_credentials::get_password;
-use crate::monarch_utils::monarch_fs::generate_library_image_name;
+use crate::monarch_utils::monarch_fs::{generate_library_image_name, generate_cache_image_name};
 use crate::monarch_utils::monarch_settings::get_steam_settings;
 use super::monarch_client::generate_default_folder;
 use super::monarchgame::MonarchGame;
@@ -153,8 +153,8 @@ fn get_username(settings: &toml::Value) -> Option<String> {
     }
 }
 
-/// Converts SteamApp ids into MonarchGames
-pub async fn parse_steam_ids(ids: Vec<String>) -> Vec<MonarchGame> {
+/// Converts SteamApp ids into MonarchGames.
+pub async fn parse_steam_ids(ids: Vec<String>, is_cache: bool) -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
 
     for id in ids {
@@ -190,12 +190,23 @@ pub async fn parse_steam_ids(ids: Vec<String>) -> Vec<MonarchGame> {
                 let id: String = id;
                 let platform: String = String::from("steam");
                 let exec_path: String = String::new();
-                let thumbnail_path: String = String::from(
-                    generate_library_image_name(&name)
-                        .unwrap()
-                        .to_str()
-                        .unwrap(),
-                );
+                let thumbnail_path: String;
+
+                if is_cache {
+                    thumbnail_path = String::from(
+                        generate_cache_image_name(&name)
+                            .unwrap()
+                            .to_str()
+                            .unwrap(),
+                    );
+                } else {
+                    thumbnail_path = String::from(
+                        generate_library_image_name(&name)
+                            .unwrap()
+                            .to_str()
+                            .unwrap(),
+                    );
+                }
 
                 let url: &str = game_json[&id]["data"]["header_image"].as_str().unwrap();
 
@@ -215,19 +226,19 @@ pub async fn parse_steam_ids(ids: Vec<String>) -> Vec<MonarchGame> {
 
 /// Gets AppIDs and Links from Steam store search
 async fn parse_steam_page(body: &str) -> HashMap<String, MonarchGame> {
-    let a_selector: Selector = Selector::parse("a").unwrap();
+    let game_selector: Selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap();
 
     let mut ids: Vec<String> = Vec::new();
     let mut links: Vec<String> = Vec::new();
     let mut games: HashMap<String, MonarchGame> = HashMap::new();
 
-    for a_tag in Html::parse_document(body).select(&a_selector) {
+    for css_elem in Html::parse_document(body).select(&game_selector) {
         // Check for AppID
-        if let Some(id) = a_tag.value().attr("data-ds-appid") {
+        if let Some(id) = css_elem.value().attr("data-ds-appid") {
             ids.push(id.to_string());
 
             // Check for link to steam page
-            if let Some(link) = a_tag.value().attr("href") {
+            if let Some(link) = css_elem.value().attr("href") {
                 links.push(link.to_string());
             } else { // Else remove
                 ids.pop();
@@ -235,7 +246,7 @@ async fn parse_steam_page(body: &str) -> HashMap<String, MonarchGame> {
         }
     }
 
-    let monarch_games = parse_steam_ids(ids).await;
+    let monarch_games = parse_steam_ids(ids, true).await;
 
     for i in 0..monarch_games.len() {
         games.insert(links[i].clone(), monarch_games[i].clone());

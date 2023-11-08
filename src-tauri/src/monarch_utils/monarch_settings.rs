@@ -1,5 +1,5 @@
 use core::result::Result;
-use log::{debug, error};
+use log::error;
 use once_cell::sync::Lazy;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -8,7 +8,8 @@ use toml::Table;
 use crate::monarch_games::monarch_client::generate_default_folder;
 use super::monarch_fs::{get_appdata_path, get_settings_path, path_exists};
 
-// Create a global variable containing the current state of settings according to Monarch backend
+// Create a global variable containing the current state of settings according to Monarch backend.
+// Allows for fewer reads of settings.toml by storing the settings in ram.
 static mut SETTINGS_STATE: Lazy<Settings> = Lazy::<Settings>::new(|| Settings::new());
 
 /// Struct for storing a persistent state of settings
@@ -49,6 +50,9 @@ pub fn init() -> Result<(), String> {
                     error!("monarch_settings::init() failed! | Error: {e}");
                     return Err("Failed to write default settings to settings.toml".to_string());
                 }
+            }
+            if let Ok(settings) = read_settings() { // Set SETTINGS_STATE to settings from settings.toml
+                set_settings_state(settings);
             }
             Ok(())
         }
