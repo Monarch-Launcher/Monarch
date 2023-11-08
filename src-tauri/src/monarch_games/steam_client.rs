@@ -1,4 +1,4 @@
-use log::{error, info, warn};
+use log::{error, warn};
 use reqwest;
 use scraper::{Html, Selector};
 use serde_json::Value;
@@ -29,12 +29,13 @@ pub fn is_installed() -> bool {
 }
 
 #[cfg(windows)]
-/// Downloads and install SteamCMD on users computer.
+/// Downloads and installs SteamCMD on users computer.
 pub async fn download_and_install() -> Result<(), String> {
     steam::install_steamcmd().await
 }
 
 #[cfg(not(windows))]
+/// Downloads and installs SteamCMD on users computer.
 pub async fn download_and_install() -> Result<(), String> {
     steam::install_steamcmd()
 }
@@ -75,7 +76,7 @@ pub fn launch_cmd_game(id: &str) -> Result<(), String> {
 }
 
 /// Download a Steam game via Monarch and SteamCMD.
-pub fn download_game(id: &str) -> Result<(), String> {
+pub async fn download_game(id: &str) -> Result<MonarchGame, String> {
     let settings: toml::Value;
     let username: String;
     let password: String;
@@ -100,7 +101,7 @@ pub fn download_game(id: &str) -> Result<(), String> {
         }
     } else {
         warn!("steam_client::download_game() User tried to install game without allowing Monarch to manage Steam! Cancelling download...");
-        return Err("Not allowed to download games! Check settings!".to_string());
+        return Err("Not allowed to manage games! Check settings!".to_string());
     }
 
     match get_password("steam", &username) {
@@ -124,14 +125,52 @@ pub fn download_game(id: &str) -> Result<(), String> {
     // App ID argument
     let mut download = String::from(" +app_update ");
     download.push_str(id);
-    download.push_str(" +validate");
+    download.push_str(" -validate");
 
     // Build the command as a string with arguments in order
     let mut command: String = String::from(&install_dir);
     command.push_str(&login);
     command.push_str(&download);
+    command.push_str(" +quit");
 
-    steam::steamcmd_command(&command) // Tell SteamCMD to download game
+    // TODO: Wait for Steamcmd to return 
+    // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
+    match steam::steamcmd_command(&command) { // Tell SteamCMD to download game 
+        Ok(_) => {
+            let monarchgame: MonarchGame = parse_steam_ids(vec![id.to_string()], false).await[0].clone();
+            return Ok(monarchgame);
+        }
+        Err(e) => {
+            error!("steam_client::download_game() failed! steamcmd_command() returned error! | Error: {e}");
+            return Err("Failed to install game!".to_string());
+        }
+    }
+}
+
+/// Uninstall a Steam game via SteamCMD
+pub fn uninstall_game(id: &str) -> Result<(), String> {
+    let settings: toml::Value;
+
+    match get_steam_settings() {
+        Some(settings_res) => {
+            settings = settings_res;
+        }
+        None => {
+            error!("steam_client::uninstall_game() failed! get_steam_settings() returned None!");
+            return Err("No steam settings found!".to_string());
+        }
+    }
+
+    if !can_manage_steam(&settings) {
+        warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
+        return Err("Not allowed to manage games! Check settings!".to_string());
+    }
+
+    let mut command: String = String::from(" +app_uninstall ");
+    command.push_str(id);
+    command.push_str(" +quit");
+
+    steam::steamcmd_command(&command)
 }
 
 /// Returns whether or not Monarch is allowed to manage a users Steam games

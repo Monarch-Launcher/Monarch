@@ -29,18 +29,7 @@ pub async fn search_games(name: String) -> HashMap<String, MonarchGame> {
 #[tauri::command]
 /// Manually refreshes the entire Monarch library, currently only supports Steam & Epic Games (kinda) still WIP
 pub async fn refresh_library() -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-    let mut steam_games: Vec<MonarchGame> = steam::get_library().await;
-
-    games.append(&mut steam_games);
-
-    if let Err(e) = games_library::write_games(games.clone()) {
-        error!(
-            "Failed to write new games to library.json! | Message: {:?}",
-            e
-        );
-    }
-    games
+    monarch_client::get_library().await
 }
 
 #[tauri::command]
@@ -56,11 +45,18 @@ pub async fn download_game(
     name: String,
     platform: String,
     platform_id: String,
-) -> Result<(), String> {
+) -> Result<Vec<MonarchGame>, String> {
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
-    info!("Attempting to install: {name}");
-    monarch_client::download_game(&platform, &platform_id).await
+    info!("Installing: {name}");
+    monarch_client::download_game(&name, &platform, &platform_id).await
+}
+
+#[tauri::command]
+/// Tells Monarch to remove specified game
+pub fn remove_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
+    info!("Uninstalling: {name}");
+    monarch_client::uninstall_game(&platform, &platform_id)
 }
 
 #[tauri::command]

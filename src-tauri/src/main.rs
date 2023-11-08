@@ -8,7 +8,7 @@ mod monarch_library;
 mod monarch_utils;
 
 use monarch_games::commands::{
-    download_game, get_library, launch_game, open_store, refresh_library, search_games,
+    download_game, get_library, launch_game, open_store, refresh_library, search_games, remove_game,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
@@ -48,6 +48,7 @@ fn main() {
             clear_cached_images,
             set_password,
             delete_password,
+            remove_game,
         ])
         .run(tauri::generate_context!());
 

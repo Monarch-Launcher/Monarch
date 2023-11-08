@@ -54,3 +54,18 @@ pub fn get_games() -> Result<Value, String> {
     }
     return Ok(games)
 }
+
+/// Backend functionality for adding a new game that's been installed.
+pub fn add_game(game: MonarchGame) -> Result<(), String> {
+    match get_games() {
+        Ok(games_json) => {
+
+        }
+        Err(e) => {
+            error!("games_library::add_game() failed! get_games() returned errro! | Error: {e}");
+            return Err("Failed to add new game!".to_string())
+        }
+    }
+    
+    Ok(())
+}

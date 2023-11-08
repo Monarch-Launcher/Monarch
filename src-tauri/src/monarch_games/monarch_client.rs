@@ -1,5 +1,5 @@
-use super::steam_client;
-use crate::monarch_utils::monarch_fs;
+use super::{steam_client, monarchgame::MonarchGame};
+use crate::{monarch_utils::monarch_fs, monarch_library::games_library};
 use crate::monarch_utils::monarch_fs::get_appdata_path;
 use log::{error, info, warn};
 use std::path::PathBuf;
@@ -32,9 +32,15 @@ pub fn launch_game(platform: &str, platform_id: &str) -> Result<(), String> {
 }
 
 /// Downloads a game into default folder
-pub async fn download_game(platform: &str, platform_id: &str) -> Result<(), String> {
-    let path: PathBuf = generate_default_folder();
+pub async fn download_game(name: &str, platform: &str, platform_id: &str) -> Result<Vec<MonarchGame>, String> {
+    let mut path: PathBuf = generate_default_folder(); // Install dir
+    let new_game: MonarchGame;
 
+    if !monarch_fs::path_exists(&path) {
+        monarch_fs::create_dir(&path).unwrap();
+    }
+
+    path.push(name); // Game specific path
     if !monarch_fs::path_exists(&path) {
         monarch_fs::create_dir(&path).unwrap();
     }
@@ -51,11 +57,54 @@ pub async fn download_game(platform: &str, platform_id: &str) -> Result<(), Stri
                     return Err(e);
                 }
             }
-            steam_client::download_game(platform_id)
+            
+            match steam_client::download_game(platform_id).await {
+                Ok(game) => { new_game = game }
+                Err(e) => {
+                    error!("monarch_client::download_game() failed! Failed to download Steam game! | Error: {e}");
+                    return Err("Failed to download Steam game!".to_string())
+                }
+            }
         }
         &_ => {
             error!("monarch_client::download_game() failed! Invalid platform passed as argument: {platform}");
             return Err("Invalid platform!".to_string());
         }
     }
+    
+    if let Err(e) = games_library::add_game(new_game) {
+        error!("monarch_client::download_game() failed! Error while writing new MonarchGame to library.json! | Error: {e}");
+        return Err("Failed to write new game to library.json!".to_string())
+    }
+
+    Ok(get_library().await) // Return new library
+}
+
+/// Remove an installed game
+pub fn uninstall_game(platform: &str, platform_id: &str) -> Result<(), String> {
+    match platform {
+        "steamcmd" => {
+            steam_client::uninstall_game(platform_id)
+        }
+        &_ => {
+            error!("monarch_client::uninstall_game() failed! Invalid platform passed as argument: {platform}");
+            return Err("Invalid platform!".to_string());
+        }
+    }
+}
+
+/// Returns installed games according to Monarch
+pub async fn get_library() -> Vec<MonarchGame> {
+    let mut games: Vec<MonarchGame> = Vec::new();
+    let mut steam_games: Vec<MonarchGame> = steam_client::get_library().await;
+
+    games.append(&mut steam_games);
+
+    if let Err(e) = games_library::write_games(games.clone()) {
+        error!(
+            "Failed to write new games to library.json! | Message: {:?}",
+            e
+        );
+    }
+    games
 }
