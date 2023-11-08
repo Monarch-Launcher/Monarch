@@ -64,10 +64,16 @@ pub fn steamcmd_command(args: &str) -> Result<(), String> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.exe");
 
-    match Command::new("start").arg(path).arg(args).spawn() {
+    match Command::new("PowerShell").arg(&path).arg(args).spawn() {
         Ok(_) => Ok(()),
         Err(e) => {
-            error!("Failed to run steamcmd {args} | Message: {e}");
+            // Anonymize login info in logs.
+            let login_index: usize = args.find("+login").unwrap();
+            let app_update_index: usize = args.find("+app_update").unwrap();
+            
+            let anonymous_args: String = args[..login_index + 7].to_string() + &args[app_update_index..];
+            error!("windows::steam::steamcmd_command() failed! Failed to run {steamcmd}{anonymous_args} | Message: {e}", steamcmd = path.display());
+            info!("The error above has removed your login info for privacy reasons.");
             Err("Failed to run SteamCMD command!".to_string())
         }
     }
