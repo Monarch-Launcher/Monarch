@@ -1,7 +1,8 @@
 use core::result::Result;
+use std::os::windows::prelude::AsHandle;
 use log::{error, info};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_download::download_file;
@@ -59,13 +60,22 @@ pub async fn install_steamcmd() -> Result<(), String> {
     Ok(())
 }
 
-/// Runs specified command via SteamCMD
+/// Runs specified command via SteamCMD and waits for it to finish
+/// before returning.
 pub fn steamcmd_command(args: &str) -> Result<(), String> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.exe");
 
-    match Command::new("PowerShell").arg(&path).arg(args).spawn() {
-        Ok(_) => Ok(()),
+    match Command::new("PowerShell").arg(&path).arg(args).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn() {
+        Ok(mut command) => {
+            use std::thread::sleep;
+            use std::time::Duration;
+            let stdout = command.stdout.take().unwrap();
+            loop {
+                sleep(Duration::from_secs(1));
+                println!("Command status: {:?} \n", stdout);
+            }
+        }
         Err(e) => {
             // Anonymize login info in logs.
             let login_index: usize = args.find("+login").unwrap();

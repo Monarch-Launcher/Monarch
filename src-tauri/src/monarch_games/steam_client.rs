@@ -125,7 +125,7 @@ pub async fn download_game(id: &str) -> Result<MonarchGame, String> {
     // App ID argument
     let mut download = String::from(" +app_update ");
     download.push_str(id);
-    download.push_str(" -validate");
+    download.push_str(" validate");
 
     // Build the command as a string with arguments in order
     let mut command: String = String::from(&install_dir);
