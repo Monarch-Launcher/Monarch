@@ -14,7 +14,7 @@ These are some of the features we want to include in Monarch and their developme
 | Find games automatically | 🟡 Developing |
 | Launch games             | 🟡 Developing |
 | Manage Steam games       | 🟡 Developing |
-| Manage Epic games        | 🟡 Developing |
+| Manage Epic games        | 🔴 Planned    |
 | Game collections/folders | 🟢 Done       |
 | Quicklaunch              | 🟡 Developing |
 | Launch arguments         | 🔴 Planned    |
