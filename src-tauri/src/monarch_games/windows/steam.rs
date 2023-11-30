@@ -1,8 +1,7 @@
 use core::result::Result;
-use std::os::windows::prelude::AsHandle;
 use log::{error, info};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_download::download_file;
@@ -62,27 +61,34 @@ pub async fn install_steamcmd() -> Result<(), String> {
 
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
-pub fn steamcmd_command(args: &str) -> Result<(), String> {
+pub async fn steamcmd_command(args: Vec<&str>) -> Result<(), String> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.exe");
 
-    match Command::new("PowerShell").arg(&path).arg(args).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn() {
-        Ok(mut command) => {
-            use std::thread::sleep;
-            use std::time::Duration;
-            let stdout = command.stdout.take().unwrap();
-            loop {
-                sleep(Duration::from_secs(1));
-                println!("Command status: {:?} \n", stdout);
+    match Command::new("powershell.exe")
+        .arg("-NoProfile")
+        .arg("-Command")
+        .arg(format!("Start-Process {:?} -ArgumentList {} -WindowStyle Normal -Wait", 
+            &path, 
+            args.iter()
+                .map(|arg| format!("'{}'", arg))
+                .collect::<Vec<_>>()
+                .join(",")
+            )).spawn() {
+        Ok(mut child) => {
+            if let Err(e) = child.wait() {
+                error!("windows::steam::steamcmd_command() got an error from SteamCMD child process! | Error: {e}");
+                return Err(String::from("Something went wrong while launching SteamCMD!"))
             }
+            Ok(())
         }
         Err(e) => {
             // Anonymize login info in logs.
-            let login_index: usize = args.find("+login").unwrap();
-            let app_update_index: usize = args.find("+app_update").unwrap();
+            //let login_index: usize = args.find("+login").unwrap();
+            //let app_update_index: usize = args.find("+app_update").unwrap();
+            //let anonymous_args: String = args[..login_index + 7].to_string() + &args[app_update_index..];
             
-            let anonymous_args: String = args[..login_index + 7].to_string() + &args[app_update_index..];
-            error!("windows::steam::steamcmd_command() failed! Failed to run {steamcmd}{anonymous_args} | Message: {e}", steamcmd = path.display());
+            error!("windows::steam::steamcmd_command() failed! Failed to run {steamcmd} | Message: {e}", steamcmd = path.display());
             info!("The error above has removed your login info for privacy reasons.");
             Err("Failed to run SteamCMD command!".to_string())
         }

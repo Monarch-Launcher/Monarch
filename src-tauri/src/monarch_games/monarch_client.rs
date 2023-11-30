@@ -15,15 +15,15 @@ pub fn generate_default_folder() -> PathBuf {
         path = get_appdata_path().unwrap() // Otherwise put games in Monarchs home folder
     }
 
-    path.push("games");
+    path.push("MonarchGames");
     path
 }
 
 /// Launches a game
-pub fn launch_game(platform: &str, platform_id: &str) -> Result<(), String> {
+pub async fn launch_game(platform: &str, platform_id: &str) -> Result<(), String> {
     match platform {
         "steam" => return steam_client::launch_game(platform_id),
-        "steamcmd" => return steam_client::launch_cmd_game(platform_id),
+        "steamcmd" => return steam_client::launch_cmd_game(platform_id).await,
         &_ => {
             error!("monarch_client::launch_game() failed! Invalid platform passed as argument: {platform}");
             return Err("Invalid platform!".to_string());
@@ -58,7 +58,7 @@ pub async fn download_game(name: &str, platform: &str, platform_id: &str) -> Res
                 }
             }
             
-            match steam_client::download_game(platform_id).await {
+            match steam_client::download_game(name, platform_id).await {
                 Ok(game) => { new_game = game }
                 Err(e) => {
                     error!("monarch_client::download_game() failed! Failed to download Steam game! | Error: {e}");
@@ -81,10 +81,10 @@ pub async fn download_game(name: &str, platform: &str, platform_id: &str) -> Res
 }
 
 /// Remove an installed game
-pub fn uninstall_game(platform: &str, platform_id: &str) -> Result<(), String> {
+pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<(), String> {
     match platform {
         "steamcmd" => {
-            steam_client::uninstall_game(platform_id)
+            steam_client::uninstall_game(platform_id).await
         }
         &_ => {
             error!("monarch_client::uninstall_game() failed! Invalid platform passed as argument: {platform}");

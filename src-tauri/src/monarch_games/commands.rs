@@ -3,7 +3,6 @@ use super::monarchgame::MonarchGame;
 use super::steam_client as steam;
 use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_miniwindow::MiniWindow;
-use log::error;
 use log::info;
 use serde_json::value::Value;
 use std::collections::HashMap;
@@ -34,9 +33,9 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
 #[tauri::command]
 /// Launch a game
-pub fn launch_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
+pub async fn launch_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
     info!("Launching game: {name}");
-    monarch_client::launch_game(&platform, &platform_id)
+    monarch_client::launch_game(&platform, &platform_id).await
 }
 
 #[tauri::command]
@@ -54,9 +53,9 @@ pub async fn download_game(
 
 #[tauri::command]
 /// Tells Monarch to remove specified game
-pub fn remove_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
+pub async fn remove_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
     info!("Uninstalling: {name}");
-    monarch_client::uninstall_game(&platform, &platform_id)
+    monarch_client::uninstall_game(&platform, &platform_id).await
 }
 
 #[tauri::command]

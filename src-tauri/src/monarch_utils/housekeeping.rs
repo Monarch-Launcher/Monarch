@@ -3,7 +3,7 @@
     clearing old cached images, temporary downloads, etc...
 
     Also meant to help maintain a smaller footprint on users OS.
- */
+*/
 
 use log::{info, error};
 use std::fs::ReadDir;

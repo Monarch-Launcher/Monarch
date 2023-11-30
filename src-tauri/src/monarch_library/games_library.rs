@@ -59,13 +59,20 @@ pub fn get_games() -> Result<Value, String> {
 pub fn add_game(game: MonarchGame) -> Result<(), String> {
     match get_games() {
         Ok(games_json) => {
-
+            match serde_json::from_value::<Vec<MonarchGame>>(games_json) {
+                Ok(mut vec) => {
+                    vec.push(game);
+                    return write_games(vec)
+                }
+                Err(e) => {
+                    error!("games_library::add_game() failed! Failed to parse json to Vec<MonarchGame>! | Error: {e}");
+                    return Err(String::from("Failed to add new game!"))
+                }
+            }
         }
         Err(e) => {
             error!("games_library::add_game() failed! get_games() returned errro! | Error: {e}");
             return Err("Failed to add new game!".to_string())
         }
     }
-    
-    Ok(())
 }

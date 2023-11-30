@@ -8,7 +8,6 @@ use log::{info, error};
 use image;
 use core::result::Result;
 
-use super::monarch_run::run_file;
 use super::monarch_fs::create_dir;
 
 /// Creates a tmp path name for file to install.
@@ -54,35 +53,6 @@ async fn write_content(installer_path: &PathBuf, content: Response) {
         }
         Err(e) => {
             error!("monarch_download::write_content() failed! Error while creating temporary file: {file} | Error: {e}", file = installer_path.display());
-        }
-    }
-}
-
-/// Downloads and attempts to run the downloaded file.
-pub async fn download_and_run(url: &str) -> Result<(), String> {
-    let mut tmp_dir = env::temp_dir();
-    tmp_dir.push("monarch");
-    tmp_dir.push("downloads");
-    
-    if let Err(e) = create_dir(&tmp_dir) {
-        error!("monarch_download::download_and_run() failed! Error while creating new directory: {dir}  | Error: {e}", dir = tmp_dir.display());
-        return Err("Failed to create temporary directory!".to_string())
-    }
-
-    match reqwest::get(url).await {
-        Ok(response) => {
-            
-            let installer_path: PathBuf = create_file_path(&response, &tmp_dir).await;
-
-            info!("Downloading to: {}", installer_path.display());
-            write_content(&installer_path, response).await;
-
-           return run_file(installer_path) // Returns Result<(), String> indicating how execution went
-            
-        }
-        Err(e) => {
-            error!("monarch_download::download_and_run() failed! No/bad response from: {url} | Error: {e}");
-            return Err("Failed to get response from url!".to_string())
         }
     }
 }
