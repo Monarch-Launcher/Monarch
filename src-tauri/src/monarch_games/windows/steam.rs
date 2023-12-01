@@ -84,12 +84,12 @@ pub async fn steamcmd_command(args: Vec<&str>) -> Result<(), String> {
         }
         Err(e) => {
             // Anonymize login info in logs.
-            //let login_index: usize = args.find("+login").unwrap();
-            //let app_update_index: usize = args.find("+app_update").unwrap();
-            //let anonymous_args: String = args[..login_index + 7].to_string() + &args[app_update_index..];
-            
-            error!("windows::steam::steamcmd_command() failed! Failed to run {steamcmd} | Message: {e}", steamcmd = path.display());
-            info!("The error above has removed your login info for privacy reasons.");
+            let args_string: String = args.iter()
+                .map(|arg| if arg.contains("login") { format!("+login username password ") } else {format!("{} ", arg) })
+                .collect::<String>();
+
+            error!("windows::steam::steamcmd_command() failed! Failed to run {steamcmd}{args_string} | Message: {e}", steamcmd = path.display());
+            info!("The error above has replaced your login info for privacy reasons.");
             Err("Failed to run SteamCMD command!".to_string())
         }
     }
