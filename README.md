@@ -55,6 +55,8 @@ We are two university students from Sweden and Belgium. We started this project 
 
 Due to the time limit of being full-time students, we are looking to expand the team. Anyone interested in helping out on the project is welcome to reach out.
 
+Feel free to join our Discord server: https://discord.gg/YjvJPPdbCw
+
 ## How can I contribute?
 Any help is appreciated. If you know programming and know of a feature that is missing or needs improvement, feel free to contribute. We currently don't have an official way of reporting issues; we'll update this page as soon as we do. 
 
