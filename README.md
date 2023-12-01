@@ -51,7 +51,7 @@ There are two ways of getting Monarch:
 Then you run the installer that you either downloaded or built youself. If you built it yourself you'll find it in the project folder under `src-tauri/target/release/bundle/`.
 
 ## Who are we?
-We are two university students from Sweden and Belguim. We started this project in our spare time, as we are studying full-time. We are also new to the FOSS community, so if there is anything you think looks weird about the way Monarch is setup or managed, please reach out and help us improve.
+We are two university students from Sweden and Belgium. We started this project in our spare time, as we are studying full-time. We are also new to the FOSS community, so if there is anything you think looks weird about the way Monarch is setup or managed, please reach out and help us improve.
 
 Due to the time limit of being full-time students, we are looking to expand the team. Anyone interested in helping out on the project is welcome to reach out.
 
