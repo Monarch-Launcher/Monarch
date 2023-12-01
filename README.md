@@ -4,19 +4,20 @@
 ## What is it?
 Monarch launcher was created in response to the number of launchers needed to play PC games in 2023. Monarch is still in development, but has the goal of simplifying the gaming experience by removing the need to use so many launchers. With Monarch you no longer need to remember what platform you have each game, instead Monarch keeps track of all of them in one place.
 
-As stated above Monarch is still in development (not even an alpha), therefor features mentioned below are subject to change. But the core goal of Monarch will still be to become the only launcher ever needed. We are planning on not only managing games already installed on your system, but also help you download new ones through Monarch.
+As stated above Monarch is still in development (not even an alpha), therefore features mentioned below are subject to change. But the core goal of Monarch will still be to become the only you need. We are planning on not only managing games already installed on your system, but also help you download new ones through Monarch.
 
 ## Features:
 These are some of the features we want to include in Monarch and their development status. Not all are going to be developed in the order below and not all will be in the first official release of Monarch, but the core features planned in the first release are **game management**, **quicklaunch**, **game collections** and some **quality of life** features. 
 
 | Feature                  | Status |
 | -------                  | ------ |
-| Find games automatically | 🟡 Developing |
-| Launch games             | 🟡 Developing |
+| Find games automatically | 🟡 Steam only |
+| Launch games             | 🟡 Steam only |
 | Manage Steam games       | 🟡 Developing |
-| Manage Epic games        | 🟡 Developing |
+| Manage Epic games        | 🔴 Planned    |
 | Game collections/folders | 🟢 Done       |
 | Quicklaunch              | 🟡 Developing |
+| Find/buy new games       | 🟡 Developing |
 | Launch arguments         | 🔴 Planned    |
 | Download scripting       | 🔴 Planned    |
 | UI overhaul              | 🔴 Planned    |
@@ -27,23 +28,22 @@ These are some of the features we want to include in Monarch and their developme
 ## Other benefits
 
 ### Blazingly fast!
-There's a meme that anything written in [Rust](https://en.wikipedia.org/wiki/Rust_(programming_language)) is "blazing fast". However in Monarch's case there's a grain of truth to it. Thanks to the use of [Tauri](https://tauri.app/) and [Rust](https://en.wikipedia.org/wiki/Rust_(programming_language)) Monarch uses a lot less RAM and CPU than the competitors. It also doesn't slow you down by forcing you to wait while Monarch looks for updates before actually starting. 
+There's a meme that anything written in [Rust](https://en.wikipedia.org/wiki/Rust_(programming_language)) is "blazing fast". However in Monarch's case there's a grain of truth to it. Thanks to the use of [Tauri](https://tauri.app/) and [Rust](https://en.wikipedia.org/wiki/Rust_(programming_language)) Monarch uses less RAM and CPU than the competitors. It also doesn't slow you down by forcing you to wait while Monarch looks for updates before actually starting. 
 
 ### Open-source
-We believe in transparency, which is why Monarch is open-sourced. This allows anyone to take a peak underneath the hood to understand and possibly improve Monarch. We believe that this approach both builds better trust but also improves the development of Monarch.
+We believe in transparency, which is why Monarch is open source. This allows anyone to take a peak underneath the hood to understand and possibly improve Monarch. We believe that this approach both builds better trust but also improves the development of Monarch.
 
 ### Quicklaunch
-One of our goals with Monarch is to make the gaming experience as easy as possible and focused on the important parts, which is gaming. Therefor we implemented a feature we nicknamed Quicklaunch. Quicklaunch allows you to use a keyboard shortcut to open a small search window, the quicklaunch window, where you can type the name of the game you want to play and launch by simply highlighting it and pressing Enter. If you allow Monarch to run at start-up (given it's low resource usage) you could have your favourite game up and running in only a few seconds.
+One of our goals with Monarch is to make the gaming experience as easy as possible and focused on the important parts, gaming. We therefore implemented a feature we call Quicklaunch. Quicklaunch allows you to use a keyboard shortcut to open a small search window, the quicklaunch window, where you can type the name of the game you want to play and launch by simply highlighting it and pressing Enter. If you allow Monarch to run at start-up (given it's low resource usage) you could have your favourite game up and running in only a few seconds.
 
 ### Cross-platform
-Tauri allows us to build Monarch cross-platform meaning that you can download Monarch on Windows, MacOS and Linux. However, given that the majority of gamers use Windows, they will likely have the latest and greatest features first, since it makes the most sense to build for Windows first. However, we still aim to fully support MacOS and Linux. 
+Tauri allows us to build Monarch cross-platform meaning that you can download Monarch on Windows, MacOS and Linux. Given that the majority of gamers use Windows, they will likely have the latest and greatest features first, as it makes the most sense to build for Windows first. However, we still aim to fully support MacOS and Linux. 
 
 ## How do I get it?
 There are two ways of getting Monarch:
-1. Download the latest version from [releases](https://github.com/an0nymoos3/Monarch/releases) (Recommended for most).
+1. Download the latest version from [releases](https://github.com/Monarch-Launcher/Monarch/releases) (Recommended for most).
 
 2. Compile it yourself. It's as easy as 1,2,3:
-
     1) Download the source code via the green **code** button.
     2) Make sure you have both [Rust/Cargo](https://www.rust-lang.org/) and [Yarn](https://yarnpkg.com/) installed.
     3) Open a terminal in the project folder and run: `yarn` followed by `yarn build`.
