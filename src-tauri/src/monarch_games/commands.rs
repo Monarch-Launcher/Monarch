@@ -2,7 +2,7 @@ use super::monarch_client;
 use super::monarchgame::MonarchGame;
 use super::steam_client as steam;
 use crate::monarch_library::games_library;
-use crate::monarch_utils::monarch_miniwindow::MiniWindow;
+use crate::monarch_utils::monarch_windows::MiniWindow;
 use log::info;
 use serde_json::value::Value;
 use std::collections::HashMap;
