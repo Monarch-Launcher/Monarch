@@ -6,7 +6,7 @@ use toml::Table;
 use anyhow::{Context, Result, anyhow};
 
 use crate::monarch_games::monarch_client::generate_default_folder;
-use super::monarch_fs::{get_appdata_path, get_settings_path, path_exists};
+use super::monarch_fs::{get_home_path, get_settings_path, path_exists};
 
 // Create a global variable containing the current state of settings according to Monarch backend.
 // Allows for fewer reads of settings.toml by storing in program memory.
@@ -41,7 +41,7 @@ fn get_settings_state() -> Table {
 /// Checks that a settings.toml file exists, otherwise attempts to create new file and populate
 /// with default settings
 pub fn init() -> Result<()> {
-    let path = get_settings_path().with_context(|| 
+    let path: PathBuf = get_settings_path().with_context(|| 
         -> String {format!("monarch_settings::init() failed! Cannot get path to settings.toml! | Err")})?;
     
     if !path_exists(&path) {
@@ -115,7 +115,7 @@ fn write_toml_content(path: &Path, table: Table) -> Result<Table, Table> {
 
 /// Read all settings from file
 pub fn read_settings() -> Result<Table> {
-    let path = get_settings_path().with_context(||
+    let path: PathBuf = get_settings_path().with_context(||
         -> String {format!("monarch_settings::read_settings() failed! Cannot get path to settings.toml! | Err")})?;
 
     read_settings_content(&path)
@@ -176,7 +176,7 @@ fn get_default_settings() -> Table {
     let mut settings: Table = Table::new();
 
     let mut monarch: Table = Table::new();
-    let appdata_path = get_appdata_path().unwrap();
+    let appdata_path = get_home_path().unwrap();
     let appdata_path_str = appdata_path.to_str().unwrap();
     let default_game_folder = generate_default_folder();
     let default_game_folder_str = default_game_folder.to_str().unwrap();

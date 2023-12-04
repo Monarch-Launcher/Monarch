@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use reqwest;
 use reqwest::Response;
 use std::env;
@@ -6,7 +7,6 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use log::{info, error};
 use image;
-use core::result::Result;
 
 use super::monarch_fs::create_dir;
 
@@ -34,27 +34,14 @@ async fn create_file_path(response: &Response, tmp_dir: &PathBuf) -> PathBuf {
 /// Writes downloaded content to file, has to be it's own function to 
 /// close file and avoid "file used by another process" error.
 // Also I am aware that this might look ugly due to the nesting, might come back and fix later...
-async fn write_content(installer_path: &PathBuf, content: Response) {
-    match File::create(installer_path) {
-        Ok(mut file) => {
-            match &content.bytes().await {
-                Ok(buf) => {
-                    if let Err(e) = file.write_all(buf) {
-                        error!("monarch_download::write_content() failed! Error while writing to file: {file} | Error: {e}",  file = installer_path.display());
-                    }
-                    if let Err(e) = file.sync_all() {
-                        error!("monarch_download::write_content() failed! Error while syncing file: {file} | Error: {e}",  file = installer_path.display());
-                    }
-                }
-               Err(e) => {
-                    error!("monarch_download::write_content() failed! Error while reading bytes! | Error: {e}");
-                }
-            }
-        }
-        Err(e) => {
-            error!("monarch_download::write_content() failed! Error while creating temporary file: {file} | Error: {e}", file = installer_path.display());
-        }
-    }
+async fn write_content(installer_path: &PathBuf, content: Response) -> Result<()> {
+    let mut file: File = File::create(installer_path).with_context(||
+        -> String {format!("monarch_download::write_content() failed! Error while creating temporary file: {file} | Err", file = installer_path.display())})?;
+    
+    let bytes = content.bytes().await.with_context(|| 
+        -> String {format!("monarch_download::write_content() failed! Error while reading bytes! | Err")})?;
+        
+    file.write_all(&bytes).context("monarch_download::write_content() failed! Error while writing bytes to file! | Err") // Wrap return in extra context for logs
 }
 
 pub async fn download_file(url: &str) -> Result<PathBuf, String> {
