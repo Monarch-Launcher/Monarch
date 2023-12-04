@@ -14,7 +14,7 @@ use super::monarch_settings::set_default_settings;
 
 /// Create Monarch folder in users %appdata% directory
 pub fn check_appdata_folder() {
-    let appdata_path: Result<PathBuf, VarError> = get_app_data_path();
+    let appdata_path: Result<PathBuf, VarError> = get_appdata_path();
 
     match appdata_path {
         Ok(path) => {
@@ -93,7 +93,7 @@ pub fn check_resources_folder() {
 
 /// Gets the users %appdata% or $HOME directory and adds Monarch to the end of it to generate Monarch path
 /// returns either $HOME/.monarch or %appdata%/Monarch
-pub fn get_app_data_path() -> Result<PathBuf, VarError> {
+pub fn get_appdata_path() -> Result<PathBuf, VarError> {
     let appdata_path_res: Result<String, VarError>;
     let folder_name: &str;
 
@@ -131,7 +131,7 @@ pub fn get_home_path() -> Result<PathBuf, String> {
 
 /// Returns path to settings.json
 pub fn get_settings_path() -> Result<PathBuf, VarError> {
-    match get_app_data_path() {
+    match get_appdata_path() {
         Ok(mut path) => {
             path.push("settings.toml");
             return Ok(path);
@@ -143,9 +143,23 @@ pub fn get_settings_path() -> Result<PathBuf, VarError> {
     }
 }
 
+/// Returns path of games installed specifically by Monarch.
+pub fn get_monarch_games_path() -> Result<PathBuf, VarError> {
+    match get_appdata_path() {
+        Ok(mut path) => {
+            path.push("monarch_games.json");
+            return Ok(path);
+        }
+        Err(e) => {
+            error!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
+            return Err(e);
+        }
+    }
+}
+
 /// Returns path to library.json
 pub fn get_library_json_path() -> Result<PathBuf, VarError> {
-    match get_app_data_path() {
+    match get_appdata_path() {
         Ok(mut path) => {
             path.push("library.json");
             return Ok(path);
@@ -159,7 +173,7 @@ pub fn get_library_json_path() -> Result<PathBuf, VarError> {
 
 /// Returns path to collections.json
 pub fn get_collections_json_path() -> Result<PathBuf, VarError> {
-    match get_app_data_path() {
+    match get_appdata_path() {
         Ok(mut path) => {
             path.push("collections.json");
             return Ok(path);
@@ -208,7 +222,7 @@ pub fn create_dir(path: &Path) -> io::Result<()> {
 /// Should never fail during runtime because of init_monarch_fs,
 /// but if it does it returns an empty string.
 pub fn get_resources_path() -> Result<PathBuf, VarError> {
-    match get_app_data_path() {
+    match get_appdata_path() {
         Ok(mut path) => {
             path.push("resources");
             return Ok(path);

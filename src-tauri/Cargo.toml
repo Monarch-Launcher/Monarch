@@ -28,9 +28,9 @@ log4rs = "1.2.0"
 regex = "1.8.1"
 image = "0.24.6"
 vdf-serde = "0.3.0"
-rust-ini = "0.19.0"
 sysinfo = "0.29.7"
 once_cell = "1.18.0"
+keyring = "2"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"

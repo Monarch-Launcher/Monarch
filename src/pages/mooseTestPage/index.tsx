@@ -29,7 +29,7 @@ const MooseTestPage = () => {
       // second parameters: json object -> the parameter(s) the rust command takes (optional)
       // E.g. To call the function_name command: invoke('function_name', {arg1: 'foo', arg2: 'bar'})
       
-      const functionResult = await invoke('get_settings');
+      const functionResult = await invoke('download_game', {name: "CS2", platform: "steam", platformId: "730"});
       
       //const functionResult = await invoke('set_setting', {
       //  header: "test", key: "key", value: "value"

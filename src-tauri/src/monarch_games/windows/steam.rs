@@ -1,231 +1,131 @@
-use log::{error, info};
-use reqwest::Response;
-use scraper::{ElementRef, Html, Selector};
-use std::io::Error;
-use std::process::{Child, Command};
-use tokio;
 use core::result::Result;
-use std::path::{PathBuf, Path};
+use log::{error, info};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use super::super::monarchgame::MonarchGame;
-use crate::monarch_utils::{
-    monarch_download::{download_and_run, download_image},
-    monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists},
-    monarch_winreg::is_installed,
-    monarch_vdf
-};
+use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_utils::monarch_download::download_file;
+use crate::monarch_utils::monarch_fs::{get_appdata_path, path_exists, create_dir};
+use crate::monarch_utils::monarch_vdf;
+use crate::monarch_utils::monarch_winreg::is_installed;
+use crate::monarch_games::steam_client::parse_steam_ids;
 
-/// Downloads and executes Steam installer
-pub async fn get_steam() {
-    let target_url: &str = "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe";
+/*
+* SteamCMD related code.
+*
+* Monarchs way of handling steam games managed by Monarch itself.
+*/
 
-    if let Err(e) = download_and_run(target_url).await {
-        error!("Error occured while attempting to download and run Steam installer! | Message: {:?}", e);
-    }
+/// Returns path to Monarchs installed version of SteamCMD
+fn get_steamcmd_dir() -> PathBuf {
+    let mut path: PathBuf = get_appdata_path().unwrap();
+    path.push("SteamCMD");
+    path
 }
 
-/// Search function to find steam games
-pub async fn find_game(name: &str) -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-    let mut target: String = String::from("https://store.steampowered.com/search/?term=");
-    target.push_str(name);
-
-    info!("Searching: {}", target);
-
-    if let Ok(response) = reqwest::get(&target).await {
-        games = steam_store_parser(response).await;
-    }
-
-    return games;
+/// Returns whether or not SteamCMD is installed
+pub fn steamcmd_is_installed() -> bool {
+    let path: PathBuf = get_steamcmd_dir();
+    path_exists(&path)
 }
 
-/// Opens the steam installer for a steam game
-pub fn download_game(name: &str, id: &str) {
-    let mut game_command: String = String::from("steam://install/");
-    game_command.push_str(id);
+/// Installs SteamCMD for user in .monarch
+pub async fn install_steamcmd() -> Result<(), String> {
+    let mut path: PathBuf = get_steamcmd_dir();
 
-    let download_result: Result<Child, Error> = Command::new("PowerShell")
-        .arg("start")
-        .arg(&game_command)
-        .spawn(); // Run steam installer for specified game
+    if !path_exists(&path) {
+        create_dir(&path).unwrap();
+    }
 
-    match download_result {
-        Ok(_) => {
-            info!("Running steam installer for: {}", name);
+    // Download steamcmd
+    let download_path: PathBuf = download_file("https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip").await.unwrap();
+    let mut cmd_path: PathBuf = download_path.clone();
+    cmd_path.pop();
+    cmd_path.push("steamcmd");
+    
+    // Unzip and copy steamcmd to correct directory
+    if let Err(e) = Command::new("PowerShell").arg("Expand-Archive -LiteralPath").arg(&download_path).arg("-DestinationPath").arg(&cmd_path).output() {
+        error!("Failed to unzip {} | Message: {e}", download_path.display());
+        return Err("Failed to unzip steamcmd.zip!".to_string())
+    }
+    
+    cmd_path.push("steamcmd.exe");
+    path.push("steamcmd.exe");
+    if let Err(e) = std::fs::copy(&cmd_path, &path) {
+        error!("Failed to copy {} to Monarchs home directory! | Message: {e}", cmd_path.display());
+        return Err("Failed to copy steamcmd to Monarchs home directory!".to_string())
+    }
+    Ok(())
+}
+
+/// Runs specified command via SteamCMD and waits for it to finish
+/// before returning.
+pub async fn steamcmd_command(args: Vec<&str>) -> Result<(), String> {
+    let mut path: PathBuf = get_steamcmd_dir();
+    path.push("steamcmd.exe");
+
+    match Command::new("powershell.exe")
+        .arg("-NoProfile")
+        .arg("-Command")
+        .arg(format!("Start-Process {:?} -ArgumentList {} -WindowStyle Normal -Wait", 
+            &path, 
+            args.iter()
+                .map(|arg| format!("'{}'", arg))
+                .collect::<Vec<_>>()
+                .join(",")
+            )).spawn() {
+        Ok(mut child) => {
+            if let Err(e) = child.wait() {
+                error!("windows::steam::steamcmd_command() got an error from SteamCMD child process! | Error: {e}");
+                return Err(String::from("Something went wrong while launching SteamCMD!"))
+            }
+
+            Ok(())
         }
         Err(e) => {
-            error!(
-                "Failed to run steam installer: {}(Game: {}) | Message: {:?}", game_command, name, e);
+            // Anonymize login info in logs.
+            let args_string: String = args.iter()
+                .map(|arg| if arg.contains("login") { format!("+login username password ") } else {format!("{} ", arg) })
+                .collect::<String>();
+
+            error!("windows::steam::steamcmd_command() failed! Failed to run {steamcmd}{args_string} | Message: {e}", steamcmd = path.display());
+            info!("The error above has replaced your login info for privacy reasons.");
+            Err("Failed to run SteamCMD command!".to_string())
         }
     }
 }
 
-/// Launches steam game
-pub fn launch_game(name: &str, id: &str) {
-    let mut game_command: String = String::from("steam://rungameid/");
-    game_command.push_str(id);
+/*
+ * Steam related code.
+ *
+ * Used to recognize and interact with preinstalled Steam games on users PC.
+*/
 
-    let launch_result: Result<Child, Error> = Command::new("PowerShell")
-        .arg("start")
-        .arg(&game_command)
-        .spawn(); // Run steam installer for specified game
-    match launch_result {
-        Ok(_) => {
-            info!("Launching game: {}", name);
-        }
-        Err(e) => {
-            error!(
-                "Failed to launch game: {}({}) | Message: {:?}",
-                game_command, name, e
-            );
-        }
-    }
-}
-
-/// Opens Steam store page for specified game
-pub fn purchase_game(name: &str, id: &str) {
-    let mut game_command: String = String::from("steam://purchase/");
-    game_command.push_str(id);
-
-    let launch_result: Result<Child, Error> = Command::new("PowerShell")
-        .arg("start")
-        .arg(&game_command)
-        .spawn(); // Run steam installer for specified game
-    match launch_result {
-        Ok(_) => {
-            info!("Opening store page: {}", name);
-        }
-        Err(e) => {
-            error!(
-                "Failed to open store page: {}({}) | Message: {:?}",
-                game_command, name, e
-            );
-        }
-    }
+/// Returns whether or not Steam launcher is installed
+pub fn steam_is_installed() -> bool {
+    return is_installed(r"Valve\Steam");
 }
 
 /// Finds local steam library installed on current system
 pub async fn get_library() -> Vec<MonarchGame> {
     if !steam_is_installed() {
         info!("Steam not installed! Skipping...");
-        return Vec::new();
+        return Vec::new()
     }
 
-    let found_games: Vec<String> = monarch_vdf::parse_library_file(&Path::new("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf"));
-    let games: Vec<MonarchGame> = library_steam_game_parser(found_games).await;
-
-    return games;
+    let path = Path::new("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
+    let found_games: Vec<String> = monarch_vdf::parse_library_file(&path);
+    
+    parse_steam_ids(found_games, false).await
 }
 
-
-/// Returns whether or not Steam launcher is installed
-fn steam_is_installed() -> bool {
-    return is_installed(r"Valve\Steam");
-}
-
-/// Returns a HashMap of games with their respective Steam IDs.
-async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-
-    let content = response.text().await.unwrap();
-    let document = Html::parse_document(&content);
-
-    let title_selector: Selector = Selector::parse("span.title").unwrap();
-    let id_selector: Selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap();
-
-    let titles: Vec<ElementRef> = document.select(&title_selector).collect();
-    let ids: Vec<ElementRef> = document.select(&id_selector).collect();
-
-    for i in 0..titles.len() {
-        let name: String = get_steam_name(titles[i]);
-        let platform_id: String = get_steamid(ids[i]);
-        let image_link: String = get_img_link(&platform_id);
-        let image_path: PathBuf;
-        
-        match generate_cache_image_name(&name) {
-            Ok(path) => { image_path = path; } 
-            Err(e) => {
-                error!("Failed to get cache image path! | Message: {:?}", e);
-                image_path = PathBuf::from("unknown");
-            }
-        }
-
-        let cur_game = MonarchGame::new(&name, "steam", &platform_id, "temp", image_path.to_str().unwrap());
-        games.push(cur_game);
-
-        if !path_exists(&image_path) { // Only download if image is not in cache dir
-            // Workaround for [tauri::command] not working with download_image().await in same thread 
-            tokio::task::spawn(async move {
-                download_image(image_link.as_str(), image_path).await; 
-            });
+/// Runs specified command via Steam
+pub fn run_command(args: &str) -> Result<(), String> {
+    match Command::new("PowerShell").arg("start").arg(args).spawn() {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!("steam::run_command() failed! Failed to run Steam command {args} | Message: {e}");
+            Err("Failed to run steam command!".to_string())
         }
     }
-    return games;
-}
-
-async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-    let title_selector: Selector = Selector::parse("div.apphub_AppName").unwrap();
-
-    for id in ids {
-        let mut target: String = String::from("https://store.steampowered.com/app/");
-        target.push_str(&id);
-
-        if let Ok(content) = reqwest::get(&target).await {
-            let document = Html::parse_document(&content.text().await.unwrap());
-            let name_refs: Vec<ElementRef> = document.select(&title_selector).collect();
-
-            if name_refs.len() >= 1 {
-                let name: String = get_steam_name(name_refs[0]);
-                let image_link: String = get_img_link(&id);
-                let image_path: PathBuf;
-        
-                match generate_library_image_name(&name) {
-                    Ok(path) => { image_path = path; } 
-                    Err(e) => {
-                        error!("Failed to get library image path! | Message: {:?}", e);
-                        image_path = PathBuf::from("unknown");
-                    }
-                }
-
-                let game: MonarchGame = MonarchGame::new(&name, "steam", &id, "temp", image_path.to_str().unwrap());
-                games.push(game);
-                info!("Found Steam game: {}", name);
-
-                if !path_exists(&image_path) { // Only download if image is not in library dir
-                    // Workaround for [tauri::command] not working with download_image().await in same thread 
-                    tokio::task::spawn(async move {
-                        download_image(image_link.as_str(), image_path).await; 
-                    });
-                
-                }
-            }
-        }
-    }
-    return games;
-}
-
-/// Extracts the name of the game from html element
-fn get_steam_name(elem: ElementRef) -> String {
-    elem.inner_html()
-}
-
-/// Parses html of Steams website to extract either an app id or a bundle id
-fn get_steamid(elem: ElementRef) -> String {
-    if let Some(app_id) = elem.value().attr("data-ds-appid") {
-        return app_id.to_string();
-    }
-    if let Some(bundle_id) = elem.value().attr("data-ds-bundleid") {
-        return bundle_id.to_string();
-    }
-    String::new() // Default returns empty String for now
-}
-
-/// Creates url for thumbnail based on app id
-fn get_img_link(id: &str) -> String {
-    let mut target = String::from("https://cdn.cloudflare.steamstatic.com/steam/apps/");
-    target.push_str(id);
-    target.push_str("/header.jpg");
-
-    return target;
 }

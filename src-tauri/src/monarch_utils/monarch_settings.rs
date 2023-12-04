@@ -1,13 +1,15 @@
 use core::result::Result;
-use log::{debug, error};
+use log::error;
 use once_cell::sync::Lazy;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Table;
 
-use super::monarch_fs::{get_app_data_path, get_settings_path, path_exists};
+use crate::monarch_games::monarch_client::generate_default_folder;
+use super::monarch_fs::{get_appdata_path, get_settings_path, path_exists};
 
-// Create a global variable containing the current state of settings according to Monarch backend
+// Create a global variable containing the current state of settings according to Monarch backend.
+// Allows for fewer reads of settings.toml by storing the settings in ram.
 static mut SETTINGS_STATE: Lazy<Settings> = Lazy::<Settings>::new(|| Settings::new());
 
 /// Struct for storing a persistent state of settings
@@ -48,6 +50,9 @@ pub fn init() -> Result<(), String> {
                     error!("monarch_settings::init() failed! | Error: {e}");
                     return Err("Failed to write default settings to settings.toml".to_string());
                 }
+            }
+            if let Ok(settings) = read_settings() { // Set SETTINGS_STATE to settings from settings.toml
+                set_settings_state(settings);
             }
             Ok(())
         }
@@ -187,9 +192,9 @@ fn get_default_settings() -> Table {
     let mut settings: Table = Table::new();
 
     let mut monarch: Table = Table::new();
-    let appdata_path = get_app_data_path().unwrap();
+    let appdata_path = get_appdata_path().unwrap();
     let appdata_path_str = appdata_path.to_str().unwrap();
-    let default_game_folder = appdata_path.join("games");
+    let default_game_folder = generate_default_folder();
     let default_game_folder_str = default_game_folder.to_str().unwrap();
     monarch.insert("monarch_home".to_string(), appdata_path_str.into());
     monarch.insert("send_logs".to_string(), true.into());
@@ -208,11 +213,13 @@ fn get_default_settings() -> Table {
 
     let mut steam_settings: Table = Table::new();
     steam_settings.insert("game_folders".to_string(), Vec::<String>::new().into());
-    steam_settings.insert("manage".to_string(), true.into());
+    steam_settings.insert("manage".to_string(), false.into());
+    steam_settings.insert("username".to_string(), "".into());
 
     let mut epic_settings: Table = Table::new();
     epic_settings.insert("game_folders".to_string(), Vec::<String>::new().into());
-    epic_settings.insert("manage".to_string(), true.into());
+    epic_settings.insert("manage".to_string(), false.into());
+    epic_settings.insert("username".to_string(), "".into());
 
     settings.insert("monarch".to_string(), monarch.into());
     settings.insert("quicklaunch".to_string(), quicklaunch_settings.into());

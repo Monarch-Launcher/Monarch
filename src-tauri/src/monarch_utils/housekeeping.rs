@@ -3,12 +3,12 @@
     clearing old cached images, temporary downloads, etc...
 
     Also meant to help maintain a smaller footprint on users OS.
- */
+*/
 
 use log::{info, error};
+use std::fs::ReadDir;
 use std::{fs, time::Duration};
-use std::fs::DirEntry;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::time::SystemTime;
 use std::thread::sleep;
 use std::thread;
@@ -42,7 +42,7 @@ pub fn start() {
 /// Currently only checks a certain level of CPU usage, will possibly update later
 /// to check more metrics such as disk usage, memory, etc...
 fn low_system_usage(system: &System) -> bool {
-    return system.load_average().one < 30.0 // Check that system CPU usage 1 min ago is below 30% 
+    return system.load_average().one < 15.0 // Check that system CPU usage 1 min ago is below 15% 
 }
 
 /*
@@ -53,34 +53,43 @@ fn low_system_usage(system: &System) -> bool {
 pub fn clear_cached_thumbnails() {
     match get_resources_cache() {
         Ok(cache) => {
-            if let Ok(files) = fs::read_dir(cache) {
-                info!("Removing cached images...");
-                
-                for file in files {
-                    if let Ok(file_path) = file {
-                        remove_thumbnail(file_path);
-                    }       
-                }
+            if let Ok(files) = fs::read_dir(cache) {                
+                clear_dir(files);
             }
         }
         Err(e) => {
             error!("housekeeping::clear_cached_thumbnails() failed! Cannot get resources/cache/ ! | Error: {e}");
         }
     }
-    
+}
+
+/// Helper function to remove some indentation levels from clear_cached_thumbnails().
+fn clear_dir(files: ReadDir) {
+    let mut logged_event: bool = false;
+
+    for file in files {
+        if let Ok(file_dir_entry) = file {
+            let file_path: PathBuf = file_dir_entry.path();
+            if time_to_remove(&file_path) {
+                if !logged_event {
+                    info!("Monarch Housekeeper: Clearing cached images...");
+                    logged_event = true;
+                }
+                remove_thumbnail(&file_path);
+            }
+        }       
+    }    
 }
 
 /// Removes old cache file if old enough
-fn remove_thumbnail(file: DirEntry) {
-    if time_to_remove(file.path()) {
-        if let Err(e) = fs::remove_file(file.path()) {
-            error!("housekeeping::remove_thumbnail() failed! Error while removing: {path} | Error: {e}", path = file.path().display());
-        }
+fn remove_thumbnail(file: &Path) {
+    if let Err(e) = fs::remove_file(file) {
+        error!("housekeeping::remove_thumbnail() failed! Error while removing: {path} | Error: {e}", path = file.display());
     }
 }
 
 /// Checks if it's time to remove cached thumbnail
-fn time_to_remove(file: PathBuf) -> bool {
+fn time_to_remove(file: &Path) -> bool {
     if let Ok(metadata) = fs::metadata(file) {
         if let Ok(time) = metadata.modified() {
             if let Ok(age) = SystemTime::now().duration_since(time) {
@@ -102,7 +111,7 @@ pub fn clear_all_cache() {
                 Ok(files) => {
                     for file in files {
                         match file {
-                            Ok(f) => { remove_thumbnail(f); }
+                            Ok(f) => { remove_thumbnail(&f.path()); }
                             Err(e) => { error!("housekeeping::clear_all_cache() failed! Could not read file! | Error: {e}"); }
                         }
                     }

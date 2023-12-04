@@ -1,91 +1,119 @@
-use log::{error, info};
-use reqwest::Response;
-use scraper::{ElementRef, Html, Selector};
-use std::io::Error;
-use std::process::{Child, Command, Output};
-use tokio;
-use core::result::Result;
-use std::path::PathBuf;
-
 use super::super::monarchgame::MonarchGame;
+use crate::monarch_games::steam_client::parse_steam_ids;
 use crate::monarch_utils::{
-    monarch_download::download_image,
-    monarch_fs::{generate_cache_image_name, generate_library_image_name, path_exists, get_app_data_path},
-    monarch_web::request_data,
-    monarch_vdf
+    monarch_fs::{create_dir, get_appdata_path, get_home_path, path_exists},
+    monarch_vdf,
 };
+use core::result::Result;
+use log::{error, info};
+use std::io::Error;
+use std::path::PathBuf;
+use std::process::{Command, Output};
+/*
+* SteamCMD related code.
+*
+* Monarchs way of handling steam games managed by Monarch itself.
+*/
+
+/// Returns path to Monarchs installed version of SteamCMD
+fn get_steamcmd_dir() -> PathBuf {
+    let mut path: PathBuf = get_appdata_path().unwrap();
+    path.push("SteamCMD");
+    path
+}
+
+/// Returns whether or not SteamCMD is installed
+pub fn steamcmd_is_installed() -> bool {
+    let mut path: PathBuf = get_steamcmd_dir();
+    path.push("steamcmd.sh");
+    path_exists(&path)
+}
+
+/// Installs SteamCMD for user in .monarch
+pub fn install_steamcmd() -> Result<(), String> {
+    let path: PathBuf = get_steamcmd_dir();
+
+    if !path_exists(&path) {
+        create_dir(&path).unwrap();
+    }
+
+    let mut install_arg: String = String::from("curl -sqL ");
+    install_arg.push_str(
+        r#""https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" -o "#,
+    );
+    install_arg.push_str(path.to_str().unwrap());
+    install_arg.push_str("/steamcmd_linux.tar.gz");
+
+    let mut tar_arg: String = String::from("tar zxvf ");
+    tar_arg.push_str(path.to_str().unwrap());
+    tar_arg.push_str("/steamcmd_linux.tar.gz");
+    tar_arg.push_str(" -C ");
+    tar_arg.push_str(path.to_str().unwrap());
+
+    println!("Running {install_arg} && {tar_arg}");
+
+    if let Err(e) = Command::new("sh").arg("-c").arg(&install_arg).output() {
+        error!(
+            "linux::steam::install_steamcmd() failed! Failed to run: {install_arg} | Error: {e}"
+        );
+    }
+
+    if let Err(e) = Command::new("sh").arg("-c").arg(&tar_arg).output() {
+        error!("linux::steam::install_steamcmd() failed! Failed to run: {tar_arg} | Error: {e}");
+        return Err("Failed to install SteamCMD!".to_string());
+    }
+
+    Ok(())
+}
+
+/// Runs specified command via SteamCMD
+/// Is currently async to work with Windows version
+pub fn steamcmd_command(args: &str) -> Result<(), String> {
+    let mut path: PathBuf = get_steamcmd_dir();
+    path.push("steamcmd.sh");
+
+    match Command::new("sh").arg(path).arg(args).spawn() {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!("Failed to run steamcmd {args} | Message: {e}");
+            Err("Failed to run SteamCMD command!".to_string())
+        }
+    }
+}
 
 /*
----------- Public functions ----------
-*/
+ * Steam related code.
+ *
+ * Used to recognize and interact with preinstalled Steam games on users PC.
+ */
+
+/// Returns whether or not Steam launcher is installed
+pub fn steam_is_installed() -> bool {
+    let result: Result<Output, Error> = Command::new("find")
+        .arg("/usr/bin")
+        .arg("-name")
+        .arg("steam")
+        .output();
+
+    match result {
+        Ok(output) => {
+            if !output.stdout.is_empty() {
+                // Assume that if result is empty Steam is not installed on System
+                return true;
+            }
+        }
+        Err(e) => {
+            error!("Failed to search for Steam on system using 'find /usr/bin -name steam' | Message: {:?}", e);
+            info!("Assuming Steam is not installed on System.");
+        }
+    }
+    false
+}
 
 /// Tells user to install Steam manually on Linux
 pub async fn get_steam() -> Result<(), String> {
     info!("Can't automatically install Steam on Linux! You need to install it yourself via your package manager.");
-    return Err("Can't automatically install Steam on Linux!".to_string());
-}
-
-/// Opens the steam installer for a steam game
-pub fn download_game(name: &str, id: &str) {
-    let mut game_command: String = String::from("steam://install/");
-    game_command.push_str(id);
-
-    let download_result: Result<Child, Error> = Command::new("sh")
-        .arg("steam")
-        .arg(&game_command)
-        .spawn(); // Run steam installer for specified game
-
-    match download_result {
-        Ok(_) => {
-            info!("Running steam installer for: {}", name);
-        }
-        Err(e) => {
-            error!(
-                "Failed to run steam installer: {} (Game: {}) | Message: {:?}", game_command, name, e);
-        }
-    }
-}
-
-/// Launches steam game
-pub fn launch_game(name: &str, id: &str) {
-    let mut game_command: String = String::from("steam://rungameid/");
-    game_command.push_str(id);
-
-    let launch_result: Result<Child, Error> = Command::new("sh")
-        .arg("steam")
-        .arg(&game_command)
-        .spawn(); // Run steam installer for specified game
-
-    match launch_result {
-        Ok(_) => {
-            info!("Launching game: {}", name);
-        }
-        Err(e) => {
-            error!(
-                "Failed to launch game: {} (Game: {}) | Message: {:?}", game_command, name, e);
-        }
-    }
-}
-
-/// Opens Steam store page for specified game
-pub fn purchase_game(name: &str, id: &str) {
-    let mut game_command: String = String::from("steam://purchase/");
-    game_command.push_str(id);
-
-    let launch_result: Result<Child, Error> = Command::new("sh")
-        .arg("steam")
-        .arg(&game_command)
-        .spawn(); // Run steam installer for specified game
-
-    match launch_result {
-        Ok(_) => {
-            info!("Opening store page: {}", name);
-        }
-        Err(e) => {
-            error!(
-                "Failed to open store page: {} (Game: {}) | Message: {:?}", game_command, name, e);
-        }
-    }
+    Err("Can't automatically install Steam on Linux!".to_string())
 }
 
 /// Finds local steam library installed on current system
@@ -94,177 +122,49 @@ pub async fn get_library() -> Vec<MonarchGame> {
         info!("Steam not installed! Skipping...");
         return Vec::new();
     }
-    
-    let found_games: Vec<String>;
-    match get_default_location() {
-        Ok(path) => { found_games = monarch_vdf::parse_library_file(path); }
+
+    let mut games: Vec<MonarchGame> = Vec::new();
+
+    let found_games: Vec<String> = match get_default_location() {
+        Ok(path) => monarch_vdf::parse_library_file(&path),
         Err(e) => {
-            error!("Failed to get default path to Steam library.vdf! | Message: {:?}", e);
-            found_games = Vec::new();
-        }   
-    }
-    
-    return library_steam_game_parser(found_games).await;
-}
-
-/// Returns whether or not Steam launcher is installed
-fn steam_is_installed() -> bool {
-    let result: Result<Output, Error> = Command::new("find")
-                                                .arg("/usr/bin")
-                                                .arg("-name")
-                                                .arg("steam")
-                                                .output();
-
-    match result {
-        Ok(output) => {
-            if !output.stdout.is_empty() { // Assume that if result is empty Steam is not installed on System
-                return true
-            }
+            error!(
+                "Failed to get default path to Steam library.vdf! | Message: {:?}",
+                e
+            );
+            Vec::new()
         }
-        Err(e) => {
-            error!("Failed to search for Steam on system using 'find /usr/bin -name steam' | Message: {:?}", e);
-            info!("Assuming Steam is not installed on System.");
-        }
-    }
-    return false
-}
+    };
 
-/// Search function to find steam games
-pub async fn find_game(name: &str) -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-    let mut target: String = String::from("https://store.steampowered.com/search/?term=");
-    target.push_str(name);
-
-    info!("Searching: {}", target);
-
-    if let Ok(response) = request_data(&target).await {
-        games = steam_store_parser(response).await;
+    if !found_games.is_empty() {
+        games = parse_steam_ids(found_games, false).await;
     }
 
-    return games;
-}
-
-/// Returns a HashMap of games with their respective Steam IDs.
-/// TODO: Replace with cleaner version possibly using HTTP requests mimicking the official Steam Client
-async fn steam_store_parser(response: Response) -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-
-    let content = response.text().await.unwrap();
-    let document = Html::parse_document(&content);
-
-    let title_selector: Selector = Selector::parse("span.title").unwrap();
-    let id_selector: Selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap();
-
-    let titles: Vec<ElementRef> = document.select(&title_selector).collect();
-    let ids: Vec<ElementRef> = document.select(&id_selector).collect();
-
-    for i in 0..titles.len() {
-        let name: String = get_steam_name(titles[i]);
-        let platform_id: String = get_steamid(ids[i]);
-        let image_link: String = get_img_link(&platform_id);
-        let image_path: PathBuf;
-        
-        match generate_cache_image_name(&name) {
-            Ok(path) => { image_path = path; } 
-            Err(e) => {
-                error!("Failed to get cache image path! | Message: {:?}", e);
-                image_path = PathBuf::from("unknown");
-            }
-        }
-
-        let cur_game = MonarchGame::new(&name, "steam", &platform_id, "temp", image_path.to_str().unwrap());
-        games.push(cur_game);
-
-        if !path_exists(image_path.clone()) { // Only download if image is not in cache dir
-            // Workaround for [tauri::command] not working with download_image().await in same thread 
-            tokio::task::spawn(async move {
-                download_image(image_link.as_str(), image_path).await; 
-            });
-        }
-    }
-    return games;
-}
-
-/// TODO: Replace with cleaner version possibly using HTTP requests mimicking the official Steam Client
-async fn library_steam_game_parser(ids: Vec<String>) -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-    let title_selector: Selector = Selector::parse("div.apphub_AppName").unwrap();
-
-    for id in ids {
-        let mut target: String = String::from("https://store.steampowered.com/app/");
-        target.push_str(&id);
-
-        if let Ok(content) = request_data(&target).await {
-            let document = Html::parse_document(&content.text().await.unwrap());
-            let name_refs: Vec<ElementRef> = document.select(&title_selector).collect();
-
-            if name_refs.len() >= 1 {
-                let name: String = get_steam_name(name_refs[0]);
-                let image_link: String = get_img_link(&id);
-                let image_path: PathBuf;
-        
-                match generate_library_image_name(&name) {
-                    Ok(path) => { image_path = path; } 
-                    Err(e) => {
-                        error!("Failed to get library image path! | Message: {:?}", e);
-                        image_path = PathBuf::from("unknown");
-                    }
-                }
-
-                let game: MonarchGame = MonarchGame::new(&name, "steam", &id, "temp", image_path.to_str().unwrap());
-                games.push(game);
-                info!("Found Steam game: {}", name);
-
-                if !path_exists(image_path.clone()) { // Only download if image is not in library dir
-                    // Workaround for [tauri::command] not working with download_image().await in same thread 
-                    tokio::task::spawn(async move {
-                        download_image(image_link.as_str(), image_path).await; 
-                    });
-                
-                }
-            }
-        }
-    }
-    return games;
-}
-
-/// Extracts the name of the game from html element
-fn get_steam_name(elem: ElementRef) -> String {
-    elem.inner_html()
-}
-
-/// Parses html of Steams website to extract either an app id or a bundle id
-fn get_steamid(elem: ElementRef) -> String {
-    if let Some(app_id) = elem.value().attr("data-ds-appid") {
-        return app_id.to_string();
-    }
-    if let Some(bundle_id) = elem.value().attr("data-ds-bundleid") {
-        return bundle_id.to_string();
-    }
-    String::new() // Default returns empty String for now
-}
-
-/// Creates url for thumbnail based on app id
-fn get_img_link(id: &str) -> String {
-    let mut target = String::from("https://cdn.cloudflare.steamstatic.com/steam/apps/");
-    target.push_str(id);
-    target.push_str("/header.jpg");
-
-    return target;
+    games
 }
 
 /// Returns default path used by steam on Linux systems ($HOME/.steam)
 fn get_default_location() -> Result<PathBuf, String> {
-    match get_app_data_path() {
+    match get_home_path() {
         Ok(mut path) => {
-            path.pop();
             path.push(".steam/steam/steamapps/libraryfolders.vdf");
 
-            return Ok(path)
+            Ok(path)
         }
         Err(e) => {
             error!("Failed to get $HOME directory! | Message: {:?}", e);
-            return Err("Failed to get $HOME directory!".to_string())
+            Err("Failed to get $HOME directory!".to_string())
+        }
+    }
+}
+
+/// Runs specified command via Steam
+pub fn run_command(args: &str) -> Result<(), String> {
+    match Command::new("steam").arg(args).spawn() {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!("Failed to run steam {args} | Message: {e}");
+            Err("Failed to run steam command!".to_string())
         }
     }
 }

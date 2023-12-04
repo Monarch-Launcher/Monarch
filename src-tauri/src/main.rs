@@ -8,12 +8,12 @@ mod monarch_library;
 mod monarch_utils;
 
 use monarch_games::commands::{
-    download_game, get_library, launch_game, purchase_game, refresh_library, search_games,
+    download_game, get_library, launch_game, open_store, refresh_library, search_games, remove_game,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
 };
-use monarch_utils::commands::{clear_cached_images, get_settings, open_logs, set_settings, revert_settings};
+use monarch_utils::commands::{clear_cached_images, get_settings, open_logs, set_settings, revert_settings, set_password, delete_password};
 use monarch_utils::monarch_fs::{check_appdata_folder, check_resources_folder};
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
@@ -36,7 +36,7 @@ fn main() {
             get_library,
             launch_game,
             download_game,
-            purchase_game,
+            open_store,
             create_collection,
             update_collection,
             delete_collection,
@@ -46,6 +46,9 @@ fn main() {
             set_settings,
             revert_settings,
             clear_cached_images,
+            set_password,
+            delete_password,
+            remove_game,
         ])
         .run(tauri::generate_context!());
 
