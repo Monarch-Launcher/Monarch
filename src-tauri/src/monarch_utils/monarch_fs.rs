@@ -143,6 +143,20 @@ pub fn get_settings_path() -> Result<PathBuf, VarError> {
     }
 }
 
+/// Returns path of games installed specifically by Monarch.
+pub fn get_monarch_games_path() -> Result<PathBuf, VarError> {
+    match get_appdata_path() {
+        Ok(mut path) => {
+            path.push("monarch_games.json");
+            return Ok(path);
+        }
+        Err(e) => {
+            error!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
+            return Err(e);
+        }
+    }
+}
+
 /// Returns path to library.json
 pub fn get_library_json_path() -> Result<PathBuf, VarError> {
     match get_appdata_path() {

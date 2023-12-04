@@ -28,7 +28,7 @@ pub async fn search_games(name: String) -> HashMap<String, MonarchGame> {
 #[tauri::command]
 /// Manually refreshes the entire Monarch library, currently only supports Steam & Epic Games (kinda) still WIP
 pub async fn refresh_library() -> Vec<MonarchGame> {
-    monarch_client::get_library().await
+    monarch_client::refresh_library().await
 }
 
 #[tauri::command]

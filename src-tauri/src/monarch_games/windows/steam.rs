@@ -55,7 +55,6 @@ pub async fn install_steamcmd() -> Result<(), String> {
         error!("Failed to copy {} to Monarchs home directory! | Message: {e}", cmd_path.display());
         return Err("Failed to copy steamcmd to Monarchs home directory!".to_string())
     }
-
     Ok(())
 }
 
@@ -80,6 +79,7 @@ pub async fn steamcmd_command(args: Vec<&str>) -> Result<(), String> {
                 error!("windows::steam::steamcmd_command() got an error from SteamCMD child process! | Error: {e}");
                 return Err(String::from("Something went wrong while launching SteamCMD!"))
             }
+
             Ok(())
         }
         Err(e) => {

@@ -77,13 +77,13 @@ pub async fn download_game(name: &str, platform: &str, platform_id: &str) -> Res
         return Err("Failed to write new game to library.json!".to_string())
     }
 
-    Ok(get_library().await) // Return new library
+    Ok(get_library()) // Return new library
 }
 
 /// Remove an installed game
 pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<(), String> {
     match platform {
-        "steamcmd" => {
+        "steam" => {
             steam_client::uninstall_game(platform_id).await
         }
         &_ => {
@@ -93,9 +93,31 @@ pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<(), Str
     }
 }
 
-/// Returns installed games according to Monarch
-pub async fn get_library() -> Vec<MonarchGame> {
+/// Returns games found in library.json
+fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
+    match games_library::get_games() {
+        Ok(library_json) => {
+            if let Ok(library) = serde_json::from_value::<Vec<MonarchGame>>(library_json) {
+                games = library;
+            }
+        }
+        Err(e) => {
+            error!("monarch_client::get_library() failed! Failed to get library! | Error: {e}");
+        }
+    }
+
+    games
+}
+
+/// Returns autodetected games according to Monarch
+pub async fn refresh_library() -> Vec<MonarchGame> {
+    let mut games: Vec<MonarchGame> = Vec::new();
+
+    if let Ok(mut monarch_games) = games_library::get_monarchgames() {
+        games.append(&mut monarch_games);
+    }
+
     let mut steam_games: Vec<MonarchGame> = steam_client::get_library().await;
 
     games.append(&mut steam_games);

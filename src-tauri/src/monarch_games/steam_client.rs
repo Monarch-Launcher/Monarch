@@ -10,7 +10,6 @@ use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_name, generate_library_image_name};
 use crate::monarch_utils::monarch_settings::get_steam_settings;
 use std::collections::HashMap;
-use std::fmt::format;
 use std::path::PathBuf;
 
 #[cfg(target_os = "windows")]
@@ -277,7 +276,6 @@ pub async fn parse_steam_ids(ids: Vec<String>, is_cache: bool) -> Vec<MonarchGam
             }
         }
     }
-
     games
 }
 
