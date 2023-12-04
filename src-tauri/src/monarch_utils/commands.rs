@@ -1,5 +1,6 @@
 use std::{process::Command, path::PathBuf};
 use toml::Table;
+use anyhow::Result;
 
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{read_settings, write_settings, set_default_settings};
@@ -48,7 +49,7 @@ pub async fn open_logs() {
 
 #[tauri::command]
 /// Returns settings read from settings.toml
-pub fn get_settings() -> Result<Table, String> {
+pub fn get_settings() -> Result<Table> {
     read_settings()
 }
 
@@ -72,12 +73,12 @@ pub fn clear_cached_images() {
 
 #[tauri::command]
 /// Set password in secure store
-pub fn set_password(platform: String, username: String, password: String) -> Result<(), String> {
+pub fn set_password(platform: String, username: String, password: String) -> Result<()> {
     set_credentials(&platform, &username, &password)
 }
 
 #[tauri::command]
 /// Delete password in secure store
-pub fn delete_password(platform: String, username: String) -> Result<(), String> {
+pub fn delete_password(platform: String, username: String) -> Result<()> {
     delete_credentials(&platform, &username)
 }

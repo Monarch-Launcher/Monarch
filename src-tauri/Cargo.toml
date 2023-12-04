@@ -31,6 +31,7 @@ vdf-serde = "0.3.0"
 sysinfo = "0.29.7"
 once_cell = "1.18.0"
 keyring = "2"
+anyhow = "1.0.75"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"
