@@ -34,7 +34,7 @@ pub fn new_collection(collection_name: String, game_ids: Vec<String>) -> Result<
         -> String {format!("collections::new_collection() failed! Failed to get collections/parse json! | Err")})?;
 
     collecs.push(new_collec);
-    write_json_content(json!(collecs), &path).context("collections::new_collection() failed! Error writing new collections to collections.json! | Err");
+    write_json_content(json!(collecs), &path).context("collections::new_collection() failed! Error writing new collections to collections.json! | Err")?;
     get_collections()
 }
 
@@ -50,7 +50,7 @@ pub fn update_collections(id: &str, new_name: &str, game_ids: Vec<String>) -> Re
         collection.name = new_name.to_string();
         collection.gameIds = game_ids;
         
-        write_collection_changes(json!(collecs)).context("collections::update_collections() failed! Error writing updates to collections.json! | Err");
+        write_collection_changes(json!(collecs)).context("collections::update_collections() failed! Error writing updates to collections.json! | Err")?;
         return get_collections()
     }
 
@@ -59,13 +59,13 @@ pub fn update_collections(id: &str, new_name: &str, game_ids: Vec<String>) -> Re
 
 /// Deletes a specified collection
 pub fn delete_collections(id: &str) -> Result<Value> {
-    let collecs = get_collections_as_struct().with_context(|| 
+    let mut collecs = get_collections_as_struct().with_context(|| 
         -> String {format!("collections::delete_collections() failed! Failed to get collections/parse json! | Err")})?;
     
     if let Some(index) = find_collection_index(id, &collecs) {
         collecs.remove(index);
 
-        write_collection_changes(json!(collecs)).context("collections::delete_collections() failed! Error writing updates to collections.json! | Err");
+        write_collection_changes(json!(collecs)).context("collections::delete_collections() failed! Error writing updates to collections.json! | Err")?;
         return get_collections()
     }
 
@@ -88,10 +88,10 @@ pub fn get_collections() -> Result<Value> {
             let monarch_collecs: Value = json!(Vec::<MonarchCollection>::new());
         
             fs::File::create(&path)
-                .context(format!("collections::get_collections() failed! Failed to create: {file} | Error: {e}", file = path.display()));
+                .context(format!("collections::get_collections() failed! Failed to create: {file} | Error: {e}", file = path.display()))?;
             
             write_json_content(monarch_collecs.clone(), &path)
-                .context(format!("collections::get_collections() failed! Error while writing collections to : {file} | Error: {e}", file = path.display()));
+                .context(format!("collections::get_collections() failed! Error while writing collections to : {file} | Error: {e}", file = path.display()))?;
             
             Ok(monarch_collecs) // If it succeeds at creating new collections.json
         }

@@ -172,13 +172,14 @@ fn parse_table(content: String) -> Result<Table> {
 
 /// Returns default Monarch settings in the form of a TOML Table.
 /// .into() is used to avoid ugly syntax of e.g. Value::Boolean(true) - instead becomes true.into()
+/// TODO: Remove all unwraps()
 fn get_default_settings() -> Table {
     let mut settings: Table = Table::new();
 
     let mut monarch: Table = Table::new();
     let appdata_path = get_home_path().unwrap();
     let appdata_path_str = appdata_path.to_str().unwrap();
-    let default_game_folder = generate_default_folder();
+    let default_game_folder = generate_default_folder().unwrap();
     let default_game_folder_str = default_game_folder.to_str().unwrap();
     monarch.insert("monarch_home".to_string(), appdata_path_str.into());
     monarch.insert("send_logs".to_string(), true.into());

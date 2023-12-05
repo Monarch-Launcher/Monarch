@@ -110,7 +110,7 @@ pub fn get_home_path() -> Result<PathBuf> {
 
 /// Returns path to settings.json
 pub fn get_settings_path() -> Result<PathBuf> {
-    let mut path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
     
     Ok(path.join("settings.toml"))
@@ -118,7 +118,7 @@ pub fn get_settings_path() -> Result<PathBuf> {
 
 /// Returns path of games installed specifically by Monarch.
 pub fn get_monarch_games_path() -> Result<PathBuf> {
-    let mut path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
     
     Ok(path.join("monarch_games.json"))
@@ -126,7 +126,7 @@ pub fn get_monarch_games_path() -> Result<PathBuf> {
 
 /// Returns path to library.json
 pub fn get_library_json_path() -> Result<PathBuf> {
-    let mut path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
     
     Ok(path.join("library.json"))
@@ -134,7 +134,7 @@ pub fn get_library_json_path() -> Result<PathBuf> {
 
 /// Returns path to collections.json
 pub fn get_collections_json_path() -> Result<PathBuf> {
-    let mut path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_collections_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
     
     Ok(path.join("collections.json"))
@@ -173,7 +173,7 @@ pub fn create_dir(path: &Path) -> Result<()> {
 /// Should never fail during runtime because of init_monarch_fs,
 /// but if it does it returns an empty string.
 pub fn get_resources_path() -> Result<PathBuf> {
-    let mut path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_resources_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
     
     Ok(path.join("resources"))
@@ -181,7 +181,7 @@ pub fn get_resources_path() -> Result<PathBuf> {
 
 /// Returns path to store temporary images
 pub fn get_resources_cache() -> Result<PathBuf> {
-    let mut path: PathBuf = get_resources_path().with_context(|| 
+    let path: PathBuf = get_resources_path().with_context(|| 
         -> String {format!("monarch_fs::get_resources_cache() failed! Something went wrong while getting resources/ path. | Err")})?;
     
     Ok(path.join("cache"))
@@ -189,7 +189,7 @@ pub fn get_resources_cache() -> Result<PathBuf> {
 
 /// Returns path to store thumbnails for games in library
 pub fn get_resources_library() -> Result<PathBuf> {
-    let mut path: PathBuf = get_resources_path().with_context(|| 
+    let path: PathBuf = get_resources_path().with_context(|| 
         -> String {format!("monarch_fs::get_resources_library() failed! Something went wrong while getting resources/ path. | Err")})?;
     
     Ok(path.join("library"))
