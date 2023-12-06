@@ -10,7 +10,7 @@ use anyhow::{Context, Result, anyhow};
 use super::monarch_client::generate_default_folder;
 use super::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_credentials::get_password;
-use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
+use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path, path_exists, get_home_path};
 use crate::monarch_utils::monarch_settings::get_steam_settings;
 
 #[cfg(target_os = "windows")]
@@ -27,7 +27,7 @@ use super::linux::steam;
 
 /// Returns if SteamCMD is installed on system or not.
 pub fn is_installed() -> Result<bool> {
-    steam::steamcmd_is_installed().context("steam_client::is_installed() failed! | Err")
+    steamcmd_is_installed().context("steam_client::is_installed() failed! | Err")
 }
 
 #[cfg(windows)]
@@ -168,6 +168,20 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
     let command: Vec<&str> = vec![&remove_arg, "+quit"];
 
     steam::steamcmd_command(command).context("steam_client::uninstall_game() failed! | Err")
+}
+
+/// Returns path to Monarchs installed version of SteamCMD
+pub fn get_steamcmd_dir() -> Result<PathBuf> {
+    let path: PathBuf = get_home_path().with_context(|| 
+        -> String {format!("windows::steam::get_steamcmd_dir() failed! Error returned when getting home path! | Err")})?;
+    Ok(path.join("SteamCMD"))
+}
+
+/// Returns whether or not SteamCMD is installed
+pub fn steamcmd_is_installed() -> Result<bool> {
+    let path: PathBuf = get_steamcmd_dir().with_context(|| 
+        -> String {format!("windows::steam::steamcmd_is_installed() failed! Error returned when getting SteamCMD directory! | Err")})?;
+    Ok(path_exists(&path))
 }
 
 /// Returns whether or not Monarch is allowed to manage a users Steam games

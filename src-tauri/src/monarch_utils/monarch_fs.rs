@@ -102,7 +102,7 @@ pub fn get_home_path() -> Result<PathBuf> {
 
 #[cfg(not(windows))]
 pub fn get_home_path() -> Result<PathBuf> {
-    let homea_path = std::env::var("HOME").with_context(|| 
+    let home_path: String = std::env::var("HOME").with_context(|| 
         -> String {format!("monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:")})?;
 
     Ok(PathBuf::from(home_path).join(".monarch"))

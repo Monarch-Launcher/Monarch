@@ -113,6 +113,7 @@ fn get_library() -> Vec<MonarchGame> {
 
 /// Returns autodetected games according to Monarch
 pub async fn refresh_library() -> Vec<MonarchGame> {
+    info!("Manual refresh of library requested. Refreshing...");
     let mut games: Vec<MonarchGame> = Vec::new();
 
     if let Ok(mut monarch_games) = games_library::get_monarchgames() {
@@ -120,7 +121,6 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     }
 
     let mut steam_games: Vec<MonarchGame> = steam_client::get_library().await;
-
     games.append(&mut steam_games);
 
     if let Err(e) = games_library::write_games(games.clone()) {

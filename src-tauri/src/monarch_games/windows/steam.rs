@@ -16,20 +16,6 @@ use crate::monarch_games::steam_client::parse_steam_ids;
 * Monarchs way of handling steam games managed by Monarch itself.
 */
 
-/// Returns path to Monarchs installed version of SteamCMD
-fn get_steamcmd_dir() -> Result<PathBuf> {
-    let path: PathBuf = get_home_path().with_context(|| 
-        -> String {format!("windows::steam::get_steamcmd_dir() failed! Error returned when getting home path! | Err")})?;
-    Ok(path.join("SteamCMD"))
-}
-
-/// Returns whether or not SteamCMD is installed
-pub fn steamcmd_is_installed() -> Result<bool> {
-    let path: PathBuf = get_steamcmd_dir().with_context(|| 
-        -> String {format!("windows::steam::steamcmd_is_installed() failed! Error returned when getting SteamCMD directory! | Err")})?;
-    Ok(path_exists(&path))
-}
-
 /// Installs SteamCMD for user in .monarch
 pub async fn install_steamcmd() -> Result<()> {
     let mut dest_path: PathBuf = get_steamcmd_dir().with_context(||
@@ -132,7 +118,7 @@ pub fn run_command(args: &str) -> Result<()> {
         .arg("start")
         .arg(args)
         .spawn()
-        .context(format!("steam::run_command() failed! Failed to run Steam command {args} | Err"))?;
+        .context(format!("windows::steam::run_command() failed! Failed to run Steam command {args} | Err"))?;
         
     Ok(())
 }

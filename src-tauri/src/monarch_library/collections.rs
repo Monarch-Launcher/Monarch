@@ -44,7 +44,7 @@ pub fn update_collections(id: &str, new_name: &str, game_ids: Vec<String>) -> Re
         -> String {format!("collections::update_collections() failed! Failed to get collections/parse json! | Err")})?;
 
     if let Some(index) = find_collection_index(id, &collecs) {
-        let mut collection: &mut MonarchCollection = collecs.get_mut(index).with_context(|| 
+        let collection: &mut MonarchCollection = collecs.get_mut(index).with_context(|| 
             -> String {format!("collections::update_collections() failed! No collection found for index! | Err")})?;
 
         collection.name = new_name.to_string();
