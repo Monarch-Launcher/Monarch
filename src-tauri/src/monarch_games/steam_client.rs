@@ -232,11 +232,11 @@ pub async fn parse_steam_ids(ids: Vec<String>, is_cache: bool) -> Vec<MonarchGam
                     game_info = body;
                 }
                 Err(e) => {
-                    error!("Failed to parse response body! | Message: {e}");
+                    warn!("steam_client::parse_steam_ids() warning! Failed to parse response body! | Err: {e}");
                 }
             },
             Err(e) => {
-                error!("Failed to get respnse from: {target} | Message: {e}");
+                error!("steam_client::parse_steam_ids() warning! Failed to get respnse from: {target} | Err: {e}");
             }
         }
 
