@@ -54,7 +54,7 @@ pub async fn download_game(name: &str, platform: &str, platform_id: &str) -> Res
 
                 // Run async on windows
                 if let Err(e) = steam_client::download_and_install().await {
-                    error!("monarch_client::download_game() failed! Error while installing SteamCMD! | Error: {e}");
+                    error!("monarch_client::download_game() failed! Error while installing SteamCMD! | Err: {e}");
                     return Err(anyhow!("monarch_client::download_game() failed! Error while installing SteamCMD!"));
                 }
             }
@@ -62,7 +62,7 @@ pub async fn download_game(name: &str, platform: &str, platform_id: &str) -> Res
             match steam_client::download_game(name, platform_id).await {
                 Ok(game) => { new_game = game }
                 Err(e) => {
-                    error!("monarch_client::download_game() failed! Failed to download Steam game! | Error: {e}");
+                    error!("monarch_client::download_game() failed! Failed to download Steam game! | Err: {e}");
                     return Err(anyhow!("monarch_client::download_game() failed! Failed to download Steam game!"))
                 }
             }
@@ -74,7 +74,7 @@ pub async fn download_game(name: &str, platform: &str, platform_id: &str) -> Res
     }
     
     if let Err(e) = games_library::add_game(new_game) {
-        error!("monarch_client::download_game() failed! Error while writing new MonarchGame to library.json! | Error: {e}");
+        error!("monarch_client::download_game() failed! Error while writing new MonarchGame to library.json! | Err: {e}");
         return Err(anyhow!("monarch_client::download_game() failed! Failed to write new game to library.json!"))
     }
 
@@ -104,7 +104,7 @@ fn get_library() -> Vec<MonarchGame> {
             }
         }
         Err(e) => {
-            error!("monarch_client::get_library() failed! Failed to get library! | Error: {e}");
+            error!("monarch_client::get_library() failed! Failed to get library! | Err: {e}");
         }
     }
 
@@ -124,10 +124,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     games.append(&mut steam_games);
 
     if let Err(e) = games_library::write_games(games.clone()) {
-        error!(
-            "Failed to write new games to library.json! | Message: {:?}",
-            e
-        );
+        error!("monarch_client::refresh_library() failed! Failed to write new games to library.json! | Err: {e}");
     }
     games
 }
