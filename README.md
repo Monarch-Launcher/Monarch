@@ -60,3 +60,7 @@ Feel free to join our [Discord server](https://discord.gg/YjvJPPdbCw).
 
 ## How can I contribute?
 Any help is appreciated. If you know programming and know of a feature that is missing or needs improvement, feel free to start working on it. We currently don't have an official way of reporting issues; we'll update this page as soon as we do. 
+
+## License
+We don't know much about copyright law or law in general, so we'll keep this sections short. We have decied to license Monarch under the GNU General Public License v3.0 (GLPv3). We won't explain exactly what that means ourselves, as we don't want to accidently mislead anyone. Instead you can either read about it in [COPYING](https://github.com/Monarch-Launcher/Monarch/blob/main/COPYING), or on these online resources.
+[chooselicense.com](https://choosealicense.com/licenses/gpl-3.0/) [wikipedia](https://en.wikipedia.org/wiki/GNU_General_Public_License)
