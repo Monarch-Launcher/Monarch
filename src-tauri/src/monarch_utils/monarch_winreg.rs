@@ -13,7 +13,7 @@ pub fn is_installed(program_name: &str) -> bool {
         if let Ok(mut search_path) = user {
             search_path.push_str(path.as_str()); // Adds subpath of program to the users path
 
-            if let Ok(_) = hkurs.open_subkey(&search_path) {
+            if hkurs.open_subkey(&search_path).is_ok() {
                 return true // Returns true if path exits
             }
         }

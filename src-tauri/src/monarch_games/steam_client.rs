@@ -3,14 +3,15 @@ use reqwest;
 use scraper::{Html, Selector};
 use serde_json::Value;
 use toml;
+use std::collections::HashMap;
+use std::path::PathBuf;
+use anyhow::{Context, Result, anyhow};
 
 use super::monarch_client::generate_default_folder;
 use super::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_credentials::get_password;
-use crate::monarch_utils::monarch_fs::{generate_cache_image_name, generate_library_image_name};
+use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path, path_exists, get_home_path};
 use crate::monarch_utils::monarch_settings::get_steam_settings;
-use std::collections::HashMap;
-use std::path::PathBuf;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -25,19 +26,19 @@ use super::linux::steam;
 */
 
 /// Returns if SteamCMD is installed on system or not.
-pub fn is_installed() -> bool {
-    steam::steamcmd_is_installed()
+pub fn is_installed() -> Result<bool> {
+    steamcmd_is_installed().context("steam_client::is_installed() failed! | Err")
 }
 
 #[cfg(windows)]
 /// Downloads and installs SteamCMD on users computer.
-pub async fn download_and_install() -> Result<(), String> {
-    steam::install_steamcmd().await
+pub async fn download_and_install() -> Result<()> {
+    steam::install_steamcmd().await.context("steam_client::download_and_install() failed! | Err")
 }
 
 #[cfg(not(windows))]
 /// Downloads and installs SteamCMD on users computer.
-pub async fn download_and_install() -> Result<(), String> {
+pub async fn download_and_install() -> Result<()> {
     steam::install_steamcmd()
 }
 
@@ -63,24 +64,23 @@ pub async fn find_game(name: &str) -> HashMap<String, MonarchGame> {
 }
 
 /// Attempts to launch Steam Client game.
-pub fn launch_game(id: &str) -> Result<(), String> {
+pub fn launch_game(id: &str) -> Result<()> {
     let mut command: String = String::from("steam://rungameid/");
     command.push_str(id);
-    steam::run_command(&command)
+    steam::run_command(&command).context("steam_client::launch_game() failed! | Err")
 }
 
 /// Attemps to launch SteamCMD game.
-pub async fn launch_cmd_game(id: &str) -> Result<(), String> {
+pub fn launch_cmd_game(id: &str) -> Result<()> {
     let launch_arg: String = format!("app_launch {id}");
     let args: Vec<&str> = vec![&launch_arg];
-    steam::steamcmd_command(args).await
+    steam::steamcmd_command(args).context("steam_client::launch_cmd_game() failed! | Err")
 }
 
 /// Download a Steam game via Monarch and SteamCMD.
-pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame, String> {
+pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
     let settings: toml::Value;
     let username: String;
-    let password: String;
 
     match get_steam_settings() {
         Some(settings_res) => {
@@ -88,7 +88,7 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame, String> 
         }
         None => {
             error!("steam_client::download_game() failed! get_steam_settings() returned None!");
-            return Err("No steam settings found!".to_string());
+            return Err(anyhow!("steam_client::download_game() failed! Not Steam settings found!"))
         }
     }
 
@@ -97,27 +97,22 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame, String> 
             Some(username_res) => username = username_res,
             None => {
                 error!("steam_client::download_game() failed! get_username() returned None!");
-                return Err("No Steam username found!".to_string());
+                return Err(anyhow!("steam_client::download_game() failed! Not Steam username found!"));
             }
         }
     } else {
         warn!("steam_client::download_game() User tried to install game without allowing Monarch to manage Steam! Cancelling download...");
-        return Err("Not allowed to manage games! Check settings!".to_string());
+        return Err(anyhow!("steam_client::download_game() failed! Not allowed to manage games. Check settings."));
     }
 
-    match get_password("steam", &username) {
-        Ok(password_res) => password = password_res,
-        Err(e) => {
-            error!("steam_client::download_game() failed! Could not get password for Steam from secure store! | Error: {e}");
-            return Err("Failed to get Steam password from secure store!".to_string());
-        }
-    }
-
-
+    let password: String = get_password("steam", &username).with_context(|| 
+        -> String {format!("steam_client::download_game() failed! Could not get password for Steam from secure store! | Err")})?;  
+    
     let mut install_dir: PathBuf;
     match get_steam_games_dir(&settings) {
         Some(result) => install_dir = PathBuf::from(result),
-        None => install_dir = generate_default_folder(),
+        None => install_dir = generate_default_folder().with_context(|| 
+            -> String {format!("steam_client::download_game() failed! Error returned when getting default game folder! | Err")})?,
     }
     install_dir.push(name);
 
@@ -141,20 +136,17 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame, String> 
 
     // TODO: Wait for Steamcmd to return 
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
-    match steam::steamcmd_command(command).await { // Tell SteamCMD to download game 
-        Ok(_) => {
-            let monarchgame: MonarchGame = parse_steam_ids(vec![id.to_string()], false).await[0].clone();
-            return Ok(monarchgame);
-        }
-        Err(e) => {
-            error!("steam_client::download_game() failed! steamcmd_command() returned error! | Error: {e}");
-            return Err("Failed to install game!".to_string());
-        }
-    }
+    if let Err(e) = steam::steamcmd_command(command) { // Tell SteamCMD to download game
+        error!("steam_client::download_game() failed! steamcmd_command() returned error! | Error: {e}");
+        return Err(anyhow!("steam_client::download_game() failed! steamcmd_command() returned error"));
+    } 
+
+    let monarchgame: MonarchGame = parse_steam_ids(vec![String::from(id)], false).await[0].clone();
+    return Ok(monarchgame);
 }
 
 /// Uninstall a Steam game via SteamCMD
-pub async fn uninstall_game(id: &str) -> Result<(), String> {
+pub async fn uninstall_game(id: &str) -> Result<()> {
     let settings: toml::Value;
 
     match get_steam_settings() {
@@ -163,19 +155,33 @@ pub async fn uninstall_game(id: &str) -> Result<(), String> {
         }
         None => {
             error!("steam_client::uninstall_game() failed! get_steam_settings() returned None!");
-            return Err("No steam settings found!".to_string());
+            return Err(anyhow!("steam_client::uninstall_game() failed! Not Steam settings found!"));
         }
     }
 
     if !can_manage_steam(&settings) {
         warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
-        return Err("Not allowed to manage games! Check settings!".to_string());
+        return Err(anyhow!("steam_client::download_game() failed! Not allowed to manage games. Check settings."));
     }
 
     let remove_arg: String = format!("+app_uninstall {id}");
     let command: Vec<&str> = vec![&remove_arg, "+quit"];
 
-    steam::steamcmd_command(command).await
+    steam::steamcmd_command(command).context("steam_client::uninstall_game() failed! | Err")
+}
+
+/// Returns path to Monarchs installed version of SteamCMD
+pub fn get_steamcmd_dir() -> Result<PathBuf> {
+    let path: PathBuf = get_home_path().with_context(|| 
+        -> String {format!("windows::steam::get_steamcmd_dir() failed! Error returned when getting home path! | Err")})?;
+    Ok(path.join("SteamCMD"))
+}
+
+/// Returns whether or not SteamCMD is installed
+pub fn steamcmd_is_installed() -> Result<bool> {
+    let path: PathBuf = get_steamcmd_dir().with_context(|| 
+        -> String {format!("windows::steam::steamcmd_is_installed() failed! Error returned when getting SteamCMD directory! | Err")})?;
+    Ok(path_exists(&path))
 }
 
 /// Returns whether or not Monarch is allowed to manage a users Steam games
@@ -188,29 +194,24 @@ fn can_manage_steam(settings: &toml::Value) -> bool {
 
 /// Returns username from toml::Value
 fn get_username(settings: &toml::Value) -> Option<String> {
-    match settings.get("username") {
-        Some(value) => match value.as_str() {
-            Some(value_str) => return Some(String::from(value_str)),
-            None => None,
-        },
-        None => None,
+    if let Some(value) = settings.get("username") {
+        if let Some(value_str) = value.as_str() {
+            return Some(String::from(value_str))
+        }
     }
+    None
 }
 
 /// Returns the path to install Steam Games in.
 fn get_steam_games_dir(settings: &toml::Value) -> Option<String> {
-    match settings.get("game_folders") {
-        Some(folders) => match folders.get(0) { // Assume first folder is default one for now
-            Some(folder) => {
-                match folder.as_str() {
-                    Some(str) => Some(String::from(str)),
-                    None => None
-                }
+    if let Some(folders) = settings.get("game_folders") {
+         if let Some(folder) = folders.get(0) { // Assume first folder is default one for now
+            if let Some(str) = folder.as_str() {
+                return Some(String::from(str))
             }
-            None => None
         }
-        None => None
-    }    
+    }
+    None
 }
 
 /// Converts SteamApp ids into MonarchGames.
@@ -231,48 +232,48 @@ pub async fn parse_steam_ids(ids: Vec<String>, is_cache: bool) -> Vec<MonarchGam
                     game_info = body;
                 }
                 Err(e) => {
-                    error!("Failed to parse response body! | Message: {e}");
+                    warn!("steam_client::parse_steam_ids() warning! Failed to parse response body! | Err: {e}");
                 }
             },
             Err(e) => {
-                error!("Failed to get respnse from: {target} | Message: {e}");
+                error!("steam_client::parse_steam_ids() warning! Failed to get respnse from: {target} | Err: {e}");
             }
         }
 
         // Parse content into MonarchGame
         if !game_info.is_empty() {
-            let game_json: Value = serde_json::from_str(&game_info).unwrap();
+            if let Ok(game_json) = serde_json::from_str::<Value>(&game_info) {
+                // Check if response from Steam contains "success: true"
+                if game_json[&id]["success"] == Value::Bool(true) {
+                    // Create needed parameters
+                    let name: String = game_json[&id]["data"]["name"].to_string();
+                    let id: String = id;
+                    let platform: String = String::from("steam");
+                    let exec_path: String = String::new();
+                    let thumbnail_path: String;
 
-            // Check if response from Steam contains "success: true"
-            if game_json[&id]["success"] == Value::Bool(true) {
-                // Create needed parameters
-                let name: String = game_json[&id]["data"]["name"].to_string();
-                let id: String = id;
-                let platform: String = String::from("steam");
-                let exec_path: String = String::new();
-                let thumbnail_path: String;
+                    if is_cache {
+                        thumbnail_path =
+                            String::from(generate_cache_image_path(&name).unwrap().to_str().unwrap());
+                    } else {
+                        thumbnail_path = String::from(
+                            generate_library_image_path(&name)
+                                .unwrap()
+                                .to_str()
+                                .unwrap(),
+                        );
+                    }
 
-                if is_cache {
-                    thumbnail_path =
-                        String::from(generate_cache_image_name(&name).unwrap().to_str().unwrap());
-                } else {
-                    thumbnail_path = String::from(
-                        generate_library_image_name(&name)
-                            .unwrap()
-                            .to_str()
-                            .unwrap(),
-                    );
+                    let url: &str = game_json[&id]["data"]["header_image"].as_str().unwrap();
+
+                    // Create new MonarchGame
+                    let game: MonarchGame =
+                        MonarchGame::new(&name, &platform, &id, &exec_path, &thumbnail_path);
+
+                    // Start tokio::task to download thumbail for game
+                    game.download_thumbnail(url);
+                    games.push(game);
                 }
-
-                let url: &str = game_json[&id]["data"]["header_image"].as_str().unwrap();
-
-                // Create new MonarchGame
-                let game: MonarchGame =
-                    MonarchGame::new(&name, &platform, &id, &exec_path, &thumbnail_path);
-
-                // Start tokio::task to download thumbail for game
-                game.download_thumbnail(url);
-                games.push(game);
             }
         }
     }
@@ -281,11 +282,11 @@ pub async fn parse_steam_ids(ids: Vec<String>, is_cache: bool) -> Vec<MonarchGam
 
 /// Gets AppIDs and Links from Steam store search
 async fn parse_steam_page(body: &str) -> HashMap<String, MonarchGame> {
-    let game_selector: Selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap();
-
     let mut ids: Vec<String> = Vec::new();
     let mut links: Vec<String> = Vec::new();
     let mut games: HashMap<String, MonarchGame> = HashMap::new();
+
+    let game_selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap(); // Has to be unwrap rn.
 
     for css_elem in Html::parse_document(body).select(&game_selector) {
         // Check for AppID
@@ -307,5 +308,6 @@ async fn parse_steam_page(body: &str) -> HashMap<String, MonarchGame> {
     for i in 0..monarch_games.len() {
         games.insert(links[i].clone(), monarch_games[i].clone());
     }
+
     games
 }

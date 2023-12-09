@@ -1,10 +1,9 @@
-use core::result::Result;
+use anyhow::{Context, Result, anyhow};
 use log::{error, info, warn};
 use regex::Regex;
 use serde_json::Value;
-use std::env::VarError;
 use std::path::{Path, PathBuf};
-use std::{fs, io, process::exit};
+use std::{fs,process::exit};
 
 use super::monarch_settings::set_default_settings;
 
@@ -14,7 +13,7 @@ use super::monarch_settings::set_default_settings;
 
 /// Create Monarch folder in users %appdata% directory
 pub fn check_appdata_folder() {
-    let appdata_path: Result<PathBuf, VarError> = get_appdata_path();
+    let appdata_path: Result<PathBuf> = get_home_path();
 
     match appdata_path {
         Ok(path) => {
@@ -93,108 +92,62 @@ pub fn check_resources_folder() {
 
 /// Gets the users %appdata% or $HOME directory and adds Monarch to the end of it to generate Monarch path
 /// returns either $HOME/.monarch or %appdata%/Monarch
-pub fn get_appdata_path() -> Result<PathBuf, VarError> {
-    let appdata_path_res: Result<String, VarError>;
-    let folder_name: &str;
+#[cfg(windows)]
+pub fn get_home_path() -> Result<PathBuf> {
+    let appdata_path = std::env::var("APPDATA").with_context(|| 
+        -> String {format!("monarch_fs::get_home_path() failed! Could not find envoirment variable 'APPDATA' | Err:")})?;
 
-    if cfg!(windows) {
-        // If on windows
-        appdata_path_res = std::env::var("APPDATA");
-        folder_name = "Monarch";
-    } else {
-        // If on other OS
-        appdata_path_res = std::env::var("HOME");
-        folder_name = ".monarch";
-    }
-
-    match appdata_path_res {
-        Ok(appdata_path) => {
-            let mut path: PathBuf = PathBuf::from(appdata_path);
-            path = path.join(folder_name);
-            return Ok(path);
-        }
-        Err(e) => Err(e),
-    }
+    Ok(PathBuf::from(appdata_path).join("Monarch"))
 }
 
-#[cfg(not(target_os = "windows"))]
-// Returns $HOME on unix systems. Useful for looking for directories like .Steam
-pub fn get_home_path() -> Result<PathBuf, String> {
-    match std::env::var("$HOME") {
-        Ok(str_path) => return Ok(PathBuf::from(str_path)),
-        Err(e) => {
-            error!("monarch_fs::get_home_path() failed! | Error: {e}");
-            return Err("Failed to get $HOME path!".to_string());
-        }
-    }
+#[cfg(not(windows))]
+pub fn get_home_path() -> Result<PathBuf> {
+    let home_path: String = std::env::var("HOME").with_context(|| 
+        -> String {format!("monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:")})?;
+
+    Ok(PathBuf::from(home_path).join(".monarch"))
 }
 
 /// Returns path to settings.json
-pub fn get_settings_path() -> Result<PathBuf, VarError> {
-    match get_appdata_path() {
-        Ok(mut path) => {
-            path.push("settings.toml");
-            return Ok(path);
-        }
-        Err(e) => {
-            error!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
-            return Err(e);
-        }
-    }
+pub fn get_settings_path() -> Result<PathBuf> {
+    let path: PathBuf = get_home_path().with_context(|| 
+        -> String {format!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
+    
+    Ok(path.join("settings.toml"))
 }
 
 /// Returns path of games installed specifically by Monarch.
-pub fn get_monarch_games_path() -> Result<PathBuf, VarError> {
-    match get_appdata_path() {
-        Ok(mut path) => {
-            path.push("monarch_games.json");
-            return Ok(path);
-        }
-        Err(e) => {
-            error!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
-            return Err(e);
-        }
-    }
+pub fn get_monarch_games_path() -> Result<PathBuf> {
+    let path: PathBuf = get_home_path().with_context(|| 
+        -> String {format!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
+    
+    Ok(path.join("monarch_games.json"))
 }
 
 /// Returns path to library.json
-pub fn get_library_json_path() -> Result<PathBuf, VarError> {
-    match get_appdata_path() {
-        Ok(mut path) => {
-            path.push("library.json");
-            return Ok(path);
-        }
-        Err(e) => {
-            error!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
-            return Err(e);
-        }
-    }
+pub fn get_library_json_path() -> Result<PathBuf> {
+    let path: PathBuf = get_home_path().with_context(|| 
+        -> String {format!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
+    
+    Ok(path.join("library.json"))
 }
 
 /// Returns path to collections.json
-pub fn get_collections_json_path() -> Result<PathBuf, VarError> {
-    match get_appdata_path() {
-        Ok(mut path) => {
-            path.push("collections.json");
-            return Ok(path);
-        }
-        Err(e) => {
-            error!("monarch_fs::get_collections_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
-            return Err(e);
-        }
-    }
+pub fn get_collections_json_path() -> Result<PathBuf> {
+    let path: PathBuf = get_home_path().with_context(|| 
+        -> String {format!("monarch_fs::get_collections_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
+    
+    Ok(path.join("collections.json"))
 }
 
 /// Write JSON to file
-pub fn write_json_content(content: Value, path: &Path) -> io::Result<()> {
+pub fn write_json_content(content: Value, path: &Path) -> Result<()> {
     if let Err(e) = fs::write(path, content.to_string()) {
-        error!(
-            "monarch_fs::write_json_content() failed! Something went wrong trying to write new library to: {file} | Error: {e}",
-            file = path.display()
-        );
-        return Err(e);
+        return Err(anyhow!(
+            "monarch_fs::write_json_content() failed! Something went wrong trying to write new library to: {file} | Err: {e}",
+            file = path.display()));
     }
-    return Ok(());
+    Ok(())
 }
 
 /// Abstraction to check whether a given path exists already or not
@@ -203,13 +156,11 @@ pub fn path_exists(path: &Path) -> bool {
 }
 
 /// Attempts to create an empty directory and returns result
-pub fn create_dir(path: &Path) -> io::Result<()> {
+pub fn create_dir(path: &Path) -> Result<()> {
     if let Err(e) = fs::create_dir_all(path) {
-        error!(
+        return Err(anyhow!(
             "monarch_fs::create_dir() failed! Something went wrong while creating new directory: {dir} | Error: {e}",
-            dir = path.display()
-        );
-        return Err(e);
+            dir = path.display()));
     }
     Ok(())
 }
@@ -221,114 +172,62 @@ pub fn create_dir(path: &Path) -> io::Result<()> {
 /// Returns path to resources folder.
 /// Should never fail during runtime because of init_monarch_fs,
 /// but if it does it returns an empty string.
-pub fn get_resources_path() -> Result<PathBuf, VarError> {
-    match get_appdata_path() {
-        Ok(mut path) => {
-            path.push("resources");
-            return Ok(path);
-        }
-        Err(e) => {
-            error!("monarch_fs::get_resources_path() failed! Something went wrong while getting %appdata%/$HOME path. | Error: {e}");
-            return Err(e);
-        }
-    }
+pub fn get_resources_path() -> Result<PathBuf> {
+    let path: PathBuf = get_home_path().with_context(|| 
+        -> String {format!("monarch_fs::get_resources_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
+    
+    Ok(path.join("resources"))
 }
 
 /// Returns path to store temporary images
-pub fn get_resources_cache() -> Result<PathBuf, VarError> {
-    match get_resources_path() {
-        Ok(mut path) => {
-            path.push("cache");
-            return Ok(path);
-        }
-        Err(e) => {
-            error!("monarch_fs::get_resources_cache() failed! Something went wrong while getting resources/ path. | Error: {e}");
-            return Err(e);
-        }
-    }
+pub fn get_resources_cache() -> Result<PathBuf> {
+    let path: PathBuf = get_resources_path().with_context(|| 
+        -> String {format!("monarch_fs::get_resources_cache() failed! Something went wrong while getting resources/ path. | Err")})?;
+    
+    Ok(path.join("cache"))
 }
 
 /// Returns path to store thumbnails for games in library
-pub fn get_resources_library() -> Result<PathBuf, VarError> {
-    match get_resources_path() {
-        Ok(mut path) => {
-            path.push("library");
-            return Ok(path);
-        }
-        Err(e) => {
-            error!("monarch_fs::get_resources_library() failed! Something went wrong while getting resources/ path. | Error: {e}");
-            return Err(e);
-        }
-    }
+pub fn get_resources_library() -> Result<PathBuf> {
+    let path: PathBuf = get_resources_path().with_context(|| 
+        -> String {format!("monarch_fs::get_resources_library() failed! Something went wrong while getting resources/ path. | Err")})?;
+    
+    Ok(path.join("library"))
 }
 
 /// Create a name for image file in cache directory
 /// Can be used to download image and check if an image already exists
-pub fn generate_cache_image_name(name: &str) -> Result<PathBuf, String> {
-    let filename: String;
+pub fn generate_cache_image_path(name: &str) -> Result<PathBuf> {
+    let filename = generate_image_filename(name).with_context(|| 
+        -> String {format!("monarch_fs::generate_cache_image_name() failed! Failed to build name from {name} using regex. | Err")})?;
 
-    match generate_image_filename(name) {
-        Ok(name) => filename = name,
-        Err(e) => {
-            error!("monarch_fs::generate_cache_image_name() failed! Failed to build name from regex and {name}. | Error: {e}");
-            return Err("Failed to build name from regex!".to_string());
-        }
-    }
+    let path: PathBuf = get_resources_cache().with_context(|| 
+        -> String {format!("monarch_fs::generate_cache_image_name() failed! Something went wrong while trying to get resources/cache/ ! | Err")})?;
 
-    match get_resources_cache() {
-        Ok(mut dir) => {
-            dir.push(&filename);
-            return Ok(dir);
-        }
-        Err(e) => {
-            error!("monarch_fs::generate_cache_image_name() failed! Something went wrong while trying to get resources/cache/ ! | Error: {e}");
-            return Err("Failed to get cached thumbnails folder!".to_string());
-        }
-    }
+    Ok(path.join(&filename))
 }
 
 /// Create a name for image file in cache directory
-pub fn generate_library_image_name(name: &str) -> Result<PathBuf, String> {
-    let filename: String;
+pub fn generate_library_image_path(name: &str) -> Result<PathBuf> {
+    let filename = generate_image_filename(name).with_context(|| 
+        -> String {format!("monarch_fs::generate_library_image_name() failed! Failed to build name from {name} using regex. | Err")})?;
 
-    match generate_image_filename(name) {
-        Ok(name) => filename = name,
-        Err(e) => {
-            error!("monarch_fs::generate_library_image_name() failed! Failed to build name from regex and {name}. | Error: {e}");
-            return Err("Failed to build name from regex!".to_string());
-        }
-    }
+    let path: PathBuf = get_resources_library().with_context(|| 
+        -> String {format!("monarch_fs::generate_cache_image_name() failed! Something went wrong while trying to get resources/library/ ! | Err")})?;
 
-    match get_resources_library() {
-        Ok(mut dir) => {
-            dir.push(&filename);
-            return Ok(dir);
-        }
-        Err(e) => {
-            error!("monarch_fs::generate_cache_image_name() failed! Something went wrong while trying to get resources/library/ ! | Error: {e}");
-            return Err("Failed to get library thumbnails library!".to_string());
-        }
-    }
+    Ok(path.join(&filename))
 }
 
 /// Generates a filename without any special characters or spaces
-fn generate_image_filename(name: &str) -> Result<String, regex::Error> {
+fn generate_image_filename(name: &str) -> Result<String> {
     let mut filename: String = String::from(name);
     filename = filename.replace(" ", "_");
 
-    match Regex::new(r"[^a-zA-Z0-9_]") {
-        Ok(re) => {
-            filename = re.replace_all(&filename, "").to_string();
-            filename.push_str(".jpg");
-            return Ok(filename);
-        }
-        Err(e) => {
-            error!(
-                "monarch_fs::generate_image_filename() failed! Failed to build new regex! | Error: {}",
-                e
-            );
-            return Err(e);
-        }
-    }
+    let regex = Regex::new(r"[^a-zA-Z0-9_]").with_context(||
+        -> String {format!("monarch_fs::generate_image_filename() failed! Failed to build new regex! | Err")})?;
+    
+    filename = regex.replace_all(&filename, "").to_string();
+    filename.push_str(".jpg");
+    Ok(filename)
 }
 

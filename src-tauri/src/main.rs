@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::process::exit;
+
 use log::error;
 
 mod monarch_games;
@@ -22,7 +24,12 @@ fn init() {
     check_appdata_folder(); // Verifies %appdata% (windows) or $HOME (unix) folder exists
     init_logger(); // Starts logger
     check_resources_folder(); // Verify folder structure
-    monarch_settings::init().expect("Error during settings initialization!"); // Crash program if this fails
+    
+    if let Err(e) = monarch_settings::init() { // Crash program if this fails
+        error!("Error during settings initialization! | Error: {e}");
+        exit(1);
+    }
+    
     housekeeping::start(); // Starts housekeeping loop
 }
 

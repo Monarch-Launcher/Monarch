@@ -7,8 +7,9 @@ use serde::{Serialize, Deserialize};
 use vdf_serde;
 use std::collections::HashMap;
 use std::fs;
-use log::error;
 use std::path::Path;
+use anyhow::{Result, Context};
+use std::collections::HashSet;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename = "libraryfolders")] // Tell serde to look for "libraryfolders" instead of "LibraryFolders" when parsing
@@ -27,37 +28,27 @@ struct LibraryLocation {
 
 /// Parses steams libraryfolders.vdf file to structs that can be used to find
 /// installed games, folder locations, etc...
-pub fn parse_library_file(path: &Path) -> Vec<String> {
-    let mut games: Vec<String> = Vec::new();
+pub fn parse_library_file(path: &Path) -> Result<Vec<String>> {
+    let mut content: String = fs::read_to_string(&path).with_context(|| 
+        -> String {format!("monarch_vdf::parse_library_file() failed! Failed to open file: {} | Err", path.display()).into()})?;
 
-    match fs::read_to_string(path) {
-        Ok(mut content) =>  {
-            content = content.replace("\"\"", "\" \" "); // Remove blank space interfering with serde
+    content = content.replace("\"\"", "\" \" "); // Remove blank space interfering with serde
+    
+    let library_folders = vdf_serde::from_str::<LibraryFolders>(&content).with_context(||
+        -> String {format!("monarch_vdf::parse_library_file() failed! Could not automatically parse file content to LibraryFolders using vdf_serde! | Err").into()})?;
 
-            match vdf_serde::from_str::<LibraryFolders>(&content) {
-                Ok(libraryfolders) => {
-                    games = found_games(libraryfolders);
-                }
-                Err(e) => error!("monarch_vdf::parse_library_file() failed! Could not automatically parse file content to LibraryFolders using vdf_serde! | Error: {e}")
-            }
-        }
-        Err(e) => {
-            error!("monarch_vdf::parse_library_file() failed! Failed to open file: {file} | Error: {e}", file = path.display());
-        }
-    }
-
-    games
+    let game_ids: Vec<String> = found_games(library_folders).iter().map(|game| game.to_owned()).collect();
+    Ok(game_ids)
 }
 
 /// Helper function to extract the installed apps from a LibraryFolders struct.
-fn found_games(libraryfolders: LibraryFolders) -> Vec<String> {
-    let mut games: Vec<String> = Vec::new();
+fn found_games(libraryfolders: LibraryFolders) -> HashSet<String> {
+    // Using hashset to ignore any (unlikely) duplicates that could show up.
+    let mut games: HashSet<String> = HashSet::new(); 
 
     for location in libraryfolders.0 {
         for game in location.1.apps {
-            if !games.contains(&game.0) {
-                games.push(game.0);
-            }
+            games.insert(game.0);
         }
     }
     games

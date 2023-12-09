@@ -2,8 +2,8 @@ use super::monarch_client;
 use super::monarchgame::MonarchGame;
 use super::steam_client as steam;
 use crate::monarch_library::games_library;
-use crate::monarch_utils::monarch_miniwindow::MiniWindow;
-use log::info;
+use crate::monarch_utils::monarch_windows::MiniWindow;
+use log::{info, error};
 use serde_json::value::Value;
 use std::collections::HashMap;
 use tauri::AppHandle;
@@ -15,7 +15,13 @@ use tauri::AppHandle;
 #[tauri::command]
 /// Returns MonarchGames from library.json
 pub async fn get_library() -> Result<Value, String> {
-    games_library::get_games()
+    match games_library::get_games() {
+        Ok(games) => Ok(games),
+        Err(e) => {
+            error!("{:#}", e);
+            Err(String::from("Failed to get library!"))
+        }
+    }
 }
 
 #[tauri::command]
@@ -35,7 +41,11 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 /// Launch a game
 pub async fn launch_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
     info!("Launching game: {name}");
-    monarch_client::launch_game(&platform, &platform_id).await
+    if let Err(e) = monarch_client::launch_game(&platform, &platform_id).await {
+        error!("{:#}", e);
+        return Err(String::from("Failed to launch game!"))
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -48,14 +58,24 @@ pub async fn download_game(
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
     info!("Installing: {name}");
-    monarch_client::download_game(&name, &platform, &platform_id).await
+    match monarch_client::download_game(&name, &platform, &platform_id).await {
+        Ok(new_library) => Ok(new_library),
+        Err(e) => {
+            error!("{:#}", e);
+            Err(String::from("Failed to download game!"))
+        }
+    }
 }
 
 #[tauri::command]
 /// Tells Monarch to remove specified game
 pub async fn remove_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
     info!("Uninstalling: {name}");
-    monarch_client::uninstall_game(&platform, &platform_id).await
+    if let Err(e) = monarch_client::uninstall_game(&platform, &platform_id).await {
+        error!("{:#}", e);
+        return Err(String::from("Failed to uninstall game!"))
+    }
+    Ok(())
 }
 
 #[tauri::command]

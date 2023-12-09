@@ -19,7 +19,7 @@ use super::monarch_fs::get_resources_cache;
 /// Runs HouseKeeper loop on seperate thread
 pub fn start() {
     thread::spawn(move || {
-        let mut sys = System::new();
+        let mut sys: System = System::new();
 
         loop {
             sys.refresh_cpu();
