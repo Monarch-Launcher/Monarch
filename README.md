@@ -6,7 +6,10 @@ Monarch Launcher was created in response to the number of launchers needed to pl
 
 As stated above, Monarch is still in development (not even an alpha); therefore, the features mentioned below are subject to change. But the core goal of Monarch will still be to become the only launcher you need. We are planning on not only managing games already installed on your system but also helping you download new ones through Monarch.
 
-## Features:
+## Current state
+I (an0nymoos3) feel the need to preface that Monarch is currently being developed. This means that if you are simply here to try Monarch out, you are going to be disappointed. While we will be working as fast as possible to get Monarch ready, we have other obligations, such as studying or working. Therefore, you are welcome to join the Discord server in the meantime to follow our progress. If you still want to give Monarch a spin, you can do so by following the instructions on how to compile it under **How do I get it?**.
+
+## Features
 These are some of the features we want to include in Monarch and their development status. Not all are going to be developed in the order below, and not all will be in the first official release of Monarch, but the core features planned for the first release are **game management**, **quicklaunch**, **game collections**, and some **quality of life** features.
 
 | Feature                  | Status |
@@ -51,13 +54,9 @@ There are two ways of getting Monarch:
 Then you run the installer that you either downloaded or built youself. If you built it yourself you'll find it in the project folder under `src-tauri/target/release/bundle/`.
 
 ## Who are we?
-We are two university students from Sweden and Belgium. We started this project in our spare time, as we are studying full-time. We are also new to the FOSS community, so if there is anything you think looks weird about the way Monarch is setup or managed, please reach out and help us improve.
+We started out as two university students doing this in our free time. Due to time constraints and growing complexity, we are currently expanding the team working on Monarch. If you would like to be part of this journey, feel free to reach out to an0nymoos3 on Discord.  
 
-Due to the time limit of being full-time students, we are looking to expand the team. Anyone interested in helping out on the project is welcome to reach out.
-
-Feel free to join our Discord server: https://discord.gg/YjvJPPdbCw
+Feel free to join our [Discord server](https://discord.gg/YjvJPPdbCw).
 
 ## How can I contribute?
-Any help is appreciated. If you know programming and know of a feature that is missing or needs improvement, feel free to contribute. We currently don't have an official way of reporting issues; we'll update this page as soon as we do. 
-
-Would you like to become a regular contributor or maintainer? Dm me on Discord at @an0nymoos3 to let me know why you would like to help, as well as a brief description of your relevant experience.
+Any help is appreciated. If you know programming and know of a feature that is missing or needs improvement, feel free to start working on it. We currently don't have an official way of reporting issues; we'll update this page as soon as we do. 
