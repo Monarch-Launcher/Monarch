@@ -1,10 +1,10 @@
 [package]
 name = "Monarch"
 version = "0.0.1"
-description = "A FOSS game launcher targeting Windows."
+description = "A FOSS game launcher/manager."
 authors = ["an0nymoos3", "Dre-Van-den-Hooff"]
-license = ""
-repository = "https://github.com/an0nymoos3/Monarch"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/Monarch-Launcher/Monarch"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
