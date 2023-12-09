@@ -2,7 +2,6 @@ import Logo from '@assets/logo.svg';
 import {
   AiOutlineSearch,
   BiHomeAlt,
-  BiTestTube,
   HiOutlineCog,
   HiOutlineSquares2X2,
 } from '@global/icons';
@@ -91,12 +90,6 @@ const SideMenu = () => {
         path: '/search',
         title: 'Search',
         leftIcon: AiOutlineSearch,
-      },
-      {
-        id: 4,
-        path: '/moose',
-        title: 'Moose',
-        leftIcon: BiTestTube,
       },
     ];
   }, []);
