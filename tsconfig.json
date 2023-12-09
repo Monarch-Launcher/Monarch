@@ -21,6 +21,13 @@
     "noImplicitThis": true,
     "noImplicitAny": true,
     "noUnusedLocals": true,
+    "baseUrl": ".",
+    "paths": {
+      "@_ui/*": ["src/_ui/*"],
+      "@global/*": ["src/global/*"],
+      "@assets/*": ["src/assets/*"],
+      "@pages/*": ["src/pages/*"]
+    }
   },
   "include": ["src", "./vite.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]

@@ -1,5 +1,6 @@
-import * as React from 'react';
 import { invoke } from '@tauri-apps/api';
+import * as React from 'react';
+
 import type { MonarchGame, Result } from '../types';
 
 type LibraryContextType = {
@@ -49,7 +50,24 @@ const LibraryProvider = ({ children }: Props) => {
     }
   }, []);
 
-  const value = React.useMemo(() => {
+  const getLibrary = React.useCallback(async () => {
+    try {
+      setError(false);
+      setLoading(true);
+      const result: MonarchGame[] = await invoke('get_library');
+      setLibrary([...result]);
+    } catch (err) {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    getLibrary();
+  }, [getLibrary]);
+
+  const value = React.useMemo<LibraryContextType>(() => {
     return {
       library,
       refreshLibrary,

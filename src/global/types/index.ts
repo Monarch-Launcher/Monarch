@@ -1,5 +1,6 @@
 export type MonarchGame = {
-  id: number;
+  id: string;
+  platform_id: string;
   executable_path: string;
   name: string;
   platform: string;
@@ -10,4 +11,10 @@ export type Result = {
   empty: boolean;
   emptyMessage: string;
   searchString?: string;
+};
+
+export type Collection = {
+  id: string;
+  name: string;
+  gameIds: string[];
 };

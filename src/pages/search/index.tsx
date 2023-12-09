@@ -1,18 +1,21 @@
+import Error from '@_ui/error';
+import GameCard from '@_ui/gameCard';
+import Page from '@_ui/page';
+import SearchBar from '@_ui/searchBar';
+import Spinner from '@_ui/spinner';
+import { useSearchGames } from '@global/contexts/searchGamesProvider';
 import * as React from 'react';
 import styled from 'styled-components';
-import Page from '../../_ui/page';
-import GameCard from '../../_ui/gameCard';
-import SearchBar from '../../_ui/searchBar';
-import { useSearchGames } from '../../global/contexts/searchGamesProvider';
-import Spinner from '../../_ui/spinner';
-import Error from '../../_ui/error';
 
 const ResultsContainer = styled.div`
-  width: 85%;
+  width: 100%;
   height: calc(100% - 10rem);
   overflow-y: auto;
   border-radius: 0.5rem;
   margin: 1rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
 `;
 
 const Search = () => {
@@ -48,7 +51,17 @@ const Search = () => {
         {loading ? (
           <Spinner />
         ) : (
-          searchedGames.map((game) => <GameCard key={game.id} {...game} />)
+          searchedGames.map((game) => (
+            <GameCard
+              key={game.id}
+              id={game.id}
+              executablePath={game.executable_path}
+              platform={game.platform}
+              name={game.name}
+              platformId={game.platform_id}
+              thumbnailPath={game.thumbnail_path}
+            />
+          ))
         )}
         {!loading && results?.empty && <p>{results.emptyMessage}</p>}
         {!loading && error && (

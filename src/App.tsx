@@ -1,20 +1,26 @@
+import CollectionsProvider from '@global/contexts/collectionsProvider';
+import LibraryProvider from '@global/contexts/libraryProvider';
+import SearchGamesProvider from '@global/contexts/searchGamesProvider';
+import Routes from '@global/routes';
+import theme from '@global/theme';
+import GlobalStyles from '@global/theme/globalStyles';
+import { MantineProvider } from '@mantine/core';
 import { ThemeProvider } from 'styled-components';
-import Routes from './global/routes';
-import GlobalStyles from './global/theme/globalStyles';
-import theme from './global/theme';
-import SearchGamesProvider from './global/contexts/searchGamesProvider';
-import LibraryProvider from './global/contexts/libraryProvider';
 
 const App = () => {
   return (
-    <LibraryProvider>
-      <SearchGamesProvider>
-        <ThemeProvider theme={theme}>
-          <GlobalStyles />
-          <Routes />
-        </ThemeProvider>
-      </SearchGamesProvider>
-    </LibraryProvider>
+    <MantineProvider>
+      <ThemeProvider theme={theme}>
+        <LibraryProvider>
+          <CollectionsProvider>
+            <SearchGamesProvider>
+              <GlobalStyles />
+              <Routes />
+            </SearchGamesProvider>
+          </CollectionsProvider>
+        </LibraryProvider>
+      </ThemeProvider>
+    </MantineProvider>
   );
 };
 

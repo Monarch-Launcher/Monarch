@@ -1,5 +1,6 @@
-import * as React from 'react';
 import { invoke } from '@tauri-apps/api';
+import * as React from 'react';
+
 import type { MonarchGame, Result } from '../types';
 
 type SearchGamesContextType = {
@@ -52,7 +53,7 @@ const SearchGamesProvider = ({ children }: Props) => {
     }
   }, []);
 
-  const value = React.useMemo(() => {
+  const value = React.useMemo<SearchGamesContextType>(() => {
     return {
       searchedGames,
       searchGames,

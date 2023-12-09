@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "Monarch",
-    "version": "0.0.0"
+    "version": "0.0.1"
   },
   "tauri": {
     "allowlist": {
@@ -18,7 +18,10 @@
         "open": true
       },
       "dialog": {
-        "open": true
+        "open": true,
+        "message": true,
+        "ask": true,
+        "confirm": true
       },
       "fs": {
         "readFile": true
