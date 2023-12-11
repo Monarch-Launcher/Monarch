@@ -1,5 +1,5 @@
 use log::error;
-use tauri::window::{Window, WindowBuilder, self};
+use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
 use anyhow::{Result, anyhow, Context};
 use serde::{Serialize, Deserialize};
@@ -68,7 +68,7 @@ impl MiniWindow {
         }
     }
 
-    /// Shows a window with specified label
+    /// Shows self
     pub fn show_window(&self, handle: &AppHandle) -> Result<()> {
         let window = handle.get_window(&self.name).with_context(||
             -> String {format!("monarch_windows::show_window() failed! Failed to find window: {} | Err:", self.name)})?;
@@ -76,7 +76,7 @@ impl MiniWindow {
         return window.show().context(|| -> String {format!("monarch_windows::show_window() failed! Failed to show window: {} | Err:", self.name)}())
     }
 
-    /// Hides a window with specified label
+    /// Hides self
     pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {
         let window = handle.get_window(&self.name).with_context(||
             -> String {format!("monarch_windows::hide_window() failed! Failed to find window: {} | Err:", self.name)})?;
@@ -84,6 +84,7 @@ impl MiniWindow {
         return window.hide().context(|| -> String {format!("monarch_windows::hide_window() failed! Failed to hide window: {} | Err:", self.name)}())
     }
 
+    /// Close self
     pub fn close_window(&self, handle: &AppHandle) -> Result<()> {
         let window = handle.get_window(&self.name).with_context(||
             -> String {format!("monarch_windows::close_window() failed! Failed to find window: {} | Err:", self.name)})?;
@@ -101,4 +102,12 @@ fn get_scale(window: &Window) -> f64 {
         }
     }
     1.0
+}
+
+/// Attempts to kill Quicklauch instance. Used on App exit to ensure quicklaunch instance doesn't run withouth Monarch.
+pub fn kill_quicklaunch(handle: &AppHandle) -> Result<()> {
+    let window = handle.get_window("quicklaunch").with_context(||
+        -> String {format!("monarch_windows::close_window() failed! Failed to find window: quicklaunch | Err:")})?;
+
+    return window.close().context(|| -> String {format!("monarch_windows::close_window() failed! Failed to close window: quicklaunch | Err:")}())
 }

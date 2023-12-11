@@ -19,7 +19,10 @@ use monarch_utils::commands::{clear_cached_images, get_settings, open_logs, set_
 use monarch_utils::monarch_fs::{check_appdata_folder, check_resources_folder};
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
+use monarch_utils::monarch_windows::kill_quicklaunch;
+use tauri::{RunEvent, AppHandle};
 
+/// Runs a pre-check to ensure system is as expected.
 fn init() {
     check_appdata_folder(); // Verifies %appdata% (windows) or $HOME (unix) folder exists
     init_logger(); // Starts logger
@@ -33,10 +36,17 @@ fn init() {
     housekeeping::start(); // Starts housekeeping loop
 }
 
+/// Run this function on App exit.
+fn on_exit(handle: &AppHandle) {
+    if let Err(e) = kill_quicklaunch(handle) { // Attempt to kill quicklaunch
+        error!("main::on_exit() error! Failed to kill quicklaunch! Quicklaunch possibly still running. | Err: {e}");
+    }
+}
+
 fn main() {
     init();
 
-    let app_result = tauri::Builder::default()
+    tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             search_games,
             refresh_library,
@@ -60,10 +70,12 @@ fn main() {
             show_quicklaunch,
             hide_quicklaunch,
         ])
-        .run(tauri::generate_context!());
-
-    // Better to write to log than to console with .expect() due to line nr 2, hiding console on Windows
-    if let Err(e) = app_result {
-        error!("Failed to build Tauri app! | Message: {:?}", e);
-    }
+        .build(tauri::generate_context!())
+        .expect("Failed to build Tauri app!")
+        .run(move |app_handle, event| match event {
+            RunEvent::ExitRequested { api, .. } => {
+                on_exit(&app_handle);
+            }
+            _ => {}
+        });
 }

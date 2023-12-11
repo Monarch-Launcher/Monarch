@@ -11,12 +11,12 @@ const initWindows = async () => {
   // Define global shortcuts for quicklaunch (proto-typing)
   await unregisterAll();
 
-  // Build initial quicklaunch
-  let window: MonarchWindow = await invoke('build_quicklaunch');
-
   const quickLaunchRegistered = await isRegistered('Shift+C');
   const closeRegistered = await isRegistered('Esc');
 
+  // Build initial quicklaunch
+  let window: MonarchWindow = await invoke('build_quicklaunch');
+  
   if (!quickLaunchRegistered) {
     await register('Shift+C', async () => {
       await invoke("show_quicklaunch", { window });
