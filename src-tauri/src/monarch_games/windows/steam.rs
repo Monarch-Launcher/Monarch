@@ -5,10 +5,10 @@ use anyhow::{Context, Result, anyhow};
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_download::download_file;
-use crate::monarch_utils::monarch_fs::{get_home_path, path_exists, create_dir};
+use crate::monarch_utils::monarch_fs::{path_exists, create_dir};
 use crate::monarch_utils::monarch_vdf;
 use crate::monarch_utils::monarch_winreg::is_installed;
-use crate::monarch_games::steam_client::parse_steam_ids;
+use crate::monarch_games::steam_client::{parse_steam_ids, get_steamcmd_dir};
 
 /*
 * SteamCMD related code.
