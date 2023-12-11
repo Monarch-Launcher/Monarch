@@ -5,6 +5,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import App from './App';
+import initWindows from './quicklaunch/initWindows';
+
+// Initialize Quicklaunch
+await initWindows();
 
 // Set minimum size of window
 await appWindow.setMinSize(new LogicalSize(800, 600));

@@ -18,3 +18,10 @@ export type Collection = {
   name: string;
   gameIds: string[];
 };
+
+export type MonarchWindow = {
+  name: string,
+  url: string,
+  width: number,
+  height: number,
+}

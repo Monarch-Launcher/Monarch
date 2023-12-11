@@ -26,6 +26,9 @@
       "fs": {
         "readFile": true
       },
+      "globalShortcut": {
+        "all": true
+      },
       "window": {
         "setMinSize": true
       },

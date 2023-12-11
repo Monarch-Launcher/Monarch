@@ -1,5 +1,6 @@
 use std::{process::Command, path::PathBuf};
 use log::error;
+use tauri::AppHandle;
 use toml::Table;
 use core::result::Result; // Use normal result instead of anyhow when sending to Frontend. Possibly replace later with anyhow that impls correct traits.
 
@@ -7,6 +8,7 @@ use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{read_settings, write_settings, set_default_settings};
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{set_credentials, delete_credentials};
+use super::monarch_windows::MiniWindow;
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
@@ -96,4 +98,24 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
         return Err(String::from("Failed to delete password!"))
     }
     Ok(())
+}
+
+#[tauri::command]
+/// Build Quicklaunch window for quicker showing and hiding when using Monarch.
+pub async fn build_quicklaunch(handle: AppHandle) -> MiniWindow {
+    let window: MiniWindow = MiniWindow::new("quicklaunch", "src/quicklaunch/index.html", 720.0, 480.0);
+    window.build_window(&handle).await.unwrap();
+    window
+}
+
+#[tauri::command]
+/// Shows the Quicklaunch window.
+pub async fn show_quicklaunch(window: MiniWindow, handle: AppHandle) {
+    window.show_window(&handle).unwrap();
+}
+
+#[tauri::command]
+/// Hides the Quicklaunch window.
+pub async fn hide_quicklaunch(window: MiniWindow, handle: AppHandle) {
+    window.hide_window(&handle).unwrap();
 }

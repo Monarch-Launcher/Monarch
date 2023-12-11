@@ -1,10 +1,12 @@
 use log::error;
-use tauri::window::{Window, WindowBuilder};
+use tauri::window::{Window, WindowBuilder, self};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
 use anyhow::{Result, anyhow, Context};
+use serde::{Serialize, Deserialize};
 
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
 
+#[derive(Serialize, Deserialize)]
 pub struct MiniWindow {
     name: String,
     url: String,
@@ -25,17 +27,25 @@ impl MiniWindow {
 
     /// Builds a window. Must be async on Windows to not deadlock.
     pub async fn build_window(&self, handle: &AppHandle) -> Result<()> {
+        let window_url: WindowUrl;
+
+        if self.url.contains("https") { // Assume that all websites will be https.
+            window_url = WindowUrl::External(self.url.parse().unwrap());
+        } else { // Else treat url as a path to local file to display.
+            window_url = WindowUrl::App(self.url.parse().unwrap());
+        }
+        
         match WindowBuilder::new(
             handle,
             &self.name,
-            WindowUrl::External(self.url.parse().unwrap())
+            window_url
         )
         .always_on_top(true)
         .center()
         .decorations(false)
         .focused(true)
         .skip_taskbar(true)
-        .visible(true)
+        .visible(false)
         .build()
         {
             Ok(window) => {
