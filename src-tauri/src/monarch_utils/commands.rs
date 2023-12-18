@@ -103,19 +103,22 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
 #[tauri::command]
 /// Build Quicklaunch window for quicker showing and hiding when using Monarch.
 pub async fn build_quicklaunch(handle: AppHandle) -> MiniWindow {
-    let window: MiniWindow = MiniWindow::new("quicklaunch", "src/quicklaunch/index.html", 720.0, 480.0);
-    window.build_window(&handle).await.unwrap();
+    println!("Building quicklaunch!");
+    let window: MiniWindow = MiniWindow::new("quicklaunch", "../src/quicklaunch/index.html", 720.0, 360.0);
+    window.build_window(&handle).await.expect("Failed to build quicklaunch window!");
     window
 }
 
 #[tauri::command]
 /// Shows the Quicklaunch window.
 pub async fn show_quicklaunch(window: MiniWindow, handle: AppHandle) {
-    window.show_window(&handle).unwrap();
+    println!("Building quicklaunch!");
+    window.show_window(&handle).expect("Failed to show quicklaunch window!");
 }
 
 #[tauri::command]
 /// Hides the Quicklaunch window.
 pub async fn hide_quicklaunch(window: MiniWindow, handle: AppHandle) {
-    window.hide_window(&handle).unwrap();
+    println!("Building quicklaunch!");
+    window.hide_window(&handle).expect("Failed to hide quicklaunch window!");
 }

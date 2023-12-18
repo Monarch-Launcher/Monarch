@@ -24,7 +24,8 @@
         "confirm": true
       },
       "fs": {
-        "readFile": true
+        "readFile": true,
+        "scope": ["$RESOURCE/*"]
       },
       "globalShortcut": {
         "all": true
@@ -47,7 +48,8 @@
         "icons/icon.ico"
       ],
       "identifier": "monarch",
-      "targets": "all"
+      "targets": "all",
+      "resources": ["../src/quicklaunch/index.html"]
     },
     "security": {
       "csp": {
