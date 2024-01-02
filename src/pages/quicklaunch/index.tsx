@@ -3,7 +3,7 @@ import { MonarchGame } from '@global/types';
 import * as React from 'react';
 import styled from 'styled-components';
 
-import GameButton from './gameButton';
+import GameButton from './_components/gameButton';
 
 const Container = styled.div`
   display: flex;

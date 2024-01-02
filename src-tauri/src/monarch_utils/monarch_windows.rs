@@ -29,7 +29,7 @@ impl MiniWindow {
     pub async fn build_window(&self, handle: &AppHandle) -> Result<()> {
         let window_url: WindowUrl;
 
-        if self.url.contains("https") { // Assume that all websites will be https.
+        if self.url.contains("http") { // Assume that all websites will be http(s).
             window_url = WindowUrl::External(self.url.parse().unwrap());
         } else { // Else treat url as a path to local file to display.
             window_url = WindowUrl::App(self.url.parse().unwrap());
@@ -70,7 +70,7 @@ impl MiniWindow {
 
     /// Shows self
     pub fn show_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(||
+        let window: Window = handle.get_window(&self.name).with_context(||
             -> String {format!("monarch_windows::show_window() failed! Failed to find window: {} | Err:", self.name)})?;
 
         return window.show().context(|| -> String {format!("monarch_windows::show_window() failed! Failed to show window: {} | Err:", self.name)}())
@@ -78,7 +78,7 @@ impl MiniWindow {
 
     /// Hides self
     pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(||
+        let window: Window = handle.get_window(&self.name).with_context(||
             -> String {format!("monarch_windows::hide_window() failed! Failed to find window: {} | Err:", self.name)})?;
 
         return window.hide().context(|| -> String {format!("monarch_windows::hide_window() failed! Failed to hide window: {} | Err:", self.name)}())
@@ -86,7 +86,7 @@ impl MiniWindow {
 
     /// Close self
     pub fn close_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(||
+        let window: Window = handle.get_window(&self.name).with_context(||
             -> String {format!("monarch_windows::close_window() failed! Failed to find window: {} | Err:", self.name)})?;
 
         return window.close().context(|| -> String {format!("monarch_windows::close_window() failed! Failed to close window: {} | Err:", self.name)}())
@@ -104,9 +104,14 @@ fn get_scale(window: &Window) -> f64 {
     1.0
 }
 
+/// Returns whether window of specific name exists.
+pub fn window_exists(handle: &AppHandle, name: &str) -> bool {
+    return handle.get_window(name).is_some()
+}
+
 /// Attempts to kill Quicklauch instance. Used on App exit to ensure quicklaunch instance doesn't run withouth Monarch.
 pub fn kill_quicklaunch(handle: &AppHandle) -> Result<()> {
-    let window = handle.get_window("quicklaunch").with_context(||
+    let window: Window = handle.get_window("quicklaunch").with_context(||
         -> String {format!("monarch_windows::close_window() failed! Failed to find window: quicklaunch | Err:")})?;
 
     return window.close().context(|| -> String {format!("monarch_windows::close_window() failed! Failed to close window: quicklaunch | Err:")}())

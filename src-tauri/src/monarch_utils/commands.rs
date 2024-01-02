@@ -8,7 +8,7 @@ use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{read_settings, write_settings, set_default_settings};
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{set_credentials, delete_credentials};
-use super::monarch_windows::MiniWindow;
+use super::monarch_windows::{MiniWindow, window_exists};
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
@@ -104,7 +104,7 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
 /// Build Quicklaunch window for quicker showing and hiding when using Monarch.
 pub async fn build_quicklaunch(handle: AppHandle) -> MiniWindow {
     println!("Building quicklaunch!");
-    let window: MiniWindow = MiniWindow::new("quicklaunch", "../src/quicklaunch/index.html", 720.0, 360.0);
+    let window: MiniWindow = MiniWindow::new("quicklaunch", "http://localhost:1420/quicklaunch", 720.0, 360.0);
     window.build_window(&handle).await.expect("Failed to build quicklaunch window!");
     window
 }
@@ -112,6 +112,10 @@ pub async fn build_quicklaunch(handle: AppHandle) -> MiniWindow {
 #[tauri::command]
 /// Shows the Quicklaunch window.
 pub async fn show_quicklaunch(window: MiniWindow, handle: AppHandle) {
+    if !window_exists(&handle, "quicklaunch") {
+        build_quicklaunch(handle.clone()).await;
+    }
+
     println!("Building quicklaunch!");
     window.show_window(&handle).expect("Failed to show quicklaunch window!");
 }
