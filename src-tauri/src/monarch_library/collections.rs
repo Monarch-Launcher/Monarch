@@ -1,13 +1,13 @@
-use serde::{Serialize, Deserialize};
-use serde_json::{value::Value, json};
+use anyhow::{anyhow, Context, Result};
+use log::{error, info};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, value::Value};
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use std::fs;
-use anyhow::{Context, Result, anyhow};
-use log::{info, error};
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
-use crate::monarch_utils::monarch_fs::{write_json_content, get_collections_json_path};
+use crate::monarch_utils::monarch_fs::{get_collections_json_path, write_json_content};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[allow(non_snake_case)]
@@ -19,19 +19,28 @@ struct MonarchCollection {
 
 impl MonarchCollection {
     pub fn new(name: &str, games: Vec<String>) -> Self {
-        Self { id: generate_hash(&name.to_string()).to_string(), name: name.to_string(), gameIds: games }
+        Self {
+            id: generate_hash(&name.to_string()).to_string(),
+            name: name.to_string(),
+            gameIds: games,
+        }
     }
 }
 
 /// Creates a new collection.
 pub fn new_collection(collection_name: String, game_ids: Vec<String>) -> Result<Value> {
-    let path: PathBuf = get_collections_json_path().with_context(|| 
-        -> String {format!("collections::new_collection failed! Cannot get path to collections.json! | Err")})?;
+    let path: PathBuf = get_collections_json_path().with_context(|| -> String {
+        format!("collections::new_collection failed! Cannot get path to collections.json! | Err")
+    })?;
 
     let new_collec: MonarchCollection = MonarchCollection::new(&collection_name, game_ids);
 
-    let mut collecs: Vec<MonarchCollection> = get_collections_as_struct().with_context(|| 
-        -> String {format!("collections::new_collection() failed! Failed to get collections/parse json! | Err")})?;
+    let mut collecs: Vec<MonarchCollection> =
+        get_collections_as_struct().with_context(|| -> String {
+            format!(
+                "collections::new_collection() failed! Failed to get collections/parse json! | Err"
+            )
+        })?;
 
     collecs.push(new_collec);
     write_json_content(json!(collecs), &path).context("collections::new_collection() failed! Error writing new collections to collections.json! | Err")?;
@@ -49,33 +58,41 @@ pub fn update_collections(id: &str, new_name: &str, game_ids: Vec<String>) -> Re
 
         collection.name = new_name.to_string();
         collection.gameIds = game_ids;
-        
+
         write_collection_changes(json!(collecs)).context("collections::update_collections() failed! Error writing updates to collections.json! | Err")?;
-        return get_collections()
+        return get_collections();
     }
 
-    Err(anyhow!("collections::update_collections() failed! No index found for collection: {id}"))
+    Err(anyhow!(
+        "collections::update_collections() failed! No index found for collection: {id}"
+    ))
 }
 
 /// Deletes a specified collection
 pub fn delete_collections(id: &str) -> Result<Value> {
-    let mut collecs = get_collections_as_struct().with_context(|| 
-        -> String {format!("collections::delete_collections() failed! Failed to get collections/parse json! | Err")})?;
-    
+    let mut collecs = get_collections_as_struct().with_context(|| -> String {
+        format!(
+            "collections::delete_collections() failed! Failed to get collections/parse json! | Err"
+        )
+    })?;
+
     if let Some(index) = find_collection_index(id, &collecs) {
         collecs.remove(index);
 
         write_collection_changes(json!(collecs)).context("collections::delete_collections() failed! Error writing updates to collections.json! | Err")?;
-        return get_collections()
+        return get_collections();
     }
 
-    Err(anyhow!("collections::delete_collections() failed! No index found for collection: {id}"))
+    Err(anyhow!(
+        "collections::delete_collections() failed! No index found for collection: {id}"
+    ))
 }
 
 /// Returns JSON of collections in library
 pub fn get_collections() -> Result<Value> {
-    let path: PathBuf = get_collections_json_path().with_context(|| 
-        -> String {format!("collections::get_collections() failed! Cannot get collections path! | Err")})?;
+    let path: PathBuf = get_collections_json_path().with_context(|| -> String {
+        format!("collections::get_collections() failed! Cannot get collections path! | Err")
+    })?;
 
     match fs::File::open(&path) {
         Ok(file) => {
@@ -105,7 +122,7 @@ fn write_collection_changes(collections: Value) -> Result<()> {
 
     write_json_content(collections, &path).context("collections::write_collection_changes() failed! Error while writing changes to collections.json! | Err")?;
     info!("Updated collections.json content!");
-    
+
     Ok(())
 }
 
@@ -119,8 +136,9 @@ fn generate_hash<T: Hash>(name: &T) -> u64 {
 
 /// Returns a Vec<MonarchCollection> instead of a json value to remove indentation in functions above.
 fn get_collections_as_struct() -> Result<Vec<MonarchCollection>> {
-    let collecs_json = get_collections().with_context(|| 
-        -> String {format!("collections::get_collections_as_struct() failed! Failed to get collections! | Err")})?;
+    let collecs_json = get_collections().with_context(|| -> String {
+        format!("collections::get_collections_as_struct() failed! Failed to get collections! | Err")
+    })?;
 
     serde_json::from_value::<Vec<MonarchCollection>>(collecs_json).context("collections::get_collections_as_struct() failed! Error while parsing from json to Vec<MonarchGame>! | Err")
 }

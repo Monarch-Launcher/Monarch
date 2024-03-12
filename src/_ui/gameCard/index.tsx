@@ -71,6 +71,7 @@ type GameCardProps = {
   name: string;
   platform: string;
   thumbnailPath: string;
+  storePage: string;
   isLibrary?: boolean;
 };
 
@@ -82,6 +83,7 @@ const GameCard = ({
   name,
   platform,
   thumbnailPath,
+  storePage,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   isLibrary = false,
 }: GameCardProps) => {

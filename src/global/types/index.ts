@@ -5,6 +5,7 @@ export type MonarchGame = {
   name: string;
   platform: string;
   thumbnail_path: string;
+  store_page: string;
 };
 
 export type Result = {

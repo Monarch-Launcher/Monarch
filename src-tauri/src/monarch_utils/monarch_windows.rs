@@ -1,7 +1,7 @@
+use anyhow::{anyhow, Context, Result};
 use log::error;
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
-use anyhow::{Result, anyhow, Context};
 
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
 
@@ -28,7 +28,7 @@ impl MiniWindow {
         match WindowBuilder::new(
             handle,
             &self.name,
-            WindowUrl::External(self.url.parse().unwrap())
+            WindowUrl::External(self.url.parse().unwrap()),
         )
         .always_on_top(true)
         .center()
@@ -49,36 +49,63 @@ impl MiniWindow {
                 if let Err(e) = window.center() {
                     error!("monarch_windows::build_window() failed! Failed to center new window! | Err: {:?}", e);
                 }
-                
+
                 Ok(())
             }
-            Err(e) => {
-                return Err(anyhow!("monarch_windows::build_window() failed! Failed to build new window! | Err: {e}"))
-            }
+            Err(e) => return Err(anyhow!(
+                "monarch_windows::build_window() failed! Failed to build new window! | Err: {e}"
+            )),
         }
     }
 
     /// Shows a window with specified label
     pub fn show_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(||
-            -> String {format!("monarch_windows::show_window() failed! Failed to find window: {} | Err:", self.name)})?;
+        let window = handle.get_window(&self.name).with_context(|| -> String {
+            format!(
+                "monarch_windows::show_window() failed! Failed to find window: {} | Err:",
+                self.name
+            )
+        })?;
 
-        return window.show().context(|| -> String {format!("monarch_windows::show_window() failed! Failed to show window: {} | Err:", self.name)}())
+        return window.show().context(|| -> String {
+            format!(
+                "monarch_windows::show_window() failed! Failed to show window: {} | Err:",
+                self.name
+            )
+        }());
     }
 
     /// Hides a window with specified label
     pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(||
-            -> String {format!("monarch_windows::hide_window() failed! Failed to find window: {} | Err:", self.name)})?;
+        let window = handle.get_window(&self.name).with_context(|| -> String {
+            format!(
+                "monarch_windows::hide_window() failed! Failed to find window: {} | Err:",
+                self.name
+            )
+        })?;
 
-        return window.hide().context(|| -> String {format!("monarch_windows::hide_window() failed! Failed to hide window: {} | Err:", self.name)}())
+        return window.hide().context(|| -> String {
+            format!(
+                "monarch_windows::hide_window() failed! Failed to hide window: {} | Err:",
+                self.name
+            )
+        }());
     }
 
     pub fn close_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(||
-            -> String {format!("monarch_windows::close_window() failed! Failed to find window: {} | Err:", self.name)})?;
+        let window = handle.get_window(&self.name).with_context(|| -> String {
+            format!(
+                "monarch_windows::close_window() failed! Failed to find window: {} | Err:",
+                self.name
+            )
+        })?;
 
-        return window.close().context(|| -> String {format!("monarch_windows::close_window() failed! Failed to close window: {} | Err:", self.name)}())
+        return window.close().context(|| -> String {
+            format!(
+                "monarch_windows::close_window() failed! Failed to close window: {} | Err:",
+                self.name
+            )
+        }());
     }
 }
 
@@ -87,7 +114,7 @@ fn get_scale(window: &Window) -> f64 {
     if let Ok(monitor_option) = window.current_monitor() {
         match monitor_option {
             Some(monitor) => return monitor.size().height as f64 / STANDARD_HEIGHT,
-            None => return 1.0
+            None => return 1.0,
         }
     }
     1.0

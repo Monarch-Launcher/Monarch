@@ -103,6 +103,7 @@ const CollectionModal = ({ opened, close, collection }: Props) => {
                 name={game.name}
                 platformId={game.platform_id}
                 thumbnailPath={game.thumbnail_path}
+                storePage={game.store_page}
                 isLibrary
               />
             ))}

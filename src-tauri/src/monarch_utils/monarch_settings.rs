@@ -1,12 +1,12 @@
+use anyhow::{anyhow, Context, Result};
 use log::error;
 use once_cell::sync::Lazy;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Table;
-use anyhow::{Context, Result, anyhow};
 
-use crate::monarch_games::monarch_client::generate_default_folder;
 use super::monarch_fs::{get_home_path, get_settings_path, path_exists};
+use crate::monarch_games::monarch_client::generate_default_folder;
 
 // Create a global variable containing the current state of settings according to Monarch backend.
 // Allows for fewer reads of settings.toml by storing in program memory.
@@ -41,9 +41,10 @@ fn get_settings_state() -> Table {
 /// Checks that a settings.toml file exists, otherwise attempts to create new file and populate
 /// with default settings
 pub fn init() -> Result<()> {
-    let path: PathBuf = get_settings_path().with_context(|| 
-        -> String {format!("monarch_settings::init() failed! Cannot get path to settings.toml! | Err")})?;
-    
+    let path: PathBuf = get_settings_path().with_context(|| -> String {
+        format!("monarch_settings::init() failed! Cannot get path to settings.toml! | Err")
+    })?;
+
     if !path_exists(&path) {
         // If settings.toml doesn't exist, create a new file and write default settings
         if let Err(e) = set_default_settings() {
@@ -51,7 +52,8 @@ pub fn init() -> Result<()> {
         }
     }
 
-    if let Ok(settings) = read_settings() { // Set SETTINGS_STATE to settings from settings.toml
+    if let Ok(settings) = read_settings() {
+        // Set SETTINGS_STATE to settings from settings.toml
         set_settings_state(settings);
     }
 
@@ -115,8 +117,9 @@ fn write_toml_content(path: &Path, table: Table) -> Result<Table, Table> {
 
 /// Read all settings from file
 pub fn read_settings() -> Result<Table> {
-    let path: PathBuf = get_settings_path().with_context(||
-        -> String {format!("monarch_settings::read_settings() failed! Cannot get path to settings.toml! | Err")})?;
+    let path: PathBuf = get_settings_path().with_context(|| -> String {
+        format!("monarch_settings::read_settings() failed! Cannot get path to settings.toml! | Err")
+    })?;
 
     read_settings_content(&path)
 }
@@ -154,11 +157,15 @@ pub fn get_epic_settings() -> Option<toml::Value> {
 
 /// Parses content in settings.toml
 fn read_settings_content(file: &PathBuf) -> Result<Table> {
-    let content: String =  fs::read_to_string(file).with_context(|| 
-        -> String {format!("monarch_settings::read_settings_content() failed! Error reading: {path} | Err", path = file.as_path().display())})?;
+    let content: String = fs::read_to_string(file).with_context(|| -> String {
+        format!(
+            "monarch_settings::read_settings_content() failed! Error reading: {path} | Err",
+            path = file.as_path().display()
+        )
+    })?;
 
     if !content.is_empty() {
-        return parse_table(content)
+        return parse_table(content);
     }
 
     Ok(Table::new())
@@ -167,7 +174,7 @@ fn read_settings_content(file: &PathBuf) -> Result<Table> {
 /// Returns String content as TOML Table
 fn parse_table(content: String) -> Result<Table> {
     return content.parse::<Table>().with_context(|| 
-        -> String {format!("monarch_settings::parse_table() failed! Failed to parse content in settings.toml! | Err")})
+        -> String {format!("monarch_settings::parse_table() failed! Failed to parse content in settings.toml! | Err")});
 }
 
 /// Returns default Monarch settings in the form of a TOML Table.

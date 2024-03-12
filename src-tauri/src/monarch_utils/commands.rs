@@ -1,45 +1,39 @@
-use std::{process::Command, path::PathBuf};
+use core::result::Result;
 use log::error;
-use toml::Table;
-use core::result::Result; // Use normal result instead of anyhow when sending to Frontend. Possibly replace later with anyhow that impls correct traits.
+use std::{path::PathBuf, process::Command};
+use toml::Table; // Use normal result instead of anyhow when sending to Frontend. Possibly replace later with anyhow that impls correct traits.
 
-use super::monarch_logger::get_log_dir;
-use super::monarch_settings::{read_settings, write_settings, set_default_settings};
 use super::housekeeping::clear_all_cache;
-use super::monarch_credentials::{set_credentials, delete_credentials};
+use super::monarch_credentials::{delete_credentials, set_credentials};
+use super::monarch_logger::get_log_dir;
+use super::monarch_settings::{read_settings, set_default_settings, write_settings};
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
 /// Use OS default option to open log directory
 pub async fn open_logs() {
-   let path: PathBuf = get_log_dir();
-   Command::new("PowerShell")
-           .arg("start")
-           .arg(path)
-           .spawn()
-           .unwrap();
+    let path: PathBuf = get_log_dir();
+    Command::new("PowerShell")
+        .arg("start")
+        .arg(path)
+        .spawn()
+        .unwrap();
 }
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
 /// Use OS default option to open log directory
 pub async fn open_logs() {
-   let path: PathBuf = get_log_dir();
-   Command::new("open")
-           .arg(path)
-           .spawn()
-           .unwrap();
+    let path: PathBuf = get_log_dir();
+    Command::new("open").arg(path).spawn().unwrap();
 }
 
 #[cfg(target_os = "linux")]
 #[tauri::command]
 /// Use OS default option to open log directory
 pub async fn open_logs() {
-   let path: PathBuf = get_log_dir();
-   Command::new("xdg-open")
-           .arg(path)
-           .spawn()
-           .unwrap();
+    let path: PathBuf = get_log_dir();
+    Command::new("xdg-open").arg(path).spawn().unwrap();
 }
 
 /*
@@ -83,7 +77,7 @@ pub fn clear_cached_images() {
 pub fn set_password(platform: String, username: String, password: String) -> Result<(), String> {
     if let Err(e) = set_credentials(&platform, &username, &password) {
         error!("{e}");
-        return Err(String::from("Failed to set password!"))
+        return Err(String::from("Failed to set password!"));
     }
     Ok(())
 }
@@ -93,7 +87,7 @@ pub fn set_password(platform: String, username: String, password: String) -> Res
 pub fn delete_password(platform: String, username: String) -> Result<(), String> {
     if let Err(e) = delete_credentials(&platform, &username) {
         error!("{e}");
-        return Err(String::from("Failed to delete password!"))
+        return Err(String::from("Failed to delete password!"));
     }
     Ok(())
 }

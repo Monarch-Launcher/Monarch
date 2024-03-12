@@ -1,9 +1,9 @@
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use log::{error, info, warn};
 use regex::Regex;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
-use std::{fs,process::exit};
+use std::{fs, process::exit};
 
 use super::monarch_settings::set_default_settings;
 
@@ -102,8 +102,11 @@ pub fn get_home_path() -> Result<PathBuf> {
 
 #[cfg(not(windows))]
 pub fn get_home_path() -> Result<PathBuf> {
-    let home_path: String = std::env::var("HOME").with_context(|| 
-        -> String {format!("monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:")})?;
+    let home_path: String = std::env::var("HOME").with_context(|| -> String {
+        format!(
+            "monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:"
+        )
+    })?;
 
     Ok(PathBuf::from(home_path).join(".monarch"))
 }
@@ -112,7 +115,7 @@ pub fn get_home_path() -> Result<PathBuf> {
 pub fn get_settings_path() -> Result<PathBuf> {
     let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
-    
+
     Ok(path.join("settings.toml"))
 }
 
@@ -120,7 +123,7 @@ pub fn get_settings_path() -> Result<PathBuf> {
 pub fn get_monarch_games_path() -> Result<PathBuf> {
     let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
-    
+
     Ok(path.join("monarch_games.json"))
 }
 
@@ -128,7 +131,7 @@ pub fn get_monarch_games_path() -> Result<PathBuf> {
 pub fn get_library_json_path() -> Result<PathBuf> {
     let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
-    
+
     Ok(path.join("library.json"))
 }
 
@@ -136,7 +139,7 @@ pub fn get_library_json_path() -> Result<PathBuf> {
 pub fn get_collections_json_path() -> Result<PathBuf> {
     let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_collections_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
-    
+
     Ok(path.join("collections.json"))
 }
 
@@ -175,7 +178,7 @@ pub fn create_dir(path: &Path) -> Result<()> {
 pub fn get_resources_path() -> Result<PathBuf> {
     let path: PathBuf = get_home_path().with_context(|| 
         -> String {format!("monarch_fs::get_resources_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
-    
+
     Ok(path.join("resources"))
 }
 
@@ -183,7 +186,7 @@ pub fn get_resources_path() -> Result<PathBuf> {
 pub fn get_resources_cache() -> Result<PathBuf> {
     let path: PathBuf = get_resources_path().with_context(|| 
         -> String {format!("monarch_fs::get_resources_cache() failed! Something went wrong while getting resources/ path. | Err")})?;
-    
+
     Ok(path.join("cache"))
 }
 
@@ -191,7 +194,7 @@ pub fn get_resources_cache() -> Result<PathBuf> {
 pub fn get_resources_library() -> Result<PathBuf> {
     let path: PathBuf = get_resources_path().with_context(|| 
         -> String {format!("monarch_fs::get_resources_library() failed! Something went wrong while getting resources/ path. | Err")})?;
-    
+
     Ok(path.join("library"))
 }
 
@@ -223,11 +226,11 @@ fn generate_image_filename(name: &str) -> Result<String> {
     let mut filename: String = String::from(name);
     filename = filename.replace(" ", "_");
 
-    let regex = Regex::new(r"[^a-zA-Z0-9_]").with_context(||
-        -> String {format!("monarch_fs::generate_image_filename() failed! Failed to build new regex! | Err")})?;
-    
+    let regex = Regex::new(r"[^a-zA-Z0-9_]").with_context(|| -> String {
+        format!("monarch_fs::generate_image_filename() failed! Failed to build new regex! | Err")
+    })?;
+
     filename = regex.replace_all(&filename, "").to_string();
     filename.push_str(".jpg");
     Ok(filename)
 }
-

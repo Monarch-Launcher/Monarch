@@ -153,6 +153,7 @@ const Library = () => {
                 name={game.name}
                 platformId={game.platform_id}
                 thumbnailPath={game.thumbnail_path}
+                storePage={game.store_page}
                 isLibrary
               />
             ))

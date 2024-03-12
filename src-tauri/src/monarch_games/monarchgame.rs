@@ -14,6 +14,7 @@ pub struct MonarchGame {
     executable_path: String,
     thumbnail_path: String,
     launch_args: Vec<String>,
+    pub store_page: String,
 }
 
 impl MonarchGame {
@@ -37,6 +38,7 @@ impl MonarchGame {
             executable_path: exec_path.to_string(),
             thumbnail_path: thumbnail_path.to_string(),
             launch_args: Vec::new(),
+            store_page: String::new(),
         }
     }
 

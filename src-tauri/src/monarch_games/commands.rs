@@ -3,9 +3,8 @@ use super::monarchgame::MonarchGame;
 use super::steam_client as steam;
 use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_windows::MiniWindow;
-use log::{info, error};
+use log::{error, info};
 use serde_json::value::Value;
-use std::collections::HashMap;
 use tauri::AppHandle;
 
 /*
@@ -26,9 +25,9 @@ pub async fn get_library() -> Result<Value, String> {
 
 #[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
-pub async fn search_games(name: String) -> HashMap<String, MonarchGame> {
-    let games: HashMap<String, MonarchGame> = steam::find_game(&name).await;
-    return games;
+pub async fn search_games(name: String) -> Vec<MonarchGame> {
+    let games: Vec<MonarchGame> = steam::find_game(&name).await;
+    games
 }
 
 #[tauri::command]
@@ -39,11 +38,15 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
 #[tauri::command]
 /// Launch a game
-pub async fn launch_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
+pub async fn launch_game(
+    name: String,
+    platform: String,
+    platform_id: String,
+) -> Result<(), String> {
     info!("Launching game: {name}");
     if let Err(e) = monarch_client::launch_game(&platform, &platform_id).await {
         error!("{:#}", e);
-        return Err(String::from("Failed to launch game!"))
+        return Err(String::from("Failed to launch game!"));
     }
     Ok(())
 }
@@ -69,11 +72,15 @@ pub async fn download_game(
 
 #[tauri::command]
 /// Tells Monarch to remove specified game
-pub async fn remove_game(name: String, platform: String, platform_id: String) -> Result<(), String> {
+pub async fn remove_game(
+    name: String,
+    platform: String,
+    platform_id: String,
+) -> Result<(), String> {
     info!("Uninstalling: {name}");
     if let Err(e) = monarch_client::uninstall_game(&platform, &platform_id).await {
         error!("{:#}", e);
-        return Err(String::from("Failed to uninstall game!"))
+        return Err(String::from("Failed to uninstall game!"));
     }
     Ok(())
 }

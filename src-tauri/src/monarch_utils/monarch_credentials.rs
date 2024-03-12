@@ -1,5 +1,5 @@
-use keyring::Entry;
 use anyhow::{Context, Result};
+use keyring::Entry;
 
 /// Save credentials to OS's secure store.
 pub fn set_credentials(platform: &str, username: &str, password: &str) -> Result<()> {
@@ -14,7 +14,9 @@ pub fn get_password(platform: &str, username: &str) -> Result<String> {
     let entry: Entry = Entry::new(platform, username).with_context(||
         -> String {format!("monarch_credentials::get_password() failed! Failed to get/create entry in secure store! | Err")})?;
 
-    entry.get_password().context("monarch_credentials::get_password() failed! Could not get password! | Err")
+    entry
+        .get_password()
+        .context("monarch_credentials::get_password() failed! Could not get password! | Err")
 }
 
 /// Delete credentials from OS's secure store.

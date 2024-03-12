@@ -10,12 +10,15 @@ mod monarch_library;
 mod monarch_utils;
 
 use monarch_games::commands::{
-    download_game, get_library, launch_game, open_store, refresh_library, search_games, remove_game,
+    download_game, get_library, launch_game, open_store, refresh_library, remove_game, search_games,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
 };
-use monarch_utils::commands::{clear_cached_images, get_settings, open_logs, set_settings, revert_settings, set_password, delete_password};
+use monarch_utils::commands::{
+    clear_cached_images, delete_password, get_settings, open_logs, revert_settings, set_password,
+    set_settings,
+};
 use monarch_utils::monarch_fs::{check_appdata_folder, check_resources_folder};
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
@@ -24,12 +27,13 @@ fn init() {
     check_appdata_folder(); // Verifies %appdata% (windows) or $HOME (unix) folder exists
     init_logger(); // Starts logger
     check_resources_folder(); // Verify folder structure
-    
-    if let Err(e) = monarch_settings::init() { // Crash program if this fails
+
+    if let Err(e) = monarch_settings::init() {
+        // Crash program if this fails
         error!("Error during settings initialization! | Error: {e}");
         exit(1);
     }
-    
+
     housekeeping::start(); // Starts housekeeping loop
 }
 

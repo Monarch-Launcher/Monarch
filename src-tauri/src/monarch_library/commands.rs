@@ -1,11 +1,14 @@
-use serde_json::Value;
+use super::collections;
 use core::result::Result; // Using different Result type for sending to frontend.
 use log::error;
-use super::collections;
+use serde_json::Value;
 
 #[tauri::command]
 /// Creates a new collection and writes to JSON
-pub async fn create_collection(collection_name: String, game_ids: Vec<String>) -> Result<Value, String> {
+pub async fn create_collection(
+    collection_name: String,
+    game_ids: Vec<String>,
+) -> Result<Value, String> {
     match collections::new_collection(collection_name, game_ids) {
         Ok(result) => Ok(result),
         Err(e) => {
@@ -17,7 +20,11 @@ pub async fn create_collection(collection_name: String, game_ids: Vec<String>) -
 
 #[tauri::command]
 /// Updates a collection and JSON file
-pub async fn update_collection( id: String, new_name: String, game_ids: Vec<String>) -> Result<Value, String> {
+pub async fn update_collection(
+    id: String,
+    new_name: String,
+    game_ids: Vec<String>,
+) -> Result<Value, String> {
     match collections::update_collections(&id, &new_name, game_ids) {
         Ok(result) => Ok(result),
         Err(e) => {
