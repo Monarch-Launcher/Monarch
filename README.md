@@ -20,7 +20,7 @@ These are some of the features we want to include in Monarch and their developme
 | Manage Epic games        | 🔴 Planned    |
 | Game collections/folders | 🟢 Done       |
 | Quicklaunch              | 🟡 Developing |
-| Find/buy new games       | 🟡 Developing |
+| Find/buy new games       | 🟡 Find only  |
 | Launch arguments         | 🔴 Planned    |
 | Download scripting       | 🔴 Planned    |
 | UI overhaul              | 🔴 Planned    |
