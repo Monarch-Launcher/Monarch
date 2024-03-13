@@ -13,7 +13,7 @@ use super::monarch_settings::set_default_settings;
 
 /// Create Monarch folder in users %appdata% directory
 pub fn check_appdata_folder() {
-    let appdata_path: Result<PathBuf> = get_home_path();
+    let appdata_path: Result<PathBuf> = get_monarch_home();
 
     match appdata_path {
         Ok(path) => {
@@ -101,7 +101,20 @@ pub fn get_home_path() -> Result<PathBuf> {
 }
 
 #[cfg(not(windows))]
-pub fn get_home_path() -> Result<PathBuf> {
+/// Returns Unix $HOME
+pub fn get_unix_home() -> Result<PathBuf> {
+    let home_path: String = std::env::var("HOME").with_context(|| -> String {
+        format!(
+           "monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:"
+        )
+    })?;
+
+    Ok(PathBuf::from(home_path))
+}
+
+#[cfg(not(windows))]
+/// Returns Monarch home according to XDG (.local/share/monarch)
+pub fn get_monarch_home() -> Result<PathBuf> {
     if let Ok(path) = std::env::var("XDG_DATA_HOME") {
         return Ok(PathBuf::from(path).join("monarch")) // Return early with data home according to XDG env var.
     }
@@ -136,7 +149,7 @@ pub fn get_settings_path() -> Result<PathBuf> {
 
 /// Returns path of games installed specifically by Monarch.
 pub fn get_monarch_games_path() -> Result<PathBuf> {
-    let path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_monarch_home().with_context(|| 
         -> String {format!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
 
     Ok(path.join("monarch_games.json"))
@@ -144,7 +157,7 @@ pub fn get_monarch_games_path() -> Result<PathBuf> {
 
 /// Returns path to library.json
 pub fn get_library_json_path() -> Result<PathBuf> {
-    let path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_monarch_home().with_context(|| 
         -> String {format!("monarch_fs::get_library_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
 
     Ok(path.join("library.json"))
@@ -152,7 +165,7 @@ pub fn get_library_json_path() -> Result<PathBuf> {
 
 /// Returns path to collections.json
 pub fn get_collections_json_path() -> Result<PathBuf> {
-    let path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_monarch_home().with_context(|| 
         -> String {format!("monarch_fs::get_collections_json_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
 
     Ok(path.join("collections.json"))
@@ -191,7 +204,7 @@ pub fn create_dir(path: &Path) -> Result<()> {
 /// Should never fail during runtime because of init_monarch_fs,
 /// but if it does it returns an empty string.
 pub fn get_resources_path() -> Result<PathBuf> {
-    let path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_monarch_home().with_context(|| 
         -> String {format!("monarch_fs::get_resources_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
 
     Ok(path.join("resources"))

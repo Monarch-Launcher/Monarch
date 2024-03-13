@@ -5,7 +5,7 @@ use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 
-use crate::monarch_utils::monarch_fs::{create_dir, get_home_path, path_exists};
+use crate::monarch_utils::monarch_fs::{create_dir, get_monarch_home, path_exists};
 
 /// Initializes logger to ensure logs are written when running app.
 /// To log to the monarch.log file you use the log macros as shown in the bottom with info!()
@@ -35,14 +35,14 @@ pub fn init_logger() {
 
 /// Creates path to log folder that should be located under %appdata%.
 pub fn get_log_dir() -> PathBuf {
-    let mut log_path: PathBuf = get_home_path().unwrap();
+    let mut log_path: PathBuf = get_monarch_home().unwrap();
     log_path = log_path.join("logs");
     return log_path;
 }
 
 /// Creates path to log file that should be located under %appdata%.
 pub fn get_log_file() -> PathBuf {
-    let mut log_path: PathBuf = get_home_path().unwrap();
+    let mut log_path: PathBuf = get_monarch_home().unwrap();
     log_path = log_path.join("logs");
     log_path = log_path.join("monarch.log");
     return log_path;

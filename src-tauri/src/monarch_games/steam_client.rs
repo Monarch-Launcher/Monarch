@@ -3,7 +3,6 @@ use log::{error, warn};
 use reqwest;
 use scraper::{Html, Selector};
 use serde_json::Value;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use toml;
 
@@ -11,7 +10,7 @@ use super::monarch_client::generate_default_folder;
 use super::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
-    generate_cache_image_path, generate_library_image_path, get_home_path, path_exists,
+    generate_cache_image_path, generate_library_image_path, get_monarch_home, path_exists,
 };
 use crate::monarch_utils::monarch_settings::get_steam_settings;
 
@@ -191,7 +190,7 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
 
 /// Returns path to Monarchs installed version of SteamCMD
 pub fn get_steamcmd_dir() -> Result<PathBuf> {
-    let path: PathBuf = get_home_path().with_context(|| 
+    let path: PathBuf = get_monarch_home().with_context(|| 
         -> String {format!("windows::steam::get_steamcmd_dir() failed! Error returned when getting home path! | Err")})?;
     Ok(path.join("SteamCMD"))
 }
