@@ -31,7 +31,7 @@
       },
       "protocol": {
         "asset": true,
-        "assetScope": ["**"]
+        "assetScope": ["/home/mooze/.local/share/monarch/resources/**/*.jpg"]
       }
     },
     "bundle": {
