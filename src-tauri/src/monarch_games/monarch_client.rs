@@ -1,5 +1,5 @@
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_utils::monarch_fs::get_home_path;
+use crate::monarch_utils::monarch_fs::get_monarch_home;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, warn};
@@ -14,7 +14,7 @@ pub fn generate_default_folder() -> Result<PathBuf> {
         path = PathBuf::from("C:\\")
     } else {
         // Otherwise put games in Monarchs home folder
-        path = get_home_path().with_context(||
+        path = get_monarch_home().with_context(||
             -> String {format!("monarch_client::generate_default_folder() failed! Error returned when getting home path! | Err")})?;
     }
 

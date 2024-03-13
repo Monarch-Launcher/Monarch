@@ -1,7 +1,7 @@
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
 use crate::monarch_utils::{
-    monarch_fs::{create_dir, get_home_path, path_exists},
+    monarch_fs::{create_dir, get_unix_home, path_exists},
     monarch_vdf,
 };
 use anyhow::{Context, Result};
@@ -132,11 +132,10 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
 /// Returns default path used by steam on Linux systems ($HOME/.steam)
 fn get_default_location() -> Result<PathBuf> {
-    let mut path: PathBuf = get_home_path().with_context(|| -> String {
+    let mut path: PathBuf = get_unix_home().with_context(|| -> String {
         format!("linux::steam::get_default_location() failed! Failed to get home directory! | Err")
     })?;
 
-    path.pop(); // Remove .monarch from path
     Ok(path.join(".steam/steam/steamapps/libraryfolders.vdf")) // Add path to libraryfolders.vdf
 }
 
