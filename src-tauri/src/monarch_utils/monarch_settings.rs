@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Table;
 
-use super::monarch_fs::{get_home_path, get_settings_path, path_exists};
+use super::monarch_fs::{get_home_path, get_settings_path, path_exists, create_dir};
 use crate::monarch_games::monarch_client::generate_default_folder;
 
 // Create a global variable containing the current state of settings according to Monarch backend.
@@ -62,20 +62,20 @@ pub fn init() -> Result<()> {
 
 /// Writes default settings to settings.toml
 pub fn set_default_settings() -> Result<Table, Table> {
-    let path: PathBuf;
     let settings: Table = get_default_settings();
     set_settings_state(settings.clone());
 
-    match get_settings_path() {
-        Ok(settings_path) => path = settings_path,
+    let path = match get_settings_path() {
+        Ok(settings_path) => settings_path,
         Err(e) => {
             error!("monarch_settings::set_default_settings() failed! Cannot get path to settings.toml! | Err: {e}");
             return Err(settings);
         }
-    }
+    };
 
     if !path_exists(&path) {
-        if let Err(e) = fs::File::create(&path) {
+        if let Err(e) = create_dir(path.parent().unwrap()) { // Create folders to .config/monarch,
+            // excluding settings.toml
             error!(
                 "monarch_settings::set_default_settings() failed! Something went wrong while trying to create new file: {dir} | Err: {e}",
                 dir = path.display()
