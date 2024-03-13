@@ -102,21 +102,36 @@ pub fn get_home_path() -> Result<PathBuf> {
 
 #[cfg(not(windows))]
 pub fn get_home_path() -> Result<PathBuf> {
+    if let Ok(path) = std::env::var("XDG_DATA_HOME") {
+        return Ok(PathBuf::from(path).join("monarch")) // Return early with data home according to XDG env var.
+    }
+
+    warn!("monarch_fs::get_home_path() No XDG_DATA_HOME set! Falling back to ~/.local/share/");
+
     let home_path: String = std::env::var("HOME").with_context(|| -> String {
         format!(
-            "monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:"
+           "monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:"
         )
     })?;
 
-    Ok(PathBuf::from(home_path).join(".monarch"))
+    Ok(PathBuf::from(home_path).join(".local").join("share").join("monarch"))
 }
 
 /// Returns path to settings.json
 pub fn get_settings_path() -> Result<PathBuf> {
-    let path: PathBuf = get_home_path().with_context(|| 
+    if cfg!(not(windows)) {
+        if let Ok(path) = std::env::var("XDG_CONFIG_HOME") {
+            return Ok(PathBuf::from(path).join("monarch").join("settings.toml")) // Return early with data home according to XDG env var.
+
+        }
+    }
+
+    warn!("monarch_fs::get_settings_path() No XDG_CONFIG_HOME set! Falling back to ~/.config/");
+
+    let path: String = std::env::var("HOME").with_context(||
         -> String {format!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
 
-    Ok(path.join("settings.toml"))
+    Ok(PathBuf::from(path).join(".config").join("monarch").join("settings.toml"))
 }
 
 /// Returns path of games installed specifically by Monarch.
