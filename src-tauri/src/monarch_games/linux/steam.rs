@@ -132,8 +132,8 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
 /// Returns default path used by steam on Linux systems ($HOME/.steam)
 fn get_default_location() -> Result<PathBuf> {
-    let mut path: PathBuf = get_unix_home().with_context(|| -> String {
-        format!("linux::steam::get_default_location() failed! Failed to get home directory! | Err")
+    let path: PathBuf = get_unix_home().with_context(|| -> String {
+        format!("linux::steam::get_default_location() failed! Failed to get /home/<username>/ directory! | Err")
     })?;
 
     Ok(path.join(".steam/steam/steamapps/libraryfolders.vdf")) // Add path to libraryfolders.vdf
