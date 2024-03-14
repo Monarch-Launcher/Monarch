@@ -14,8 +14,7 @@ pub fn generate_default_folder() -> Result<PathBuf> {
         path = PathBuf::from("C:\\")
     } else {
         // Otherwise put games in Monarchs home folder
-        path = get_monarch_home().with_context(||
-            -> String {format!("monarch_client::generate_default_folder() failed! Error returned when getting home path! | Err")})?;
+        path = get_monarch_home();
     }
 
     Ok(path.join("MonarchGames"))

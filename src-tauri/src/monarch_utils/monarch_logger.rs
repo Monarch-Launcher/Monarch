@@ -35,15 +35,15 @@ pub fn init_logger() {
 
 /// Creates path to log folder that should be located under %appdata%.
 pub fn get_log_dir() -> PathBuf {
-    let mut log_path: PathBuf = get_monarch_home().unwrap();
+    let mut log_path: PathBuf = get_monarch_home();
     log_path = log_path.join("logs");
-    return log_path;
+    log_path
 }
 
 /// Creates path to log file that should be located under %appdata%.
 pub fn get_log_file() -> PathBuf {
-    let mut log_path: PathBuf = get_monarch_home().unwrap();
+    let mut log_path: PathBuf = get_monarch_home();
     log_path = log_path.join("logs");
     log_path = log_path.join("monarch.log");
-    return log_path;
+    log_path
 }

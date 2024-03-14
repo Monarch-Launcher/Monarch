@@ -190,8 +190,7 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
 
 /// Returns path to Monarchs installed version of SteamCMD
 pub fn get_steamcmd_dir() -> Result<PathBuf> {
-    let path: PathBuf = get_monarch_home().with_context(|| 
-        -> String {format!("windows::steam::get_steamcmd_dir() failed! Error returned when getting home path! | Err")})?;
+    let path: PathBuf = get_monarch_home();
     Ok(path.join("SteamCMD"))
 }
 

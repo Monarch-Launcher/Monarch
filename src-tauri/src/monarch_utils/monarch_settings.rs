@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Table;
 
-use super::monarch_fs::{create_dir, get_monarch_home, get_settings_path, path_exists};
+use super::monarch_fs::{create_dir, generate_monarch_home, get_settings_path, path_exists};
 use crate::monarch_games::monarch_client::generate_default_folder;
 
 // Create a global variable containing the current state of settings according to Monarch backend.
@@ -179,12 +179,12 @@ fn parse_table(content: String) -> Result<Table> {
 
 /// Returns default Monarch settings in the form of a TOML Table.
 /// .into() is used to avoid ugly syntax of e.g. Value::Boolean(true) - instead becomes true.into()
-/// TODO: Remove all unwraps()
+/// TODO: Remove some unwrap() or make it clear to user when they fail.
 fn get_default_settings() -> Table {
     let mut settings: Table = Table::new();
 
     let mut monarch: Table = Table::new();
-    let appdata_path = get_monarch_home().unwrap();
+    let appdata_path = generate_monarch_home().unwrap();
     let appdata_path_str = appdata_path.to_str().unwrap();
     let default_game_folder = generate_default_folder().unwrap();
     let default_game_folder_str = default_game_folder.to_str().unwrap();

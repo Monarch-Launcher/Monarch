@@ -19,20 +19,19 @@ use monarch_utils::commands::{
     clear_cached_images, delete_password, get_settings, open_logs, revert_settings, set_password,
     set_settings,
 };
-use monarch_utils::monarch_fs::{check_appdata_folder, check_resources_folder};
+use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
 
 fn init() {
-    check_appdata_folder(); // Verifies %appdata% (windows) or $HOME (unix) folder exists
-    init_logger(); // Starts logger
-    check_resources_folder(); // Verify folder structure
-
     if let Err(e) = monarch_settings::init() {
         // Crash program if this fails
         error!("Error during settings initialization! | Error: {e}");
         exit(1);
     }
+
+    init_logger(); // Starts logger
+    verify_monarch_folders(); // Checks that directories are as Monarch expects
 
     housekeeping::start(); // Starts housekeeping loop
 }
