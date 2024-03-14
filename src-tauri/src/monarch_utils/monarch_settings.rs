@@ -192,10 +192,7 @@ fn get_default_settings() -> Table {
     monarch.insert("send_logs".to_string(), true.into());
     monarch.insert("run_on_startup".to_string(), false.into());
     monarch.insert("start_minimized".to_string(), false.into());
-    monarch.insert(
-        "game_folders".to_string(),
-        vec![default_game_folder_str].into(),
-    );
+    monarch.insert("game_folders".to_string(), default_game_folder_str.into());
 
     let mut quicklaunch_settings: Table = Table::new();
     quicklaunch_settings.insert("enabled".to_string(), true.into());
