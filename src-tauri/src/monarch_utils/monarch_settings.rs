@@ -45,6 +45,7 @@ pub fn init() -> Result<()> {
         format!("monarch_settings::init() failed! Cannot get path to settings.toml! | Err")
     })?;
 
+
     if !path_exists(&path) {
         // If settings.toml doesn't exist, create a new file and write default settings
         if let Err(e) = set_default_settings() {
@@ -192,7 +193,7 @@ fn get_default_settings() -> Table {
     monarch.insert("send_logs".to_string(), true.into());
     monarch.insert("run_on_startup".to_string(), false.into());
     monarch.insert("start_minimized".to_string(), false.into());
-    monarch.insert("game_folders".to_string(), default_game_folder_str.into());
+    monarch.insert("game_folder".to_string(), default_game_folder_str.into());
 
     let mut quicklaunch_settings: Table = Table::new();
     quicklaunch_settings.insert("enabled".to_string(), true.into());

@@ -26,13 +26,11 @@ use monarch_utils::{housekeeping, monarch_settings};
 fn init() {
     if let Err(e) = monarch_settings::init() {
         // Crash program if this fails
-        error!("Error during settings initialization! | Error: {e}");
+        println!("Error during settings initialization! | Error: {e}");
         exit(1);
     }
-
     init_logger(); // Starts logger
     verify_monarch_folders(); // Checks that directories are as Monarch expects
-
     housekeeping::start(); // Starts housekeeping loop
 }
 

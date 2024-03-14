@@ -2,7 +2,6 @@ use anyhow::{anyhow, Context, Result};
 use log::{error, info, warn};
 use regex::Regex;
 use serde_json::Value;
-use core::slice;
 use std::path::{Path, PathBuf};
 use std::{fs, process::exit};
 

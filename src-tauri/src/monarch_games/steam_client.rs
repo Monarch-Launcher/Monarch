@@ -268,20 +268,17 @@ pub async fn parse_steam_ids(ids: Vec<String>, is_cache: bool) -> Vec<MonarchGam
                     let id: String = id;
                     let platform: String = String::from("steam");
                     let exec_path: String = String::new();
-                    let thumbnail_path: String;
 
-                    if is_cache {
-                        thumbnail_path = String::from(
-                            generate_cache_image_path(&name).unwrap().to_str().unwrap(),
-                        );
+                    let thumbnail_path = if is_cache {
+                        String::from(generate_cache_image_path(&name).unwrap().to_str().unwrap())
                     } else {
-                        thumbnail_path = String::from(
+                        String::from(
                             generate_library_image_path(&name)
                                 .unwrap()
                                 .to_str()
                                 .unwrap(),
-                        );
-                    }
+                        )
+                    };
 
                     let url: &str = game_json[&id]["data"]["header_image"].as_str().unwrap();
 
