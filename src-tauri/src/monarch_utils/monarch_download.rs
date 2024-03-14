@@ -73,11 +73,10 @@ pub async fn download_file(url: &str) -> Result<PathBuf> {
 /// Tells Monarch to attempt to download url content as image
 pub async fn download_image(url: &str, path: PathBuf) {
     let request: Result<Response, reqwest::Error> = reqwest::get(url).await;
-    let thumbnail_path: PathBuf = PathBuf::from(path);
 
     match request {
         Ok(response) => {
-            get_image_content(response, &thumbnail_path).await;
+            get_image_content(response, &path).await;
         }
         Err(e) => {
             error!("monarch_download::download_image() failed! Error while downloading: {url} | Error: {e}");

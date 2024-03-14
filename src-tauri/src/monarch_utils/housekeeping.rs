@@ -51,15 +51,9 @@ fn low_system_usage(system: &System) -> bool {
 
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 pub fn clear_cached_thumbnails() {
-    match get_resources_cache() {
-        Ok(cache) => {
-            if let Ok(files) = fs::read_dir(cache) {
-                clear_dir(files);
-            }
-        }
-        Err(e) => {
-            error!("housekeeping::clear_cached_thumbnails() failed! Cannot get resources/cache/ ! | Error: {e}");
-        }
+    let path: PathBuf = get_resources_cache();
+    if let Ok(files) = fs::read_dir(path) {
+        clear_dir(files);
     }
 }
 
@@ -67,16 +61,14 @@ pub fn clear_cached_thumbnails() {
 fn clear_dir(files: ReadDir) {
     let mut logged_event: bool = false;
 
-    for file in files {
-        if let Ok(file_dir_entry) = file {
-            let file_path: PathBuf = file_dir_entry.path();
-            if time_to_remove(&file_path) {
-                if !logged_event {
-                    info!("Monarch Housekeeper: Clearing cached images...");
-                    logged_event = true;
-                }
-                remove_thumbnail(&file_path);
+    for file_ in files {
+        let file_path: PathBuf = file_.ok().unwrap().path();
+        if time_to_remove(&file_path) {
+            if !logged_event {
+                info!("Monarch Housekeeper: Clearing cached images...");
+                logged_event = true;
             }
+            remove_thumbnail(&file_path);
         }
     }
 }
@@ -106,27 +98,23 @@ fn time_to_remove(file: &Path) -> bool {
 /// Removes all files in /resources/cache, meant for UI so that user can clear folder if wanted
 pub fn clear_all_cache() {
     info!("Manually clearing all cached images...");
+    let path: PathBuf = get_resources_cache();
 
-    match get_resources_cache() {
-        Ok(cache) => match fs::read_dir(cache.clone()) {
-            Ok(files) => {
-                for file in files {
-                    match file {
-                        Ok(f) => {
-                            remove_thumbnail(&f.path());
-                        }
-                        Err(e) => {
-                            error!("housekeeping::clear_all_cache() failed! Could not read file! | Error: {e}");
-                        }
+    match fs::read_dir(&path) {
+        Ok(files) => {
+            for file in files {
+                match file {
+                    Ok(f) => {
+                        remove_thumbnail(&f.path());
+                    }
+                    Err(e) => {
+                        error!("housekeeping::clear_all_cache() failed! Could not read file! | Error: {e}");
                     }
                 }
             }
-            Err(e) => {
-                error!("housekeeping::clear_all_cache() failed! Error while reading files from: {dir} | Error: {e}", dir = cache.display());
-            }
-        },
+        }
         Err(e) => {
-            error!("housekeeping::clear_all_cache() failed! Cannot get path to resources/ ! | Error: {e}");
+            error!("housekeeping::clear_all_cache() failed! Error while reading files from: {dir} | Error: {e}", dir = path.display());
         }
     }
 }

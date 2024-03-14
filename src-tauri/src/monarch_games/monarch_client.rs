@@ -1,5 +1,6 @@
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_utils::monarch_fs::get_monarch_home;
+use crate::monarch_utils::monarch_fs::{get_monarch_home, get_unix_home};
+use crate::monarch_utils::monarch_settings::get_monarch_settings;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, warn};
@@ -7,16 +8,13 @@ use std::path::PathBuf;
 
 /// Generates the default path where Monarch wants to store games.
 pub fn generate_default_folder() -> Result<PathBuf> {
-    let path: PathBuf;
-
-    if cfg!(windows) {
+    let path = if cfg!(windows) {
         // On windows, generate under C: drive
-        path = PathBuf::from("C:\\")
+        PathBuf::from("C:\\")
     } else {
         // Otherwise put games in Monarchs home folder
-        path = get_monarch_home().with_context(||
-            -> String {format!("monarch_client::generate_default_folder() failed! Error returned when getting home path! | Err")})?;
-    }
+        get_unix_home().unwrap()
+    };
 
     Ok(path.join("MonarchGames"))
 }
@@ -41,8 +39,11 @@ pub async fn download_game(
     platform: &str,
     platform_id: &str,
 ) -> Result<Vec<MonarchGame>> {
-    let mut path: PathBuf = generate_default_folder().with_context(|| 
-        -> String {format!("monarch_client::download_game() failed! Error returned when getting default game folder! | Err")})?; // Install dir
+    let mut path: PathBuf = PathBuf::from(
+        get_monarch_settings().unwrap()["game_folder"]
+            .to_string()
+            .trim_matches('"'),
+    );
     let new_game: MonarchGame;
 
     if !monarch_fs::path_exists(&path) {

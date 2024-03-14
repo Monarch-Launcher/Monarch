@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
 use crate::monarch_utils::monarch_download::download_image;
+use crate::monarch_utils::monarch_fs::path_exists;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct MonarchGame {
@@ -44,12 +45,14 @@ impl MonarchGame {
 
     /// Download thumbnail for MonarchGame
     pub fn download_thumbnail(&self, url: &str) {
-        let path: PathBuf = PathBuf::from(self.thumbnail_path.clone());
+        let path: PathBuf = PathBuf::from(&self.thumbnail_path);
         let owned_url: String = url.to_string();
 
-        tokio::task::spawn(async move {
-            download_image(&owned_url, path).await;
-        });
+        if !path_exists(&path) {
+            tokio::task::spawn(async move {
+                download_image(&owned_url, path).await;
+            });
+        }
     }
 }
 

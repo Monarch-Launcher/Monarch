@@ -190,8 +190,7 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
 
 /// Returns path to Monarchs installed version of SteamCMD
 pub fn get_steamcmd_dir() -> Result<PathBuf> {
-    let path: PathBuf = get_monarch_home().with_context(|| 
-        -> String {format!("windows::steam::get_steamcmd_dir() failed! Error returned when getting home path! | Err")})?;
+    let path: PathBuf = get_monarch_home();
     Ok(path.join("SteamCMD"))
 }
 
@@ -269,20 +268,17 @@ pub async fn parse_steam_ids(ids: Vec<String>, is_cache: bool) -> Vec<MonarchGam
                     let id: String = id;
                     let platform: String = String::from("steam");
                     let exec_path: String = String::new();
-                    let thumbnail_path: String;
 
-                    if is_cache {
-                        thumbnail_path = String::from(
-                            generate_cache_image_path(&name).unwrap().to_str().unwrap(),
-                        );
+                    let thumbnail_path = if is_cache {
+                        String::from(generate_cache_image_path(&name).unwrap().to_str().unwrap())
                     } else {
-                        thumbnail_path = String::from(
+                        String::from(
                             generate_library_image_path(&name)
                                 .unwrap()
                                 .to_str()
                                 .unwrap(),
-                        );
-                    }
+                        )
+                    };
 
                     let url: &str = game_json[&id]["data"]["header_image"].as_str().unwrap();
 
