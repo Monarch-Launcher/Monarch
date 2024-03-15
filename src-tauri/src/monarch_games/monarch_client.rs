@@ -1,14 +1,14 @@
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_utils::monarch_fs::{get_monarch_home, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_monarch_settings;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, warn};
 use std::path::PathBuf;
+use crate::monarch_utils::monarch_fs::get_unix_home;
 
 /// Generates the default path where Monarch wants to store games.
 pub fn generate_default_folder() -> Result<PathBuf> {
-    let path = if cfg!(windows) {
+    let path: PathBuf = if cfg!(windows) {
         // On windows, generate under C: drive
         PathBuf::from("C:\\")
     } else {

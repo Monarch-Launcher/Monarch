@@ -30,9 +30,8 @@ pub fn verify_monarch_folders() {
     }
 }
 
-
-#[cfg(not(windows))]
-/// Returns Unix $HOME
+/// Returns Unix $HOME.
+/// DO NOT USE THIS ON WINDOWS!
 pub fn get_unix_home() -> Result<PathBuf> {
     let home_path: String = std::env::var("HOME").with_context(|| -> String {
         format!(
@@ -47,7 +46,7 @@ pub fn get_unix_home() -> Result<PathBuf> {
 pub fn get_monarch_home() -> PathBuf {
     let settings = get_monarch_settings().unwrap();
 
-    PathBuf::from(settings["monarch_home"].to_string().trim_matches('"'))
+    PathBuf::from(settings["monarch_home"].to_string().trim_matches('"').trim_matches('\''))
 }
 
 /// Gets the users %appdata% or $HOME directory and adds Monarch to the end of it to generate Monarch path
@@ -55,9 +54,17 @@ pub fn get_monarch_home() -> PathBuf {
 #[cfg(windows)]
 pub fn generate_monarch_home() -> Result<PathBuf> {
     let appdata_path = std::env::var("APPDATA").with_context(|| 
-        -> String {format!("monarch_fs::get_home_path() failed! Could not find envoirment variable 'APPDATA' | Err:")})?;
+        -> String {format!("monarch_fs::generate_monarch_home() failed! Could not find envoirment variable 'APPDATA' | Err:")})?;
 
     Ok(PathBuf::from(appdata_path).join("Monarch"))
+}
+
+#[cfg(windows)]
+pub fn get_settings_path() -> Result<PathBuf> {
+    let path = generate_monarch_home().with_context(|| 
+        -> String {format!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
+
+    Ok(PathBuf::from(path).join("settings.toml"))
 }
 
 #[cfg(not(windows))]
@@ -78,6 +85,7 @@ pub fn generate_monarch_home() -> Result<PathBuf> {
     Ok(PathBuf::from(home_path).join(".local").join("share").join("monarch"))
 }
 
+#[cfg(not(windows))]
 /// Returns path to settings.json
 pub fn get_settings_path() -> Result<PathBuf> {
     if cfg!(not(windows)) {
