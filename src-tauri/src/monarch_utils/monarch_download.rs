@@ -15,7 +15,7 @@ pub async fn download_image(url: &str, path: &Path) -> Result<()> {
         format!("monarch_download::download_image() failed! Error while downloading: {url} | Err: ")
     })?;
 
-    save_image_content(response, &path).await?;
+    save_image_content(response, path).await?;
     Ok(())
 }
 

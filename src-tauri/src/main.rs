@@ -1,6 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![allow(non_snake_case)] // Allow Monarch to use capital M
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 use std::process::exit;
 
 use log::error;

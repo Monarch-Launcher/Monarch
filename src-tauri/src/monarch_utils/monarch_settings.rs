@@ -42,9 +42,8 @@ fn get_settings_state() -> Table {
 /// with default settings
 pub fn init() -> Result<()> {
     let path: PathBuf = get_settings_path().with_context(|| -> String {
-        format!("monarch_settings::init() failed! Cannot get path to settings.toml! | Err")
+        "monarch_settings::init() failed! Cannot get path to settings.toml! | Err".to_string()
     })?;
-
 
     if !path_exists(&path) {
         // If settings.toml doesn't exist, create a new file and write default settings
@@ -75,7 +74,8 @@ pub fn set_default_settings() -> Result<Table, Table> {
     };
 
     if !path_exists(&path) {
-        if let Err(e) = create_dir(path.parent().unwrap()) { // Create folders to .config/monarch,
+        if let Err(e) = create_dir(path.parent().unwrap()) {
+            // Create folders to .config/monarch,
             // excluding settings.toml
             error!(
                 "monarch_settings::set_default_settings() failed! Something went wrong while trying to create new file: {dir} | Err: {e}",
@@ -119,9 +119,9 @@ fn write_toml_content(path: &Path, table: Table) -> Result<Table, Table> {
 /// Read all settings from file
 pub fn read_settings() -> Result<Table> {
     let path: PathBuf = get_settings_path().with_context(|| -> String {
-        format!("monarch_settings::read_settings() failed! Cannot get path to settings.toml! | Err")
+        "monarch_settings::read_settings() failed! Cannot get path to settings.toml! | Err"
+            .to_string()
     })?;
-
     read_settings_content(&path)
 }
 
@@ -174,8 +174,7 @@ fn read_settings_content(file: &PathBuf) -> Result<Table> {
 
 /// Returns String content as TOML Table
 fn parse_table(content: String) -> Result<Table> {
-    return content.parse::<Table>().with_context(|| 
-        -> String {format!("monarch_settings::parse_table() failed! Failed to parse content in settings.toml! | Err")});
+    content.parse::<Table>().with_context(|| -> String {"monarch_settings::parse_table() failed! Failed to parse content in settings.toml! | Err".to_string()})
 }
 
 /// Returns default Monarch settings in the form of a TOML Table.

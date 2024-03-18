@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use log::{error, info, warn};
 use regex::Regex;
 use serde_json::Value;
@@ -162,7 +162,7 @@ pub fn generate_cache_image_path(name: &str) -> Result<PathBuf> {
 
     let path: PathBuf = get_resources_cache();
 
-    Ok(path.join(&filename))
+    Ok(path.join(filename))
 }
 
 /// Create a name for image file in cache directory
@@ -172,13 +172,13 @@ pub fn generate_library_image_path(name: &str) -> Result<PathBuf> {
 
     let path: PathBuf = get_resources_library();
 
-    Ok(path.join(&filename))
+    Ok(path.join(filename))
 }
 
 /// Generates a filename without any special characters or spaces
 fn generate_image_filename(name: &str) -> Result<String> {
     let mut filename: String = String::from(name);
-    filename = filename.replace(" ", "_");
+    filename = filename.replace(' ', "_");
 
     let regex = Regex::new(r"[^a-zA-Z0-9_]").with_context(|| -> String {"monarch_fs::generate_image_filename() failed! Failed to build new regex! | Err".to_string()})?;
 

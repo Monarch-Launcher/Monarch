@@ -1,9 +1,8 @@
-use std::path::PathBuf;
-
 use log::LevelFilter;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
+use std::path::PathBuf;
 
 use crate::monarch_utils::monarch_fs::{create_dir, get_monarch_home, path_exists};
 

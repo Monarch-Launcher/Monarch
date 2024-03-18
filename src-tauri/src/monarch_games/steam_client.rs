@@ -82,20 +82,17 @@ pub fn launch_cmd_game(id: &str) -> Result<()> {
 
 /// Download a Steam game via Monarch and SteamCMD.
 pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
-    let settings: toml::Value;
     let username: String;
 
-    match get_steam_settings() {
-        Some(settings_res) => {
-            settings = settings_res;
-        }
+    let settings = match get_steam_settings() {
+        Some(result) => result,
         None => {
             error!("steam_client::download_game() failed! get_steam_settings() returned None!");
             return Err(anyhow!(
                 "steam_client::download_game() failed! Not Steam settings found!"
             ));
         }
-    }
+    };
 
     if can_manage_steam(&settings) {
         match get_username(&settings) {
@@ -115,13 +112,13 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
     }
 
     let password: String = get_password("steam", &username).with_context(|| 
-        -> String {format!("steam_client::download_game() failed! Could not get password for Steam from secure store! | Err")})?;
+        -> String {"steam_client::download_game() failed! Could not get password for Steam from secure store! | Err".to_string()})?;
 
     let mut install_dir: PathBuf;
     match get_steam_games_dir(&settings) {
         Some(result) => install_dir = PathBuf::from(result),
         None => install_dir = generate_default_folder().with_context(|| 
-            -> String {format!("steam_client::download_game() failed! Error returned when getting default game folder! | Err")})?,
+            -> String {"steam_client::download_game() failed! Error returned when getting default game folder! | Err".to_string()})?,
     }
     install_dir.push(name);
 
@@ -156,24 +153,21 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
     }
 
     let monarchgame: MonarchGame = parse_steam_ids(vec![String::from(id)], false).await[0].clone();
-    return Ok(monarchgame);
+    Ok(monarchgame)
 }
 
 /// Uninstall a Steam game via SteamCMD
 pub async fn uninstall_game(id: &str) -> Result<()> {
-    let settings: toml::Value;
 
-    match get_steam_settings() {
-        Some(settings_res) => {
-            settings = settings_res;
-        }
+    let settings = match get_steam_settings() {
+        Some(result) => result,
         None => {
             error!("steam_client::uninstall_game() failed! get_steam_settings() returned None!");
             return Err(anyhow!(
                 "steam_client::uninstall_game() failed! Not Steam settings found!"
             ));
         }
-    }
+    };
 
     if !can_manage_steam(&settings) {
         warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
@@ -197,15 +191,15 @@ pub fn get_steamcmd_dir() -> Result<PathBuf> {
 /// Returns whether or not SteamCMD is installed
 pub fn steamcmd_is_installed() -> Result<bool> {
     let path: PathBuf = get_steamcmd_dir().with_context(|| 
-        -> String {format!("windows::steam::steamcmd_is_installed() failed! Error returned when getting SteamCMD directory! | Err")})?;
+        -> String {"windows::steam::steamcmd_is_installed() failed! Error returned when getting SteamCMD directory! | Err".to_string()})?;
     Ok(path_exists(&path))
 }
 
 /// Returns whether or not Monarch is allowed to manage a users Steam games
 fn can_manage_steam(settings: &toml::Value) -> bool {
     match settings.get("manage") {
-        Some(value) => return value == &toml::Value::Boolean(true),
-        None => return false,
+        Some(value) => value == &toml::Value::Boolean(true),
+        None => false,
     }
 }
 

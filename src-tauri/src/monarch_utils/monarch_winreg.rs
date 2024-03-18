@@ -19,5 +19,5 @@ pub fn is_installed(program_name: &str) -> bool {
             }
         }
     }
-    return false; // False if path was never found
+    false // False if path was never found
 }

@@ -18,14 +18,14 @@ impl MiniWindow {
         Self {
             name: name.to_string(),
             url: url.to_string(),
-            width: width,
-            height: height,
+            width,
+            height,
         }
     }
 
     /// Builds a window. Must be async on Windows to not deadlock.
     pub async fn build_window(&self, handle: &AppHandle) -> Result<()> {
-        match WindowBuilder::new(
+        let window: Window = WindowBuilder::new(
             handle,
             &self.name,
             WindowUrl::External(self.url.parse().unwrap()),
@@ -37,25 +37,25 @@ impl MiniWindow {
         .skip_taskbar(true)
         .visible(true)
         .build()
-        {
-            Ok(window) => {
-                let scale: f64 = get_scale(&window);
-                let size: PhysicalSize<u32> =
-                    PhysicalSize::new((self.width * scale) as u32, (self.height * scale) as u32);
+        .with_context(|| -> String {
+            "monarch_windows::build_window() failed! Failed to build new window! | Err:".to_string()
+        })?;
 
-                if let Err(e) = window.set_size(size) {
-                    error!("monarch_windows::build_window() failed! Failed to set new window size! | Err: {:?}", e);
-                }
-                if let Err(e) = window.center() {
-                    error!("monarch_windows::build_window() failed! Failed to center new window! | Err: {:?}", e);
-                }
+        let scale: f64 = get_scale(&window);
+        let size: PhysicalSize<u32> =
+            PhysicalSize::new((self.width * scale) as u32, (self.height * scale) as u32);
 
-                Ok(())
-            }
-            Err(e) => return Err(anyhow!(
-                "monarch_windows::build_window() failed! Failed to build new window! | Err: {e}"
-            )),
+        if let Err(e) = window.set_size(size) {
+            error!("monarch_windows::build_window() failed! Failed to set new window size! | Err: {:?}", e);
         }
+        if let Err(e) = window.center() {
+            error!(
+                "monarch_windows::build_window() failed! Failed to center new window! | Err: {:?}",
+                e
+            );
+        }
+
+        Ok(())
     }
 
     /// Shows a window with specified label
@@ -67,12 +67,12 @@ impl MiniWindow {
             )
         })?;
 
-        return window.show().context(|| -> String {
+        window.show().with_context(|| -> String {
             format!(
                 "monarch_windows::show_window() failed! Failed to show window: {} | Err:",
                 self.name
             )
-        }());
+        })
     }
 
     /// Hides a window with specified label
@@ -84,12 +84,12 @@ impl MiniWindow {
             )
         })?;
 
-        return window.hide().context(|| -> String {
+        window.hide().with_context(|| -> String {
             format!(
                 "monarch_windows::hide_window() failed! Failed to hide window: {} | Err:",
                 self.name
             )
-        }());
+        })
     }
 
     pub fn close_window(&self, handle: &AppHandle) -> Result<()> {
@@ -100,12 +100,12 @@ impl MiniWindow {
             )
         })?;
 
-        return window.close().context(|| -> String {
+        window.close().with_context(|| -> String {
             format!(
                 "monarch_windows::close_window() failed! Failed to close window: {} | Err:",
                 self.name
             )
-        }());
+        })
     }
 }
 
