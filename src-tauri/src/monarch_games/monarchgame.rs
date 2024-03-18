@@ -1,3 +1,4 @@
+use log::error;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -50,7 +51,9 @@ impl MonarchGame {
 
         if !path_exists(&path) {
             tokio::task::spawn(async move {
-                download_image(&owned_url, path).await;
+                if let Err(e) = download_image(&owned_url, &path).await {
+                    error!("monarchgame::download_thumbnail() encountered error! Failed to download image from: {owned_url} | Err: {e}");
+                }
             });
         }
     }
