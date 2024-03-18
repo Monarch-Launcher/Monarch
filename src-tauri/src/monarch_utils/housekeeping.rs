@@ -42,7 +42,7 @@ pub fn start() {
 /// Currently only checks a certain level of CPU usage, will possibly update later
 /// to check more metrics such as disk usage, memory, etc...
 fn low_system_usage(system: &System) -> bool {
-    return system.load_average().one < 15.0; // Check that system CPU usage 1 min ago is below 15%
+    system.load_average().one < 15.0 // Check that system CPU usage 1 min ago is below 15%
 }
 
 /*
@@ -52,8 +52,13 @@ fn low_system_usage(system: &System) -> bool {
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 pub fn clear_cached_thumbnails() {
     let path: PathBuf = get_resources_cache();
-    if let Ok(files) = fs::read_dir(path) {
-        clear_dir(files);
+    match fs::read_dir(path) {
+        Ok(files) => {
+            clear_dir(files);
+        }
+        Err(e) => {
+            error!("housekeeping::clear_cached_thumbnails() failed! Encountered error while running fs::read_dir() | Err {e}");
+        }
     }
 }
 
@@ -61,8 +66,10 @@ pub fn clear_cached_thumbnails() {
 fn clear_dir(files: ReadDir) {
     let mut logged_event: bool = false;
 
-    for file_ in files {
-        let file_path: PathBuf = file_.ok().unwrap().path();
+    // Only iterate over Ok()
+    for file_ in files.into_iter().flatten() {
+        let file_path: PathBuf = file_.path();
+
         if time_to_remove(&file_path) {
             if !logged_event {
                 info!("Monarch Housekeeper: Clearing cached images...");
@@ -88,7 +95,8 @@ fn time_to_remove(file: &Path) -> bool {
     if let Ok(metadata) = fs::metadata(file) {
         if let Ok(time) = metadata.modified() {
             if let Ok(age) = SystemTime::now().duration_since(time) {
-                return age.as_secs() >= 1209600; // Return if file is older than 14 days [REPLACE WITH CUSTOM SETTING USER CAN CAHNGE FOR HOW LONG TO STORE IMAGES]
+                return age.as_secs() >= 1209600; // Return if file is older than 14 days
+                                                 // TODO: REPLACE WITH CUSTOM SETTING USER CAN CAHNGE FOR HOW LONG TO STORE IMAGES
             }
         }
     }

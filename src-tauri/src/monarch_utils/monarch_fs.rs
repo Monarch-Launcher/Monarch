@@ -19,6 +19,7 @@ pub fn verify_monarch_folders() {
         if !path_exists(&path) {
             warn!("{} not found!", path.display());
             info!("Creating folder...");
+
             if let Err(e) = create_dir(&path) {
                 error!(
                     "monarch_fs::verify_monarch_folders() failed! Something went wrong trying to create empty folder: {dir}! | Error: {e}",
@@ -33,11 +34,7 @@ pub fn verify_monarch_folders() {
 /// Returns Unix $HOME.
 /// DO NOT USE THIS ON WINDOWS!
 pub fn get_unix_home() -> Result<PathBuf> {
-    let home_path: String = std::env::var("HOME").with_context(|| -> String {
-        format!(
-           "monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:"
-        )
-    })?;
+    let home_path: String = std::env::var("HOME").with_context(|| -> String {"monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:".to_string()})?;
 
     Ok(PathBuf::from(home_path))
 }
@@ -46,6 +43,7 @@ pub fn get_unix_home() -> Result<PathBuf> {
 pub fn get_monarch_home() -> PathBuf {
     let settings = get_monarch_settings().unwrap();
 
+    // Remove " " and ' ' that are still in Strings parsed from toml
     PathBuf::from(settings["monarch_home"].to_string().trim_matches('"').trim_matches('\''))
 }
 
@@ -53,16 +51,14 @@ pub fn get_monarch_home() -> PathBuf {
 /// returns either $HOME/.monarch or %appdata%/Monarch
 #[cfg(windows)]
 pub fn generate_monarch_home() -> Result<PathBuf> {
-    let appdata_path = std::env::var("APPDATA").with_context(|| 
-        -> String {format!("monarch_fs::generate_monarch_home() failed! Could not find envoirment variable 'APPDATA' | Err:")})?;
+    let appdata_path = std::env::var("APPDATA").with_context(|| -> String {"monarch_fs::generate_monarch_home() failed! Could not find envoirment variable 'APPDATA' | Err:".to_string()})?;
 
     Ok(PathBuf::from(appdata_path).join("Monarch"))
 }
 
 #[cfg(windows)]
 pub fn get_settings_path() -> Result<PathBuf> {
-    let path = generate_monarch_home().with_context(|| 
-        -> String {format!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
+    let path = generate_monarch_home().with_context(|| -> String {"monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err".to_string()})?;
 
     Ok(PathBuf::from(path).join("settings.toml"))
 }
@@ -76,11 +72,7 @@ pub fn generate_monarch_home() -> Result<PathBuf> {
 
     warn!("monarch_fs::get_home_path() No XDG_DATA_HOME set! Falling back to ~/.local/share/");
 
-    let home_path: String = std::env::var("HOME").with_context(|| -> String {
-        format!(
-           "monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:"
-        )
-    })?;
+    let home_path: String = std::env::var("HOME").with_context(|| -> String {"monarch_fs::get_home_path() failed! Could not find envoirment variable 'HOME' | Err:".to_string()})?;
 
     Ok(PathBuf::from(home_path).join(".local").join("share").join("monarch"))
 }
@@ -91,14 +83,12 @@ pub fn get_settings_path() -> Result<PathBuf> {
     if cfg!(not(windows)) {
         if let Ok(path) = std::env::var("XDG_CONFIG_HOME") {
             return Ok(PathBuf::from(path).join("monarch").join("settings.toml")) // Return early with data home according to XDG env var.
-
         }
     }
 
     warn!("monarch_fs::get_settings_path() No XDG_CONFIG_HOME set! Falling back to ~/.config/");
 
-    let path: String = std::env::var("HOME").with_context(||
-        -> String {format!("monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err")})?;
+    let path: String = std::env::var("HOME").with_context(|| -> String {"monarch_fs::get_settings_path() failed! Something went wrong while getting %appdata%/$HOME path. | Err".to_string()})?;
 
     Ok(PathBuf::from(path).join(".config").join("monarch").join("settings.toml"))
 }
@@ -106,31 +96,25 @@ pub fn get_settings_path() -> Result<PathBuf> {
 /// Returns path of games installed specifically by Monarch.
 pub fn get_monarch_games_path() -> Result<PathBuf> {
     let path: PathBuf = get_monarch_home();
-
     Ok(path.join("monarch_games.json"))
 }
 
 /// Returns path to library.json
 pub fn get_library_json_path() -> Result<PathBuf> {
     let path: PathBuf = get_monarch_home();
-
     Ok(path.join("library.json"))
 }
 
 /// Returns path to collections.json
 pub fn get_collections_json_path() -> Result<PathBuf> {
     let path: PathBuf = get_monarch_home();
-
     Ok(path.join("collections.json"))
 }
 
 /// Write JSON to file
 pub fn write_json_content(content: Value, path: &Path) -> Result<()> {
-    if let Err(e) = fs::write(path, content.to_string()) {
-        return Err(anyhow!(
-            "monarch_fs::write_json_content() failed! Something went wrong trying to write new library to: {file} | Err: {e}",
-            file = path.display()));
-    }
+    fs::write(path, content.to_string()).with_context(||
+        -> String {format!("monarch_fs::write_json_content() failed! Something went wrong trying to write new library to: {file} | Err: ", file = path.display())})?;
     Ok(())
 }
 
@@ -141,11 +125,8 @@ pub fn path_exists(path: &Path) -> bool {
 
 /// Attempts to create an empty directory and returns result
 pub fn create_dir(path: &Path) -> Result<()> {
-    if let Err(e) = fs::create_dir_all(path) {
-        return Err(anyhow!(
-            "monarch_fs::create_dir() failed! Something went wrong while creating new directory: {dir} | Error: {e}",
-            dir = path.display()));
-    }
+    fs::create_dir_all(path).with_context(||
+        -> String {format!("monarch_fs::write_json_content() failed! Something went wrong trying to write new library to: {dir} | Err: ", dir = path.display())})?;
     Ok(())
 }
 
@@ -158,21 +139,18 @@ pub fn create_dir(path: &Path) -> Result<()> {
 /// but if it does it returns an empty string.
 pub fn get_resources_path() -> PathBuf {
     let path: PathBuf = get_monarch_home();
-
     path.join("resources")
 }
 
 /// Returns path to store temporary images
 pub fn get_resources_cache() -> PathBuf {
     let path: PathBuf = get_resources_path();
-
     path.join("cache")
 }
 
 /// Returns path to store thumbnails for games in library
 pub fn get_resources_library() -> PathBuf {
     let path: PathBuf = get_resources_path();
-
     path.join("library")
 }
 
@@ -202,9 +180,7 @@ fn generate_image_filename(name: &str) -> Result<String> {
     let mut filename: String = String::from(name);
     filename = filename.replace(" ", "_");
 
-    let regex = Regex::new(r"[^a-zA-Z0-9_]").with_context(|| -> String {
-        format!("monarch_fs::generate_image_filename() failed! Failed to build new regex! | Err")
-    })?;
+    let regex = Regex::new(r"[^a-zA-Z0-9_]").with_context(|| -> String {"monarch_fs::generate_image_filename() failed! Failed to build new regex! | Err".to_string()})?;
 
     filename = regex.replace_all(&filename, "").to_string();
     filename.push_str(".jpg");

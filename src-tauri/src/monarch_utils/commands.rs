@@ -40,6 +40,7 @@ pub async fn open_logs() {
     All settings related commands return the new settings as read by the backend to ensure both
     frontend and backend agree on current settings.
     Settings are wrapped in Result<> type to also tell frontend the success or failure of the command.
+    tauri::commands don't return the actual error message. Instead they write an easier error to understand for the user.
 */
 
 #[tauri::command]
@@ -47,27 +48,30 @@ pub async fn open_logs() {
 pub fn get_settings() -> Result<Table, String> {
     match read_settings() {
         Ok(result) => Ok(result),
-        Err(e) => {
-            error!("{e}");
-            Err(String::from("Failed to read settings!"))
-        }
+        Err(_) => Err(String::from("Something went wrong while reading settings!")),
     }
 }
 
 #[tauri::command]
 /// Write setting to settings.toml
+/// Don't return custom error message as they instead return the state of settings according to
+/// backend.
 pub fn set_settings(settings: Table) -> Result<Table, Table> {
     write_settings(settings)
 }
 
 #[tauri::command]
 /// Write default settings to settings.toml
+/// Don't return custom error message as they instead return the state of settings according to
+/// backend.
 pub fn revert_settings() -> Result<Table, Table> {
     set_default_settings()
 }
 
 #[tauri::command]
 /// Manually clear all images in the resources/cache directory
+/// Don't return custom error message as they instead return the state of settings according to
+/// backend.
 pub fn clear_cached_images() {
     clear_all_cache();
 }
@@ -75,9 +79,8 @@ pub fn clear_cached_images() {
 #[tauri::command]
 /// Set password in secure store
 pub fn set_password(platform: String, username: String, password: String) -> Result<(), String> {
-    if let Err(e) = set_credentials(&platform, &username, &password) {
-        error!("{e}");
-        return Err(String::from("Failed to set password!"));
+    if set_credentials(&platform, &username, &password).is_err() {
+        return Err(String::from("Something went wrong setting new password!"));
     }
     Ok(())
 }
@@ -85,9 +88,10 @@ pub fn set_password(platform: String, username: String, password: String) -> Res
 #[tauri::command]
 /// Delete password in secure store
 pub fn delete_password(platform: String, username: String) -> Result<(), String> {
-    if let Err(e) = delete_credentials(&platform, &username) {
-        error!("{e}");
-        return Err(String::from("Failed to delete password!"));
+    if delete_credentials(&platform, &username).is_err() {
+        return Err(String::from(
+            "Something went wrong while deleting credentials!",
+        ));
     }
     Ok(())
 }
