@@ -1,9 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
-#![allow(non_snake_case)] // Allow Monarch to use capital M
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use std::process::exit;
+#![allow(non_snake_case)]
 
 use log::error;
+use std::process::exit;
 
 mod monarch_games;
 mod monarch_library;
@@ -26,7 +26,7 @@ use monarch_utils::{housekeeping, monarch_settings};
 fn init() {
     if let Err(e) = monarch_settings::init() {
         // Crash program if this fails
-        println!("Error during settings initialization! | Error: {e}");
+        println!("Error during settings initialization! | Err: {e}");
         exit(1);
     }
     init_logger(); // Starts logger
@@ -62,6 +62,6 @@ fn main() {
 
     // Better to write to log than to console with .expect() due to line nr 2, hiding console on Windows
     if let Err(e) = app_result {
-        error!("Failed to build Tauri app! | Message: {:?}", e);
+        error!("Failed to build Tauri app! | Err: {}", e);
     }
 }
