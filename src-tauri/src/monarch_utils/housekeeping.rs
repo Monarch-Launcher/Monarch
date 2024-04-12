@@ -57,7 +57,7 @@ pub fn clear_cached_thumbnails() {
             clear_dir(files);
         }
         Err(e) => {
-            error!("housekeeping::clear_cached_thumbnails() failed! Encountered error while running fs::read_dir() | Err {e}");
+            error!("housekeeping::clear_cached_thumbnails() Encountered error while running fs::read_dir() | Err: {e}");
         }
     }
 }
@@ -84,7 +84,7 @@ fn clear_dir(files: ReadDir) {
 fn remove_thumbnail(file: &Path) {
     if let Err(e) = fs::remove_file(file) {
         error!(
-            "housekeeping::remove_thumbnail() failed! Error while removing: {path} | Error: {e}",
+            "housekeeping::remove_thumbnail() Error while removing: {path} | Err: {e}",
             path = file.display()
         );
     }
@@ -116,13 +116,16 @@ pub fn clear_all_cache() {
                         remove_thumbnail(&f.path());
                     }
                     Err(e) => {
-                        error!("housekeeping::clear_all_cache() failed! Could not read file! | Error: {e}");
+                        error!("housekeeping::clear_all_cache() Could not read file! | Err: {e}");
                     }
                 }
             }
         }
         Err(e) => {
-            error!("housekeeping::clear_all_cache() failed! Error while reading files from: {dir} | Error: {e}", dir = path.display());
+            error!(
+                "housekeeping::clear_all_cache() Error while reading files from: {dir} | Err: {e}",
+                dir = path.display()
+            );
         }
     }
 }

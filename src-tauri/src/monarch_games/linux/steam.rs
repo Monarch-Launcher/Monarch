@@ -17,8 +17,7 @@ use std::process::Command;
 
 /// Installs SteamCMD for user in .monarch
 pub fn install_steamcmd() -> Result<()> {
-    let dest_path: PathBuf = get_steamcmd_dir().with_context(||
-        -> String {format!("linux::steam::install_steamcmd() failed! Error returned when getting SteamCMD directory! | Err")})?;
+    let dest_path: PathBuf = get_steamcmd_dir();
 
     if !path_exists(&dest_path) {
         create_dir(&dest_path).context(
@@ -64,8 +63,7 @@ pub fn install_steamcmd() -> Result<()> {
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
 pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
-    let mut path: PathBuf = get_steamcmd_dir().with_context(|| 
-        -> String {format!("linux::steam::steamcmd_command() failed! Error returned when getting SteamCMD directory! | Err")})?;
+    let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.sh");
 
     Command::new("sh")

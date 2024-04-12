@@ -52,7 +52,7 @@ impl MonarchGame {
         if !path_exists(&path) {
             tokio::task::spawn(async move {
                 if let Err(e) = download_image(&owned_url, &path).await {
-                    error!("monarchgame::download_thumbnail() encountered error! Failed to download image from: {owned_url} | Err: {e}");
+                    error!("monarchgame::download_thumbnail() Failed to download image from: {owned_url} | Err: {e}");
                 }
             });
         }

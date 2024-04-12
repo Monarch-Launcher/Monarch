@@ -48,7 +48,10 @@ pub async fn open_logs() {
 pub fn get_settings() -> Result<Table, String> {
     match read_settings() {
         Ok(result) => Ok(result),
-        Err(_) => Err(String::from("Something went wrong while reading settings!")),
+        Err(e) => {
+            error!("monarch_utils::commands::get_settings() -> {e}");
+            Err("Something went wrong while reading settings!".to_string())
+        }
     }
 }
 
@@ -57,7 +60,13 @@ pub fn get_settings() -> Result<Table, String> {
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
 pub fn set_settings(settings: Table) -> Result<Table, Table> {
-    write_settings(settings)
+    let res: Result<Table, Table> = write_settings(settings);
+
+    if let Err(e) = &res {
+        error!("monarch_utils::commands::set_settings() -> {e}");
+    }
+
+    res
 }
 
 #[tauri::command]
@@ -65,7 +74,13 @@ pub fn set_settings(settings: Table) -> Result<Table, Table> {
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
 pub fn revert_settings() -> Result<Table, Table> {
-    set_default_settings()
+    let res: Result<Table, Table> = set_default_settings();
+
+    if let Err(e) = &res {
+        error!("monarch_utils::commands::revert_settings() -> {e}");
+    }
+
+    res
 }
 
 #[tauri::command]
@@ -79,7 +94,8 @@ pub fn clear_cached_images() {
 #[tauri::command]
 /// Set password in secure store
 pub fn set_password(platform: String, username: String, password: String) -> Result<(), String> {
-    if set_credentials(&platform, &username, &password).is_err() {
+    if let Err(e) = set_credentials(&platform, &username, &password) {
+        error!("monarch_utils::commands::set_password() -> {e}");
         return Err(String::from("Something went wrong setting new password!"));
     }
     Ok(())
@@ -88,10 +104,9 @@ pub fn set_password(platform: String, username: String, password: String) -> Res
 #[tauri::command]
 /// Delete password in secure store
 pub fn delete_password(platform: String, username: String) -> Result<(), String> {
-    if delete_credentials(&platform, &username).is_err() {
-        return Err(String::from(
-            "Something went wrong while deleting credentials!",
-        ));
+    if let Err(e) = delete_credentials(&platform, &username) {
+        error!("monarch_utils::commands::delete_password() -> {e}");
+        return Err("Something went wrong while deleting credentials!".to_string());
     }
     Ok(())
 }

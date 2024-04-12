@@ -2,7 +2,7 @@ use super::monarch_client;
 use super::monarchgame::MonarchGame;
 use super::steam_client as steam;
 use anyhow::Result;
-use log::info;
+use log::{error, info};
 use serde_json::value::Value;
 use tauri::AppHandle;
 
@@ -18,7 +18,10 @@ use crate::monarch_utils::monarch_windows::MiniWindow;
 pub async fn get_library() -> Result<Value, String> {
     match games_library::get_games() {
         Ok(games) => Ok(games),
-        Err(_) => Err(String::from("Something went wrong getting library!")),
+        Err(e) => {
+            error!("monarch_games::commands::get_library -> {e}");
+            Err("Something went wrong getting library!".to_string())
+        }
     }
 }
 
@@ -43,10 +46,8 @@ pub async fn launch_game(
     platform_id: String,
 ) -> Result<(), String> {
     info!("Launching game: {name}");
-    if monarch_client::launch_game(&platform, &platform_id)
-        .await
-        .is_err()
-    {
+    if let Err(e) = monarch_client::launch_game(&platform, &platform_id).await {
+        error!("monarch_games::commands::launch_game() -> {e}");
         return Err(String::from("Something went wrong while launching game!"));
     }
     Ok(())
@@ -64,7 +65,10 @@ pub async fn download_game(
     info!("Installing: {name}");
     match monarch_client::download_game(&name, &platform, &platform_id).await {
         Ok(new_library) => Ok(new_library),
-        Err(_) => Err(String::from("Something went wrong while downloading game!")),
+        Err(e) => {
+            error!("monarch_games::commands::download_game() -> {e}");
+            Err("Something went wrong while downloading game!".to_string())
+        }
     }
 }
 
@@ -76,11 +80,9 @@ pub async fn remove_game(
     platform_id: String,
 ) -> Result<(), String> {
     info!("Uninstalling: {name}");
-    if monarch_client::uninstall_game(&platform, &platform_id)
-        .await
-        .is_err()
-    {
-        return Err(String::from("Something went wrong while removing game!"));
+    if let Err(e) = monarch_client::uninstall_game(&platform, &platform_id).await {
+        error!("monarch_games::commands::remove_game() -> {e}");
+        return Err("Something went wrong while removing game!".to_string());
     }
     Ok(())
 }
@@ -89,16 +91,14 @@ pub async fn remove_game(
 /// Open "Purchase window" for a game
 pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
     let window: MiniWindow = MiniWindow::new("store", &url, 1280.0, 720.0);
-    if window.build_window(&handle).await.is_err() {
-        return Err(String::from(
-            "Something went wrong while trying build store window!",
-        ));
+    if let Err(e) = window.build_window(&handle).await {
+        error!("monarch_games::commands::open_store() -> {e}");
+        return Err("Something went wrong while trying build store window!".to_string());
     }
 
-    if window.show_window(&handle).is_err() {
-        return Err(String::from(
-            "Something went wrong while trying to show store window!",
-        ));
+    if let Err(e) = window.show_window(&handle) {
+        error!("monarch_games::commands::open_store() -> {e}");
+        return Err("Something went wrong while trying to show store window!".to_string());
     }
     Ok(())
 }

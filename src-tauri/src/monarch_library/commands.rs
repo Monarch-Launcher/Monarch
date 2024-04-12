@@ -1,5 +1,6 @@
 use super::collections;
 use core::result::Result; // Using different Result type for sending to frontend.
+use log::error;
 use serde_json::Value;
 
 #[tauri::command]
@@ -10,9 +11,10 @@ pub async fn create_collection(
 ) -> Result<Value, String> {
     match collections::new_collection(collection_name, game_ids) {
         Ok(result) => Ok(result),
-        Err(_) => Err(String::from(
-            "Something went wrong while creating a new collection!",
-        )),
+        Err(e) => {
+            error!("monarch_library::commands::create_collection() -> {e}");
+            Err("Something went wrong while creating a new collection!".to_string())
+        }
     }
 }
 
@@ -25,9 +27,10 @@ pub async fn update_collection(
 ) -> Result<Value, String> {
     match collections::update_collections(&id, &new_name, game_ids) {
         Ok(result) => Ok(result),
-        Err(_) => Err(String::from(
-            "Something went wrong while updating collection!",
-        )),
+        Err(e) => {
+            error!("monarch_library::commands::update_collection() -> {e}");
+            Err("Something went wrong while updating collection!".to_string())
+        }
     }
 }
 
@@ -36,9 +39,10 @@ pub async fn update_collection(
 pub async fn delete_collection(id: String) -> Result<Value, String> {
     match collections::delete_collections(&id) {
         Ok(result) => Ok(result),
-        Err(_) => Err(String::from(
-            "Something went wrong while deleting collection!",
-        )),
+        Err(e) => {
+            error!("monarch_library::commands::delete_collection() -> {e}");
+            Err("Something went wrong while deleting collection!".to_string())
+        }
     }
 }
 
@@ -47,8 +51,9 @@ pub async fn delete_collection(id: String) -> Result<Value, String> {
 pub async fn get_collections() -> Result<Value, String> {
     match collections::get_collections() {
         Ok(result) => Ok(result),
-        Err(_) => Err(String::from(
-            "Something went wrong while getting collections!",
-        )),
+        Err(e) => {
+            error!("monarch_library::commands::get_collections() -> {e}");
+            Err("Something went wrong while getting collections!".to_string())
+        }
     }
 }
