@@ -20,9 +20,7 @@ pub fn install_steamcmd() -> Result<()> {
     let dest_path: PathBuf = get_steamcmd_dir();
 
     if !path_exists(&dest_path) {
-        create_dir(&dest_path).context(
-            "linux::steam::install_steamcmd() failed! Error creating SteamCMD directory! | Err",
-        )?;
+        create_dir(&dest_path).context("linux::steam::install_steamcmd() -> ")?;
     }
 
     let mut download_arg: String = String::from("curl -sqL ");
@@ -45,7 +43,7 @@ pub fn install_steamcmd() -> Result<()> {
         .arg(&download_arg)
         .output()
         .context(format!(
-            "linux::steam::install_steamcmd() failed! Failed to run: {download_arg} | Err"
+            "linux::steam::install_steamcmd() Failed to run: {download_arg} | Err"
         ))?;
 
     Command::new("sh")
@@ -53,7 +51,7 @@ pub fn install_steamcmd() -> Result<()> {
         .arg(&tar_arg)
         .output()
         .context(format!(
-            "linux::steam::install_steamcmd() failed! Failed to run: {tar_arg} | Err"
+            "linux::steam::install_steamcmd() Failed to run: {tar_arg} | Err"
         ))?;
 
     Ok(())
@@ -65,13 +63,11 @@ pub fn install_steamcmd() -> Result<()> {
 pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.sh");
+    let args_string: String = args.iter().map(|arg| arg.to_string()).collect::<String>();
 
     Command::new("sh")
         .arg(path)
-        .arg(format!("{}",
-            args.iter()
-            .map(|arg| format!("{}", arg))
-            .collect::<String>()))
+        .arg(args_string)
         .output()
         .context("linux::steam::steamcmd_command() failed! Error returned when running SteamCMD child process! | Err")?;
 
@@ -114,8 +110,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
         Ok(path) => monarch_vdf::parse_library_file(&path).unwrap(),
         Err(e) => {
             error!(
-                "Failed to get default path to Steam library.vdf! | Err: {:?}",
-                e
+                "linux::steam::get_library() Failed to get default path to Steam library.vdf! | Err: {e}",
             );
             Vec::new()
         }
@@ -130,9 +125,8 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
 /// Returns default path used by steam on Linux systems ($HOME/.steam)
 fn get_default_location() -> Result<PathBuf> {
-    let path: PathBuf = get_unix_home().with_context(|| -> String {
-        format!("linux::steam::get_default_location() failed! Failed to get /home/<username>/ directory! | Err")
-    })?;
+    let path: PathBuf =
+        get_unix_home().with_context(|| "linux::steam::get_default_location() -> ".to_string())?;
 
     Ok(path.join(".steam/steam/steamapps/libraryfolders.vdf")) // Add path to libraryfolders.vdf
 }
@@ -140,7 +134,7 @@ fn get_default_location() -> Result<PathBuf> {
 /// Runs specified command via Steam
 pub fn run_command(args: &str) -> Result<()> {
     Command::new("steam").arg(args).spawn().context(format!(
-        "linux::steam::run_command() failed! Failed to run Steam command {args} | Err"
+        "linux::steam::run_command() Failed to run Steam command {args} | Err"
     ))?;
 
     Ok(())

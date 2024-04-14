@@ -48,7 +48,7 @@ pub async fn launch_game(
     info!("Launching game: {name}");
     if let Err(e) = monarch_client::launch_game(&platform, &platform_id).await {
         error!("monarch_games::commands::launch_game() -> {e}");
-        return Err(String::from("Something went wrong while launching game!"));
+        return Err(format!("Something went wrong while launching: {name}"));
     }
     Ok(())
 }
@@ -67,7 +67,7 @@ pub async fn download_game(
         Ok(new_library) => Ok(new_library),
         Err(e) => {
             error!("monarch_games::commands::download_game() -> {e}");
-            Err("Something went wrong while downloading game!".to_string())
+            Err(format!("Something went wrong while downloading: {name}"))
         }
     }
 }
@@ -82,7 +82,7 @@ pub async fn remove_game(
     info!("Uninstalling: {name}");
     if let Err(e) = monarch_client::uninstall_game(&platform, &platform_id).await {
         error!("monarch_games::commands::remove_game() -> {e}");
-        return Err("Something went wrong while removing game!".to_string());
+        return Err(format!("Something went wrong while removing: {name}"));
     }
     Ok(())
 }

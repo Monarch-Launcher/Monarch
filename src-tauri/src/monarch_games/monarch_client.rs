@@ -22,12 +22,12 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 /// Launches a game
 pub async fn launch_game(platform: &str, platform_id: &str) -> Result<()> {
     match platform {
-        "steam" => return steam_client::launch_game(platform_id),
-        "steamcmd" => return steam_client::launch_cmd_game(platform_id),
+        "steam" => steam_client::launch_game(platform_id),
+        "steamcmd" => steam_client::launch_cmd_game(platform_id),
         &_ => {
-            return Err(anyhow!(
+            Err(anyhow!(
                 "monarch_client::launch_game() User tried launching a game on an invalid platform: {platform} | Err: Invalid platform!"
-            ));
+            ))
         }
     }
 }
@@ -89,11 +89,9 @@ pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<()> {
         "steam" => steam_client::uninstall_game(platform_id)
             .await
             .context("monarch_client::uninstall_game() -> "),
-        &_ => {
-            return Err(anyhow!(
-                "monarch_client::uninstall_game() Invalid platform passed as argument!"
-            ));
-        }
+        &_ => Err(anyhow!(
+            "monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )"
+        )),
     }
 }
 
