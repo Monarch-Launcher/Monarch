@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use log::error;
 use once_cell::sync::Lazy;
 use std::fs;
@@ -46,7 +46,7 @@ pub fn init() -> Result<()> {
     if !path_exists(&path) {
         // If settings.toml doesn't exist, create a new file and write default settings
         if let Err(e) = set_default_settings() {
-            return Err(anyhow!("monarch_settings::init() -> {e}"));
+            bail!("monarch_settings::init() -> {e}");
         }
     }
 

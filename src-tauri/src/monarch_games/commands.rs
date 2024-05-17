@@ -20,7 +20,7 @@ pub async fn get_library() -> Result<Value, String> {
         Ok(games) => Ok(games),
         Err(e) => {
             error!("monarch_games::commands::get_library -> {e}");
-            Err("Something went wrong getting library!".to_string())
+            Err(String::from("Something went wrong getting library!"))
         }
     }
 }
@@ -93,12 +93,16 @@ pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
     let window: MiniWindow = MiniWindow::new("store", &url, 1280.0, 720.0);
     if let Err(e) = window.build_window(&handle).await {
         error!("monarch_games::commands::open_store() -> {e}");
-        return Err("Something went wrong while trying build store window!".to_string());
+        return Err(String::from(
+            "Something went wrong while trying build store window!",
+        ));
     }
 
     if let Err(e) = window.show_window(&handle) {
         error!("monarch_games::commands::open_store() -> {e}");
-        return Err("Something went wrong while trying to show store window!".to_string());
+        return Err(String::from(
+            "Something went wrong while trying to show store window!",
+        ));
     }
     Ok(())
 }

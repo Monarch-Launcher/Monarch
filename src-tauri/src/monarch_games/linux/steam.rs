@@ -20,7 +20,7 @@ pub fn install_steamcmd() -> Result<()> {
     let dest_path: PathBuf = get_steamcmd_dir();
 
     if !path_exists(&dest_path) {
-        create_dir(&dest_path).context("linux::steam::install_steamcmd() -> ")?;
+        create_dir(&dest_path).with_context(|| "linux::steam::install_steamcmd() -> ")?;
     }
 
     let mut download_arg: String = String::from("curl -sqL ");
@@ -42,17 +42,17 @@ pub fn install_steamcmd() -> Result<()> {
         .arg("-c")
         .arg(&download_arg)
         .output()
-        .context(format!(
-            "linux::steam::install_steamcmd() Failed to run: {download_arg} | Err"
-        ))?;
+        .with_context(|| {
+            format!("linux::steam::install_steamcmd() Failed to run: {download_arg} | Err")
+        })?;
 
     Command::new("sh")
         .arg("-c")
         .arg(&tar_arg)
         .output()
-        .context(format!(
-            "linux::steam::install_steamcmd() Failed to run: {tar_arg} | Err"
-        ))?;
+        .with_context(|| {
+            format!("linux::steam::install_steamcmd() Failed to run: {tar_arg} | Err")
+        })?;
 
     Ok(())
 }
@@ -69,7 +69,7 @@ pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
         .arg(path)
         .arg(args_string)
         .output()
-        .context("linux::steam::steamcmd_command() failed! Error returned when running SteamCMD child process! | Err")?;
+        .with_context(|| "linux::steam::steamcmd_command() failed! Error returned when running SteamCMD child process! | Err")?;
 
     Ok(())
 }
@@ -133,9 +133,9 @@ fn get_default_location() -> Result<PathBuf> {
 
 /// Runs specified command via Steam
 pub fn run_command(args: &str) -> Result<()> {
-    Command::new("steam").arg(args).spawn().context(format!(
-        "linux::steam::run_command() Failed to run Steam command {args} | Err"
-    ))?;
+    Command::new("steam").arg(args).spawn().with_context(|| {
+        format!("linux::steam::run_command() Failed to run Steam command {args} | Err")
+    })?;
 
     Ok(())
 }

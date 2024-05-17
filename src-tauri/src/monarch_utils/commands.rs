@@ -50,7 +50,7 @@ pub fn get_settings() -> Result<Table, String> {
         Ok(result) => Ok(result),
         Err(e) => {
             error!("monarch_utils::commands::get_settings() -> {e}");
-            Err("Something went wrong while reading settings!".to_string())
+            Err(String::from("Something went wrong while reading settings!"))
         }
     }
 }
@@ -106,7 +106,9 @@ pub fn set_password(platform: String, username: String, password: String) -> Res
 pub fn delete_password(platform: String, username: String) -> Result<(), String> {
     if let Err(e) = delete_credentials(&platform, &username) {
         error!("monarch_utils::commands::delete_password() -> {e}");
-        return Err("Something went wrong while deleting credentials!".to_string());
+        return Err(String::from(
+            "Something went wrong while deleting credentials!",
+        ));
     }
     Ok(())
 }

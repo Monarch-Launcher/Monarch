@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use log::{error, warn};
 use reqwest;
 use scraper::{Html, Selector};
@@ -43,7 +43,7 @@ pub async fn download_and_install() -> Result<()> {
 #[cfg(not(windows))]
 /// Downloads and installs SteamCMD on users computer.
 pub async fn download_and_install() -> Result<()> {
-    steam::install_steamcmd().context("steam_client::download_and_install() -> ")
+    steam::install_steamcmd().with_context(|| "steam_client::download_and_install() -> ")
 }
 
 /// Returns games installed by Steam Client.
@@ -71,31 +71,32 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 pub fn launch_game(id: &str) -> Result<()> {
     let mut command: String = String::from("steam://rungameid/");
     command.push_str(id);
-    steam::run_command(&command).context("steam_client::launch_game() -> ")
+    steam::run_command(&command).with_context(|| "steam_client::launch_game() -> ")
 }
 
 /// Attemps to launch SteamCMD game.
 pub fn launch_cmd_game(id: &str) -> Result<()> {
     let launch_arg: String = format!("app_launch {id}");
     let args: Vec<&str> = vec![&launch_arg];
-    steam::steamcmd_command(args).context("steam_client::launch_cmd_game() -> ")
+    steam::steamcmd_command(args).with_context(|| "steam_client::launch_cmd_game() -> ")
 }
 
 /// Download a Steam game via Monarch and SteamCMD.
 pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
-    let settings = get_steam_settings().with_context(|| {
-        "steam_client::download_game() -> monarch_settings::get_steam_settings() returned None!"
-    })?;
+    let settings: toml::Value = match get_steam_settings() {
+        Some(steam_settings) => steam_settings,
+        None => bail!("steam_client::download_game() -> monarch_settings::get_steam_settings() returned None!")
+    };
 
     if !can_manage_steam(&settings) {
         warn!("steam_client::download_game() User tried to install game without allowing Monarch to manage Steam! Cancelling download...");
-        return Err(anyhow!(
-            "steam_client::download_game() | Err: Not allowed to manage games. Check settings."
-        ));
+        bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.");
     }
+
     let username: String = get_username(&settings).with_context(|| {
         "steam_client::download_game() -> steam_client::get_username() returned None!"
     })?;
+
     let password: String =
         get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
 
@@ -136,15 +137,13 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
     let settings = get_steam_settings().with_context(|| "steam_client::uninstall_game() -> ")?;
     if !can_manage_steam(&settings) {
         warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
-        return Err(anyhow!(
-            "steam_client::download_game() | Err: Not allowed to manage games. Check settings."
-        ));
+        bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
     }
 
     let remove_arg: String = format!("+app_uninstall {id}");
     let command: Vec<&str> = vec![&remove_arg, "+quit"];
 
-    steam::steamcmd_command(command).context("steam_client::uninstall_game() -> ")
+    steam::steamcmd_command(command).with_context(|| "steam_client::uninstall_game() -> ")
 }
 
 /// Returns path to Monarchs installed version of SteamCMD

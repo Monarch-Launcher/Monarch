@@ -12,7 +12,7 @@ use crate::monarch_utils::monarch_fs::{
 pub fn write_games(games: Vec<MonarchGame>) -> Result<()> {
     let path: PathBuf = get_library_json_path();
 
-    write_json_content(json!(games), &path).context("games_library::write_games() -> ")
+    write_json_content(json!(games), &path).with_context(|| "games_library::write_games() -> ")
 }
 
 /// Writes new games to monarch_games.json for Monarch to track what games it installed itself.
@@ -41,7 +41,8 @@ pub fn write_monarchgame(game: MonarchGame) -> Result<()> {
     }
 
     games.push(game);
-    write_json_content(json!(games), &path).context("games_library::write_monarchgame() -> ")
+    write_json_content(json!(games), &path)
+        .with_context(|| "games_library::write_monarchgame() -> ")
 }
 
 /// Returns JSON of games from library
@@ -79,7 +80,7 @@ pub fn get_monarchgames() -> Result<Vec<MonarchGame>> {
 
 /// Backend functionality for adding a new game that's been installed.
 pub fn add_game(game: MonarchGame) -> Result<()> {
-    write_monarchgame(game.clone()).context("games_library::add_game() -> ")?;
+    write_monarchgame(game.clone()).with_context(|| "games_library::add_game() -> ")?;
 
     let games_json: Value = get_games().with_context(|| "games_library::add_game() -> ")?;
 

@@ -13,7 +13,9 @@ pub async fn create_collection(
         Ok(result) => Ok(result),
         Err(e) => {
             error!("monarch_library::commands::create_collection() -> {e}");
-            Err("Something went wrong while creating a new collection!".to_string())
+            Err(String::from(
+                "Something went wrong while creating a new collection!",
+            ))
         }
     }
 }
@@ -29,7 +31,9 @@ pub async fn update_collection(
         Ok(result) => Ok(result),
         Err(e) => {
             error!("monarch_library::commands::update_collection() -> {e}");
-            Err("Something went wrong while updating collection!".to_string())
+            Err(String::from(
+                "Something went wrong while updating collection!",
+            ))
         }
     }
 }
@@ -41,7 +45,9 @@ pub async fn delete_collection(id: String) -> Result<Value, String> {
         Ok(result) => Ok(result),
         Err(e) => {
             error!("monarch_library::commands::delete_collection() -> {e}");
-            Err("Something went wrong while deleting collection!".to_string())
+            Err(String::from(
+                "Something went wrong while deleting collection!",
+            ))
         }
     }
 }
@@ -53,7 +59,9 @@ pub async fn get_collections() -> Result<Value, String> {
         Ok(result) => Ok(result),
         Err(e) => {
             error!("monarch_library::commands::get_collections() -> {e}");
-            Err("Something went wrong while getting collections!".to_string())
+            Err(String::from(
+                "Something went wrong while getting collections!",
+            ))
         }
     }
 }

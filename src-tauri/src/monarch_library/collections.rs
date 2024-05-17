@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, value::Value};
@@ -36,8 +36,8 @@ pub fn new_collection(collection_name: String, game_ids: Vec<String>) -> Result<
         get_collections_as_struct().with_context(|| "collections::new_collection() -> ")?;
 
     collecs.push(new_collec);
-    write_json_content(json!(collecs), &path).context("collections::new_collection() -> ")?;
-    get_collections().context("collections::new_collection() -> ")
+    write_json_content(json!(collecs), &path).with_context(|| "collections::new_collection() -> ")?;
+    get_collections().with_context(|| "collections::new_collection() -> ")
 }
 
 /// Updates info about a collection.
@@ -50,11 +50,11 @@ pub fn update_collections(id: &str, new_name: &str, game_ids: Vec<String>) -> Re
         collection.name = new_name.to_string();
         collection.gameIds = game_ids;
 
-        write_collection_changes(json!(collecs)).context("collections::update_collections() -> ")?;
-        return get_collections().context("collections::update_collections() -> ")
+        write_collection_changes(json!(collecs)).with_context(|| "collections::update_collections() -> ")?;
+        return get_collections().with_context(|| "collections::update_collections() -> ")
     }
 
-    Err(anyhow!("collections::update_collections() No index found for collection: {id}"))
+    bail!("collections::update_collections() No index found for collection: {id}")
 }
 
 /// Deletes a specified collection
@@ -64,11 +64,11 @@ pub fn delete_collections(id: &str) -> Result<Value> {
     if let Some(index) = find_collection_index(id, &collecs) {
         collecs.remove(index);
 
-        write_collection_changes(json!(collecs)).context("collections::delete_collections() -> ")?;
+        write_collection_changes(json!(collecs)).with_context(|| "collections::delete_collections() -> ")?;
         return get_collections();
     }
 
-    Err(anyhow!("collections::delete_collections() No index found for collection: {id}"))
+    bail!("collections::delete_collections() No index found for collection: {id}")
 }
 
 /// Returns JSON of collections in library
@@ -77,7 +77,7 @@ pub fn get_collections() -> Result<Value> {
 
     match fs::File::open(&path) {
         Ok(file) => {
-            serde_json::from_reader(file).context("collections::get_collections() Failed to parse file content to json! Possibly reading an empty file. | Err: ")
+            serde_json::from_reader(file).with_context(|| "collections::get_collections() Failed to parse file content to json! Possibly reading an empty file. | Err: ")
 
         } Err(e) => {
             error!("collections::get_collections() Could not open: {file} | Err: {e}", file = path.display());
@@ -86,10 +86,10 @@ pub fn get_collections() -> Result<Value> {
             let monarch_collecs: Value = json!(Vec::<MonarchCollection>::new());
         
             fs::File::create(&path)
-                .context(format!("collections::get_collections() Failed to create: {file} | Err: {e}", file = path.display()))?;
+                .with_context(|| format!("collections::get_collections() Failed to create: {file} | Err: {e}", file = path.display()))?;
             
             write_json_content(monarch_collecs.clone(), &path)
-                .context("collections::get_collections() -> ".to_string())?;
+                .with_context(|| "collections::get_collections() -> ")?;
             
             Ok(monarch_collecs) // If it succeeds at creating new collections.json
         }
@@ -100,7 +100,7 @@ pub fn get_collections() -> Result<Value> {
 fn write_collection_changes(collections: Value) -> Result<()> {
     let path: PathBuf = get_collections_json_path();
 
-    write_json_content(collections, &path).context("collections::write_collection_changes() -> ")?;
+    write_json_content(collections, &path).with_context(|| "collections::write_collection_changes() -> ")?;
     info!("Ok: Updated collections.json content!");
 
     Ok(())
@@ -117,7 +117,7 @@ fn generate_hash<T: Hash>(name: &T) -> u64 {
 /// Returns a Vec<MonarchCollection> instead of a json value to remove indentation in functions above.
 fn get_collections_as_struct() -> Result<Vec<MonarchCollection>> {
     let collecs_json = get_collections().with_context(|| "collections::get_collections_as_struct() -> ")?;
-    serde_json::from_value::<Vec<MonarchCollection>>(collecs_json).context("collections::get_collections_as_struct() Error while parsing from json to Vec<MonarchGame>! | Err: ")
+        serde_json::from_value::<Vec<MonarchCollection>>(collecs_json).with_context(|| "collections::get_collections_as_struct() Error while parsing from json to Vec<MonarchGame>! | Err: ")
 }
 
 /// Returns index of MonarchCollection with matching id.

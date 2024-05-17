@@ -2,7 +2,7 @@ use super::{monarchgame::MonarchGame, steam_client};
 use crate::monarch_utils::monarch_fs::get_unix_home;
 use crate::monarch_utils::monarch_settings::get_monarch_settings;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use log::{error, info, warn};
 use std::path::PathBuf;
 
@@ -25,9 +25,7 @@ pub async fn launch_game(platform: &str, platform_id: &str) -> Result<()> {
         "steam" => steam_client::launch_game(platform_id),
         "steamcmd" => steam_client::launch_cmd_game(platform_id),
         &_ => {
-            Err(anyhow!(
-                "monarch_client::launch_game() User tried launching a game on an invalid platform: {platform} | Err: Invalid platform!"
-            ))
+            bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {platform} | Err: Invalid platform!")
         }
     }
 }
@@ -46,12 +44,12 @@ pub async fn download_game(
     let new_game: MonarchGame;
 
     if !monarch_fs::path_exists(&path) {
-        monarch_fs::create_dir(&path).context("monarch_client::download_game() -> ".to_string())?;
+        monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
     }
 
     path.push(name); // Game specific path
     if !monarch_fs::path_exists(&path) {
-        monarch_fs::create_dir(&path).context("monarch_client::download_game() -> ".to_string())?;
+        monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
     }
 
     match platform {
@@ -66,16 +64,11 @@ pub async fn download_game(
                     .with_context(|| "monarch_client::download_game() -> ")?;
             }
 
-            match steam_client::download_game(name, platform_id).await {
-                Ok(game) => new_game = game,
-                Err(e) => {
-                    return Err(anyhow!("monarch_client::download_game() -> {e}"));
-                }
-            }
+            new_game = steam_client::download_game(name, platform_id)
+                .await
+                .with_context(|| "monarch_client::download_and_install() -> ")?;
         }
-        &_ => {
-            return Err(anyhow!("monarch_client::download_game() Invalid platform!"));
-        }
+        &_ => bail!("monarch_client::download_game() Invalid platform!"),
     }
 
     games_library::add_game(new_game).with_context(|| "monarch_client::download_game() -> ")?;
@@ -88,10 +81,8 @@ pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<()> {
     match platform {
         "steam" => steam_client::uninstall_game(platform_id)
             .await
-            .context("monarch_client::uninstall_game() -> "),
-        &_ => Err(anyhow!(
-            "monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )"
-        )),
+            .with_context(|| "monarch_client::uninstall_game() -> "),
+        &_ => bail!("monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )")
     }
 }
 
