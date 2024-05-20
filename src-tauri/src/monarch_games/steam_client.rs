@@ -257,6 +257,7 @@ async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
             }
         }
     }
+    warn!("Failed to parse Steam game with id: {id}");
     bail!("Failed to parse Steam game with id: {id}")
 }
 
