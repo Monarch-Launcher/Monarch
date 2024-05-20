@@ -84,9 +84,7 @@ pub fn add_game(game: MonarchGame) -> Result<()> {
 
     let games_json: Value = get_games().with_context(|| "games_library::add_game() -> ")?;
 
-    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| {
-        "games_library::add_game() Failed to parse json to Vec<MonarchGame>! | Err: "
-    })?;
+    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| "games_library::add_game() Failed to parse json to Vec<MonarchGame>! | Err: ")?;
 
     games.push(game);
     write_games(games)
