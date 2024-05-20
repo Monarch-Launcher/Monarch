@@ -90,7 +90,7 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
 
     if !can_manage_steam(&settings) {
         warn!("steam_client::download_game() User tried to install game without allowing Monarch to manage Steam! Cancelling download...");
-        bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.");
+        bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
     }
 
     let username: String = get_username(&settings).with_context(|| {

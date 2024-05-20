@@ -19,7 +19,10 @@ pub async fn get_library() -> Result<Value, String> {
     match games_library::get_games() {
         Ok(games) => Ok(games),
         Err(e) => {
-            error!("monarch_games::commands::get_library -> {e}");
+            error!(
+                "monarch_games::commands::get_library -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
             Err(String::from("Something went wrong getting library!"))
         }
     }
@@ -47,7 +50,10 @@ pub async fn launch_game(
 ) -> Result<(), String> {
     info!("Launching game: {name}");
     if let Err(e) = monarch_client::launch_game(&platform, &platform_id).await {
-        error!("monarch_games::commands::launch_game() -> {e}");
+        error!(
+            "monarch_games::commands::launch_game() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
         return Err(format!("Something went wrong while launching: {name}"));
     }
     Ok(())
@@ -66,7 +72,10 @@ pub async fn download_game(
     match monarch_client::download_game(&name, &platform, &platform_id).await {
         Ok(new_library) => Ok(new_library),
         Err(e) => {
-            error!("monarch_games::commands::download_game() -> {e}");
+            error!(
+                "monarch_games::commands::download_game() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
             Err(format!("Something went wrong while downloading: {name}"))
         }
     }
@@ -81,7 +90,10 @@ pub async fn remove_game(
 ) -> Result<(), String> {
     info!("Uninstalling: {name}");
     if let Err(e) = monarch_client::uninstall_game(&platform, &platform_id).await {
-        error!("monarch_games::commands::remove_game() -> {e}");
+        error!(
+            "monarch_games::commands::remove_game() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
         return Err(format!("Something went wrong while removing: {name}"));
     }
     Ok(())
@@ -92,16 +104,22 @@ pub async fn remove_game(
 pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
     let window: MiniWindow = MiniWindow::new("store", &url, 1280.0, 720.0);
     if let Err(e) = window.build_window(&handle).await {
-        error!("monarch_games::commands::open_store() -> {e}");
+        error!(
+            "monarch_games::commands::open_store() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
         return Err(String::from(
-            "Something went wrong while trying build store window!",
+            "Something went wrong while opening store page!",
         ));
     }
 
     if let Err(e) = window.show_window(&handle) {
-        error!("monarch_games::commands::open_store() -> {e}");
+        error!(
+            "monarch_games::commands::open_store() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
         return Err(String::from(
-            "Something went wrong while trying to show store window!",
+            "Something went wrong while opening store page!",
         ));
     }
     Ok(())

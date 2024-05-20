@@ -41,7 +41,6 @@ pub async fn download_game(
             .to_string()
             .trim_matches('"'),
     );
-    let new_game: MonarchGame;
 
     if !monarch_fs::path_exists(&path) {
         monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
@@ -52,24 +51,23 @@ pub async fn download_game(
         monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
     }
 
-    match platform {
+    let new_game: MonarchGame = match platform {
         "steam" => {
             if !steam_client::is_installed() {
                 warn!("monarch_client::download_game() SteamCMD not found!");
                 info!("Attempting to download and install SteamCMD...");
 
-                // Run async on windows
                 steam_client::download_and_install()
                     .await
                     .with_context(|| "monarch_client::download_game() -> ")?;
             }
 
-            new_game = steam_client::download_game(name, platform_id)
+            steam_client::download_game(name, platform_id)
                 .await
-                .with_context(|| "monarch_client::download_and_install() -> ")?;
+                .with_context(|| "monarch_client::download_game() -> ")?
         }
         &_ => bail!("monarch_client::download_game() Invalid platform!"),
-    }
+    };
 
     games_library::add_game(new_game).with_context(|| "monarch_client::download_game() -> ")?;
 

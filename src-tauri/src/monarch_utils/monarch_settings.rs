@@ -66,7 +66,10 @@ pub fn set_default_settings() -> Result<Table, Table> {
     let path = match get_settings_path() {
         Ok(settings_path) => settings_path,
         Err(e) => {
-            error!("monarch_settings::set_default_settings() -> {e}");
+            error!(
+                "monarch_settings::set_default_settings() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
             return Err(settings);
         }
     };
@@ -75,7 +78,10 @@ pub fn set_default_settings() -> Result<Table, Table> {
         if let Err(e) = create_dir(path.parent().unwrap()) {
             // Create folders to .config/monarch,
             // excluding settings.toml
-            error!("monarch_settings::set_default_settings() -> {e}");
+            error!(
+                "monarch_settings::set_default_settings() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
             return Err(settings);
         }
     }
@@ -93,7 +99,10 @@ pub fn write_settings(settings: Table) -> Result<Table, Table> {
     match get_settings_path() {
         Ok(path) => write_toml_content(&path, settings),
         Err(e) => {
-            error!("monarch_settings::write_settings() -> {e}");
+            error!(
+                "monarch_settings::write_settings() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
             Err(get_settings_state())
         }
     }

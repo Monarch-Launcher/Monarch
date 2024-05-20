@@ -49,7 +49,10 @@ pub fn get_settings() -> Result<Table, String> {
     match read_settings() {
         Ok(result) => Ok(result),
         Err(e) => {
-            error!("monarch_utils::commands::get_settings() -> {e}");
+            error!(
+                "monarch_utils::commands::get_settings() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
             Err(String::from("Something went wrong while reading settings!"))
         }
     }
@@ -62,8 +65,8 @@ pub fn get_settings() -> Result<Table, String> {
 pub fn set_settings(settings: Table) -> Result<Table, Table> {
     let res: Result<Table, Table> = write_settings(settings);
 
-    if let Err(e) = &res {
-        error!("monarch_utils::commands::set_settings() -> {e}");
+    if res.is_err() {
+        error!("monarch_utils::commands::set_settings() -> monarch_settings::write_settings() returned error!");
     }
 
     res
@@ -76,8 +79,8 @@ pub fn set_settings(settings: Table) -> Result<Table, Table> {
 pub fn revert_settings() -> Result<Table, Table> {
     let res: Result<Table, Table> = set_default_settings();
 
-    if let Err(e) = &res {
-        error!("monarch_utils::commands::revert_settings() -> {e}");
+    if res.is_err() {
+        error!("monarch_utils::commands::revert_settings() -> monarch_settings::set_default_settings() returned error!");
     }
 
     res
@@ -95,7 +98,10 @@ pub fn clear_cached_images() {
 /// Set password in secure store
 pub fn set_password(platform: String, username: String, password: String) -> Result<(), String> {
     if let Err(e) = set_credentials(&platform, &username, &password) {
-        error!("monarch_utils::commands::set_password() -> {e}");
+        error!(
+            "monarch_utils::commands::set_password() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
         return Err(String::from("Something went wrong setting new password!"));
     }
     Ok(())
@@ -105,7 +111,10 @@ pub fn set_password(platform: String, username: String, password: String) -> Res
 /// Delete password in secure store
 pub fn delete_password(platform: String, username: String) -> Result<(), String> {
     if let Err(e) = delete_credentials(&platform, &username) {
-        error!("monarch_utils::commands::delete_password() -> {e}");
+        error!(
+            "monarch_utils::commands::delete_password() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
         return Err(String::from(
             "Something went wrong while deleting credentials!",
         ));
