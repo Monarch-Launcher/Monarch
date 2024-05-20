@@ -42,7 +42,7 @@ pub fn start() {
 /// Currently only checks a certain level of CPU usage, will possibly update later
 /// to check more metrics such as disk usage, memory, etc...
 fn low_system_usage(system: &System) -> bool {
-    return system.load_average().one < 15.0; // Check that system CPU usage 1 min ago is below 15%
+    system.load_average().one < 15.0 // Check that system CPU usage 1 min ago is below 15%
 }
 
 /*
@@ -52,8 +52,13 @@ fn low_system_usage(system: &System) -> bool {
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 pub fn clear_cached_thumbnails() {
     let path: PathBuf = get_resources_cache();
-    if let Ok(files) = fs::read_dir(path) {
-        clear_dir(files);
+    match fs::read_dir(path) {
+        Ok(files) => {
+            clear_dir(files);
+        }
+        Err(e) => {
+            error!("housekeeping::clear_cached_thumbnails() Encountered error while running fs::read_dir() | Err: {e}");
+        }
     }
 }
 
@@ -61,8 +66,10 @@ pub fn clear_cached_thumbnails() {
 fn clear_dir(files: ReadDir) {
     let mut logged_event: bool = false;
 
-    for file_ in files {
-        let file_path: PathBuf = file_.ok().unwrap().path();
+    // Only iterate over Ok()
+    for file_ in files.into_iter().flatten() {
+        let file_path: PathBuf = file_.path();
+
         if time_to_remove(&file_path) {
             if !logged_event {
                 info!("Monarch Housekeeper: Clearing cached images...");
@@ -77,7 +84,7 @@ fn clear_dir(files: ReadDir) {
 fn remove_thumbnail(file: &Path) {
     if let Err(e) = fs::remove_file(file) {
         error!(
-            "housekeeping::remove_thumbnail() failed! Error while removing: {path} | Error: {e}",
+            "housekeeping::remove_thumbnail() Error while removing: {path} | Err: {e}",
             path = file.display()
         );
     }
@@ -88,7 +95,8 @@ fn time_to_remove(file: &Path) -> bool {
     if let Ok(metadata) = fs::metadata(file) {
         if let Ok(time) = metadata.modified() {
             if let Ok(age) = SystemTime::now().duration_since(time) {
-                return age.as_secs() >= 1209600; // Return if file is older than 14 days [REPLACE WITH CUSTOM SETTING USER CAN CAHNGE FOR HOW LONG TO STORE IMAGES]
+                return age.as_secs() >= 1209600; // Return if file is older than 14 days
+                                                 // TODO: REPLACE WITH CUSTOM SETTING USER CAN CAHNGE FOR HOW LONG TO STORE IMAGES
             }
         }
     }
@@ -108,13 +116,16 @@ pub fn clear_all_cache() {
                         remove_thumbnail(&f.path());
                     }
                     Err(e) => {
-                        error!("housekeeping::clear_all_cache() failed! Could not read file! | Error: {e}");
+                        error!("housekeeping::clear_all_cache() Could not read file! | Err: {e}");
                     }
                 }
             }
         }
         Err(e) => {
-            error!("housekeeping::clear_all_cache() failed! Error while reading files from: {dir} | Error: {e}", dir = path.display());
+            error!(
+                "housekeeping::clear_all_cache() Error while reading files from: {dir} | Err: {e}",
+                dir = path.display()
+            );
         }
     }
 }

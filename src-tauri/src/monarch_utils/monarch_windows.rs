@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use log::error;
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
@@ -18,14 +18,14 @@ impl MiniWindow {
         Self {
             name: name.to_string(),
             url: url.to_string(),
-            width: width,
-            height: height,
+            width,
+            height,
         }
     }
 
     /// Builds a window. Must be async on Windows to not deadlock.
     pub async fn build_window(&self, handle: &AppHandle) -> Result<()> {
-        match WindowBuilder::new(
+        let window: Window = WindowBuilder::new(
             handle,
             &self.name,
             WindowUrl::External(self.url.parse().unwrap()),
@@ -37,75 +37,76 @@ impl MiniWindow {
         .skip_taskbar(true)
         .visible(true)
         .build()
-        {
-            Ok(window) => {
-                let scale: f64 = get_scale(&window);
-                let size: PhysicalSize<u32> =
-                    PhysicalSize::new((self.width * scale) as u32, (self.height * scale) as u32);
+        .with_context(|| "monarch_windows::build_window() Failed to build window! | Err: ")?;
 
-                if let Err(e) = window.set_size(size) {
-                    error!("monarch_windows::build_window() failed! Failed to set new window size! | Err: {:?}", e);
-                }
-                if let Err(e) = window.center() {
-                    error!("monarch_windows::build_window() failed! Failed to center new window! | Err: {:?}", e);
-                }
+        let scale: f64 = get_scale(&window);
+        let size: PhysicalSize<u32> =
+            PhysicalSize::new((self.width * scale) as u32, (self.height * scale) as u32);
 
-                Ok(())
-            }
-            Err(e) => return Err(anyhow!(
-                "monarch_windows::build_window() failed! Failed to build new window! | Err: {e}"
-            )),
+        if let Err(e) = window.set_size(size) {
+            error!(
+                "monarch_windows::build_window() Failed to set new window size! | Err: {:#}",
+                e
+            );
         }
+        if let Err(e) = window.center() {
+            error!(
+                "monarch_windows::build_window() Failed to center new window! | Err: {:#}",
+                e
+            );
+        }
+
+        Ok(())
     }
 
     /// Shows a window with specified label
     pub fn show_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(|| -> String {
+        let window = handle.get_window(&self.name).with_context(|| {
             format!(
-                "monarch_windows::show_window() failed! Failed to find window: {} | Err:",
+                "monarch_windows::show_window() Failed to find window: {} | Err:",
                 self.name
             )
         })?;
 
-        return window.show().context(|| -> String {
+        window.show().with_context(|| {
             format!(
-                "monarch_windows::show_window() failed! Failed to show window: {} | Err:",
+                "monarch_windows::show_window() Failed to show window: {} | Err:",
                 self.name
             )
-        }());
+        })
     }
 
     /// Hides a window with specified label
     pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(|| -> String {
+        let window = handle.get_window(&self.name).with_context(|| {
             format!(
-                "monarch_windows::hide_window() failed! Failed to find window: {} | Err:",
+                "monarch_windows::hide_window() Failed to find window: {} | Err:",
                 self.name
             )
         })?;
 
-        return window.hide().context(|| -> String {
+        window.hide().with_context(|| -> String {
             format!(
-                "monarch_windows::hide_window() failed! Failed to hide window: {} | Err:",
+                "monarch_windows::hide_window() Failed to hide window: {} | Err:",
                 self.name
             )
-        }());
+        })
     }
 
     pub fn close_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(|| -> String {
+        let window = handle.get_window(&self.name).with_context(|| {
             format!(
-                "monarch_windows::close_window() failed! Failed to find window: {} | Err:",
+                "monarch_windows::close_window() Failed to find window: {} | Err:",
                 self.name
             )
         })?;
 
-        return window.close().context(|| -> String {
+        window.close().with_context(|| {
             format!(
-                "monarch_windows::close_window() failed! Failed to close window: {} | Err:",
+                "monarch_windows::close_window() Failed to close window: {} | Err:",
                 self.name
             )
-        }());
+        })
     }
 }
 

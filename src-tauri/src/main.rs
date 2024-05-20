@@ -1,7 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
-use std::process::exit;
+#![allow(non_snake_case)]
 
 use log::error;
 
@@ -26,8 +25,7 @@ use monarch_utils::{housekeeping, monarch_settings};
 fn init() {
     if let Err(e) = monarch_settings::init() {
         // Crash program if this fails
-        println!("Error during settings initialization! | Error: {e}");
-        exit(1);
+        panic!("Error during settings initialization! | Err: {e}");
     }
     init_logger(); // Starts logger
     verify_monarch_folders(); // Checks that directories are as Monarch expects
@@ -62,6 +60,6 @@ fn main() {
 
     // Better to write to log than to console with .expect() due to line nr 2, hiding console on Windows
     if let Err(e) = app_result {
-        error!("Failed to build Tauri app! | Message: {:?}", e);
+        error!("main::main() Failed to build Tauri app! | Err: {}", e);
     }
 }

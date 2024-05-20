@@ -1,10 +1,10 @@
 use super::{monarchgame::MonarchGame, steam_client};
+use crate::monarch_utils::monarch_fs::get_unix_home;
 use crate::monarch_utils::monarch_settings::get_monarch_settings;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use log::{error, info, warn};
 use std::path::PathBuf;
-use crate::monarch_utils::monarch_fs::get_unix_home;
 
 /// Generates the default path where Monarch wants to store games.
 pub fn generate_default_folder() -> Result<PathBuf> {
@@ -22,13 +22,10 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 /// Launches a game
 pub async fn launch_game(platform: &str, platform_id: &str) -> Result<()> {
     match platform {
-        "steam" => return steam_client::launch_game(platform_id),
-        "steamcmd" => return steam_client::launch_cmd_game(platform_id),
+        "steam" => steam_client::launch_game(platform_id),
+        "steamcmd" => steam_client::launch_cmd_game(platform_id),
         &_ => {
-            error!("monarch_client::launch_game() failed! Invalid platform passed as argument: {platform}");
-            return Err(anyhow!(
-                "monarch_client::launch_game() failed! Invalid platform!"
-            ));
+            bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {platform} | Err: Invalid platform!")
         }
     }
 }
@@ -44,64 +41,35 @@ pub async fn download_game(
             .to_string()
             .trim_matches('"'),
     );
-    let new_game: MonarchGame;
 
     if !monarch_fs::path_exists(&path) {
-        monarch_fs::create_dir(&path).context(format!(
-            "monarch_client::download_game() failed! Error when creating {dir} | Err",
-            dir = path.display()
-        ))?;
+        monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
     }
 
     path.push(name); // Game specific path
     if !monarch_fs::path_exists(&path) {
-        monarch_fs::create_dir(&path).context(format!(
-            "monarch_client::download_game() failed! Error when creating {dir} | Err",
-            dir = path.display()
-        ))?;
+        monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
     }
 
-    match platform {
+    let new_game: MonarchGame = match platform {
         "steam" => {
-            if !steam_client::is_installed().with_context(|| -> String {
-                format!("monarch_client::download_game() failed! | Err")
-            })? {
+            if !steam_client::is_installed() {
                 warn!("monarch_client::download_game() SteamCMD not found!");
                 info!("Attempting to download and install SteamCMD...");
 
-                // Run async on windows
-                if let Err(e) = steam_client::download_and_install().await {
-                    error!("monarch_client::download_game() failed! Error while installing SteamCMD! | Err: {e}");
-                    return Err(anyhow!(
-                        "monarch_client::download_game() failed! Error while installing SteamCMD!"
-                    ));
-                }
+                steam_client::download_and_install()
+                    .await
+                    .with_context(|| "monarch_client::download_game() -> ")?;
             }
 
-            match steam_client::download_game(name, platform_id).await {
-                Ok(game) => new_game = game,
-                Err(e) => {
-                    error!("monarch_client::download_game() failed! Failed to download Steam game! | Err: {e}");
-                    return Err(anyhow!(
-                        "monarch_client::download_game() failed! Failed to download Steam game!"
-                    ));
-                }
-            }
+            steam_client::download_game(name, platform_id)
+                .await
+                .with_context(|| "monarch_client::download_game() -> ")?
         }
-        &_ => {
-            error!("monarch_client::download_game() failed! Invalid platform passed as argument: {platform}");
-            return Err(anyhow!(
-                "monarch_client::download_game() failed! Invalid platform!"
-            ));
-        }
-    }
+        &_ => bail!("monarch_client::download_game() Invalid platform!"),
+    };
 
-    if let Err(e) = games_library::add_game(new_game) {
-        error!("monarch_client::download_game() failed! Error while writing new MonarchGame to library.json! | Err: {e}");
-        return Err(anyhow!(
-            "monarch_client::download_game() failed! Failed to write new game to library.json!"
-        ));
-    }
+    games_library::add_game(new_game).with_context(|| "monarch_client::download_game() -> ")?;
 
     Ok(get_library()) // Return new library
 }
@@ -111,13 +79,8 @@ pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<()> {
     match platform {
         "steam" => steam_client::uninstall_game(platform_id)
             .await
-            .context("monarch_client::uninstall_game() failed! | Err"),
-        &_ => {
-            error!("monarch_client::uninstall_game() failed! Invalid platform passed as argument: {platform}");
-            return Err(anyhow!(
-                "monarch_client::uninstall_game() failed! Invalid platform passed as argument!"
-            ));
-        }
+            .with_context(|| "monarch_client::uninstall_game() -> "),
+        &_ => bail!("monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )")
     }
 }
 
@@ -131,7 +94,7 @@ fn get_library() -> Vec<MonarchGame> {
             }
         }
         Err(e) => {
-            error!("monarch_client::get_library() failed! Failed to get library! | Err: {e}");
+            error!("monarch_client::get_library() -> {e}");
         }
     }
 
@@ -151,7 +114,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     games.append(&mut steam_games);
 
     if let Err(e) = games_library::write_games(games.clone()) {
-        error!("monarch_client::refresh_library() failed! Failed to write new games to library.json! | Err: {e}");
+        error!("monarch_client::refresh_library() -> {e}");
     }
     games
 }

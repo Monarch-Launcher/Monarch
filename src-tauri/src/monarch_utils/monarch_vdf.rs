@@ -29,18 +29,16 @@ struct LibraryLocation {
 /// Parses steams libraryfolders.vdf file to structs that can be used to find
 /// installed games, folder locations, etc...
 pub fn parse_library_file(path: &Path) -> Result<Vec<String>> {
-    let mut content: String = fs::read_to_string(&path).with_context(|| -> String {
+    let mut content: String = fs::read_to_string(path).with_context(|| -> String {
         format!(
-            "monarch_vdf::parse_library_file() failed! Failed to open file: {} | Err",
+            "monarch_vdf::parse_library_file() Failed to open file: {} | Err",
             path.display()
         )
-        .into()
     })?;
 
     content = content.replace("\"\"", "\" \" "); // Remove blank space interfering with serde
 
-    let library_folders = vdf_serde::from_str::<LibraryFolders>(&content).with_context(||
-        -> String {format!("monarch_vdf::parse_library_file() failed! Could not automatically parse file content to LibraryFolders using vdf_serde! | Err").into()})?;
+    let library_folders = vdf_serde::from_str::<LibraryFolders>(&content).with_context(|| "monarch_vdf::parse_library_file() Could not automatically parse file content to LibraryFolders using vdf_serde! | Err")?;
 
     let game_ids: Vec<String> = found_games(library_folders)
         .iter()
