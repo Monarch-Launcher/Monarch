@@ -117,7 +117,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
     };
 
     if !found_games.is_empty() {
-        games = parse_steam_ids(found_games, false).await;
+        games = parse_steam_ids(&found_games, false).await;
     }
 
     games

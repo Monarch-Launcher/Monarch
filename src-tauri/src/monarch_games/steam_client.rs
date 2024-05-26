@@ -5,6 +5,7 @@ use scraper::{Html, Selector};
 use serde_json::Value;
 use std::path::PathBuf;
 use toml;
+use tokio::task;
 
 use super::monarch_client::generate_default_folder;
 use super::monarchgame::MonarchGame;
@@ -128,7 +129,7 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
     steam::steamcmd_command(command).with_context(|| "steam_client::download_game() -> ")?;
 
-    let monarchgame: MonarchGame = parse_steam_ids(vec![String::from(id)], false).await[0].clone();
+    let monarchgame: MonarchGame = parse_steam_ids(&[String::from(id)], false).await[0].clone();
     Ok(monarchgame)
 }
 
@@ -184,65 +185,80 @@ fn get_steam_games_dir(settings: &toml::Value) -> Option<String> {
 }
 
 /// Converts SteamApp ids into MonarchGames.
-pub async fn parse_steam_ids(ids: Vec<String>, is_cache: bool) -> Vec<MonarchGame> {
+pub async fn parse_steam_ids(ids: &[String], is_cache: bool) -> Vec<MonarchGame> {
+    let mut tasks = Vec::new();
     let mut games: Vec<MonarchGame> = Vec::new();
 
     for id in ids {
-        let mut game_info: String = String::from("");
+        let new_task = task::spawn(parse_id(id.clone(), is_cache));
+        tasks.push(new_task);
+    }
 
-        let mut target: String =
-            String::from("https://store.steampowered.com/api/appdetails?appids=");
-        target.push_str(id.as_str());
-
-        // GET info from Steam servers
-        match reqwest::get(&target).await {
-            Ok(response) => {
-                match response.text().await {
-                    Ok(body) => {
-                        game_info = body;
-                    }
-                    Err(e) => {
-                        warn!("steam_client::parse_steam_ids() Failed to parse response body! | Err: {e}");
-                    }
-                }
-            }
-            Err(e) => {
-                error!("steam_client::parse_steam_ids() Failed to get response from: {target} | Err: {e}");
-            }
-        }
-
-        // Parse content into MonarchGame
-        if !game_info.is_empty() {
-            if let Ok(game_json) = serde_json::from_str::<Value>(&game_info) {
-                // Check if response from Steam contains "success: true"
-                if game_json[&id]["success"] == Value::Bool(true) {
-                    // Create needed parameters
-                    let name: String = game_json[&id]["data"]["name"].to_string();
-                    let id: String = id;
-                    let platform: String = String::from("steam");
-                    let exec_path: String = String::new();
-
-                    // TODO: Look into removing unwrap()
-                    let thumbnail_path = if is_cache {
-                        String::from(generate_cache_image_path(&name).to_str().unwrap())
-                    } else {
-                        String::from(generate_library_image_path(&name).to_str().unwrap())
-                    };
-
-                    let url: &str = game_json[&id]["data"]["header_image"].as_str().unwrap();
-
-                    // Create new MonarchGame
-                    let game: MonarchGame =
-                        MonarchGame::new(&name, &platform, &id, &exec_path, &thumbnail_path);
-
-                    // Start tokio::task to download thumbail for game
-                    game.download_thumbnail(url);
-                    games.push(game);
-                }
+    for task in tasks {
+        if let Ok(finished_task) = task.await {
+            if let Ok(game) = finished_task {
+                games.push(game);
             }
         }
     }
-    games
+    
+    return games
+}
+
+/// Helper function to parse individual steam ids. Allows for concurrent parsing.
+async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
+    let mut game_info: String = String::from("");
+    let mut target: String = String::from("https://store.steampowered.com/api/appdetails?appids=");
+    target.push_str(&id);
+
+    // GET info from Steam servers
+    match reqwest::get(&target).await {
+        Ok(response) => {
+            match response.text().await {
+                Ok(body) => {
+                    game_info = body;
+                }
+                Err(e) => {
+                    warn!("steam_client::parse_steam_ids() Failed to parse response body! | Err: {e}");
+                }
+            }
+        }
+        Err(e) => {
+            error!("steam_client::parse_steam_ids() Failed to get response from: {target} | Err: {e}");
+        }
+    }
+
+    // Parse content into MonarchGame
+    if !game_info.is_empty() {
+        if let Ok(game_json) = serde_json::from_str::<Value>(&game_info) {
+            // Check if response from Steam contains "success: true"
+            if game_json[&id]["success"] == Value::Bool(true) {
+                // Create needed parameters
+                let name: String = game_json[&id]["data"]["name"].to_string();
+                let platform: String = String::from("steam");
+                let exec_path: String = String::new();
+
+                // TODO: Look into removing unwrap()
+                let thumbnail_path = if is_cache {
+                    String::from(generate_cache_image_path(&name).to_str().unwrap())
+                } else {
+                    String::from(generate_library_image_path(&name).to_str().unwrap())
+                };
+
+                let url: &str = game_json[&id]["data"]["header_image"].as_str().unwrap();
+
+                // Create new MonarchGame
+                let game: MonarchGame =
+                    MonarchGame::new(&name, &platform, &id, &exec_path, &thumbnail_path);
+
+                // Start tokio::task to download thumbail for game
+                game.download_thumbnail(url);
+                return Ok(game)
+            }
+        }
+    }
+    warn!("Failed to parse Steam game with id: {id}");
+    bail!("Failed to parse Steam game with id: {id}")
 }
 
 /// Gets AppIDs and Links from Steam store search
@@ -268,7 +284,7 @@ async fn parse_steam_page(body: &str) -> Vec<MonarchGame> {
         }
     }
 
-    let mut monarch_games = parse_steam_ids(ids, true).await;
+    let mut monarch_games: Vec<MonarchGame> = parse_steam_ids(&ids, true).await;
 
     for i in 0..monarch_games.len() {
         monarch_games[i].store_page = links[i].clone();
