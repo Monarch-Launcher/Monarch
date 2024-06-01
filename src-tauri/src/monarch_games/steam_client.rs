@@ -129,7 +129,8 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
     steam::steamcmd_command(command).with_context(|| "steam_client::download_game() -> ")?;
 
-    let monarchgame: MonarchGame = parse_steam_ids(&[String::from(id)], false).await[0].clone();
+    let mut monarchgame: MonarchGame = parse_steam_ids(&[String::from(id)], false).await[0].clone();
+    monarchgame.platform = "steamcmd".to_string();
     Ok(monarchgame)
 }
 

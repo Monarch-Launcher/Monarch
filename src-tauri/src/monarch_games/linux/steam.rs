@@ -63,14 +63,15 @@ pub fn install_steamcmd() -> Result<()> {
 pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.sh");
-    let args_string: String = args.iter().map(|arg| arg.to_string()).collect::<String>();
+    let args_string: String = args.iter().map(|arg| format!(" {arg}")).collect::<String>();
 
-    Command::new("sh")
-        .arg(path)
-        .arg(args_string)
+    let output = Command::new("sh")
+        .arg(&path)
+        .arg(&args_string)
         .output()
         .with_context(|| "linux::steam::steamcmd_command() failed! Error returned when running SteamCMD child process! | Err")?;
 
+    info!("linux::steam::steamcmd_command() Result from steamcmd command (hidden due to privacy concerns): {}", String::from_utf8(output.stdout).unwrap());
     Ok(())
 }
 

@@ -11,7 +11,7 @@ use crate::monarch_utils::monarch_fs::path_exists;
 pub struct MonarchGame {
     name: String,
     id: String, // Has to be string instead of u64 to avoid rounding when sent to frontend
-    platform: String,
+    pub platform: String,
     platform_id: String,
     executable_path: String,
     thumbnail_path: String,
