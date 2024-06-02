@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use log::error;
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
+use std::process::Command;
 
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
 
@@ -109,6 +110,40 @@ impl MiniWindow {
         })
     }
 }
+
+pub fn run_in_terminal(command: &str) -> Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/k", "docker exec -it", &container, "bash"])
+            .spawn()
+            .unwrap();
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("gnome-terminal")
+            .args(["--", "sh", "-c", &format!(r#"{}"#, command)])
+            .spawn()
+            .with_context(|| format!("monarch_windows::run_in_terminal() Failed running: {command} in terminal! | Err"))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let command = format!("docker exec -it {} bash", &container);
+        Command::new("osascript")
+            .arg("-e")
+            .arg(format!(
+                "tell app \"Terminal\" to activate do script \"{}\"",
+                command
+            ))
+            .spawn()
+            .unwrap();
+    }
+
+    Ok(())
+}
+
 
 // Returns scale to use based on monitor resolution
 fn get_scale(window: &Window) -> f64 {

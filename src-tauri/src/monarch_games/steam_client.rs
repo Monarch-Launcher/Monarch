@@ -151,7 +151,7 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
 /// Returns path to Monarchs installed version of SteamCMD
 pub fn get_steamcmd_dir() -> PathBuf {
     let path: PathBuf = get_monarch_home();
-    path.join("SteamCMD")
+    path.join("Steam")
 }
 
 /// Returns whether or not Monarch is allowed to manage a users Steam games
