@@ -111,27 +111,33 @@ impl MiniWindow {
     }
 }
 
+/// Runs specified command in OS terminal.
+///
+/// This function is OS agnostic, however it currently requires gnome-terminal in Linux.
+/// TODO: Replace hard-coded gnome-terminal with something more general under Linux.
+///
+/// This function may contain code injection vaulnerabilities. In that case they will be identified
+/// and patched later. It should be fine for now as users can't run arbitrary code through it yet,
+/// only Monarch runs specific commands through it. Either they are hard-coded or they are run
+/// through another program like Steamcmd, which should perform it's own sanitizing.
 pub fn run_in_terminal(command: &str) -> Result<()> {
     #[cfg(target_os = "windows")]
-    {
-        Command::new("cmd")
+    
+        let mut child = Command::new("cmd")
             .args(["/k", "docker exec -it", &container, "bash"])
             .spawn()
             .unwrap();
-    }
+    
 
     #[cfg(target_os = "linux")]
-    {
-        Command::new("gnome-terminal")
+        let mut child = Command::new("gnome-terminal")
             .args(["--", "sh", "-c", &format!(r#"{}"#, command)])
             .spawn()
             .with_context(|| format!("monarch_windows::run_in_terminal() Failed running: {command} in terminal! | Err"))?;
-    }
 
     #[cfg(target_os = "macos")]
-    {
-        let command = format!("docker exec -it {} bash", &container);
-        Command::new("osascript")
+    
+        let mut child = Command::new("osascript")
             .arg("-e")
             .arg(format!(
                 "tell app \"Terminal\" to activate do script \"{}\"",
@@ -139,8 +145,8 @@ pub fn run_in_terminal(command: &str) -> Result<()> {
             ))
             .spawn()
             .unwrap();
-    }
 
+    child.wait().with_context(|| "monarch_windows::run_in_terminal() Encountered error while waiting for child process to finish! | Err")?;
     Ok(())
 }
 
