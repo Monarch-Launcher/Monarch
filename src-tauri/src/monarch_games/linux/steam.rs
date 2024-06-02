@@ -45,7 +45,6 @@ pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     path.push("steamcmd.sh");
     let args_string: String = args.iter().map(|arg| format!(" {arg}")).collect::<String>();
 
-    info!("Running command: {} {}; sleep 5;", path.display(), args_string);
     run_in_terminal(&format!("{} {}; sleep 5;", path.display(), args_string)).with_context(|| "linux::steam::steamcmd_command() -> ")?;
 
     //info!("linux::steam::steamcmd_command() Result from steamcmd command {}: {}", format!("\"sh -c {} {}\"", path.display(), args_string), cmd_output);
