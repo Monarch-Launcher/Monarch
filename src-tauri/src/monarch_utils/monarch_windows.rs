@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
-use log::error;
+use log::{info, error};
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
 use std::process::Command;
+use std::process::Stdio;
 
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
 
@@ -146,7 +147,14 @@ pub fn run_in_terminal(command: &str) -> Result<()> {
             .spawn()
             .unwrap();
 
-    child.wait().with_context(|| "monarch_windows::run_in_terminal() Encountered error while waiting for child process to finish! | Err")?;
+    let output = child.wait_with_output().with_context(|| "monarch_windows::run_in_terminal() Encountered error while waiting for child process to finish! | Err")?;
+    let cmd_output = if !output.stdout.is_empty() {
+        String::from_utf8(output.stdout).unwrap()
+    } else {
+        String::from_utf8(output.stderr).unwrap()
+    };
+
+    info!("monarch_windows::run_in_terminal() Command finished with output: {:?}", cmd_output);
     Ok(())
 }
 

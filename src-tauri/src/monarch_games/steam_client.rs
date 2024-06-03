@@ -44,7 +44,8 @@ pub async fn download_and_install() -> Result<()> {
 #[cfg(not(windows))]
 /// Downloads and installs SteamCMD on users computer.
 pub async fn download_and_install() -> Result<()> {
-    steam::install_steamcmd().with_context(|| "steam_client::download_and_install() -> ")
+    steam::install_steamcmd().with_context(|| "steam_client::download_and_install() -> ")?;
+    steam::steamcmd_command(vec!["+set_steam_guard_code"]).with_context(|| "steam_client::download_and_install() -> ")
 }
 
 /// Returns games installed by Steam Client.
@@ -77,8 +78,7 @@ pub fn launch_game(id: &str) -> Result<()> {
 
 /// Attemps to launch SteamCMD game.
 pub fn launch_cmd_game(id: &str) -> Result<()> {
-    let launch_arg: String = format!("app_launch {id}");
-    let args: Vec<&str> = vec![&launch_arg];
+    let args: Vec<&str> = vec!["+app_launch", id];
     steam::steamcmd_command(args).with_context(|| "steam_client::launch_cmd_game() -> ")
 }
 
@@ -151,7 +151,7 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
 /// Returns path to Monarchs installed version of SteamCMD
 pub fn get_steamcmd_dir() -> PathBuf {
     let path: PathBuf = get_monarch_home();
-    path.join("Steam")
+    path.join("SteamCMD")
 }
 
 /// Returns whether or not Monarch is allowed to manage a users Steam games

@@ -18,6 +18,7 @@ use monarch_utils::commands::{
     clear_cached_images, delete_password, get_settings, open_logs, revert_settings, set_password,
     set_settings,
 };
+use monarch_utils::monarch_credentials::{delete_credentials, set_credentials};
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
