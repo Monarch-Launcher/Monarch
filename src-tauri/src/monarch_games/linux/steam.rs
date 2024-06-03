@@ -1,5 +1,6 @@
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
+use crate::monarch_utils::monarch_windows::run_in_terminal;
 use crate::monarch_utils::{
     monarch_fs::{create_dir, get_unix_home, path_exists},
     monarch_vdf,
@@ -23,37 +24,16 @@ pub fn install_steamcmd() -> Result<()> {
         create_dir(&dest_path).with_context(|| "linux::steam::install_steamcmd() -> ")?;
     }
 
-    let mut download_arg: String = String::from("curl -sqL ");
-    download_arg.push_str(
-        r#""https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" -o "#,
-    );
-    download_arg.push_str(dest_path.to_str().unwrap());
-    download_arg.push_str("/steamcmd_linux.tar.gz");
+    let download_arg: &str = r#"curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -"#;
 
-    let mut tar_arg: String = String::from("tar zxvf ");
-    tar_arg.push_str(dest_path.to_str().unwrap());
-    tar_arg.push_str("/steamcmd_linux.tar.gz");
-    tar_arg.push_str(" -C ");
-    tar_arg.push_str(dest_path.to_str().unwrap());
+    let installation_script = format!(r#"mkdir {};
+cd {};
+{};
+sleep 2;"#, dest_path.display(), dest_path.display(), &download_arg); // Sleep for 2 seconds to allow user to see what is happening.
 
-    info!("Running: {download_arg} && {tar_arg}");
+    info!("Running: SteamCMD installation script: \n----------\n{installation_script}\n----------");
 
-    Command::new("sh")
-        .arg("-c")
-        .arg(&download_arg)
-        .output()
-        .with_context(|| {
-            format!("linux::steam::install_steamcmd() Failed to run: {download_arg} | Err")
-        })?;
-
-    Command::new("sh")
-        .arg("-c")
-        .arg(&tar_arg)
-        .output()
-        .with_context(|| {
-            format!("linux::steam::install_steamcmd() Failed to run: {tar_arg} | Err")
-        })?;
-
+    run_in_terminal(&installation_script).with_context(|| format!("linux::steam::install_steamcmd() -> "))?;
     Ok(())
 }
 
@@ -63,14 +43,11 @@ pub fn install_steamcmd() -> Result<()> {
 pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.sh");
-    let args_string: String = args.iter().map(|arg| arg.to_string()).collect::<String>();
+    let args_string: String = args.iter().map(|arg| format!(" {arg}")).collect::<String>();
 
-    Command::new("sh")
-        .arg(path)
-        .arg(args_string)
-        .output()
-        .with_context(|| "linux::steam::steamcmd_command() failed! Error returned when running SteamCMD child process! | Err")?;
+    run_in_terminal(&format!("{} {}; echo 'Install complete!'; sleep 5;", path.display(), args_string)).with_context(|| "linux::steam::steamcmd_command() -> ")?;
 
+    //info!("linux::steam::steamcmd_command() Result from steamcmd command {}: {}", format!("\"sh -c {} {}\"", path.display(), args_string), cmd_output);
     Ok(())
 }
 

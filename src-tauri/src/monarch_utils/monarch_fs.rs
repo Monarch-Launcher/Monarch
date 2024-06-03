@@ -13,11 +13,12 @@ use super::monarch_settings::get_monarch_settings;
 
 /// Folder to store image resources for game thumbnails etc...
 pub fn verify_monarch_folders() {
-    let paths: [PathBuf; 4] = [
+    let paths: [PathBuf; 5] = [
         get_monarch_home(),
         get_resources_path(),
         get_resources_cache(),
         get_resources_library(),
+        get_settings_path().expect("Panic while getting settings path!"),
     ];
 
     for path in paths {

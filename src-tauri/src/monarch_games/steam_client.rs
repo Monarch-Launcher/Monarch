@@ -44,7 +44,8 @@ pub async fn download_and_install() -> Result<()> {
 #[cfg(not(windows))]
 /// Downloads and installs SteamCMD on users computer.
 pub async fn download_and_install() -> Result<()> {
-    steam::install_steamcmd().with_context(|| "steam_client::download_and_install() -> ")
+    steam::install_steamcmd().with_context(|| "steam_client::download_and_install() -> ")?;
+    steam::steamcmd_command(vec!["+set_steam_guard_code"]).with_context(|| "steam_client::download_and_install() -> ")
 }
 
 /// Returns games installed by Steam Client.
@@ -77,8 +78,7 @@ pub fn launch_game(id: &str) -> Result<()> {
 
 /// Attemps to launch SteamCMD game.
 pub fn launch_cmd_game(id: &str) -> Result<()> {
-    let launch_arg: String = format!("app_launch {id}");
-    let args: Vec<&str> = vec![&launch_arg];
+    let args: Vec<&str> = vec!["+app_launch", id];
     steam::steamcmd_command(args).with_context(|| "steam_client::launch_cmd_game() -> ")
 }
 
@@ -129,7 +129,8 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
     steam::steamcmd_command(command).with_context(|| "steam_client::download_game() -> ")?;
 
-    let monarchgame: MonarchGame = parse_steam_ids(&[String::from(id)], false).await[0].clone();
+    let mut monarchgame: MonarchGame = parse_steam_ids(&[String::from(id)], false).await[0].clone();
+    monarchgame.platform = "steamcmd".to_string();
     Ok(monarchgame)
 }
 
