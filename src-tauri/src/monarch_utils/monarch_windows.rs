@@ -122,30 +122,11 @@ impl MiniWindow {
 /// only Monarch runs specific commands through it. Either they are hard-coded or they are run
 /// through another program like Steamcmd, which should perform it's own sanitizing.
 pub fn run_in_terminal(command: &str) -> Result<()> {
-    #[cfg(target_os = "windows")]
-    
-        let mut child = Command::new("cmd")
-            .args(["/k", "docker exec -it", &container, "bash"])
-            .spawn()
-            .unwrap();
-    
-
     #[cfg(target_os = "linux")]
-        let mut child = Command::new("gnome-terminal")
-            .args(["--", "sh", "-c", &format!(r#"{}"#, command)])
-            .spawn()
-            .with_context(|| format!("monarch_windows::run_in_terminal() Failed running: {command} in terminal! | Err"))?;
-
-    #[cfg(target_os = "macos")]
-    
-        let mut child = Command::new("osascript")
-            .arg("-e")
-            .arg(format!(
-                "tell app \"Terminal\" to activate do script \"{}\"",
-                command
-            ))
-            .spawn()
-            .unwrap();
+    let mut child = Command::new("gnome-terminal")
+        .args(["--", "sh", "-c", &format!(r#"{}"#, command)])
+        .spawn()
+        .with_context(|| format!("monarch_windows::run_in_terminal() Failed running: {command} in terminal! | Err"))?;
 
     let output = child.wait_with_output().with_context(|| "monarch_windows::run_in_terminal() Encountered error while waiting for child process to finish! | Err")?;
     let cmd_output = if !output.stdout.is_empty() {
