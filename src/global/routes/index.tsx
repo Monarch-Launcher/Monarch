@@ -14,7 +14,6 @@ export default () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/library" element={<Library />} />
         <Route path="/search" element={<Search />} />
-        <Route path="/terminal" element={<Terminal />} />
         <Route path="/*" element={<NotFound />} />
       </Routes>
     </MemoryRouter>

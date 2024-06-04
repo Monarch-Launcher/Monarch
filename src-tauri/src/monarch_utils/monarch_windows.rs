@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
-use log::error;
+use log::{error, warn};
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
 
@@ -135,15 +135,18 @@ pub async fn run_in_terminal(command: &str) -> Result<()> {
         }
     
         if APP_HANDLE.clone().unwrap().as_ref().get_window("terminal").is_none() {
-            let window = MiniWindow::new("terminal", "index.html/#/Terminal", 1280.0, 720.0);
+            warn!("No terminal emulator running! Creating new instance...");
+            let window = MiniWindow::new("terminal", "src/terminal/index.html", 1280.0, 720.0);
             window.build_window(APP_HANDLE.clone().unwrap().as_ref()).await.with_context(|| "monarch_windows::run_in_terminal() Failed to build terminal window! | Err ")?;
         }
 
         let tauri_window = APP_HANDLE.clone().unwrap().as_ref().get_window("terminal").unwrap();
         tauri_window.show()?;
+
+        //std::thread::sleep(Duration::from_secs(5));
+        //tauri_window.close().expect("Failed to close Tauri window!");
     }
 
-    std::thread::sleep(Duration::from_secs(5));
 
     //#[cfg(target_os = "linux")]
     //let mut child = Command::new(&format!(r#"{}"#, command))
