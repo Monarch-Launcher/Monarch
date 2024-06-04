@@ -1,10 +1,12 @@
-use anyhow::{Context, Result};
-use log::{info, error};
+use std::time::Duration;
+
+use anyhow::{bail, Context, Result};
+use log::error;
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
-use std::process::Command;
-use std::process::Stdio;
 
+static mut APP_HANDLE: Option<Box<AppHandle>> = None; // Global apphadle used by backend when no command
+                                                  // was called from frontend.
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
 
 pub struct MiniWindow {
@@ -27,19 +29,25 @@ impl MiniWindow {
 
     /// Builds a window. Must be async on Windows to not deadlock.
     pub async fn build_window(&self, handle: &AppHandle) -> Result<()> {
+        let window_url: WindowUrl = if self.url.starts_with("https") {
+            WindowUrl::External(self.url.parse().unwrap())
+        } else {
+            WindowUrl::App(self.url.parse().unwrap())
+        };
+
         let window: Window = WindowBuilder::new(
             handle,
             &self.name,
-            WindowUrl::External(self.url.parse().unwrap()),
-        )
-        .always_on_top(true)
-        .center()
-        .decorations(false)
-        .focused(true)
-        .skip_taskbar(true)
-        .visible(true)
-        .build()
-        .with_context(|| "monarch_windows::build_window() Failed to build window! | Err: ")?;
+                    window_url,
+            )
+            .always_on_top(true)
+            .center()
+            .decorations(false)
+            .focused(true)
+            .skip_taskbar(true)
+            .visible(true)
+            .build()
+            .with_context(|| "monarch_windows::build_window() Failed to build window! | Err: ")?;
 
         let scale: f64 = get_scale(&window);
         let size: PhysicalSize<u32> =
@@ -115,32 +123,50 @@ impl MiniWindow {
 /// Runs specified command in OS terminal.
 ///
 /// This function is OS agnostic, however it currently requires gnome-terminal in Linux.
-/// TODO: Replace hard-coded gnome-terminal with something more general under Linux.
 ///
 /// This function may contain code injection vaulnerabilities. In that case they will be identified
 /// and patched later. It should be fine for now as users can't run arbitrary code through it yet,
 /// only Monarch runs specific commands through it. Either they are hard-coded or they are run
 /// through another program like Steamcmd, which should perform it's own sanitizing.
-pub fn run_in_terminal(command: &str) -> Result<()> {
-    #[cfg(target_os = "linux")]
-    let mut child = Command::new("gnome-terminal")
-        .args(["--", "sh", "-c", &format!(r#"{}"#, command)])
-        .spawn()
-        .with_context(|| format!("monarch_windows::run_in_terminal() Failed running: {command} in terminal! | Err"))?;
+pub async fn run_in_terminal(command: &str) -> Result<()> {
+    unsafe {
+        if APP_HANDLE.is_none() {
+            bail!("monarch_windows::run_in_terminal() | Err No backend APP_HANDLE found! (Is None)");
+        }
+    
+        if APP_HANDLE.clone().unwrap().as_ref().get_window("terminal").is_none() {
+            let window = MiniWindow::new("terminal", "index.html/#/Terminal", 1280.0, 720.0);
+            window.build_window(APP_HANDLE.clone().unwrap().as_ref()).await.with_context(|| "monarch_windows::run_in_terminal() Failed to build terminal window! | Err ")?;
+        }
 
-    let output = child.wait_with_output().with_context(|| "monarch_windows::run_in_terminal() Encountered error while waiting for child process to finish! | Err")?;
-    let cmd_output = if !output.stdout.is_empty() {
-        String::from_utf8(output.stdout).unwrap()
-    } else {
-        String::from_utf8(output.stderr).unwrap()
-    };
+        let tauri_window = APP_HANDLE.clone().unwrap().as_ref().get_window("terminal").unwrap();
+        tauri_window.show()?;
+    }
 
-    info!("monarch_windows::run_in_terminal() Command finished with output: {:?}", cmd_output);
+    std::thread::sleep(Duration::from_secs(5));
+
+    //#[cfg(target_os = "linux")]
+    //let mut child = Command::new(&format!(r#"{}"#, command))
+    //    .spawn()
+    //    .with_context(|| format!("monarch_windows::run_in_terminal() Failed running: {command} in terminal! | Err"))?;
+
+    //let output = child.wait_with_output().with_context(|| "monarch_windows::run_in_terminal() Encountered error while waiting for child process to finish! | Err")?;
+    //let cmd_output = if !output.stdout.is_empty() {
+    //    String::from_utf8(output.stdout).unwrap()
+    //} else {
+    //    String::from_utf8(output.stderr).unwrap()
+    //};
+
+    //info!("monarch_windows::run_in_terminal() Command finished with output: {:?}", cmd_output);
     Ok(())
 }
 
+/// Sets the global APP_HANDLE used by monarch_windows backend.
+pub fn set_apphande(handle: AppHandle) {
+    unsafe { APP_HANDLE = Some(Box::new(handle)) }
+}
 
-// Returns scale to use based on monitor resolution
+/// Returns scale to use based on monitor resolution
 fn get_scale(window: &Window) -> f64 {
     if let Ok(monitor_option) = window.current_monitor() {
         match monitor_option {

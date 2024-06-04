@@ -17,7 +17,7 @@ use std::process::Command;
 */
 
 /// Installs SteamCMD for user in .monarch
-pub fn install_steamcmd() -> Result<()> {
+pub async fn install_steamcmd() -> Result<()> {
     let dest_path: PathBuf = get_steamcmd_dir();
 
     if !path_exists(&dest_path) {
@@ -33,19 +33,19 @@ sleep 2;"#, dest_path.display(), dest_path.display(), &download_arg); // Sleep f
 
     info!("Running: SteamCMD installation script: \n----------\n{installation_script}\n----------");
 
-    run_in_terminal(&installation_script).with_context(|| format!("linux::steam::install_steamcmd() -> "))?;
+    run_in_terminal(&installation_script).await.with_context(|| "linux::steam::install_steamcmd() -> ")?;
     Ok(())
 }
 
 /// Runs specified command via SteamCMD
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
-pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
+pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.sh");
     let args_string: String = args.iter().map(|arg| format!(" {arg}")).collect::<String>();
 
-    run_in_terminal(&format!("{} {}; echo 'Install complete!'; sleep 5;", path.display(), args_string)).with_context(|| "linux::steam::steamcmd_command() -> ")?;
+    run_in_terminal(&format!("{} {}; echo 'Install complete!'; sleep 5;", path.display(), args_string)).await.with_context(|| "linux::steam::steamcmd_command() -> ")?;
 
     //info!("linux::steam::steamcmd_command() Result from steamcmd command {}: {}", format!("\"sh -c {} {}\"", path.display(), args_string), cmd_output);
     Ok(())

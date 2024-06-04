@@ -20,6 +20,7 @@ use monarch_utils::commands::{
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
+use monarch_utils::monarch_windows::set_apphande;
 use monarch_utils::{housekeeping, monarch_settings};
 
 fn init() {
@@ -36,6 +37,10 @@ fn main() {
     init();
 
     let app_result = tauri::Builder::default()
+        .setup(|app| {
+            set_apphande(app.handle());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             search_games,
             refresh_library,
