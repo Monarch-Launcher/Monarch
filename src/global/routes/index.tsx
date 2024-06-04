@@ -3,7 +3,6 @@ import Library from '@pages/library';
 import NotFound from '@pages/notFound';
 import Search from '@pages/search';
 import Settings from '@pages/settings';
-import Terminal from '@pages/terminal';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 export default () => {
