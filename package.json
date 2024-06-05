@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
-    "web-dev": "vite",
-    "web-build": "tsc && vite build",
+    "web-dev": "cp -rv src/terminal dist/terminal && vite",
+    "web-build": "tsc && vite build && cp -rv src/terminal dist/terminal",
     "preview": "vite preview",
     "tauri": "tauri"
   },

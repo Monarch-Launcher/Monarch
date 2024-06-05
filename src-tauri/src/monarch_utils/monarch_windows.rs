@@ -136,7 +136,7 @@ pub async fn run_in_terminal(command: &str) -> Result<()> {
     
         if APP_HANDLE.clone().unwrap().as_ref().get_window("terminal").is_none() {
             warn!("No terminal emulator running! Creating new instance...");
-            let window = MiniWindow::new("terminal", "src/terminal/index.html", 1280.0, 720.0);
+            let window = MiniWindow::new("terminal", "../dist/terminal/index.html", 1280.0, 720.0);
             window.build_window(APP_HANDLE.clone().unwrap().as_ref()).await.with_context(|| "monarch_windows::run_in_terminal() Failed to build terminal window! | Err ")?;
         }
 

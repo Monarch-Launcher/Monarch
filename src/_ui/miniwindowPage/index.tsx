@@ -20,7 +20,7 @@ type PageProps = {
   title?: string;
 };
 
-const Page = ({ children, hideMenu = false, title }: PageProps) => {
+const Page = ({ children, title }: PageProps) => {
   return (
     <PageContainer>
       <ContentContainer>
