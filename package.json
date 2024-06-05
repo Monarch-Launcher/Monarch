@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
-    "web-dev": "cp -rv src/terminal dist/terminal && vite",
-    "web-build": "tsc && vite build && cp -rv src/terminal dist/terminal",
+    "web-dev": "vite",
+    "web-build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
   },
@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.2.2",
-    "@types/node": "^18.7.10",
+    "@types/node": "^20.14.2",
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",
     "@types/react-router-dom": "^5.3.3",
