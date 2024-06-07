@@ -3,6 +3,9 @@ use log::{error, warn, info};
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
 use tauri::api::process::{Command, CommandEvent};
+use std::process::Stdio;
+use std::io::{BufRead, BufReader};
+use std::time::Duration;
 
 static mut APP_HANDLE: Option<Box<AppHandle>> = None; // Global apphadle used by backend when no command
                                                   // was called from frontend.
@@ -144,7 +147,7 @@ pub async fn run_in_terminal(command: &str) -> Result<()> {
         term_window.show()?;
     }
 
-    let child = Command::new("sh").args(["-c", command]).spawn();
+    let child = Command::new("script").args(["-c", command]).spawn();
 
     match child {
         Ok(mut proc) => { // Get process as mutable

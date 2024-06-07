@@ -1,0 +1,761 @@
+Script started on 2024-06-07 16:42:05+02:00 [TERM="xterm-256color" TTY="/dev/pts/0" COLUMNS="311" LINES="54"]
+[0m[?25l[?7l[1m[33m                 ..    
+               .PLTJ.    
+              <><><><>    
+     [32mKKSSV' 4KKK [33mLJ[35m KKKL.'VSSKK    
+     [32mKKV' 4KKKKK [33mLJ[35m KKKKAL 'VKK    
+     [32mV' ' 'VKKKK [33mLJ[35m KKKKV' ' 'V    
+     [32m.4MA.' 'VKK [33mLJ[35m KKV' '.4Mb.    
+   [35m. [32mKKKKKA.' 'V [33mLJ[35m V' '.4KKKKK [34m.    
+ [35m.4D [32mKKKKKKKA.'' [33mLJ[35m ''.4KKKKKKK [34mFA.    
+[35m<QDD ++++++++++++  [34m++++++++++++ GFD>    
+ '[35mVD [34mKKKKKKKK'.. [32mLJ [33m..'KKKKKKKK [34mFV    
+   [35m' [34mVKKKKK'. .4 [32mLJ [33mK. .'KKKKKV [34m'    
+      [34m'VK'. .4KK [32mLJ [33mKKA. .'KV'    
+     [34mA. . .4KKKK [32mLJ [33mKKKKA. . .4    
+     [34mKKA. 'KKKKK [32mLJ [33mKKKKK' .4KK    
+     [34mKKSSA. VKKK [32mLJ [33mKKKV .4SSKK    
+              [32m<><><><>    
+               [32m'MKKM'    
+                 [32m''    [0m[9999999D[18A[40C[1m[33mmooze[0m@[1m[33mlocalhost.localdomain[0m
+[40C---------------------------
+[40C[0m[1m[32mOS[0m: [0mCentOS Stream 9 x86_64
+[40C[0m[1m[32mHost[0m: [0mZ790 PG-ITX/TB4
+[40C[0m[1m[32mKernel[0m: [0m5.14.0-452.el9.x86_64
+[40C[0m[1m[32mUptime[0m: [0m1 hour, 25 mins
+[40C[0m[1m[32mPackages[0m: [0m1370 (rpm), 16 (flatpak-user)
+[40C[0m[1m[32mShell[0m: [0mbash 5.1.8
+[40C[0m[1m[32mDisplay[0m: [0m3440x1440 @ 144Hz
+[40C[0m[1m[32mDE[0m: [0mGnome 40.10
+[40C[0m[1m[32mWM[0m: [0mMutter (Wayland)
+[40C[0m[1m[32mWM Theme[0m: [0mAdwaita-dark
+[40C[0m[1m[32mTheme[0m: [0mAdwaita-dark [GTK2/3/4]
+[40C[0m[1m[32mIcons[0m: [0mAdwaita [GTK2/3/4]
+[40C[0m[1m[32mFont[0m: [0mJetBrainsMono Nerd Font Medium (12pt) [GTK2/3/4]
+[40C[0m[1m[32mCursor[0m: [0mAdwaita (24px)
+[40C[0m[1m[32mTerminal[0m: [0mscript
+[40C[0m[1m[32mCPU[0m: [0m13th Gen Intel(R) Core(TM) i9-13900K (32) @ 5.5 GHz
+[40C[0m[1m[32mGPU[0m: [0mAMD Radeon RX 6800 XT
+[40C[0m[1m[32mMemory[0m: [0m10.71 GiB / 30.85 GiB (34%)
+[40C[0m[1m[32mDisk (/)[0m: [0m7.60 GiB / 69.94 GiB (10%)
+[40C[0m[1m[32mDisk (/home)[0m: [0m57.61 GiB / 844 GiB (6%)
+[40C[0m[1m[32mLocale[0m: [0men_GB.UTF-8
+[40C
+[40C[40;30m███[41;31m███[42;32m███[43;33m███[44;34m███[45;35m███[46;36m███[47;37m███[0m
+[40C[1;40;30;100;90m███[1;41;31;101;91m███[1;42;32;102;92m███[1;43;33;103;93m███[1;44;34;104;94m███[1;45;35;105;95m███[1;46;36;106;96m███[1;47;37;107;97m███[0m
+[?7h[?25h]777;notify;Command completed;cls\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m cls
+[?2004l]777;preexec\[H[2J[3J[0m[?25l[?7l[1m[33m                 ..    
+               .PLTJ.    
+              <><><><>    
+     [32mKKSSV' 4KKK [33mLJ[35m KKKL.'VSSKK    
+     [32mKKV' 4KKKKK [33mLJ[35m KKKKAL 'VKK    
+     [32mV' ' 'VKKKK [33mLJ[35m KKKKV' ' 'V    
+     [32m.4MA.' 'VKK [33mLJ[35m KKV' '.4Mb.    
+   [35m. [32mKKKKKA.' 'V [33mLJ[35m V' '.4KKKKK [34m.    
+ [35m.4D [32mKKKKKKKA.'' [33mLJ[35m ''.4KKKKKKK [34mFA.    
+[35m<QDD ++++++++++++  [34m++++++++++++ GFD>    
+ '[35mVD [34mKKKKKKKK'.. [32mLJ [33m..'KKKKKKKK [34mFV    
+   [35m' [34mVKKKKK'. .4 [32mLJ [33mK. .'KKKKKV [34m'    
+      [34m'VK'. .4KK [32mLJ [33mKKA. .'KV'    
+     [34mA. . .4KKKK [32mLJ [33mKKKKA. . .4    
+     [34mKKA. 'KKKKK [32mLJ [33mKKKKK' .4KK    
+     [34mKKSSA. VKKK [32mLJ [33mKKKV .4SSKK    
+              [32m<><><><>    
+               [32m'MKKM'    
+                 [32m''    [0m[9999999D[18A[40C[1m[33mmooze[0m@[1m[33mlocalhost.localdomain[0m
+[40C---------------------------
+[40C[0m[1m[32mOS[0m: [0mCentOS Stream 9 x86_64
+[40C[0m[1m[32mHost[0m: [0mZ790 PG-ITX/TB4
+[40C[0m[1m[32mKernel[0m: [0m5.14.0-452.el9.x86_64
+[40C[0m[1m[32mUptime[0m: [0m1 hour, 25 mins
+[40C[0m[1m[32mPackages[0m: [0m1370 (rpm), 16 (flatpak-user)
+[40C[0m[1m[32mShell[0m: [0mbash 5.1.8
+[40C[0m[1m[32mDisplay[0m: [0m3440x1440 @ 144Hz
+[40C[0m[1m[32mDE[0m: [0mGnome 40.10
+[40C[0m[1m[32mWM[0m: [0mMutter (Wayland)
+[40C[0m[1m[32mWM Theme[0m: [0mAdwaita-dark
+[40C[0m[1m[32mTheme[0m: [0mAdwaita-dark [GTK2/3/4]
+[40C[0m[1m[32mIcons[0m: [0mAdwaita [GTK2/3/4]
+[40C[0m[1m[32mFont[0m: [0mJetBrainsMono Nerd Font Medium (12pt) [GTK2/3/4]
+[40C[0m[1m[32mCursor[0m: [0mAdwaita (24px)
+[40C[0m[1m[32mTerminal[0m: [0mscript
+[40C[0m[1m[32mCPU[0m: [0m13th Gen Intel(R) Core(TM) i9-13900K (32) @ 5.5 GHz
+[40C[0m[1m[32mGPU[0m: [0mAMD Radeon RX 6800 XT
+[40C[0m[1m[32mMemory[0m: [0m10.70 GiB / 30.85 GiB (34%)
+[40C[0m[1m[32mDisk (/)[0m: [0m7.60 GiB / 69.94 GiB (10%)
+[40C[0m[1m[32mDisk (/home)[0m: [0m57.61 GiB / 844 GiB (6%)
+[40C[0m[1m[32mLocale[0m: [0men_GB.UTF-8
+[40C
+[40C[40;30m███[41;31m███[42;32m███[43;33m███[44;34m███[45;35m███[46;36m███[47;37m███[0m
+[40C[1;40;30;100;90m███[1;41;31;101;91m███[1;42;32;102;92m███[1;43;33;103;93m███[1;44;34;104;94m███[1;45;35;105;95m███[1;46;36;106;96m███[1;47;37;107;97m███[0m
+[?7h[?25h]777;notify;Command completed;cls\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m a[Kyarn dev
+[?2004l]777;preexec\[2K[1G[1myarn run v1.22.22[22m
+[2K[1G[2m$ tauri dev[22m
+[0m[1m[32m     Running[0m BeforeDevCommand (`yarn web-dev`)
+[2K[1G[2m$ vite[22m
+
+  [32m[1mVITE[22m v4.5.3[39m  [2mready in [0m[1m157[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m1420[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[0m[1m[32m        Info[0m Watching /home/mooze/projects/Monarch/src-tauri for changes...
+[1m[32m   Compiling[0m Monarch v0.0.1 (/home/mooze/projects/Monarch/src-tauri)
+[1m[36m    Building[0m [=======================> ] 533/534: Monarch(bin)                                                                                                                                                                                                                                                       [K[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[1m[36m    Building[0m [=======================> ] 533/534: Monarch(bin)                                                                                                                                                                                                                                                       [K[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[1m[36m    Building[0m [=======================> ] 533/534: Monarch(bin)                                                                                                                                                                                                                                                       [K[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[36m    Building[0m [=======================> ] 533/534: Monarch(bin)                                                                                                                                                                                                                                                       [K[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[36m    Building[0m [=======================> ] 533/534: Monarch(bin)                                                                                                                                                                                                                                                       [K[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[36m    Building[0m [=======================> ] 533/534: Monarch(bin)                                                                                                                                                                                                                                                       [K[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 7.23s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:127969): [1;33mWARNING[0m **: [34m16:42:38.040[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+
+** (monarch:127969): [1;33mWARNING[0m **: [34m16:42:56.940[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+^C
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m yarn dev
+[?2004l]777;preexec\[2K[1G[1myarn run v1.22.22[22m
+[2K[1G[2m$ tauri dev[22m
+[0m[1m[32m     Running[0m BeforeDevCommand (`yarn web-dev`)
+[2K[1G[2m$ vite[22m
+
+  [32m[1mVITE[22m v4.5.3[39m  [2mready in [0m[1m164[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m1420[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[0m[1m[32m        Info[0m Watching /home/mooze/projects/Monarch/src-tauri for changes...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 0.09s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:147750): [1;33mWARNING[0m **: [34m17:00:39.501[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+
+** (monarch:147750): [1;33mWARNING[0m **: [34m17:00:52.028[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+[0m[1m[32m        Info[0m File src-tauri/typescript changed. Rebuilding application...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 0.09s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:148360): [1;33mWARNING[0m **: [34m17:00:53.233[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+[0m[1m[32m        Info[0m File src-tauri/typescript changed. Rebuilding application...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 0.10s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:148772): [1;33mWARNING[0m **: [34m17:01:00.928[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+[2K[1GDone in 26.96s.
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m yarn dev
+[?2004l]777;preexec\[2K[1G[1myarn run v1.22.22[22m
+[2K[1G[2m$ tauri dev[22m
+[0m[1m[32m     Running[0m BeforeDevCommand (`yarn web-dev`)
+[2K[1G[2m$ vite[22m
+
+  [32m[1mVITE[22m v4.5.3[39m  [2mready in [0m[1m159[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m1420[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[0m[1m[32m        Info[0m Watching /home/mooze/projects/Monarch/src-tauri for changes...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 0.10s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:149742): [1;33mWARNING[0m **: [34m17:01:33.041[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+
+** (monarch:149742): [1;33mWARNING[0m **: [34m17:01:46.154[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+[0m[1m[32m        Info[0m File src-tauri/typescript changed. Rebuilding application...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 0.09s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:150374): [1;33mWARNING[0m **: [34m17:01:47.369[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+[2K[1GDone in 19.96s.
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m yarn dev
+[?2004l]777;preexec\[2K[1G[1myarn run v1.22.22[22m
+[2K[1G[2m$ tauri dev[22m
+[0m[1m[32m     Running[0m BeforeDevCommand (`yarn web-dev`)
+[2K[1G[2m$ vite[22m
+
+  [32m[1mVITE[22m v4.5.3[39m  [2mready in [0m[1m157[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m1420[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[0m[1m[32m        Info[0m Watching /home/mooze/projects/Monarch/src-tauri for changes...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 0.11s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:152209): [1;33mWARNING[0m **: [34m17:03:13.407[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+
+** (monarch:152209): [1;33mWARNING[0m **: [34m17:03:26.012[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+[0m[1m[32m        Info[0m File src-tauri/typescript changed. Rebuilding application...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 0.09s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:152829): [1;33mWARNING[0m **: [34m17:03:27.218[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+[2K[1GDone in 18.63s.
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m ^C[?2004l[?2004h[?2004l
+]777;notify;Command completed;yarn dev\]777;precmd\]0;mooze@localhost:~/projects/Monarch\]7;file://localhost/home/mooze/projects/Monarch\[?2004h
+[1;32m│[36mMonarch[0m on [1;35m monarch_terminal[0m 
+[1;32m└─>[0m yarn dev
+[?2004l]777;preexec\[2K[1G[1myarn run v1.22.22[22m
+[2K[1G[2m$ tauri dev[22m
+[0m[1m[32m     Running[0m BeforeDevCommand (`yarn web-dev`)
+[2K[1G[2m$ vite[22m
+
+  [32m[1mVITE[22m v4.5.3[39m  [2mready in [0m[1m158[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m1420[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[0m[1m[32m        Info[0m Watching /home/mooze/projects/Monarch/src-tauri for changes...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 0.09s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:154154): [1;33mWARNING[0m **: [34m17:04:23.012[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+
+** (monarch:154154): [1;33mWARNING[0m **: [34m17:04:36.459[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+[0m[1m[32m        Info[0m File src-tauri/typescript changed. Rebuilding application...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: methods `hide_window` and `close_window` are never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:92:12[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m21[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0mimpl MiniWindow {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m[1m[38;5;12m---------------[0m[0m [0m[0m[1m[38;5;12mmethods in this implementation[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m92[0m[0m  [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m108[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m:[0m `Monarch` (bin "Monarch") generated 6 warnings (run `cargo fix --bin "Monarch"` to apply 3 suggestions)
+[1m[32m    Finished[0m dev [unoptimized + debuginfo] target(s) in 0.09s
+[1m[33mwarning[0m[1m:[0m the following packages contain code that will be rejected by a future version of Rust: nom v1.2.4
+[1m[36mnote[0m[1m:[0m to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+
+** (monarch:154786): [1;33mWARNING[0m **: [34m17:04:37.670[0m: webkit_settings_set_enable_offline_web_application_cache is deprecated and does nothing.
+[0m[1m[32m        Info[0m File src-tauri/typescript changed. Rebuilding application...
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::process::Stdio`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:6:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m6[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::process::Stdio;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m  [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_imports)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused imports: `BufRead`, `BufReader`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:7:15[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m7[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::io::{BufRead, BufReader};[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m              [0m[0m[1m[33m^^^^^^^[0m[0m  [0m[0m[1m[33m^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused import: `std::time::Duration`[0m
+[0m [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_windows.rs:8:5[0m
+[0m  [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m8[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0muse std::time::Duration;[0m
+[0m  [0m[0m[1m[38;5;12m| [0m[0m    [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_quicklaunch_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:143:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m143[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_quicklaunch_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(dead_code)]` on by default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: function `get_epic_settings` is never used[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/monarch_utils/monarch_settings.rs:153:8[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m153[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub fn get_epic_settings() -> Option<toml::Value> {[0m
+[0m    [0m[0m[1m[38;5;12m| [0m[0m       [0m[0m[
