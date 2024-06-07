@@ -13,9 +13,8 @@ edition = "2021"
 tauri-build = { version = "1.2", features = [] }
 
 [dependencies]
-# Tauri dependencies
-tauri = { version = "1.2", features = [
-  "shell-all",
+tauri = { version = "1.2", features = [ "shell-all",
+  "process-command-api",
   "dialog-ask",
   "dialog-confirm",
   "dialog-message",
@@ -23,7 +22,7 @@ tauri = { version = "1.2", features = [
   "fs-read-file",
   "protocol-asset",
   "window-set-min-size",
-] }
+] } # Tauri dependencies
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

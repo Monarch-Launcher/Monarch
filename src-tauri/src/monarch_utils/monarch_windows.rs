@@ -1,5 +1,5 @@
 use anyhow::{bail, Context, Result};
-use log::{error, warn};
+use log::{error, warn, info};
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
 use tauri::api::process::{Command, CommandEvent};
@@ -148,21 +148,27 @@ pub async fn run_in_terminal(command: &str) -> Result<()> {
 
     match child {
         Ok(mut proc) => { // Get process as mutable
-            loop {
-                while let Some(event) = proc.0.recv().await { // Loop through events
-                    if let CommandEvent::Stdout(out_line) = &event { // Verify it's a new
-                                                                            // line
-                        if let Err(e) = term_window.emit("stdout", &out_line) {
-                            warn!("monarch_windows::run_in_terminal() Failed to send line: {out_line} to terminal window | Err {e}");
-                        }
-                    }
-                    if let CommandEvent::Stderr(err_line) = &event { // Verify it's a new
-                        if let Err(e) = term_window.emit("stderr", &err_line) {
-                            warn!("monarch_windows::run_in_terminal() Failed to send line: {err_line} to terminal window | Err {e}");
-                        }
+            while let Some(event) = proc.0.recv().await { // Loop through events
+                info!("New event! {:?}", event);
+                if let CommandEvent::Stdout(out_line) = &event { // Verify it's a new
+                                                                        // line
+                    if let Err(e) = term_window.emit("stdout", &out_line) {
+                        warn!("monarch_windows::run_in_terminal() Failed to send line: {out_line} to terminal window | Err {e}");
                     }
                 }
+                if let CommandEvent::Stderr(err_line) = &event { // Verify it's a new
+                    if let Err(e) = term_window.emit("stderr", &err_line) {
+                        warn!("monarch_windows::run_in_terminal() Failed to send line: {err_line} to terminal window | Err {e}");
+                    }
+                }
+                if let CommandEvent::Terminated(_payload) = &event { // Verify it's a new
+                    if let Err(e) = term_window.close() {
+                        warn!("monarch_windows::run_in_terminal() Failed to close terminal window! | Err {e}");
+                    }
+                    return Ok(()); // Exit if child was terminated
+                }
             }
+            bail!("monarch_windows::run_in_terminal() Exited before child process terminated!")
         }
         Err(e) => {
             if let Err(e) = term_window.close() {

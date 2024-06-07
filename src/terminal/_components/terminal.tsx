@@ -1,14 +1,13 @@
-import Page from '@_ui/miniwindowPage';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 
 const Terminal = () => {
-  const [output, setOutput] = useState([]);
+  const [output, setOutput] = useState<string[]>([]);
 
   useEffect(() => {
     // Listen for the command output event
     const unlisten = listen('stdout', event => {
-      setOutput(prevOutput => [...prevOutput, event.payload]);
+      setOutput(prevOutput => [...prevOutput, event.payload as string]);
     });
 
     // Clean up the event listener on component unmount
