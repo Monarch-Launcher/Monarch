@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use log::{error, warn};
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
-use tauri::api::process::{Command, CommandChild, CommandEvent};
+use tauri::api::process::{Command, CommandEvent};
 
 static mut APP_HANDLE: Option<Box<AppHandle>> = None; // Global apphadle used by backend when no command
                                                   // was called from frontend.
