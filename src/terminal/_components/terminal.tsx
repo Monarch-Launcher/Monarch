@@ -26,10 +26,10 @@ const Terminal = () => {
   };
 
   return (
-    <div>
-      <div id="output-container">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div id="output-container" style={{ flexGrow: 1, overflowY: 'auto' }}>
         {output.map((line, index) => (
-          <pre key={index}>{line}</pre>
+          <pre key={index} style={{ whiteSpace: 'pre-wrap' }}>{line}</pre>
         ))}
       </div>
       <form onSubmit={handleSubmit} style={{ marginTop: '10px' }}>
