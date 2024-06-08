@@ -6,7 +6,6 @@ use tauri::api::process::{Command, CommandChild, CommandEvent};
 
 static mut APP_HANDLE: Option<Box<AppHandle>> = None; // Global apphadle used by backend when no command
                                                   // was called from frontend.
-static mut RUNNING_COMMAND: Option<CommandChild> = None;
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
 
 pub struct MiniWindow {
