@@ -16,11 +16,11 @@ use monarch_library::commands::{
 };
 use monarch_utils::commands::{
     clear_cached_images, delete_password, get_settings, open_logs, revert_settings, set_password,
-    set_settings,
+    set_settings, write_process_stdin
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
-use monarch_utils::monarch_windows::set_apphande;
+use monarch_utils::monarch_terminal::set_apphande;
 use monarch_utils::{housekeeping, monarch_settings};
 
 fn init() {
@@ -60,6 +60,7 @@ fn main() {
             set_password,
             delete_password,
             remove_game,
+            write_process_stdin,
         ])
         .run(tauri::generate_context!());
 

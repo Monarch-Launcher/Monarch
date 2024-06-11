@@ -7,11 +7,12 @@ use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{read_settings, set_default_settings, write_settings};
+use super::monarch_terminal::write_stdin;
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
 /// Use OS default option to open log directory
-pub async fn open_logs() {
+pub fn open_logs() {
     let path: PathBuf = get_log_dir();
     Command::new("PowerShell")
         .arg("start")
@@ -23,7 +24,7 @@ pub async fn open_logs() {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 /// Use OS default option to open log directory
-pub async fn open_logs() {
+pub fn open_logs() {
     let path: PathBuf = get_log_dir();
     Command::new("open").arg(path).spawn().unwrap();
 }
@@ -31,9 +32,19 @@ pub async fn open_logs() {
 #[cfg(target_os = "linux")]
 #[tauri::command]
 /// Use OS default option to open log directory
-pub async fn open_logs() {
+pub fn open_logs() {
     let path: PathBuf = get_log_dir();
     Command::new("xdg-open").arg(path).spawn().unwrap();
+}
+
+#[tauri::command]
+/// Send text to RUNNING_PROCESS stdin
+pub fn write_process_stdin(stdin: String) -> Result<(), String> {
+    if let Err(e) = write_stdin(&stdin) {
+        error!("monarch_utils::commands::write_stdin() -> {e}");
+        return Err(String::from("Error occured while attempting to send command to subprocess!"))
+    }
+    Ok(())
 }
 
 /*

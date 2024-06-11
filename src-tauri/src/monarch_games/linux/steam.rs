@@ -1,6 +1,6 @@
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
-use crate::monarch_utils::monarch_windows::run_in_terminal;
+use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::{
     monarch_fs::{create_dir, get_unix_home, path_exists},
     monarch_vdf,

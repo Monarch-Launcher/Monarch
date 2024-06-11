@@ -1,5 +1,6 @@
 import { useEffect, useState, FormEvent } from 'react';
-import { listen, emit } from '@tauri-apps/api/event';
+import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/tauri';
 
 const Terminal = () => {
   const [output, setOutput] = useState<string[]>([]);
@@ -22,12 +23,12 @@ const Terminal = () => {
 
     // Send the input event to the backend
     try {
-      await emit('stdin', input);
+      await invoke('write_process_stdin', { stdin: input});
       // Add the input to the output for display
       setOutput(prevOutput => [...prevOutput, input]);
       setInput(''); // Clear the input field
     } catch (error) {
-      console.error('Failed to send input to the backend:', error);
+      console.log(error);
     }
 
   };

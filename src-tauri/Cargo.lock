@@ -8,6 +8,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "keyring",
+ "lazy_static",
  "log",
  "log4rs",
  "once_cell",
