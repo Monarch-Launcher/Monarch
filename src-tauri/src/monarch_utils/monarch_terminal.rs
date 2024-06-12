@@ -3,11 +3,11 @@ use tauri::{AppHandle, Manager, Window};
 use lazy_static::lazy_static;
 use std::sync::Mutex;
 use anyhow::{bail, Context, Result};
-use log::{error, info, warn};
+use log::{error, warn};
 use crate::monarch_utils::monarch_windows::MiniWindow;
 
 static mut APP_HANDLE: Option<Box<AppHandle>> = None; // Global apphadle used by backend when no command
-                             // was called from frontend.
+                                                     // was called from frontend.
 lazy_static! {
     static ref RUNNING_PROCESS: Mutex<Option<CommandChild>> = Mutex::new(None);
 }
@@ -37,7 +37,7 @@ pub async fn run_in_terminal(command: &str) -> Result<()> {
         term_window.show()?;
     }
 
-    let child_result = Command::new("source").args([command]).spawn();
+    let child_result = Command::new("sh").args(["-i", "-c", command]).spawn();
 
     let mut rx = match child_result {
         Ok(child) => {
@@ -84,7 +84,6 @@ pub fn set_apphande(handle: AppHandle) {
 /// Send stdin: &str to stdin of RUNNING_PROCESS.
 /// Another potential code injection vaulnerability.
 pub fn write_stdin(stdin: &str) -> Result<()> {
-    info!("Receiving stdin: {stdin}");
     // If RUNNING_PROCESS is Some
     if let Some(mut child) = RUNNING_PROCESS.lock().unwrap().take() {
         child.write(stdin.as_bytes()).with_context(|| "monarch_terminal::write_stdin() Error while writing to RUNNING_PROCESS stdin! | Err ")?;
