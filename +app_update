@@ -1,8 +1,0 @@
-Script started on 2024-06-11 21:04:49+02:00 [TERM="xterm-256color" TTY="/dev/pts/0" COLUMNS="173" LINES="45"]
-/home/oharradine/.local/share/monarch/SteamCMD/steamcmd.sh: line 1: Script: command not found
-/home/oharradine/.local/share/monarch/SteamCMD/steamcmd.sh: line 2: $'\E[0m\E[?25l\E[?7l\E[1m\E[33m': command not found
-/home/oharradine/.local/share/monarch/SteamCMD/steamcmd.sh: line 3: .PLTJ.: command not found
-/home/oharradine/.local/share/monarch/SteamCMD/steamcmd.sh: line 4: syntax error near unexpected token `<>'
-/home/oharradine/.local/share/monarch/SteamCMD/steamcmd.sh: line 4: `              <><><><>    '
-
-Script done on 2024-06-11 21:04:49+02:00 [COMMAND_EXIT_CODE="2"]

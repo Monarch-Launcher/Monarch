@@ -37,7 +37,7 @@ pub async fn run_in_terminal(command: &str) -> Result<()> {
         term_window.show()?;
     }
 
-    let child_result = Command::new("script").args(["-c", command]).spawn();
+    let child_result = Command::new("source").args([command]).spawn();
 
     let mut rx = match child_result {
         Ok(child) => {
