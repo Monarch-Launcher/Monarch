@@ -37,6 +37,14 @@ pub async fn run_in_terminal(command: &str) -> Result<()> {
         term_window.show()?;
     }
 
+
+    #[cfg(target_os = "windows")]
+    let child_result = Command::new("sh").args(["-i", "-c", command]).spawn();
+
+    #[cfg(target_os = "macos")]
+    let child_result = Command::new("sh").args(["-i", "-c", command]).spawn();
+
+    #[cfg(target_os = "linux")]
     let child_result = Command::new("sh").args(["-i", "-c", command]).spawn();
 
     let mut rx = match child_result {
