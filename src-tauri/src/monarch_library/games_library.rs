@@ -17,7 +17,7 @@ pub fn write_games(games: Vec<MonarchGame>) -> Result<()> {
 
 /// Writes new games to monarch_games.json for Monarch to track what games it installed itself.
 pub fn write_monarchgame(game: MonarchGame) -> Result<()> {
-    let path: PathBuf = get_library_json_path();
+    let path: PathBuf = get_monarch_games_path();
     let mut games: Vec<MonarchGame> = Vec::new();
 
     if !path_exists(&path) {
