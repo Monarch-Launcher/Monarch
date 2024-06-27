@@ -17,7 +17,7 @@ pub fn write_games(games: Vec<MonarchGame>) -> Result<()> {
 
 /// Writes new games to monarch_games.json for Monarch to track what games it installed itself.
 pub fn write_monarchgame(game: MonarchGame) -> Result<()> {
-    let path: PathBuf = get_monarch_games_path();
+    let path: PathBuf = get_library_json_path();
     let mut games: Vec<MonarchGame> = Vec::new();
 
     if !path_exists(&path) {
@@ -84,7 +84,9 @@ pub fn add_game(game: MonarchGame) -> Result<()> {
 
     let games_json: Value = get_games().with_context(|| "games_library::add_game() -> ")?;
 
-    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| "games_library::add_game() Failed to parse json to Vec<MonarchGame>! | Err: ")?;
+    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| {
+        "games_library::add_game() Failed to parse json to Vec<MonarchGame>! | Err: "
+    })?;
 
     games.push(game);
     write_games(games)

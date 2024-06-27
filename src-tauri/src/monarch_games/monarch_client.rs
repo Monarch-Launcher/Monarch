@@ -39,14 +39,15 @@ pub async fn download_game(
     let mut path: PathBuf = PathBuf::from(
         get_monarch_settings().unwrap()["game_folder"]
             .to_string()
-            .trim_matches('"'),
+            .trim_matches('"')
+            .trim_matches('\''),
     );
 
     if !monarch_fs::path_exists(&path) {
         monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
     }
 
-    path.push(name); // Game specific path
+    path.push(name.trim_matches('"')); // Game specific path
     if !monarch_fs::path_exists(&path) {
         monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
     }

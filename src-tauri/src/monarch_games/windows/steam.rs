@@ -55,7 +55,7 @@ pub async fn install_steamcmd() -> Result<()> {
 
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
-pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
+pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir(); 
     path.push("steamcmd.exe");
 
