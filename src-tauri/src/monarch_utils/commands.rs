@@ -11,29 +11,42 @@ use super::monarch_settings::{read_settings, set_default_settings, write_setting
 #[cfg(target_os = "windows")]
 #[tauri::command]
 /// Use OS default option to open log directory
-pub async fn open_logs() {
+pub async fn open_logs() -> Result<(), String> {
     let path: PathBuf = get_log_dir();
-    Command::new("PowerShell")
+    if let Err(e) = Command::new("PowerShell")
         .arg("start")
         .arg(path)
         .spawn()
-        .unwrap();
+        .unwrap()
+    {
+        error!("monarch_utils::commands::open_logs() Error opening logs! | Err: {e}");
+        return Err(String::from("Error opening logs!"));
+    }
+    Ok(())
 }
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
 /// Use OS default option to open log directory
-pub async fn open_logs() {
+pub async fn open_logs() -> Result<(), String> {
     let path: PathBuf = get_log_dir();
-    Command::new("open").arg(path).spawn().unwrap();
+    if let Err(e) = Command::new("open").arg(path).spawn() {
+        error!("monarch_utils::commands::open_logs() Error opening logs! | Err: {e}");
+        return Err(String::from("Error opening logs!"));
+    }
+    Ok(())
 }
 
 #[cfg(target_os = "linux")]
 #[tauri::command]
 /// Use OS default option to open log directory
-pub async fn open_logs() {
+pub async fn open_logs() -> Result<(), String> {
     let path: PathBuf = get_log_dir();
-    Command::new("xdg-open").arg(path).spawn().unwrap();
+    if let Err(e) = Command::new("xdg-open").arg(path).spawn() {
+        error!("monarch_utils::commands::open_logs() Error opening logs! | Err: {e}");
+        return Err(String::from("Error opening logs!"));
+    }
+    Ok(())
 }
 
 /*
