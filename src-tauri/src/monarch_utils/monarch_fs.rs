@@ -18,7 +18,7 @@ pub fn verify_monarch_folders() {
         get_resources_path(),
         get_resources_cache(),
         get_resources_library(),
-        get_settings_path().expect("Panic while getting settings path!"),
+        get_settings_path().expect("Panic while getting settings.toml path!"),
     ];
 
     for path in paths {
@@ -77,6 +77,7 @@ pub fn get_settings_path() -> Result<PathBuf> {
 
 #[cfg(not(windows))]
 /// Returns Monarch home according to XDG (.local/share/monarch)
+/// Currently assuming MacOS is fine being treated the same as Linux
 pub fn generate_monarch_home() -> Result<PathBuf> {
     if let Ok(path) = std::env::var("XDG_DATA_HOME") {
         return Ok(PathBuf::from(path).join("monarch")); // Return early with data home according to XDG env var.
@@ -98,6 +99,8 @@ pub fn generate_monarch_home() -> Result<PathBuf> {
 
 #[cfg(not(windows))]
 /// Returns path to settings.json
+/// Just like with getting home path, this function assumes MacOS is fine
+/// with behaving like Linux
 pub fn get_settings_path() -> Result<PathBuf> {
     if cfg!(not(windows)) {
         if let Ok(path) = std::env::var("XDG_CONFIG_HOME") {

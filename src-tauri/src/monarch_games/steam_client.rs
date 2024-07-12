@@ -4,8 +4,8 @@ use reqwest;
 use scraper::{Html, Selector};
 use serde_json::Value;
 use std::path::PathBuf;
-use toml;
 use tokio::task;
+use toml;
 
 use super::monarch_client::generate_default_folder;
 use super::monarchgame::MonarchGame;
@@ -17,6 +17,9 @@ use crate::monarch_utils::monarch_settings::get_steam_settings;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
+
+#[cfg(target_os = "macos")]
+use super::macos::steam;
 
 #[cfg(target_os = "linux")]
 use super::linux::steam;
@@ -45,7 +48,8 @@ pub async fn download_and_install() -> Result<()> {
 /// Downloads and installs SteamCMD on users computer.
 pub async fn download_and_install() -> Result<()> {
     steam::install_steamcmd().with_context(|| "steam_client::download_and_install() -> ")?;
-    steam::steamcmd_command(vec!["+set_steam_guard_code"]).with_context(|| "steam_client::download_and_install() -> ")
+    steam::steamcmd_command(vec!["+set_steam_guard_code"])
+        .with_context(|| "steam_client::download_and_install() -> ")
 }
 
 /// Returns games installed by Steam Client.
@@ -202,8 +206,8 @@ pub async fn parse_steam_ids(ids: &[String], is_cache: bool) -> Vec<MonarchGame>
             }
         }
     }
-    
-    return games
+
+    return games;
 }
 
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.
@@ -214,18 +218,18 @@ async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
 
     // GET info from Steam servers
     match reqwest::get(&target).await {
-        Ok(response) => {
-            match response.text().await {
-                Ok(body) => {
-                    game_info = body;
-                }
-                Err(e) => {
-                    warn!("steam_client::parse_steam_ids() Failed to parse response body! | Err: {e}");
-                }
+        Ok(response) => match response.text().await {
+            Ok(body) => {
+                game_info = body;
             }
-        }
+            Err(e) => {
+                warn!("steam_client::parse_steam_ids() Failed to parse response body! | Err: {e}");
+            }
+        },
         Err(e) => {
-            error!("steam_client::parse_steam_ids() Failed to get response from: {target} | Err: {e}");
+            error!(
+                "steam_client::parse_steam_ids() Failed to get response from: {target} | Err: {e}"
+            );
         }
     }
 
@@ -254,7 +258,7 @@ async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
 
                 // Start tokio::task to download thumbail for game
                 game.download_thumbnail(url);
-                return Ok(game)
+                return Ok(game);
             }
         }
     }
