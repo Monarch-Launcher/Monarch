@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use log::{info, error};
+use log::{info, error, warn};
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
 use std::process::Command;
@@ -122,6 +122,7 @@ impl MiniWindow {
 /// only Monarch runs specific commands through it. Either they are hard-coded or they are run
 /// through another program like Steamcmd, which should perform it's own sanitizing.
 pub fn run_in_terminal(command: &str) -> Result<()> {
+    /*
     #[cfg(target_os = "linux")]
     let mut child = Command::new("gnome-terminal")
         .args(["--", "sh", "-c", &format!(r#"{}"#, command)])
@@ -136,6 +137,10 @@ pub fn run_in_terminal(command: &str) -> Result<()> {
     };
 
     info!("monarch_windows::run_in_terminal() Command finished with output: {:?}", cmd_output);
+    Ok(())
+    */
+
+    warn!("monarch_windows::run_in_terminal() Function is still WIP! Nothing has been run.");
     Ok(())
 }
 
