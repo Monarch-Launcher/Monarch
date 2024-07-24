@@ -19,3 +19,27 @@ export type Collection = {
   name: string;
   gameIds: string[];
 };
+
+type LauncherType = {
+  game_folders: string[];
+  manage: boolean;
+  username: string;
+};
+
+export type Settings = {
+  epic: LauncherType;
+  steam: LauncherType;
+  monarch: {
+    game_folder: string;
+    monarch_home: string;
+    run_on_startup: boolean;
+    send_logs: boolean;
+    start_minimized: boolean;
+  };
+  quicklaunch: {
+    close_shortcut: string;
+    open_shortcut: string;
+    enabled: boolean;
+    size: string;
+  };
+};

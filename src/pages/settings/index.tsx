@@ -1,6 +1,11 @@
 import Button from '@_ui/button';
 import Page from '@_ui/page';
+import { useSettings } from '@global/contexts/settingsProvider';
+import { Settings } from '@global/types';
 import { Input, Switch } from '@mantine/core';
+import { invoke } from '@tauri-apps/api';
+import * as React from 'react';
+import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
 
 const Section = styled.div`
@@ -42,12 +47,51 @@ const ButtonContainer = styled.div`
   justify-content: space-between;
 `;
 
-const Settings = () => {
+type FormValues = {
+  settings: Settings;
+  username: string;
+  password: string;
+};
+
+const SettingsPage = () => {
+  const [quickLaunchToggled, setQuickLaunchToggled] = React.useState(true);
+  const { register, handleSubmit } = useForm<FormValues>();
+  // @ts-expect-error
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { settings, updateSettings } = useSettings();
+
+  const onSubmit = React.useCallback(
+    async (values: FormValues) => {
+      // @ts-expect-error
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { username, password } = values;
+      // Do some if checks
+
+      await updateSettings(values.settings);
+    },
+    [updateSettings],
+  );
+
+  const toggleQuickLaunch = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      setQuickLaunchToggled(e.currentTarget.checked);
+      // Call backend function
+      await invoke('');
+    },
+    [],
+  );
+
   return (
     <Page title="Settings">
       <Section>
         <SectionTitle>Monarch</SectionTitle>
-        <MonarchSwitch size="md" label="Quicklaunch" labelPosition="left" />
+        <MonarchSwitch
+          checked={quickLaunchToggled}
+          onChange={toggleQuickLaunch}
+          size="md"
+          label="Quicklaunch"
+          labelPosition="left"
+        />
       </Section>
       <Section>
         <SectionTitle>Steam</SectionTitle>
@@ -56,22 +100,29 @@ const Settings = () => {
           label="Allow Monarch to manage Steam games"
           labelPosition="left"
         />
-        <FormContainer>
-          <Input placeholder="Steam username" variant="filled" />
-          <Input placeholder="Steam password" variant="filled" />
 
-          <ButtonContainer>
-            <Button type="button" variant="secondary">
-              Reset
-            </Button>
-            <Button type="button" variant="primary">
-              Save
-            </Button>
-          </ButtonContainer>
-        </FormContainer>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <FormContainer>
+            <Input
+              placeholder="Steam username"
+              variant="filled"
+              {...register('username')}
+            />
+            <Input
+              placeholder="Steam password"
+              variant="filled"
+              {...register('password')}
+            />
+            <ButtonContainer>
+              <Button type="submit" variant="primary">
+                Save
+              </Button>
+            </ButtonContainer>
+          </FormContainer>
+        </form>
       </Section>
     </Page>
   );
 };
 
-export default Settings;
+export default SettingsPage;

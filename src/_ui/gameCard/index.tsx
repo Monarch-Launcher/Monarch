@@ -83,6 +83,7 @@ const GameCard = ({
   name,
   platform,
   thumbnailPath,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   storePage,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   isLibrary = false,
