@@ -51,6 +51,10 @@ pub fn init() -> Result<()> {
     }
 
     if let Ok(settings) = read_settings() {
+        if !valid_settings(&settings) {
+            println!("Invalid settings detected in settings.toml!");
+            bail!("monarch_settings::init() Invalid settings detected in settings.toml!")
+        }
         // Set SETTINGS_STATE to settings from settings.toml
         set_settings_state(settings);
     }
@@ -96,6 +100,10 @@ pub fn set_default_settings() -> Result<Table, Table> {
 /// Write settings to file where header is the "header" you want to change under,
 /// key is the name of the setting and value is the new value the setting should have.
 pub fn write_settings(settings: Table) -> Result<Table, Table> {
+    if !valid_settings(&settings) {
+        error!("Attempting to write invalid settings to settings.toml!");
+        return Err(get_settings_state()); // Return error wrapping the backends actual settings
+    }
     match get_settings_path() {
         Ok(path) => write_toml_content(&path, settings),
         Err(e) => {
@@ -221,4 +229,44 @@ fn get_default_settings() -> Table {
     settings.insert("epic".to_string(), epic_settings.into());
 
     settings
+}
+
+/*
+* ----- Lots of stuff related to verifying that settings written to / read from settings.toml are
+* valid. -----
+*/
+
+/// Main function for verifying that Monarch settings are valid.
+/// TODO: Come back and implement tighter checks on settings.
+fn valid_settings(settings: &Table) -> bool {
+    // Validate one section of the settings at the time
+    match settings.get("monarch") {
+        Some(_monarch_settings) => {}
+        None => {
+            error!("monarch_settings::valid_settings() Error while validating settings! | Err: Missing [monarch] header!");
+            return false;
+        }
+    }
+    match settings.get("quicklaunch") {
+        Some(_quicklaunch_settings) => {}
+        None => {
+            error!("monarch_settings::valid_settings() Error while validating settings! | Err: Missing [quicklaunch] header!");
+            return false;
+        }
+    }
+    match settings.get("steam") {
+        Some(_steam_settings) => {}
+        None => {
+            error!("monarch_settings::valid_settings() Error while validating settings! | Err: Missing [steam] header!");
+            return false;
+        }
+    }
+    match settings.get("epic") {
+        Some(_epic_settings) => {}
+        None => {
+            error!("monarch_settings::valid_settings() Error while validating settings! | Err: Missing [epic] header!");
+            return false;
+        }
+    }
+    true
 }
