@@ -256,8 +256,8 @@ async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
                 let game: MonarchGame =
                     MonarchGame::new(&name, &platform, &id, &exec_path, &thumbnail_path);
 
-                // Start tokio::task to download thumbail for game
-                game.download_thumbnail(url);
+                // Download thumbnail to display
+                game.download_thumbnail(url).await;
                 return Ok(game);
             }
         }
