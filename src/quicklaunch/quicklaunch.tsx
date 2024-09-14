@@ -16,8 +16,8 @@ const Searchbar = styled.input`
   border: none;
   border-radius: 0.3rem;
   width: 100%;
-  height: 6.25rem;
-  font-size: 2.5rem;
+  height: 3.25rem;
+  font-size: 1.5rem;
   padding: 0.2rem;
   margin-bottom: 1rem;
 
