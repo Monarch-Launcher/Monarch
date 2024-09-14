@@ -2,16 +2,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![allow(non_snake_case)]
 
-use log::error;
-
 mod monarch_games;
 mod monarch_library;
 mod monarch_utils;
 
+use std::process::exit;
+
+use log::warn;
 use monarch_games::commands::{
     download_game, get_library, launch_game, open_store, refresh_library, remove_game, search_games,
 };
-use monarch_games::monarch_client;
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
 };
@@ -36,6 +36,7 @@ async fn init() {
     verify_monarch_folders(); // Checks that directories are as Monarch expects
     housekeeping::start(); // Starts housekeeping loop
 
+    // Initialize quicklaunch. TODO: Add check from settings if quicklaunch is enabled
     // Usage if GLOBAL_APPHANDLE requires unsafe, due to it being mut
     let param_handle: AppHandle;
     unsafe {
@@ -85,9 +86,15 @@ async fn main() {
     init().await;
 
     // Start Monarch
-    monarch.run(|_app_handle, event| {
+    monarch.run(|app_handle, event| {
         if let tauri::RunEvent::ExitRequested { api, .. } = event {
             api.prevent_exit();
+            for (name, window) in app_handle.windows() {
+                if let Err(e) = window.close() {
+                    warn!("Failed to close window: {name} | Err: {e}");
+                }
+            }
+            exit(0);
         }
     });
 }
