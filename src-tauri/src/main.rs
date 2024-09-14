@@ -8,7 +8,7 @@ mod monarch_utils;
 
 use std::process::exit;
 
-use log::warn;
+use log::{info, warn};
 use monarch_games::commands::{
     download_game, get_library, launch_game, open_store, refresh_library, remove_game, search_games,
 };
@@ -16,16 +16,13 @@ use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
 };
 use monarch_utils::commands::{
-    clear_cached_images, delete_password, get_settings, open_logs, revert_settings, set_password,
-    set_settings,
+    clear_cached_images, delete_password, get_settings, hide_quicklaunch, init_quicklaunch,
+    open_logs, revert_settings, set_password, set_settings, show_quicklaunch,
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
-use monarch_utils::quicklaunch::init_quicklaunch;
 use monarch_utils::{housekeeping, monarch_settings};
-use tauri::{AppHandle, Manager};
-
-pub static mut GLOBAL_APPHANDLE: Option<Box<AppHandle>> = None;
+use tauri::Manager;
 
 async fn init() {
     if let Err(e) = monarch_settings::init() {
@@ -35,16 +32,6 @@ async fn init() {
     init_logger(); // Starts logger
     verify_monarch_folders(); // Checks that directories are as Monarch expects
     housekeeping::start(); // Starts housekeeping loop
-
-    // Initialize quicklaunch. TODO: Add check from settings if quicklaunch is enabled
-    // Usage if GLOBAL_APPHANDLE requires unsafe, due to it being mut
-    let param_handle: AppHandle;
-    unsafe {
-        param_handle = *(GLOBAL_APPHANDLE.clone()).unwrap();
-    }
-    init_quicklaunch(&param_handle)
-        .await
-        .expect("Failed to setup quicklaunch");
 }
 
 #[tokio::main]
@@ -70,17 +57,12 @@ async fn main() {
             set_password,
             delete_password,
             remove_game,
+            init_quicklaunch,
+            show_quicklaunch,
+            hide_quicklaunch,
         ])
         .build(tauri::generate_context!())
         .expect("Failed to build Monarch!");
-
-    // Set GLOBAL_APPHANDLE
-    unsafe {
-        GLOBAL_APPHANDLE = Some(Box::new(monarch.app_handle()));
-        if GLOBAL_APPHANDLE.is_none() {
-            panic!("Setting GLOBAL_APPHANDLE failed!")
-        }
-    }
 
     // Run some initial checks and setup
     init().await;
@@ -94,6 +76,7 @@ async fn main() {
                     warn!("Failed to close window: {name} | Err: {e}");
                 }
             }
+            info!("main() All windows closed! Exiting...");
             exit(0);
         }
     });
