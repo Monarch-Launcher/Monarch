@@ -25,19 +25,21 @@ impl MiniWindow {
 
     /// Builds a window. Must be async on Windows to not deadlock.
     pub async fn build_window(&self, handle: &AppHandle) -> Result<()> {
-        let window: Window = WindowBuilder::new(
-            handle,
-            &self.name,
-            WindowUrl::External(self.url.parse().unwrap()),
-        )
-        .always_on_top(true)
-        .center()
-        .decorations(false)
-        .focused(true)
-        .skip_taskbar(true)
-        .visible(true)
-        .build()
-        .with_context(|| "monarch_windows::build_window() Failed to build window! | Err: ")?;
+        let window_url: WindowUrl = if self.url.starts_with("https") {
+            WindowUrl::External(self.url.parse().unwrap())
+        } else {
+            WindowUrl::App(self.url.parse().unwrap())
+        };
+
+        let window: Window = WindowBuilder::new(handle, &self.name, window_url)
+            .always_on_top(true)
+            .center()
+            .decorations(false)
+            .focused(true)
+            .skip_taskbar(true)
+            .visible(true)
+            .build()
+            .with_context(|| "monarch_windows::build_window() Failed to build window! | Err: ")?;
 
         let scale: f64 = get_scale(&window);
         let size: PhysicalSize<u32> =
