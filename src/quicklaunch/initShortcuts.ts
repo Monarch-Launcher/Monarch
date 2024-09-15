@@ -7,6 +7,12 @@ import {
 
 // TODO: PROPER ERROR HANDLING
 const initShortcuts = async () => {
+  // Check if quicklaunch is enabled, else return
+  const quicklaunchEnabled = await invoke('quicklaunch_is_enabled');
+  if (!quicklaunchEnabled) {
+    return;
+  }
+
   // Define global shortcuts for quicklaunch (proto-typing)
   await unregisterAll();
 

@@ -17,7 +17,7 @@ use monarch_library::commands::{
 };
 use monarch_utils::commands::{
     clear_cached_images, delete_password, get_settings, hide_quicklaunch, init_quicklaunch,
-    open_logs, revert_settings, set_password, set_settings, show_quicklaunch,
+    open_logs, revert_settings, set_password, set_settings, show_quicklaunch, quicklaunch_is_enabled
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
@@ -60,6 +60,7 @@ async fn main() {
             init_quicklaunch,
             show_quicklaunch,
             hide_quicklaunch,
+            quicklaunch_is_enabled,
         ])
         .build(tauri::generate_context!())
         .expect("Failed to build Monarch!");

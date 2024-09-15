@@ -3,6 +3,7 @@ use log::{error, info};
 use std::{path::PathBuf, process::Command};
 use tauri::{AppHandle, Manager};
 use toml::Table; // Use normal result instead of anyhow when sending to Frontend. Possibly replace later with anyhow that impls correct traits.
+use std::env;
 
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
@@ -134,6 +135,23 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
 * Quicklaunch related commands
 */
 #[tauri::command]
+/// This function returns if quicklaunch is allowed to run or not.
+/// For quicklaunch to run 2 conditions must be met.
+/// 1: Quicklaunch is enabled in settings
+/// 2: Monarch is not being run under Wayland, which currently
+/// lacks support for global shortcuts and makes Monarch hang.
+pub fn quicklaunch_is_enabled() -> bool {
+    // First check if quicklaunch is disabled in settings
+    // TODO: Check if quicklaunch is enabled in settings
+
+    // Then check if Monarch is being run under Wayland
+    if cfg!(target_os = "linux") {
+        return env::var("WAYLAND_DISPLAY").is_ok() // If WAYLAND_DISPLAY is set at all, assume Wayland is used
+    }
+    true
+}
+
+#[tauri::command]
 /// Builds a new quicklaunch window.
 /// Starts as hidden unitl user presses quicklaunch shortcut.
 pub async fn init_quicklaunch(handle: AppHandle) -> Result<(), String> {
@@ -150,15 +168,13 @@ pub async fn init_quicklaunch(handle: AppHandle) -> Result<(), String> {
         );
         return Err(String::from("Failed to build quicklaunch window!"));
     }
-    /*
-        if let Err(e) = window.hide_window(&handle) {
-            error!(
-                "monarch_utils::commands::init_quicklaunch() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            return Err(String::from("Failed to hide quicklaunch window!"));
-        }
-    */
+    if let Err(e) = window.hide_window(&handle) {
+        error!(
+            "monarch_utils::commands::init_quicklaunch() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to hide quicklaunch window!"));
+    }
     info!("Finished initializing quicklaunch!");
     Ok(())
 }
