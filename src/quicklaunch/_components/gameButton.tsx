@@ -7,22 +7,22 @@ import * as React from 'react';
 import styled from 'styled-components';
 
 const StyledButton = styled(Button)`
-  font-size: 2rem;
-  min-height: 4.75rem;
+  font-size: 1.5rem;
+  min-height: 3.75rem;
   display: flex;
-  gap: 3rem;
+  gap: 1rem;
 `;
 
 const Title = styled.p`
-  margin: 0;
+  margin: 1;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
 `;
 
 const Thumbnail = styled.img`
-  height: 4rem;
-  width: 8rem;
+  height: 3rem;
+  width: 6rem;
   border-radius: 0.5rem;
 `;
 

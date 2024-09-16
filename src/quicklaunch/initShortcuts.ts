@@ -16,7 +16,7 @@ const initShortcuts = async () => {
   // Define global shortcuts for quicklaunch (proto-typing)
   await unregisterAll();
 
-  const quickLaunchRegistered = await isRegistered('CommandOrControl+C');
+  const quickLaunchRegistered = await isRegistered('CommandOrControl+Space');
   const closeRegistered = await isRegistered('Esc');
 
   // Build initial quicklaunch
@@ -25,7 +25,7 @@ const initShortcuts = async () => {
   console.log("Finished setting up init_quicklaunch!");
 
   if (!quickLaunchRegistered) {
-    await register('CommandOrControl+C', async () => {
+    await register('CommandOrControl+Space', async () => {
       await invoke("show_quicklaunch");
     });
     console.log("Finished setting up show quicklaunch!");
