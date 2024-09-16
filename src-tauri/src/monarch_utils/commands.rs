@@ -1,9 +1,9 @@
 use core::result::Result;
 use log::{error, info};
+use std::env;
 use std::{path::PathBuf, process::Command};
 use tauri::{AppHandle, Manager};
 use toml::Table; // Use normal result instead of anyhow when sending to Frontend. Possibly replace later with anyhow that impls correct traits.
-use std::env;
 
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
@@ -146,7 +146,7 @@ pub fn quicklaunch_is_enabled() -> bool {
 
     // Then check if Monarch is being run under Wayland
     if cfg!(target_os = "linux") {
-        return env::var("WAYLAND_DISPLAY").is_ok() // If WAYLAND_DISPLAY is set at all, assume Wayland is used
+        return env::var("WAYLAND_DISPLAY").is_err(); // If WAYLAND_DISPLAY is set at all, assume Wayland is used
     }
     true
 }
