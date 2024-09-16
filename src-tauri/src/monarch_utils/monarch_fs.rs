@@ -141,7 +141,8 @@ pub fn get_collections_json_path() -> PathBuf {
 
 /// Write JSON to file
 pub fn write_json_content(content: Value, path: &Path) -> Result<()> {
-    fs::write(path, content.to_string()).with_context(|| format!("monarch_fs::write_json_content() Something went wrong trying to write new library to: {file} | Err: ", file = path.display()))?;
+    fs::write(path, serde_json::to_string_pretty(&content).unwrap()) // TODO: Remove unwrap for better error handling
+        .with_context(|| format!("monarch_fs::write_json_content() Something went wrong trying to write new library to: {file} | Err: ", file = path.display()))?;
     Ok(())
 }
 
