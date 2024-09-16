@@ -24,7 +24,7 @@ use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
 use tauri::Manager;
 
-async fn init() {
+fn init() {
     if let Err(e) = monarch_settings::init() {
         // Crash program if this fails
         panic!("Error during settings initialization! | Err: {e}");
@@ -34,8 +34,7 @@ async fn init() {
     housekeeping::start(); // Starts housekeeping loop
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     // Build Monarch Tauri app
     let monarch = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -66,7 +65,7 @@ async fn main() {
         .expect("Failed to build Monarch!");
 
     // Run some initial checks and setup
-    init().await;
+    init();
 
     // Start Monarch
     monarch.run(|app_handle, event| {
