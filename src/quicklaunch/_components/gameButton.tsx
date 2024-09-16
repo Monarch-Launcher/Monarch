@@ -35,6 +35,7 @@ const GameButton = ({ game }: Props) => {
     const { name, platform_id: platformId, platform } = game;
     try {
       await invoke('launch_game', { name, platformId, platform });
+      await invoke('hide_quicklaunch');
       // TODO: Close window instance
     } catch (err) {
       await dialog.message(`An error has occured: Could't launch ${name}`, {

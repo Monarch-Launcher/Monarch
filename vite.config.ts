@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { resolve } from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -32,5 +33,13 @@ export default defineConfig({
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     // produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_DEBUG,
+
+    // This is some frontend magic that allows other windows than main to exist in release builds
+    rollupOptions: {
+      input: {
+        main: resolve( __dirname, 'index.html'),
+        windows: resolve( __dirname , "src/quicklaunch/quicklaunch.html"),
+      }
+    }
   },
 });
