@@ -4,6 +4,7 @@ import {
   register,
   unregisterAll,
 } from '@tauri-apps/api/globalShortcut';
+import { MonarchSettings } from '@global/types';
 
 // TODO: PROPER ERROR HANDLING
 const initShortcuts = async () => {
@@ -16,29 +17,25 @@ const initShortcuts = async () => {
   // Define global shortcuts for quicklaunch (proto-typing)
   await unregisterAll();
 
-  const quickLaunchRegistered = await isRegistered('CommandOrControl+Space');
-  const closeRegistered = await isRegistered('Esc');
+  const quicklaunchSettings = await invoke('get_settings') as MonarchSettings;
+
+  const quickLaunchRegistered = await isRegistered(quicklaunchSettings.quicklaunch.open_shortcut);
+  const closeRegistered = await isRegistered(quicklaunchSettings.quicklaunch.close_shortcut);
 
   // Build initial quicklaunch
   await invoke('init_quicklaunch');
 
-  console.log("Finished setting up init_quicklaunch!");
-
   if (!quickLaunchRegistered) {
-    await register('CommandOrControl+Space', async () => {
+    await register(quicklaunchSettings.quicklaunch.open_shortcut, async () => {
       await invoke("show_quicklaunch");
     });
-    console.log("Finished setting up show quicklaunch!");
   }
 
   if (!closeRegistered) {
-    await register('Esc', async () => {
+    await register(quicklaunchSettings.quicklaunch.close_shortcut, async () => {
       await invoke("hide_quicklaunch");
     });
-    console.log("Finished setting up hide quicklaunch!");
   }
-
-  console.log("Finished setting up initShortcuts!");
 };
 
 export default initShortcuts;

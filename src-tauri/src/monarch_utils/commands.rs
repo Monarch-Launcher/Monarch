@@ -8,7 +8,7 @@ use toml::Table; // Use normal result instead of anyhow when sending to Frontend
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
-use super::monarch_settings::{read_settings, set_default_settings, write_settings};
+use super::monarch_settings::{get_quicklaunch_settings, read_settings, set_default_settings, write_settings};
 use super::monarch_windows::MiniWindow;
 
 #[cfg(target_os = "windows")]
@@ -142,7 +142,14 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
 /// lacks support for global shortcuts and makes Monarch hang.
 pub fn quicklaunch_is_enabled() -> bool {
     // First check if quicklaunch is disabled in settings
-    // TODO: Check if quicklaunch is enabled in settings
+    if let Some(quick_settings) = get_quicklaunch_settings() {
+        if quick_settings["enabled"].as_bool().unwrap() == false {
+            return false;
+        }
+    } else { // Error with quicklaunch settings, default to false
+        error!("monarch_utils::commands::init_quicklaunch() get_quicklaunch_settings() returned None! Disabling quicklaunch...");
+        return false;
+    }
 
     // Then check if Monarch is being run under Wayland
     if cfg!(target_os = "linux") {
