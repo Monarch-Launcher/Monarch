@@ -209,7 +209,7 @@ fn get_default_settings() -> Table {
 
     let mut quicklaunch_settings: Table = Table::new();
     quicklaunch_settings.insert("enabled".to_string(), true.into());
-    quicklaunch_settings.insert("open_shortcut".to_string(), "Super+Enter".into());
+    quicklaunch_settings.insert("open_shortcut".to_string(), "CommandOrControl+Space".into());
     quicklaunch_settings.insert("close_shortcut".to_string(), "Esc".into());
     quicklaunch_settings.insert("size".to_string(), "medium".into());
 
