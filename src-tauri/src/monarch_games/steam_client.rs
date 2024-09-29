@@ -1,5 +1,6 @@
 use anyhow::{bail, Context, Result};
 use log::{error, warn};
+use regex::Regex;
 use reqwest;
 use scraper::{Html, Selector};
 use serde_json::Value;
@@ -250,14 +251,14 @@ async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
                     String::from(generate_library_image_path(&name).to_str().unwrap())
                 };
 
-                let url: &str = game_json[&id]["data"]["header_image"].as_str().unwrap();
+                let url: String = get_idgb_thumbnail_url(&name).await;
 
                 // Create new MonarchGame
                 let game: MonarchGame =
                     MonarchGame::new(&name, &platform, &id, &exec_path, &thumbnail_path);
 
                 // Download thumbnail to display
-                game.download_thumbnail(url).await;
+                game.download_thumbnail(&url).await;
                 return Ok(game);
             }
         }
@@ -296,4 +297,30 @@ async fn parse_steam_page(body: &str) -> Vec<MonarchGame> {
     }
 
     monarch_games
+}
+
+/// Parase igdb page for game and get the thumbnail with webscraping.
+async fn get_idgb_thumbnail_url(name: &str) -> String {
+    // Create the url for the igdb.com page and game
+    let mut modified_name = name.replace(' ', "-");
+    modified_name = modified_name.to_lowercase();
+    let regex = Regex::new(r"[^a-z0-9-]").unwrap();
+    modified_name = regex.replace_all(&modified_name, "").to_string();
+
+    let mut url = String::from("https://www.igdb.com/games/");
+    url.push_str(&modified_name);
+    println!("Connecting to: {}", url);
+
+    // Find the image on the page
+    if let Ok(response) = reqwest::get(&url).await {
+        if let Ok(body) = response.text().await {
+            let thumbnail_selector = Selector::parse("div.main-container.center").unwrap();
+            for css_elem in Html::parse_document(&body).select(&thumbnail_selector) {
+                println!("{:?}", css_elem);
+                println!("----------------------------------------------------------------------------------------");
+            }
+        }
+    }
+
+    url
 }
