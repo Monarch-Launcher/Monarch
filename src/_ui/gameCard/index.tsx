@@ -11,6 +11,9 @@ import styled from 'styled-components';
 
 import Button from '../button';
 
+/*
+ * Leaving refrence material from how Dre implemented gamCard
+ *
 const CardContainer = styled.div`
   flex: 0 0 auto;
   vertical-align: top;
@@ -62,6 +65,67 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
     border-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
     color: white;
   }
+`;
+*/
+
+const CardWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 15rem;
+  margin: 0.5rem;
+`;
+
+const CardContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 20rem;
+  background-color: ${({ theme }) => theme.colors.secondary};
+  border-radius: 0.5rem;
+  overflow: hidden; /* Ensure the image doesn't overflow the card */
+`;
+
+const Thumbnail = styled.img<{ $isInfo?: boolean }>`
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Ensures the image covers the entire area without distortion */
+  position: absolute; /* Position the image absolutely to fill the entire card */
+  top: 0;
+  left: 0;
+  z-index: 1; /* Place it below the text and buttons */
+`;
+
+const ButtonContainer = styled.div`
+  position: absolute;
+  bottom: 0rem;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  z-index: 3; /* Ensure buttons are on top of everything */
+`;
+
+const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
+  background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+  border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+  color: white;
+  z-index: 4; /* Ensure buttons are on top */
+  
+  &:hover,
+  &:focus {
+    background-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
+    border-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
+    color: white;
+  }
+`;
+
+const Info = styled.p`
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.primary};
+  margin-top: 0.5rem;
+  text-align: center;
 `;
 
 type GameCardProps = {
@@ -166,35 +230,31 @@ const GameCard = ({
   }, [drawerRef, toggleDrawer, drawerOpen]);
 
   return (
+    <CardWrapper>
     <CardContainer>
-      <CardContent>
-        <Header>
-          <Thumbnail
-            alt="game-thumbnail"
-            src={imageSrc}
-            onError={handleImageError}
-          />
-          <Info>{name}</Info>
-        </Header>
-        <ButtonContainer>
-          <StyledButton
-            variant="primary"
-            type="button"
-            onClick={toggleDrawer}
-            $isInfo
-          >
-            <AiFillInfoCircle size={24} />
-          </StyledButton>
-          <StyledButton
-            variant="primary"
-            type="button"
-            onClick={hasGame ? handleLaunch : handleDownload}
-          >
-            {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
-          </StyledButton>
-        </ButtonContainer>
-      </CardContent>
-      <div ref={drawerRef}>
+      <Thumbnail
+        alt="game-thumbnail"
+        src={imageSrc}
+        onError={handleImageError}
+      />
+      <ButtonContainer>
+        <StyledButton
+          variant="primary"
+          type="button"
+          onClick={toggleDrawer}
+          $isInfo
+        >
+          <AiFillInfoCircle size={24} />
+        </StyledButton>
+        <StyledButton
+          variant="primary"
+          type="button"
+          onClick={hasGame ? handleLaunch : handleDownload}
+        >
+          {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
+        </StyledButton>
+      </ButtonContainer>
+    <div ref={drawerRef}>
         <Drawer
           open={drawerOpen}
           direction="right"
@@ -208,11 +268,11 @@ const GameCard = ({
             onError={handleImageError}
             $isInfo
           />
-          <Info>{name}</Info>
-          <Info>Platform: {platform}</Info>
         </Drawer>
       </div>
     </CardContainer>
+    <Info>{name.replace(/"/g, '')}</Info> {/* Game name displayed below the card */}
+  </CardWrapper>
   );
 };
 
