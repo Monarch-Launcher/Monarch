@@ -271,7 +271,7 @@ const GameCard = ({
         </Drawer>
       </div>
     </CardContainer>
-    <Info>{name.replace(/"/g, '')}</Info> {/* Game name displayed below the card */}
+    <Info>{name}</Info> {/* Game name displayed below the card */}
   </CardWrapper>
   );
 };

@@ -239,7 +239,7 @@ async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
             // Check if response from Steam contains "success: true"
             if game_json[&id]["success"] == Value::Bool(true) {
                 // Create needed parameters
-                let name: String = game_json[&id]["data"]["name"].to_string();
+                let name: String = game_json[&id]["data"]["name"].to_string().replace("\"", "");
                 let platform: String = String::from("steam");
                 let exec_path: String = String::new();
 
