@@ -1,4 +1,6 @@
 use log::error;
+use regex::Regex;
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -45,27 +47,30 @@ impl MonarchGame {
     }
 
     /// Download thumbnail for MonarchGame
-    pub async fn download_thumbnail(&self, url: &str) {
+    pub async fn download_thumbnail(&self, url: String) {
+        // TODO: Rewrite this function to query monarch-laucher.com
+        // for images from igdb.com api. 
+
         let path: PathBuf = PathBuf::from(&self.thumbnail_path);
-        let owned_url: String = url.to_string();
 
-        if !path_exists(&path) {
-            /*
-            * This is the previous solution that is faster to show the user the results
-            * however it requires some sort of event to tell the frontend to refresh the
-            * images.
-            tokio::task::spawn(async move {
-                if let Err(e) = download_image(&owned_url, &path).await {
-                    error!("monarchgame::download_thumbnail() -> {e}");
-                }
-            });
-            */
+        if path_exists(&path) {
+            return;
+        }
 
-            // Temporary solution for better image handling, which makes the
-            // parsing of games slower.
+        /*
+        * This is the previous solution that is faster to show the user the results
+        * however it requires some sort of event to tell the frontend to refresh the
+        * images.
+        tokio::task::spawn(async move {
             if let Err(e) = download_image(&owned_url, &path).await {
                 error!("monarchgame::download_thumbnail() -> {e}");
             }
+        });
+        */
+        // Temporary solution for better image handling, which makes the
+        // parsing of games slower.
+        if let Err(e) = download_image(&url, &path).await {
+            error!("monarchgame::download_thumbnail() -> {e}");
         }
     }
 }
