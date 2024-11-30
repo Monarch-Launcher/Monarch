@@ -9,7 +9,7 @@ use tokio::task;
 use toml;
 
 use super::monarch_client::generate_default_folder;
-use super::monarchgame::MonarchGame;
+use super::monarchgame::{MonarchGame, MonarchWebGame};
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home, path_exists,
@@ -213,15 +213,18 @@ pub async fn parse_steam_ids(ids: &[String], is_cache: bool) -> Vec<MonarchGame>
 
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.
 async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
-    let mut game_info: String = String::from("");
-    let mut target: String = String::from("https://store.steampowered.com/api/appdetails?appids=");
-    target.push_str(&id);
+    let mut game_info_opt: Option<MonarchWebGame> = None;
+    let mut target: String = format!("https://monarch-launcher.com/api/games?platform=steam&platform_id={id}");
 
     // GET info from Steam servers
     match reqwest::get(&target).await {
         Ok(response) => match response.text().await {
             Ok(body) => {
-                game_info = body;
+                let web_games: Vec<MonarchWebGame> = serde_json::from_str(&body).unwrap();
+                if web_games.is_empty() {
+                    bail!("Nothing returned for game with ID: {id}");
+                }
+                game_info_opt = Some(web_games.first().unwrap().clone());
             }
             Err(e) => {
                 warn!("steam_client::parse_steam_ids() Failed to parse response body! | Err: {e}");
@@ -235,32 +238,13 @@ async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
     }
 
     // Parse content into MonarchGame
-    if !game_info.is_empty() {
-        if let Ok(game_json) = serde_json::from_str::<Value>(&game_info) {
-            // Check if response from Steam contains "success: true"
-            if game_json[&id]["success"] == Value::Bool(true) {
-                // Create needed parameters
-                let name: String = game_json[&id]["data"]["name"].to_string().replace("\"", "");
-                let platform: String = String::from("steam");
-                let exec_path: String = String::new();
-
-                // TODO: Look into removing unwrap()
-                let thumbnail_path = if is_cache {
-                    String::from(generate_cache_image_path(&name).to_str().unwrap())
-                } else {
-                    String::from(generate_library_image_path(&name).to_str().unwrap())
-                };
-
-                // Create new MonarchGame
-                let game: MonarchGame =
-                    MonarchGame::new(&name, &platform, &id, &exec_path, &thumbnail_path);
-
-                // Download thumbnail to display
-                game.download_thumbnail(game_json[&id]["data"]["header_image"].as_str().unwrap().to_string()).await;
-                return Ok(game);
-            }
-        }
+    if let Some(game_info) = game_info_opt {
+        let thumbnail_path = String::from(generate_library_image_path(&game_info.name).to_str().unwrap());
+        let monarch_game = MonarchGame::new(&game_info.name, game_info.id, &game_info.platform, &game_info.platform_id, &game_info.store_page, "N/A", &thumbnail_path);
+        monarch_game.download_thumbnail(game_info.cover_url).await;
+        return Ok(monarch_game)
     }
+
     warn!("Failed to parse Steam game with id: {id}");
     bail!("Failed to parse Steam game with id: {id}")
 }
