@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
-use vdf_serde;
 use log::info;
 use keyvalues_parser::Vdf;
 
