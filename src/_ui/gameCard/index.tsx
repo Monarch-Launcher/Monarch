@@ -108,15 +108,15 @@ const ButtonContainer = styled.div`
 `;
 
 const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
-  background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
-  border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
+  background-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
+  border-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
   color: white;
   z-index: 4; /* Ensure buttons are on top */
   
   &:hover,
   &:focus {
-    background-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
-    border-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
+    background-color: ${({ $isInfo }) => ($isInfo ? 'darkgrey' : 'darkorange')};
+    border-color: ${({ $isInfo }) => ($isInfo ? 'darkgrey' : 'darkorange')};
     color: white;
   }
 `;
