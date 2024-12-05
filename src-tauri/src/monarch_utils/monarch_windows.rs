@@ -38,6 +38,7 @@ impl MiniWindow {
             .focused(true)
             .skip_taskbar(false)
             .visible(true)
+            .title(&self.name)
             .build()
             .with_context(|| "monarch_windows::build_window() Failed to build window! | Err: ")?;
 
