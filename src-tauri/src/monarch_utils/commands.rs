@@ -178,7 +178,7 @@ pub async fn init_quicklaunch(handle: AppHandle) -> Result<(), String> {
 
     // Currently this code snippet basically just disables window decorations for a 
     // cleaner quicklaunch look
-    if let Err(e) = window.set_quicklaunch_stuff(&handle).await {
+    if let Err(e) = window.set_quicklaunch_stuff(&handle) {
         error!(
             "monarch_utils::commands::init_quicklaunch() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
