@@ -2,7 +2,14 @@ import 'react-modern-drawer/dist/index.css';
 
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import { AiFillInfoCircle, FaPlay, HiDownload } from '@global/icons';
+import {
+  AiFillInfoCircle,
+  FaPlay,
+  FaSteam,
+  HiDownload,
+  PiButterflyBold,
+  SiEpicgames,
+} from '@global/icons';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import * as React from 'react';
@@ -10,63 +17,6 @@ import Drawer from 'react-modern-drawer';
 import styled from 'styled-components';
 
 import Button from '../button';
-
-/*
- * Leaving refrence material from how Dre implemented gamCard
- *
-const CardContainer = styled.div`
-  flex: 0 0 auto;
-  vertical-align: top;
-  width: 15rem;
-  height: 20rem;
-  background-color: ${({ theme }) => theme.colors.secondary};
-  border-radius: 0.5rem;
-  margin: 0.5rem;
-`;
-
-const CardContent = styled.div`
-  height: 90%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0.5rem;
-`;
-
-const Header = styled.div`
-  position: relative;
-  text-align: center;
-`;
-
-const Info = styled.p`
-  font-weight: 700;
-  color: ${({ theme }) => theme.colors.primary};
-`;
-
-const Thumbnail = styled.img<{ $isInfo?: boolean }>`
-  border-radius: 0.5rem;
-  width: 100%;
-  height: ${({ $isInfo }) => ($isInfo ? '16.625rem' : '6.5rem')};
-`;
-
-const ButtonContainer = styled.div`
-  display: flex;
-  gap: 1rem;
-`;
-
-const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
-  background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
-  border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
-  color: white;
-
-  &:hover,
-  &:focus {
-    background-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
-    border-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
-    color: white;
-  }
-`;
-*/
 
 const CardWrapper = styled.div`
   display: flex;
@@ -111,7 +61,7 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
   border-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
   color: white;
   z-index: 4; /* Ensure buttons are on top */
-  
+
   &:hover,
   &:focus {
     background-color: ${({ $isInfo }) => ($isInfo ? 'darkgrey' : 'darkorange')};
@@ -159,7 +109,7 @@ const GameCard = ({
   }, []);
 
   const imageSrc = React.useMemo<string>(() => {
-    if (!thumbnailPath || thumbnailPath === ('' || 'temp')) {
+    if (!thumbnailPath || thumbnailPath === 'temp') {
       return fallback;
     }
 
@@ -228,50 +178,79 @@ const GameCard = ({
     };
   }, [drawerRef, toggleDrawer, drawerOpen]);
 
+  const getStoreIcon = React.useMemo(() => {
+    switch (platform) {
+      case 'steam':
+        return FaSteam;
+      case 'epic':
+        return SiEpicgames;
+      default:
+        return PiButterflyBold;
+    }
+  }, [platform]);
+
+  const openStorePage = React.useCallback(async () => {
+    try {
+      await invoke('open_store', {
+        url: storePage,
+      });
+    } catch (err) {
+      await dialog.message(
+        `An error has occured: Could not open store page ${storePage}`,
+        {
+          title: 'Error',
+          type: 'error',
+        },
+      );
+    }
+  }, [storePage]);
+
   return (
     <CardWrapper>
-    <CardContainer>
-      <Thumbnail
-        alt="game-thumbnail"
-        src={imageSrc}
-        onError={handleImageError}
-      />
-      <ButtonContainer>
-        <StyledButton
-          variant="primary"
-          type="button"
-          onClick={toggleDrawer}
-          $isInfo
-        >
-          <AiFillInfoCircle size={24} />
-        </StyledButton>
-        <StyledButton
-          variant="primary"
-          type="button"
-          onClick={hasGame ? handleLaunch : handleDownload}
-        >
-          {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
-        </StyledButton>
-      </ButtonContainer>
-    <div ref={drawerRef}>
-        <Drawer
-          open={drawerOpen}
-          direction="right"
-          size={550}
-          enableOverlay={false}
-          style={drawerStyles}
-        >
-          <Thumbnail
-            alt="game"
-            src={imageSrc}
-            onError={handleImageError}
+      <CardContainer>
+        <Thumbnail
+          alt="game-thumbnail"
+          src={imageSrc}
+          onError={handleImageError}
+        />
+        <ButtonContainer>
+          <StyledButton
+            variant="primary"
+            type="button"
+            onClick={toggleDrawer}
             $isInfo
-          />
-        </Drawer>
-      </div>
-    </CardContainer>
-    <Info>{name}</Info> {/* Game name displayed below the card */}
-  </CardWrapper>
+          >
+            <AiFillInfoCircle size={24} />
+          </StyledButton>
+          <StyledButton
+            variant="primary"
+            type="button"
+            onClick={hasGame ? handleLaunch : handleDownload}
+          >
+            {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
+          </StyledButton>
+        </ButtonContainer>
+        <div ref={drawerRef}>
+          <Drawer
+            open={drawerOpen}
+            direction="right"
+            size={550}
+            enableOverlay={false}
+            style={drawerStyles}
+          >
+            <Button
+              type="button"
+              variant="primary"
+              onClick={openStorePage}
+              rightIcon={getStoreIcon}
+            >
+              Go to store page
+            </Button>
+          </Drawer>
+        </div>
+      </CardContainer>
+      <Info>{name}</Info> {/* Game name displayed below the card */}
+    </CardWrapper>
   );
 };
 
