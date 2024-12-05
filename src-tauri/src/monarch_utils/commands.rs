@@ -175,6 +175,17 @@ pub async fn init_quicklaunch(handle: AppHandle) -> Result<(), String> {
         );
         return Err(String::from("Failed to build quicklaunch window!"));
     }
+
+    // Currently this code snippet basically just disables window decorations for a 
+    // cleaner quicklaunch look
+    if let Err(e) = window.set_quicklaunch_stuff(&handle).await {
+        error!(
+            "monarch_utils::commands::init_quicklaunch() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to set quicklaunch specific properties!"));
+    }
+
     if let Err(e) = window.hide_window(&handle) {
         error!(
             "monarch_utils::commands::init_quicklaunch() -> {}",
