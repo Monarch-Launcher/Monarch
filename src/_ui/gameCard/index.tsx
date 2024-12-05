@@ -97,13 +97,12 @@ const Thumbnail = styled.img<{ $isInfo?: boolean }>`
 
 const ButtonContainer = styled.div`
   position: absolute;
-  bottom: 0rem;
-  left: 0;
+  bottom: 1rem;
   width: 100%;
   display: flex;
   justify-content: center;
   gap: 1rem;
-  padding: 1rem;
+  padding: 0rem;
   z-index: 3; /* Ensure buttons are on top of everything */
 `;
 
