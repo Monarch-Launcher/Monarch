@@ -39,7 +39,7 @@ impl MonarchGame {
             executable_path: exec_path.to_string(),
             thumbnail_path: thumbnail_path.to_string(),
             launch_args: Vec::new(),
-            store_page: String::new(),
+            store_page: store_page.to_string(),
         }
     }
 
