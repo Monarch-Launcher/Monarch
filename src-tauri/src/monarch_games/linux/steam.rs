@@ -84,7 +84,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
 
     let found_games: Vec<String> = match get_default_location() {
-        Ok(path) => monarch_vdf::parse_library_file(&path).unwrap(),
+        Ok(path) => monarch_vdf::parse_library_file(&path).unwrap_or(Vec::new()),
         Err(e) => {
             error!(
                 "linux::steam::get_library() Failed to get default path to Steam library.vdf! | Err: {e}",
