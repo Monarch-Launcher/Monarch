@@ -1,6 +1,5 @@
 use super::monarch_client;
 use super::monarchgame::MonarchGame;
-use super::steam_client as steam;
 use anyhow::Result;
 use log::{error, info};
 use serde_json::value::Value;

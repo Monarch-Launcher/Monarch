@@ -2,11 +2,7 @@
     This file is for parsing Valve's .vdf (Valve Data Format) format.
     It is used for reading content related to steam such as the users installed library, library locations in the filesystem, etc.
 */
-use std::any::Any;
 use anyhow::{bail, Context, Result};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use log::info;
@@ -17,15 +13,15 @@ use keyvalues_parser::Vdf;
 pub fn parse_library_file(path: &Path) -> Result<Vec<String>> {
     info!("Parsing Steam file: {}", path.display());
 
-    let mut content: String = fs::read_to_string(path).with_context(|| -> String {
+    let content: String = fs::read_to_string(path).with_context(|| -> String {
         format!(
             "monarch_vdf::parse_library_file() Failed to open file: {} | Err",
             path.display()
         )
     })?;
 
-    let mut library_folders = match Vdf::parse(&content) {
-        Ok(smthn) => smthn,
+    let library_folders = match Vdf::parse(&content) {
+        Ok(lib_folders) => lib_folders,
         Err(e) => {
             println!("{e}");
             bail!("Failed to parse vdf!")
