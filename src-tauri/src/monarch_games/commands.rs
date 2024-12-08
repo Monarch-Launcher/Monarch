@@ -1,6 +1,5 @@
 use super::monarch_client;
 use super::monarchgame::MonarchGame;
-use super::steam_client as steam;
 use anyhow::Result;
 use log::{error, info};
 use serde_json::value::Value;
@@ -31,8 +30,7 @@ pub async fn get_library() -> Result<Value, String> {
 #[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
 pub async fn search_games(name: String) -> Vec<MonarchGame> {
-    let games: Vec<MonarchGame> = steam::find_game(&name).await;
-    games
+    monarch_client::find_games(&name).await
 }
 
 #[tauri::command]

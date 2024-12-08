@@ -62,17 +62,20 @@ fn main() {
             quicklaunch_is_enabled,
         ]).on_window_event(|event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {
-                // Closure to close all windows on main window close.
-                api.prevent_close();
-                // Iterate over all windows (eg. quicklaunch)
-                for (name, window) in event.window().app_handle().windows() {
-                    if let Err(e) = window.close() {
-                        warn!("Failed to close window: {name} | Err: {e}");
+                // Only exit monarch on main window close
+                if event.window().title().expect("Failed to get window title!") == "Monarch" {
+                    // Closure to close all windows on main window close.
+                    api.prevent_close();
+                    // Iterate over all windows (eg. quicklaunch)
+                    for (name, window) in event.window().app_handle().windows() {
+                        if let Err(e) = window.close() {
+                            warn!("Failed to close window: {name} | Err: {e}");
+                        }
                     }
+                    // Log success and exit
+                    info!("main() All windows closed! Exiting...");
+                    exit(0);
                 }
-                // Log success and exit
-                info!("main() All windows closed! Exiting...");
-                exit(0);
             }
         })
         .build(tauri::generate_context!())

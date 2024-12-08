@@ -2,60 +2,44 @@
     This file is for parsing Valve's .vdf (Valve Data Format) format.
     It is used for reading content related to steam such as the users installed library, library locations in the filesystem, etc.
 */
-
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::collections::HashSet;
+use anyhow::{bail, Context, Result};
 use std::fs;
 use std::path::Path;
-use vdf_serde;
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-#[serde(rename = "libraryfolders")] // Tell serde to look for "libraryfolders" instead of "LibraryFolders" when parsing
-struct LibraryFolders(HashMap<String, LibraryLocation>); // Can take a variable amount of libraries
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-struct LibraryLocation {
-    path: String,
-    label: String,
-    contentid: String,
-    totalsize: String,
-    update_clean_bytes_tally: String,
-    time_last_update_corruption: String,
-    apps: HashMap<String, String>,
-}
+use log::info;
+use keyvalues_parser::Vdf;
 
 /// Parses steams libraryfolders.vdf file to structs that can be used to find
 /// installed games, folder locations, etc...
 pub fn parse_library_file(path: &Path) -> Result<Vec<String>> {
-    let mut content: String = fs::read_to_string(path).with_context(|| -> String {
+    info!("Parsing Steam file: {}", path.display());
+
+    let content: String = fs::read_to_string(path).with_context(|| -> String {
         format!(
             "monarch_vdf::parse_library_file() Failed to open file: {} | Err",
             path.display()
         )
     })?;
 
-    content = content.replace("\"\"", "\" \" "); // Remove blank space interfering with serde
+    let library_folders = match Vdf::parse(&content) {
+        Ok(lib_folders) => lib_folders,
+        Err(e) => {
+            println!("{e}");
+            bail!("Failed to parse vdf!")
+        }
+    };
 
-    let library_folders = vdf_serde::from_str::<LibraryFolders>(&content).with_context(|| "monarch_vdf::parse_library_file() Could not automatically parse file content to LibraryFolders using vdf_serde! | Err")?;
-
-    let game_ids: Vec<String> = found_games(library_folders)
-        .iter()
-        .map(|game| game.to_owned())
-        .collect();
-    Ok(game_ids)
-}
-
-/// Helper function to extract the installed apps from a LibraryFolders struct.
-fn found_games(libraryfolders: LibraryFolders) -> HashSet<String> {
-    // Using hashset to ignore any (unlikely) duplicates that could show up.
-    let mut games: HashSet<String> = HashSet::new();
-
-    for location in libraryfolders.0 {
-        for game in location.1.apps {
-            games.insert(game.0);
+    let mut game_ids: Vec<String> = Vec::new();
+    for library_location in library_folders.value.unwrap_obj().values().flatten() {
+        if let Some((_, apps)) = library_location.clone().unwrap_obj().get_key_value("apps") {
+            for app in apps {
+                game_ids.append(&mut (app.clone()
+                                         .unwrap_obj()
+                                         .0
+                                         .keys()
+                                         .map(|key| key.to_string())
+                                         .collect::<Vec<String>>()));
+            }
         }
     }
-    games
+    Ok(game_ids)
 }
