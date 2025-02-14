@@ -58,18 +58,19 @@ const SettingsPage = () => {
   const { register, handleSubmit } = useForm<FormValues>();
   // @ts-expect-error
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, saveCredentials } = useSettings();
 
   const onSubmit = React.useCallback(
     async (values: FormValues) => {
-      // @ts-expect-error
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { username, password } = values;
       // Do some if checks
 
+      await saveCredentials(username, password);
+
       await updateSettings(values.settings);
     },
-    [updateSettings],
+    [updateSettings, saveCredentials],
   );
 
   const toggleQuickLaunch = React.useCallback(

@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api';
+import { dialog, invoke } from '@tauri-apps/api';
 import * as React from 'react';
 
 import type { Settings } from '../types';
@@ -9,6 +9,7 @@ type SettingsContextType = {
   loading: boolean;
   getSettings: () => Promise<void>;
   updateSettings: (updatedSettings: Settings) => Promise<void>;
+  saveCredentials: (username: string, password: string) => Promise<void>;
 };
 
 const defaultLauncherSettings = {
@@ -39,8 +40,9 @@ const initialState: SettingsContextType = {
   settings: defaultSettings,
   error: false,
   loading: false,
-  getSettings: async () => {},
-  updateSettings: async () => {},
+  getSettings: async () => { },
+  updateSettings: async () => { },
+  saveCredentials: async () => { },
 };
 
 const SettingsContext = React.createContext<SettingsContextType>(initialState);
@@ -83,6 +85,26 @@ const SettingsProvider = ({ children }: Props) => {
     [],
   );
 
+  const saveCredentials = React.useCallback(
+    async (username: string, password: string) => {
+      try {
+        await invoke('set_password', {
+          platform: "steam",
+          username: username,
+          password: password,
+        });
+      } catch (err) {
+        await dialog.message(`An error has occured: ${err}`, {
+          title: 'Error',
+          type: 'error',
+        });
+      } finally {
+        setLoading(false);
+      }
+
+    }, []
+  );
+
   React.useEffect(() => {
     getSettings();
   }, [getSettings]);
@@ -94,8 +116,9 @@ const SettingsProvider = ({ children }: Props) => {
       loading,
       getSettings,
       updateSettings,
+      saveCredentials
     };
-  }, [settings, error, loading, getSettings, updateSettings]);
+  }, [settings, error, loading, getSettings, updateSettings, saveCredentials]);
 
   return (
     <SettingsContext.Provider value={value}>
