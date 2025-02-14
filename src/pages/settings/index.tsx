@@ -111,6 +111,7 @@ const SettingsPage = () => {
             <Input
               placeholder="Steam password"
               variant="filled"
+              type="password"
               {...register('password')}
             />
             <ButtonContainer>
