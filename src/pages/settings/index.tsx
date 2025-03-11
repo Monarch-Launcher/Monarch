@@ -3,7 +3,6 @@ import Page from '@_ui/page';
 import { useSettings } from '@global/contexts/settingsProvider';
 import { Settings } from '@global/types';
 import { Input, Switch } from '@mantine/core';
-import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
@@ -54,10 +53,7 @@ type FormValues = {
 };
 
 const SettingsPage = () => {
-  const [quickLaunchToggled, setQuickLaunchToggled] = React.useState(true);
   const { register, handleSubmit } = useForm<FormValues>();
-  // @ts-expect-error
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { settings, updateSettings, saveCredentials } = useSettings();
 
   const onSubmit = React.useCallback(
@@ -75,11 +71,20 @@ const SettingsPage = () => {
 
   const toggleQuickLaunch = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      setQuickLaunchToggled(e.currentTarget.checked);
+      const updatedSettings: Settings = { ...settings, quicklaunch: {enabled: e.currentTarget.checked, close_shortcut: settings.quicklaunch.close_shortcut, open_shortcut: settings.quicklaunch.open_shortcut, size: settings.quicklaunch.size} };
       // Call backend function
-      await invoke('');
+      await updateSettings(updatedSettings);
     },
-    [],
+    [settings],
+  );
+
+  const toggleSteam = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const updatedSettings: Settings = { ...settings, steam: {manage: e.currentTarget.checked, game_folders: settings.steam.game_folders, username: settings.steam.username} };
+      // Call backend function
+      await updateSettings(updatedSettings);
+    },
+    [settings],
   );
 
   return (
@@ -87,16 +92,18 @@ const SettingsPage = () => {
       <Section>
         <SectionTitle>Monarch</SectionTitle>
         <MonarchSwitch
-          checked={quickLaunchToggled}
+          checked={settings.quicklaunch.enabled}
           onChange={toggleQuickLaunch}
           size="md"
-          label="Quicklaunch"
+          label="Quicklaunch (Windows and MacOS only)"
           labelPosition="left"
         />
       </Section>
       <Section>
         <SectionTitle>Steam</SectionTitle>
         <MonarchSwitch
+          checked={settings.steam.manage}
+          onChange={toggleSteam}
           size="md"
           label="Allow Monarch to manage Steam games"
           labelPosition="left"

@@ -71,11 +71,10 @@ const SettingsProvider = ({ children }: Props) => {
   const updateSettings = React.useCallback(
     async (updatedSettings: Settings) => {
       try {
-        // @ts-expect-error
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const result: Settings = await invoke('set_settings', {
           settings: updatedSettings,
         });
+        setSettings(result);
       } catch (err) {
         setError(true);
       } finally {
