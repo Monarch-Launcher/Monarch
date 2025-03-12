@@ -1,6 +1,6 @@
 use super::{monarchgame::MonarchGame, steam_client};
 use crate::monarch_utils::monarch_fs::get_unix_home;
-use crate::monarch_utils::monarch_settings::get_monarch_settings;
+use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use log::{error, info, warn};
@@ -36,11 +36,7 @@ pub async fn download_game(
     platform: &str,
     platform_id: &str,
 ) -> Result<Vec<MonarchGame>> {
-    let mut path: PathBuf = PathBuf::from(
-        get_monarch_settings().unwrap()["game_folder"]
-            .to_string()
-            .trim_matches('"'),
-    );
+    let mut path: PathBuf = PathBuf::from(get_settings_state().monarch.game_folder);
 
     if !monarch_fs::path_exists(&path) {
         monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;

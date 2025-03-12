@@ -6,7 +6,9 @@ use toml::Table; // Use normal result instead of anyhow when sending to Frontend
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
-use super::monarch_settings::{read_settings, set_default_settings, write_settings};
+use super::monarch_settings::{
+    get_settings_state, read_settings, set_default_settings, write_settings, Settings,
+};
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
@@ -58,45 +60,42 @@ pub async fn open_logs() -> Result<(), String> {
 
 #[tauri::command]
 /// Returns settings read from settings.toml
-pub fn get_settings() -> Result<Table, String> {
-    match read_settings() {
-        Ok(result) => Ok(result),
-        Err(e) => {
-            error!(
-                "monarch_utils::commands::get_settings() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from("Something went wrong while reading settings!"))
-        }
-    }
+pub fn get_settings() -> Settings {
+    get_settings_state()
 }
 
 #[tauri::command]
 /// Write setting to settings.toml
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
-pub fn set_settings(settings: Table) -> Result<Table, Table> {
-    let res: Result<Table, Table> = write_settings(settings);
-
-    if res.is_err() {
-        error!("monarch_utils::commands::set_settings() -> monarch_settings::write_settings() returned error!");
+pub fn set_settings(settings: Settings) -> Result<Settings, String> {
+    match write_settings(settings) {
+        Ok(ret_settings) => Ok(ret_settings),
+        Err(e) => {
+            error!(
+                "monarch_utils::commands::set_settings() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from("Failed to write new settings!"))
+        }
     }
-
-    res
 }
 
 #[tauri::command]
 /// Write default settings to settings.toml
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
-pub fn revert_settings() -> Result<Table, Table> {
-    let res: Result<Table, Table> = set_default_settings();
-
-    if res.is_err() {
-        error!("monarch_utils::commands::revert_settings() -> monarch_settings::set_default_settings() returned error!");
+pub fn revert_settings() -> Result<Settings, String> {
+    match set_default_settings() {
+        Ok(ret_settings) => Ok(ret_settings),
+        Err(e) => {
+            error!(
+                "monarch_utils::commands::revert_settings() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from("Failed to reset to default settings!"))
+        }
     }
-
-    res
 }
 
 #[tauri::command]
