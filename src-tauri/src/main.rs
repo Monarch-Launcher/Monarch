@@ -17,12 +17,13 @@ use monarch_library::commands::{
 };
 use monarch_utils::commands::{
     clear_cached_images, delete_password, get_settings, hide_quicklaunch, init_quicklaunch,
-    open_logs, revert_settings, set_password, set_settings, show_quicklaunch, quicklaunch_is_enabled
+    open_logs, quicklaunch_is_enabled, revert_settings, set_password, set_settings,
+    show_quicklaunch,
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
 
 fn init() {
     if let Err(e) = monarch_settings::init() {
@@ -60,7 +61,8 @@ fn main() {
             show_quicklaunch,
             hide_quicklaunch,
             quicklaunch_is_enabled,
-        ]).on_window_event(|event| {
+        ])
+        .on_window_event(|event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {
                 // Only exit monarch on main window close
                 if event.window().title().expect("Failed to get window title!") == "Monarch" {

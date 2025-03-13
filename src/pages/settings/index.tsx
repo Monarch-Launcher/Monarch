@@ -6,6 +6,7 @@ import { Input, Switch } from '@mantine/core';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
+import { invoke } from '@tauri-apps/api';
 
 const Section = styled.div`
   display: flex;
@@ -94,6 +95,14 @@ const SettingsPage = () => {
     [settings],
   );
 
+  const handleDelete = React.useCallback(
+    async () => {
+      await invoke('delete_password', {
+        platform: "steam",
+      });
+    }
+  );
+
   return (
     <Page title="Settings">
       <Section>
@@ -136,6 +145,11 @@ const SettingsPage = () => {
             </ButtonContainer>
           </FormContainer>
         </form>
+        <ButtonContainer>
+          <Button type="submit" variant="primary" onClick={handleDelete}>
+            Delete user
+          </Button>
+        </ButtonContainer>
       </Section>
     </Page>
   );

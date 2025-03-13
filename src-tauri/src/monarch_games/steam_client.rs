@@ -43,8 +43,11 @@ pub async fn download_and_install() -> Result<()> {
 #[cfg(not(windows))]
 /// Downloads and installs SteamCMD on users computer.
 pub async fn download_and_install() -> Result<()> {
-    steam::install_steamcmd().with_context(|| "steam_client::download_and_install() -> ")?;
+    steam::install_steamcmd()
+        .await
+        .with_context(|| "steam_client::download_and_install() -> ")?;
     steam::steamcmd_command(vec!["+set_steam_guard_code"])
+        .await
         .with_context(|| "steam_client::download_and_install() -> ")
 }
 
@@ -61,9 +64,11 @@ pub fn launch_game(id: &str) -> Result<()> {
 }
 
 /// Attemps to launch SteamCMD game.
-pub fn launch_cmd_game(id: &str) -> Result<()> {
+pub async fn launch_cmd_game(id: &str) -> Result<()> {
     let args: Vec<&str> = vec!["+app_launch", id];
-    steam::steamcmd_command(args).with_context(|| "steam_client::launch_cmd_game() -> ")
+    steam::steamcmd_command(args)
+        .await
+        .with_context(|| "steam_client::launch_cmd_game() -> ")
 }
 
 /// Download a Steam game via Monarch and SteamCMD.
@@ -103,7 +108,9 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
 
     // TODO: Wait for Steamcmd to return
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
-    steam::steamcmd_command(command).with_context(|| "steam_client::download_game() -> ")?;
+    steam::steamcmd_command(command)
+        .await
+        .with_context(|| "steam_client::download_game() -> ")?;
 
     let mut monarchgame: MonarchGame = parse_steam_ids(&[String::from(id)], false).await[0].clone();
     monarchgame.platform = "steamcmd".to_string();
@@ -121,7 +128,9 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
     let remove_arg: String = format!("+app_uninstall {id}");
     let command: Vec<&str> = vec![&remove_arg, "+quit"];
 
-    steam::steamcmd_command(command).with_context(|| "steam_client::uninstall_game() -> ")
+    steam::steamcmd_command(command)
+        .await
+        .with_context(|| "steam_client::uninstall_game() -> ")
 }
 
 /// Returns path to Monarchs installed version of SteamCMD

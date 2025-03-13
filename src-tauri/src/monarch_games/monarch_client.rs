@@ -24,7 +24,7 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 pub async fn launch_game(platform: &str, platform_id: &str) -> Result<()> {
     match platform {
         "steam" => steam_client::launch_game(platform_id),
-        "steamcmd" => steam_client::launch_cmd_game(platform_id),
+        "steamcmd" => steam_client::launch_cmd_game(platform_id).await,
         &_ => {
             bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {platform} | Err: Invalid platform!")
         }
@@ -152,4 +152,3 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
 
     monarch_games
 }
-

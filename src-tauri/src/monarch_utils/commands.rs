@@ -151,7 +151,7 @@ pub fn set_password(platform: String, username: String, password: String) -> Res
 #[tauri::command]
 /// Delete password in secure store
 /// TODO: Better error handling if write_settings() fails.
-pub fn delete_password(platform: String, username: String) -> Result<(), String> {
+pub fn delete_password(platform: String) -> Result<(), String> {
     let mut settings: Settings = get_settings_state();
     let launcher_settings: &mut LauncherSettings = match platform.as_str() {
         "steam" => &mut settings.steam,
@@ -167,7 +167,7 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
         }
     };
 
-    if let Err(e) = delete_credentials(&platform, &username) {
+    if let Err(e) = delete_credentials(&platform, &launcher_settings.username) {
         error!(
             "monarch_utils::commands::delete_password() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -177,7 +177,7 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
         ));
     }
 
-    launcher_settings.username = username;
+    launcher_settings.username = String::new();
     set_settings_state(settings.clone());
     write_settings(settings).unwrap();
     Ok(())
