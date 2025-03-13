@@ -14,7 +14,7 @@ use crate::monarch_games::monarch_client::generate_default_folder;
 static mut SETTINGS_STATE: Lazy<Settings> = Lazy::<Settings>::new(Settings::default);
 
 /*
-* Settings struct related content
+* ----- Settings struct related ------
 */
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,7 +114,7 @@ pub fn get_settings_state() -> Settings {
 }
 
 /*
-* Misc functions related to managing settings in Monarch
+* ----- Misc functions related to managing settings in Monarch -----
 */
 
 /// Checks that a settings.toml file exists, otherwise attempts to create new file and populate
@@ -177,16 +177,16 @@ fn write_toml_content(path: &Path, table: Table) -> Result<()> {
     Ok(())
 }
 
+/*
+* ----- settings.rs shit -----
+*/
+
 /// Read all settings from file
 pub fn read_settings() -> Result<Table> {
     let path: PathBuf =
         get_settings_path().with_context(|| "monarch_settings::read_settings() -> ")?;
     read_settings_content(&path).with_context(|| "monarch_settings::read_settings() -> ")
 }
-
-/*
-* ----- settings.rs shit -----
-*/
 
 /// Parses content in settings.toml
 fn read_settings_content(file: &PathBuf) -> Result<Table> {

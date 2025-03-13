@@ -1,9 +1,7 @@
 use anyhow::{Context, Result};
-use log::{info, error, warn};
+use log::{error, warn};
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
-use std::process::Command;
-use std::process::Stdio;
 
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
 
@@ -79,7 +77,7 @@ impl MiniWindow {
     }
 
     /// Hides a window with specified label
-    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {
+    pub fn _hide_window(&self, handle: &AppHandle) -> Result<()> {
         let window = handle.get_window(&self.name).with_context(|| {
             format!(
                 "monarch_windows::hide_window() Failed to find window: {} | Err:",
@@ -95,7 +93,7 @@ impl MiniWindow {
         })
     }
 
-    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {
+    pub fn _close_window(&self, handle: &AppHandle) -> Result<()> {
         let window = handle.get_window(&self.name).with_context(|| {
             format!(
                 "monarch_windows::close_window() Failed to find window: {} | Err:",
@@ -143,7 +141,6 @@ pub fn run_in_terminal(command: &str) -> Result<()> {
     warn!("monarch_windows::run_in_terminal() Function is still WIP! Nothing has been run.");
     Ok(())
 }
-
 
 // Returns scale to use based on monitor resolution
 fn get_scale(window: &Window) -> f64 {
