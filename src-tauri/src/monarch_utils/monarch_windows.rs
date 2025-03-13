@@ -25,19 +25,22 @@ impl MiniWindow {
 
     /// Builds a window. Must be async on Windows to not deadlock.
     pub async fn build_window(&self, handle: &AppHandle) -> Result<()> {
-        let window: Window = WindowBuilder::new(
-            handle,
-            &self.name,
-            WindowUrl::External(self.url.parse().unwrap()),
-        )
-        .always_on_top(true)
-        .center()
-        .decorations(false)
-        .focused(true)
-        .skip_taskbar(true)
-        .visible(true)
-        .build()
-        .with_context(|| "monarch_windows::build_window() Failed to build window! | Err: ")?;
+        let window_url: WindowUrl = if self.url.starts_with("https") {
+            WindowUrl::External(self.url.parse().unwrap())
+        } else {
+            WindowUrl::App(self.url.parse().unwrap())
+        };
+
+        let window: Window = WindowBuilder::new(handle, &self.name, window_url)
+            .always_on_top(true)
+            .center()
+            .decorations(true)
+            .focused(true)
+            .skip_taskbar(false)
+            .visible(true)
+            .title(&self.name)
+            .build()
+            .with_context(|| "monarch_windows::build_window() Failed to build window! | Err: ")?;
 
         let scale: f64 = get_scale(&window);
         let size: PhysicalSize<u32> =
@@ -77,7 +80,7 @@ impl MiniWindow {
     }
 
     /// Hides a window with specified label
-    pub fn _hide_window(&self, handle: &AppHandle) -> Result<()> {
+    pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {
         let window = handle.get_window(&self.name).with_context(|| {
             format!(
                 "monarch_windows::hide_window() Failed to find window: {} | Err:",
@@ -107,6 +110,20 @@ impl MiniWindow {
                 self.name
             )
         })
+    }
+
+    pub fn set_quicklaunch_stuff(&self, handle: &AppHandle) -> Result<()> {
+        let window = handle.get_window(&self.name).with_context(|| {
+            format!(
+                "monarch_windows::show_window() Failed to find window: {} | Err:",
+                self.name
+            )
+        })?;
+
+        window.set_decorations(false)?;
+        window.set_skip_taskbar(true)?;
+
+        Ok(())
     }
 }
 

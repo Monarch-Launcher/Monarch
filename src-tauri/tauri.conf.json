@@ -26,6 +26,9 @@
       "fs": {
         "readFile": true
       },
+      "globalShortcut": {
+        "all": true
+      },
       "window": {
         "setMinSize": true
       },
@@ -62,7 +65,9 @@
         "resizable": true,
         "title": "Monarch",
         "width": 1280,
-        "height": 720
+        "height": 720,
+        "theme": "Dark",
+        "titleBarStyle": "Overlay"
       }
     ]
   }

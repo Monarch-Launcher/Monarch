@@ -10,11 +10,20 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "1.2", features = [] }
+tauri-build = { version = "1.5.4", features = [] }
 
 [dependencies]
 # Tauri dependencies
-tauri = { version = "1.2", features = [ "shell-all", "dialog-ask", "dialog-confirm", "dialog-message", "dialog-open", "fs-read-file", "protocol-asset", "window-set-min-size"] }
+tauri = { version = "1.7.2", features = [ "global-shortcut-all",
+  "shell-all",
+  "dialog-ask",
+  "dialog-confirm",
+  "dialog-message",
+  "dialog-open",
+  "fs-read-file",
+  "protocol-asset",
+  "window-set-min-size",
+] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -26,7 +35,7 @@ scraper = "0.19.0"
 log = "0.4.17"
 log4rs = "1.2.0"
 regex = "1.8.1"
-vdf-serde = "0.3.0"
+keyvalues-parser = "0.2.0"
 sysinfo = "0.29.7"
 once_cell = "1.18.0"
 keyring = "2"

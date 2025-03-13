@@ -2,7 +2,14 @@ import 'react-modern-drawer/dist/index.css';
 
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import { AiFillInfoCircle, FaPlay, HiDownload } from '@global/icons';
+import {
+  AiFillInfoCircle,
+  FaPlay,
+  FaSteam,
+  HiDownload,
+  PiButterflyBold,
+  SiEpicgames,
+} from '@global/icons';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import * as React from 'react';
@@ -11,57 +18,63 @@ import styled from 'styled-components';
 
 import Button from '../button';
 
-const CardContainer = styled.div`
-  flex: 0 0 auto;
-  vertical-align: top;
+const CardWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 15rem;
+  margin: 0.5rem;
+`;
+
+const CardContainer = styled.div`
+  position: relative;
+  width: 100%;
   height: 20rem;
   background-color: ${({ theme }) => theme.colors.secondary};
   border-radius: 0.5rem;
-  margin: 0.5rem;
+  overflow: hidden; /* Ensure the image doesn't overflow the card */
 `;
 
-const CardContent = styled.div`
-  height: 90%;
+const Thumbnail = styled.img<{ $isInfo?: boolean }>`
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Ensures the image covers the entire area without distortion */
+  position: absolute; /* Position the image absolutely to fill the entire card */
+  top: 0;
+  left: 0;
+  z-index: 1; /* Place it below the text and buttons */
+`;
+
+const ButtonContainer = styled.div`
+  position: absolute;
+  bottom: 1rem;
+  width: 100%;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0.5rem;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0rem;
+  z-index: 3; /* Ensure buttons are on top of everything */
 `;
 
-const Header = styled.div`
-  position: relative;
-  text-align: center;
+const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
+  background-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
+  border-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
+  color: white;
+  z-index: 4; /* Ensure buttons are on top */
+
+  &:hover,
+  &:focus {
+    background-color: ${({ $isInfo }) => ($isInfo ? 'darkgrey' : 'darkorange')};
+    border-color: ${({ $isInfo }) => ($isInfo ? 'darkgrey' : 'darkorange')};
+    color: white;
+  }
 `;
 
 const Info = styled.p`
   font-weight: 700;
   color: ${({ theme }) => theme.colors.primary};
-`;
-
-const Thumbnail = styled.img<{ $isInfo?: boolean }>`
-  border-radius: 0.5rem;
-  width: 100%;
-  height: ${({ $isInfo }) => ($isInfo ? '16.625rem' : '6.5rem')};
-`;
-
-const ButtonContainer = styled.div`
-  display: flex;
-  gap: 1rem;
-`;
-
-const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
-  background-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
-  border-color: ${({ $isInfo }) => ($isInfo ? 'blue' : 'green')};
-  color: white;
-
-  &:hover,
-  &:focus {
-    background-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
-    border-color: ${({ $isInfo }) => ($isInfo ? 'darkblue' : 'darkgreen')};
-    color: white;
-  }
+  margin-top: 0.5rem;
+  text-align: center;
 `;
 
 type GameCardProps = {
@@ -97,7 +110,7 @@ const GameCard = ({
   }, []);
 
   const imageSrc = React.useMemo<string>(() => {
-    if (!thumbnailPath || thumbnailPath === ('' || 'temp')) {
+    if (!thumbnailPath || thumbnailPath === 'temp') {
       return fallback;
     }
 
@@ -166,17 +179,41 @@ const GameCard = ({
     };
   }, [drawerRef, toggleDrawer, drawerOpen]);
 
+  const getStoreIcon = React.useMemo(() => {
+    switch (platform) {
+      case 'steam':
+        return FaSteam;
+      case 'epic':
+        return SiEpicgames;
+      default:
+        return PiButterflyBold;
+    }
+  }, [platform]);
+
+  const openStorePage = React.useCallback(async () => {
+    try {
+      await invoke('open_store', {
+        url: storePage,
+      });
+    } catch (err) {
+      await dialog.message(
+        `An error has occured: Could not open store page ${storePage}`,
+        {
+          title: 'Error',
+          type: 'error',
+        },
+      );
+    }
+  }, [storePage]);
+
   return (
-    <CardContainer>
-      <CardContent>
-        <Header>
-          <Thumbnail
-            alt="game-thumbnail"
-            src={imageSrc}
-            onError={handleImageError}
-          />
-          <Info>{name}</Info>
-        </Header>
+    <CardWrapper>
+      <CardContainer>
+        <Thumbnail
+          alt="game-thumbnail"
+          src={imageSrc}
+          onError={handleImageError}
+        />
         <ButtonContainer>
           <StyledButton
             variant="primary"
@@ -194,26 +231,27 @@ const GameCard = ({
             {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
           </StyledButton>
         </ButtonContainer>
-      </CardContent>
-      <div ref={drawerRef}>
-        <Drawer
-          open={drawerOpen}
-          direction="right"
-          size={550}
-          enableOverlay={false}
-          style={drawerStyles}
-        >
-          <Thumbnail
-            alt="game"
-            src={imageSrc}
-            onError={handleImageError}
-            $isInfo
-          />
-          <Info>{name}</Info>
-          <Info>Platform: {platform}</Info>
-        </Drawer>
-      </div>
-    </CardContainer>
+        <div ref={drawerRef}>
+          <Drawer
+            open={drawerOpen}
+            direction="right"
+            size={550}
+            enableOverlay={false}
+            style={drawerStyles}
+          >
+            <Button
+              type="button"
+              variant="primary"
+              onClick={openStorePage}
+              rightIcon={getStoreIcon}
+            >
+              Go to store page
+            </Button>
+          </Drawer>
+        </div>
+      </CardContainer>
+      <Info>{name}</Info> {/* Game name displayed below the card */}
+    </CardWrapper>
   );
 };
 
