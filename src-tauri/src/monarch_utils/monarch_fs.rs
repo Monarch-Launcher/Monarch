@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::{fs, process::exit};
 
-use super::monarch_settings::get_monarch_settings;
+use super::monarch_settings::{get_settings_state, Settings};
 
 /*
 ---------- General functions for filesystem tasks ----------
@@ -46,15 +46,10 @@ pub fn get_unix_home() -> Result<PathBuf> {
 
 /// Returns the monarch data folder from settings.toml
 pub fn get_monarch_home() -> PathBuf {
-    let settings = get_monarch_settings().unwrap();
+    let settings: Settings = get_settings_state();
 
     // Remove " " and ' ' that are still in Strings parsed from toml
-    PathBuf::from(
-        settings["monarch_home"]
-            .to_string()
-            .trim_matches('"')
-            .trim_matches('\''),
-    )
+    PathBuf::from(settings.monarch.monarch_home)
 }
 
 /// Gets the users %appdata% or $HOME directory and adds Monarch to the end of it to generate Monarch path

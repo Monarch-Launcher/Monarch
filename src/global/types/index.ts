@@ -20,37 +20,26 @@ export type Collection = {
   gameIds: string[];
 };
 
-// TODO: Let Dre make this better...
-export type MonarchSettings = {
-  monarch: MonarchSetting;
-  quicklaunch: QuicklaunchSetting;
-  steam: SteamSetting;
-  epic: EpicSetting;
+type LauncherType = {
+  game_folders: string[];
+  manage: boolean;
+  username: string;
 };
 
-export type MonarchSetting = {
-  monarch_home: string;
-  send_logs: boolean;
-  run_on_startup: boolean;
-  start_minimized: boolean;
-  game_folder: string;
-}
-
-export type QuicklaunchSetting = {
-  enabled: boolean;
-  open_shortcut: string;
-  close_shortcut: string;
-  size: string;
-}
-
-export type SteamSetting = {
-  game_folders: string;
-  manage: boolean;
-  username: string;
-}
-
-export type EpicSetting = {
-  game_folders: string;
-  manage: boolean;
-  username: string;
-}
+export type Settings = {
+  epic: LauncherType;
+  steam: LauncherType;
+  monarch: {
+    game_folder: string;
+    monarch_home: string;
+    run_on_startup: boolean;
+    send_logs: boolean;
+    start_minimized: boolean;
+  };
+  quicklaunch: {
+    close_shortcut: string;
+    open_shortcut: string;
+    enabled: boolean;
+    size: string;
+  };
+};

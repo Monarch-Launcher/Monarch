@@ -3,13 +3,13 @@ use log::{error, warn};
 use reqwest;
 use std::path::PathBuf;
 use tokio::task;
-use toml;
 
-use super::monarch_client::generate_default_folder;
 use super::monarchgame::{MonarchGame, MonarchWebGame};
 use crate::monarch_utils::monarch_credentials::get_password;
-use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path, get_monarch_home, path_exists};
-use crate::monarch_utils::monarch_settings::get_steam_settings;
+use crate::monarch_utils::monarch_fs::{
+    generate_cache_image_path, generate_library_image_path, get_monarch_home, path_exists,
+};
+use crate::monarch_utils::monarch_settings::get_settings_state;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -68,27 +68,19 @@ pub fn launch_cmd_game(id: &str) -> Result<()> {
 
 /// Download a Steam game via Monarch and SteamCMD.
 pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
-    let settings: toml::Value = match get_steam_settings() {
-        Some(steam_settings) => steam_settings,
-        None => bail!("steam_client::download_game() -> monarch_settings::get_steam_settings() returned None!")
-    };
+    let settings = get_settings_state();
+    let steam_settings = settings.steam;
 
-    if !can_manage_steam(&settings) {
+    if !steam_settings.manage {
         warn!("steam_client::download_game() User tried to install game without allowing Monarch to manage Steam! Cancelling download...");
         bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
     }
 
-    let username: String = get_username(&settings).with_context(|| {
-        "steam_client::download_game() -> steam_client::get_username() returned None!"
-    })?;
-
+    let username: String = steam_settings.username;
     let password: String =
         get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
 
-    let mut install_dir: PathBuf = match get_steam_games_dir(&settings) {
-        Some(result) => PathBuf::from(result),
-        None => generate_default_folder().with_context(|| "steam_client::download_game() -> ")?,
-    };
+    let mut install_dir: PathBuf = PathBuf::from(settings.monarch.game_folder);
     install_dir.push(name);
 
     // Directory argument
@@ -120,8 +112,8 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
 
 /// Uninstall a Steam game via SteamCMD
 pub async fn uninstall_game(id: &str) -> Result<()> {
-    let settings = get_steam_settings().with_context(|| "steam_client::uninstall_game() -> ")?;
-    if !can_manage_steam(&settings) {
+    let steam_settings = get_settings_state().steam;
+    if !steam_settings.manage {
         warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
         bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
     }
@@ -136,37 +128,6 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
 pub fn get_steamcmd_dir() -> PathBuf {
     let path: PathBuf = get_monarch_home();
     path.join("SteamCMD")
-}
-
-/// Returns whether or not Monarch is allowed to manage a users Steam games
-fn can_manage_steam(settings: &toml::Value) -> bool {
-    match settings.get("manage") {
-        Some(value) => value == &toml::Value::Boolean(true),
-        None => false,
-    }
-}
-
-/// Returns username from toml::Value
-fn get_username(settings: &toml::Value) -> Option<String> {
-    if let Some(value) = settings.get("username") {
-        if let Some(value_str) = value.as_str() {
-            return Some(String::from(value_str));
-        }
-    }
-    None
-}
-
-/// Returns the path to install Steam Games in.
-fn get_steam_games_dir(settings: &toml::Value) -> Option<String> {
-    if let Some(folders) = settings.get("game_folders") {
-        if let Some(folder) = folders.get(0) {
-            // Assume first folder is default one for now
-            if let Some(str) = folder.as_str() {
-                return Some(String::from(str));
-            }
-        }
-    }
-    None
 }
 
 /// Converts SteamApp ids into MonarchGames.
@@ -193,7 +154,8 @@ pub async fn parse_steam_ids(ids: &[String], is_cache: bool) -> Vec<MonarchGame>
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.
 async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
     let mut game_info_opt: Option<MonarchWebGame> = None;
-    let target: String = format!("https://monarch-launcher.com/api/games?platform=steam&platform_id={id}");
+    let target: String =
+        format!("https://monarch-launcher.com/api/games?platform=steam&platform_id={id}");
 
     // GET info from Steam servers
     match reqwest::get(&target).await {
@@ -218,16 +180,26 @@ async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
 
     // Parse content into MonarchGame
     if let Some(game_info) = game_info_opt {
-        
         let thumbnail_path = if is_cache {
             String::from(generate_cache_image_path(&game_info.name).to_str().unwrap())
-        }
-        else {
-            String::from(generate_library_image_path(&game_info.name).to_str().unwrap())
+        } else {
+            String::from(
+                generate_library_image_path(&game_info.name)
+                    .to_str()
+                    .unwrap(),
+            )
         };
-        let monarch_game = MonarchGame::new(&game_info.name, game_info.id, &game_info.platform, &game_info.platform_id, &game_info.store_page, "N/A", &thumbnail_path);
+        let monarch_game = MonarchGame::new(
+            &game_info.name,
+            game_info.id,
+            &game_info.platform,
+            &game_info.platform_id,
+            &game_info.store_page,
+            "N/A",
+            &thumbnail_path,
+        );
         monarch_game.download_thumbnail(game_info.cover_url).await;
-        return Ok(monarch_game)
+        return Ok(monarch_game);
     }
 
     warn!("Failed to parse Steam game with id: {id}");

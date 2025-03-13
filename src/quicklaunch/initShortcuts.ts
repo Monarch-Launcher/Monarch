@@ -4,7 +4,7 @@ import {
   register,
   unregisterAll,
 } from '@tauri-apps/api/globalShortcut';
-import { MonarchSettings } from '@global/types';
+import { Settings } from '@global/types';
 
 // TODO: PROPER ERROR HANDLING
 const initShortcuts = async () => {
@@ -17,7 +17,7 @@ const initShortcuts = async () => {
   // Define global shortcuts for quicklaunch (proto-typing)
   await unregisterAll();
 
-  const quicklaunchSettings = await invoke('get_settings') as MonarchSettings;
+  const quicklaunchSettings = await invoke('get_settings') as Settings;
 
   const quickLaunchRegistered = await isRegistered(quicklaunchSettings.quicklaunch.open_shortcut);
   const closeRegistered = await isRegistered(quicklaunchSettings.quicklaunch.close_shortcut);

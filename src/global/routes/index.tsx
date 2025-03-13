@@ -2,7 +2,7 @@ import Home from '@pages/home';
 import Library from '@pages/library';
 import NotFound from '@pages/notFound';
 import Search from '@pages/search';
-import Settings from '@pages/settings';
+import SettingsPage from '@pages/settings';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 export default () => {
@@ -10,7 +10,7 @@ export default () => {
     <MemoryRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/library" element={<Library />} />
         <Route path="/search" element={<Search />} />
         <Route path="/*" element={<NotFound />} />

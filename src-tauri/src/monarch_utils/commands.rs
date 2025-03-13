@@ -3,12 +3,14 @@ use log::{error, info};
 use std::env;
 use std::{path::PathBuf, process::Command};
 use tauri::{AppHandle, Manager};
-use toml::Table; // Use normal result instead of anyhow when sending to Frontend. Possibly replace later with anyhow that impls correct traits.
 
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
-use super::monarch_settings::{get_quicklaunch_settings, read_settings, set_default_settings, write_settings};
+use super::monarch_settings::{
+    get_settings_state, set_default_settings, set_settings_state, write_settings, LauncherSettings,
+    Settings,
+};
 use super::monarch_windows::MiniWindow;
 
 #[cfg(target_os = "windows")]
@@ -58,45 +60,48 @@ pub async fn open_logs() -> Result<(), String> {
 
 #[tauri::command]
 /// Returns settings read from settings.toml
-pub fn get_settings() -> Result<Table, String> {
-    match read_settings() {
-        Ok(result) => Ok(result),
-        Err(e) => {
-            error!(
-                "monarch_utils::commands::get_settings() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from("Something went wrong while reading settings!"))
-        }
-    }
+pub fn get_settings() -> Settings {
+    get_settings_state()
 }
 
 #[tauri::command]
 /// Write setting to settings.toml
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
-pub fn set_settings(settings: Table) -> Result<Table, Table> {
-    let res: Result<Table, Table> = write_settings(settings);
-
-    if res.is_err() {
-        error!("monarch_utils::commands::set_settings() -> monarch_settings::write_settings() returned error!");
+pub fn set_settings(settings: Settings) -> Result<Settings, String> {
+    match write_settings(settings) {
+        Ok(ret_settings) => {
+            set_settings_state(ret_settings.clone());
+            Ok(ret_settings)
+        }
+        Err(e) => {
+            error!(
+                "monarch_utils::commands::set_settings() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from("Failed to write new settings!"))
+        }
     }
-
-    res
 }
 
 #[tauri::command]
 /// Write default settings to settings.toml
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
-pub fn revert_settings() -> Result<Table, Table> {
-    let res: Result<Table, Table> = set_default_settings();
-
-    if res.is_err() {
-        error!("monarch_utils::commands::revert_settings() -> monarch_settings::set_default_settings() returned error!");
+pub fn revert_settings() -> Result<Settings, String> {
+    match set_default_settings() {
+        Ok(ret_settings) => {
+            set_settings_state(ret_settings.clone());
+            Ok(ret_settings)
+        }
+        Err(e) => {
+            error!(
+                "monarch_utils::commands::revert_settings() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from("Failed to reset to default settings!"))
+        }
     }
-
-    res
 }
 
 /*
@@ -105,7 +110,30 @@ pub fn revert_settings() -> Result<Table, Table> {
 
 #[tauri::command]
 /// Set password in secure store
+/// TODO: Better error handling if write_settings() fails.
 pub fn set_password(platform: String, username: String, password: String) -> Result<(), String> {
+    let mut settings: Settings = get_settings_state();
+    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
+        "steam" => &mut settings.steam,
+        "epic" => &mut settings.epic,
+        _ => {
+            error!(
+                "monarch_utils::commands::set_password() | Err: Invalid platform: {}",
+                platform
+            );
+            return Err(String::from(
+                "Trying to write user credentials for unknown platform.",
+            ));
+        }
+    };
+
+    if !launcher_settings.username.is_empty() {
+        error!("monarch_utils::commands::set_password() | Err: User already defined in settings.",);
+        return Err(String::from(
+            "Monarch currently does not support more than one saved user!",
+        ));
+    }
+
     if let Err(e) = set_credentials(&platform, &username, &password) {
         error!(
             "monarch_utils::commands::set_password() -> {}",
@@ -113,12 +141,32 @@ pub fn set_password(platform: String, username: String, password: String) -> Res
         );
         return Err(String::from("Something went wrong setting new password!"));
     }
+
+    launcher_settings.username = username;
+    set_settings_state(settings.clone());
+    write_settings(settings).unwrap();
     Ok(())
 }
 
 #[tauri::command]
 /// Delete password in secure store
+/// TODO: Better error handling if write_settings() fails.
 pub fn delete_password(platform: String, username: String) -> Result<(), String> {
+    let mut settings: Settings = get_settings_state();
+    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
+        "steam" => &mut settings.steam,
+        "epic" => &mut settings.epic,
+        _ => {
+            error!(
+                "monarch_utils::commands::set_password() | Err: Invalid platform: {}",
+                platform
+            );
+            return Err(String::from(
+                "Trying to write user credentials for unknown platform.",
+            ));
+        }
+    };
+
     if let Err(e) = delete_credentials(&platform, &username) {
         error!(
             "monarch_utils::commands::delete_password() -> {}",
@@ -128,6 +176,10 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
             "Something went wrong while deleting credentials!",
         ));
     }
+
+    launcher_settings.username = username;
+    set_settings_state(settings.clone());
+    write_settings(settings).unwrap();
     Ok(())
 }
 
@@ -141,21 +193,13 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
 /// 2: Monarch is not being run under Wayland, which currently
 /// lacks support for global shortcuts and makes Monarch hang.
 pub fn quicklaunch_is_enabled() -> bool {
-    // First check if quicklaunch is disabled in settings
-    if let Some(quick_settings) = get_quicklaunch_settings() {
-        if quick_settings["enabled"].as_bool().unwrap() == false {
-            return false;
-        }
-    } else { // Error with quicklaunch settings, default to false
-        error!("monarch_utils::commands::init_quicklaunch() get_quicklaunch_settings() returned None! Disabling quicklaunch...");
-        return false;
-    }
-
-    // Then check if Monarch is being run under Wayland
+    // First check if Monarch is being run under Wayland
     if cfg!(target_os = "linux") {
         return env::var("WAYLAND_DISPLAY").is_err(); // If WAYLAND_DISPLAY is set at all, assume Wayland is used
     }
-    true
+
+    // Then check if quicklaunch is disabled in settings
+    get_settings_state().quicklaunch.enabled
 }
 
 #[tauri::command]
@@ -176,14 +220,16 @@ pub async fn init_quicklaunch(handle: AppHandle) -> Result<(), String> {
         return Err(String::from("Failed to build quicklaunch window!"));
     }
 
-    // Currently this code snippet basically just disables window decorations for a 
+    // Currently this code snippet basically just disables window decorations for a
     // cleaner quicklaunch look
     if let Err(e) = window.set_quicklaunch_stuff(&handle) {
         error!(
             "monarch_utils::commands::init_quicklaunch() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(String::from("Failed to set quicklaunch specific properties!"));
+        return Err(String::from(
+            "Failed to set quicklaunch specific properties!",
+        ));
     }
 
     if let Err(e) = window.hide_window(&handle) {

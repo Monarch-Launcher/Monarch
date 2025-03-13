@@ -96,7 +96,7 @@ impl MiniWindow {
         })
     }
 
-    pub fn close_window(&self, handle: &AppHandle) -> Result<()> {
+    pub fn _close_window(&self, handle: &AppHandle) -> Result<()> {
         let window = handle.get_window(&self.name).with_context(|| {
             format!(
                 "monarch_windows::close_window() Failed to find window: {} | Err:",

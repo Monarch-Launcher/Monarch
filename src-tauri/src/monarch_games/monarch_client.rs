@@ -1,11 +1,11 @@
 use super::{monarchgame::MonarchGame, steam_client};
+use crate::monarch_games::monarchgame::MonarchWebGame;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
-use crate::monarch_utils::monarch_settings::get_monarch_settings;
+use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use log::{error, info, warn};
 use std::path::PathBuf;
-use crate::monarch_games::monarchgame::MonarchWebGame;
 
 /// Generates the default path where Monarch wants to store games.
 pub fn generate_default_folder() -> Result<PathBuf> {
@@ -37,11 +37,7 @@ pub async fn download_game(
     platform: &str,
     platform_id: &str,
 ) -> Result<Vec<MonarchGame>> {
-    let mut path: PathBuf = PathBuf::from(
-        get_monarch_settings().unwrap()["game_folder"]
-            .to_string()
-            .trim_matches('"'),
-    );
+    let mut path: PathBuf = PathBuf::from(get_settings_state().monarch.game_folder);
 
     if !monarch_fs::path_exists(&path) {
         monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
@@ -125,7 +121,10 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 /// TODO: Add support for things, like filters in the future.
 /// TODO: Remove unwraps, after testing
 pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
-    let search_term: String = format!("https://monarch-launcher.com/api/games?search={}", search_term);
+    let search_term: String = format!(
+        "https://monarch-launcher.com/api/games?search={}",
+        search_term
+    );
     let response = reqwest::get(search_term).await.unwrap();
     let resp_content = response.text().await.unwrap();
 
@@ -133,11 +132,24 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
 
     let mut monarch_games: Vec<MonarchGame> = Vec::new();
     for game in web_games {
-        let thumbnail_path = String::from(generate_cache_image_path(&game.name.clone()).to_str().unwrap());
-        let new_monarchgame = MonarchGame::new(&game.name, game.id, &game.platform, "N/A", &game.store_page, "N/A", &thumbnail_path);
+        let thumbnail_path = String::from(
+            generate_cache_image_path(&game.name.clone())
+                .to_str()
+                .unwrap(),
+        );
+        let new_monarchgame = MonarchGame::new(
+            &game.name,
+            game.id,
+            &game.platform,
+            "N/A",
+            &game.store_page,
+            "N/A",
+            &thumbnail_path,
+        );
         new_monarchgame.download_thumbnail(game.cover_url).await; // Do not await, this allows image to download concurrently as other monarchgames are parsed
         monarch_games.push(new_monarchgame);
     }
 
     monarch_games
 }
+
