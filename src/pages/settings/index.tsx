@@ -60,19 +60,21 @@ const SettingsPage = () => {
     async (values: FormValues) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { username, password } = values;
-      // Do some if checks
 
       await saveCredentials(username, password);
-
-      await updateSettings(values.settings);
     },
     [updateSettings, saveCredentials],
   );
 
   const toggleQuickLaunch = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const updatedSettings: Settings = { ...settings, quicklaunch: {enabled: e.currentTarget.checked, close_shortcut: settings.quicklaunch.close_shortcut, open_shortcut: settings.quicklaunch.open_shortcut, size: settings.quicklaunch.size} };
-      // Call backend function
+      const updatedSettings: Settings = {
+        ...settings,
+        quicklaunch: {
+          ...settings.quicklaunch,
+          enabled: e.currentTarget.checked,
+        },
+      };
       await updateSettings(updatedSettings);
     },
     [settings],
@@ -80,8 +82,13 @@ const SettingsPage = () => {
 
   const toggleSteam = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const updatedSettings: Settings = { ...settings, steam: {manage: e.currentTarget.checked, game_folders: settings.steam.game_folders, username: settings.steam.username} };
-      // Call backend function
+      const updatedSettings: Settings = {
+        ...settings,
+        steam: {
+          ...settings.steam,
+          manage: e.currentTarget.checked,
+        },
+      };
       await updateSettings(updatedSettings);
     },
     [settings],
