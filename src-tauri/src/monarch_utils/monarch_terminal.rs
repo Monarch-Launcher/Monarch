@@ -14,7 +14,9 @@ use tauri::api::process::Command;
 pub async fn run_in_terminal(command: &str) -> Result<()> {
     // Spawn new child process
     #[cfg(target_os = "windows")]
-    let child_result = Command::new("kitty").args(["sh", "-c", command]).spawn();
+    let child_result = Command::new("Start-Process")
+        .args(["PowerShell", "-ArgumentList", command])
+        .spawn();
 
     #[cfg(target_os = "macos")]
     let child_result = Command::new("kitty").args(["sh", "-c", command]).spawn();

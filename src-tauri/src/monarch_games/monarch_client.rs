@@ -141,7 +141,7 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
             &game.name,
             game.id,
             &game.platform,
-            "N/A",
+            &game.platform_id,
             &game.store_page,
             "N/A",
             &thumbnail_path,

@@ -50,10 +50,7 @@
         "icons/icon.ico"
       ],
       "identifier": "monarch",
-      "targets": "all",
-      "externalBin": [
-        "/absolute/path/to/sidecar",
-      ]
+      "targets": "all"
     },
     "security": {
       "csp": {
