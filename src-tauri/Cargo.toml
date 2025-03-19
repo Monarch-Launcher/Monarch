@@ -14,7 +14,8 @@ tauri-build = { version = "1.5.4", features = [] }
 
 [dependencies]
 # Tauri dependencies
-tauri = { version = "1.7.2", features = [ "global-shortcut-all",
+tauri = { version = "1.7.2", features = [
+  "global-shortcut-all",
   "shell-all",
   "dialog-ask",
   "dialog-confirm",
@@ -40,6 +41,7 @@ sysinfo = "0.29.7"
 once_cell = "1.18.0"
 keyring = "2"
 anyhow = "1.0.86"
+portable-pty = "0.9.0"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52.0"

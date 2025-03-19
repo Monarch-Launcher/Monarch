@@ -8,30 +8,41 @@
 * run in terminal.
  */
 
-use anyhow::{bail, Result};
-use std::process::Command;
+use anyhow::{bail, Context, Result};
+use portable_pty::{native_pty_system, CommandBuilder, PtyPair, PtySize};
 
 /// Run a command in a new process and display to the user in a custom terminal window.
 pub async fn run_in_terminal(command: &str) -> Result<()> {
-    // Spawn new child process
-    #[cfg(target_os = "windows")]
-    let child_result = Command::new("powershell.exe")
-        .args(["-noexit", &format!("\"{}\"", command)])
-        .spawn();
+    let pty_system = native_pty_system();
 
-    #[cfg(target_os = "macos")]
-    let child_result = Command::new("kitty").args(["sh", "-c", command]).spawn();
+    let mut pair = pty_system.openpty(PtySize {
+        rows: 60,
+        cols: 160,
+        // Not all systems support pixel_width, pixel_height,
+        // but it is good practice to set it to something
+        // that matches the size of the selected font.  That
+        // is more complex than can be shown here in this
+        // brief example though!
+        pixel_width: 0,
+        pixel_height: 0,
+    })?;
 
-    #[cfg(target_os = "linux")]
-    let child_result = Command::new("kitty").args(["sh", "-c", command]).spawn();
+    // Spawn a shell into the pty
+    let mut cmd = CommandBuilder::new_default_prog();
+    let shell = cmd.get_shell();
 
-    if let Err(e) = child_result {
-        bail!("monarch_terminal::run_in_terminal() failed to run terminal command! | Err: {e}")
-    }
+    cmd = CommandBuilder::new(shell);
+    cmd.args(vec!["-c", command]);
+    let child = pair
+        .slave
+        .spawn_command(cmd)
+        .with_context(|| "Failed to spawn child commnad! | Err: ")?;
 
-    // Output can be used in future to view result of command
-    let child = child_result.unwrap();
-    let _out = child.wait_with_output()?;
+    // Read and parse output from the pty with reader
+    let mut reader = pair.master.try_clone_reader()?;
+
+    // Send data to the pty by writing to the master
+    writeln!(pair.master.take_writer()?, "ls -l\r\n")?;
 
     Ok(())
 }
