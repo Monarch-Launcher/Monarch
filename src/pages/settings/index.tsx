@@ -100,7 +100,7 @@ const SettingsPage = () => {
       await invoke('delete_password', {
         platform: "steam",
       });
-    }
+    }, []
   );
 
   return (
