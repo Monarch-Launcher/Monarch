@@ -2,7 +2,9 @@ use core::result::Result;
 use log::{error, info};
 use std::env;
 use std::{path::PathBuf, process::Command};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
+
+use crate::monarch_utils::monarch_terminal::init_monarch_terminal;
 
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
@@ -11,7 +13,9 @@ use super::monarch_settings::{
     get_settings_state, set_default_settings, set_settings_state, write_settings, LauncherSettings,
     Settings,
 };
+use super::monarch_terminal::read_from_pty;
 use super::monarch_windows::MiniWindow;
+use crate::monarch_utils::monarch_terminal::AppState;
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
@@ -278,6 +282,31 @@ pub fn hide_quicklaunch(handle: AppHandle) -> Result<(), String> {
 /*
 * Misc commands
 */
+
+#[tauri::command]
+/// Builds a new terminal window.
+/// Starts as hidden until Monarch runs commands.
+pub async fn init_terminal(handle: AppHandle) -> Result<(), String> {
+    if let Err(e) = init_monarch_terminal(&handle).await {
+        error!("monarch_utils::commands::init_terminal() Failed to build terminal! | Err: {e}");
+        return Err(String::from("Failed to build Monarch terminal!"));
+    }
+    info!("Finished initializing Monarch terminal!");
+    Ok(())
+}
+
+#[tauri::command]
+/// Functions for frontend terminal window to read content
+/// of terminal command being run.
+pub async fn async_read_from_pty(state: State<'_, AppState>) -> Result<String, ()> {
+    match read_from_pty(state).await {
+        Ok(s) => Ok(s),
+        Err(e) => {
+            error!("monarch_utils::commands::async_read_from_pty() Recieved error when reading pty! | Err:");
+            return Err(())
+        }
+    }
+}
 
 #[tauri::command]
 /// Manually clear all images in the resources/cache directory

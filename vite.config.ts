@@ -38,7 +38,11 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        quicklaunch_window: resolve(__dirname, 'src/quicklaunch/quicklaunch.html'),
+        quicklaunch_window: resolve(
+          __dirname,
+          'src/quicklaunch/quicklaunch.html',
+        ),
+        terminal_window: resolve(__dirname, 'src/terminal/terminal.html'),
       },
     },
   },

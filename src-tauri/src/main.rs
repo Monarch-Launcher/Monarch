@@ -18,12 +18,12 @@ use monarch_library::commands::{
 use monarch_utils::commands::{
     clear_cached_images, delete_password, get_settings, hide_quicklaunch, init_quicklaunch,
     open_logs, quicklaunch_is_enabled, revert_settings, set_password, set_settings,
-    show_quicklaunch,
+    show_quicklaunch, init_terminal
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
-use tauri::{AppHandle, Manager};
+use tauri::{Manager};
 
 fn init() {
     if let Err(e) = monarch_settings::init() {
@@ -61,6 +61,8 @@ fn main() {
             show_quicklaunch,
             hide_quicklaunch,
             quicklaunch_is_enabled,
+            init_terminal,
+            
         ])
         .on_window_event(|event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {
