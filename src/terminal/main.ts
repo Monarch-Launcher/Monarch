@@ -1,12 +1,22 @@
 import { Terminal } from '@xterm/xterm';
-import "@xterm/xterm/css/xterm.css";
+import '@xterm/xterm/css/xterm.css';
+import { FitAddon } from '@xterm/addon-fit';
 import { invoke } from '@tauri-apps/api';
-
-
 
 var term = new Terminal();
 term.open(document.getElementById('terminal') as HTMLElement);
-term.write('Hello from \x1B[1;3;31mxterm.js\x1B[0m $ ')
+term.onData(writeToPty);
+
+const fitAddon = new FitAddon();
+term.loadAddon(fitAddon);
+fitAddon.fit();
+
+// Write data from the terminal to the pty
+function writeToPty(data: string) {
+  void invoke('async_write_to_pty', {
+    data,
+  });
+}
 
 // Write data from pty into the terminal
 function writeToTerminal(data: string) {
@@ -16,13 +26,14 @@ function writeToTerminal(data: string) {
 }
 
 async function readFromPty() {
-  const data = await invoke<string>("async_read_from_pty");
+  const data = await invoke<string>('async_read_from_pty');
+  console.log(data);
 
   if (data) {
     await writeToTerminal(data);
   }
-  
+
   window.requestAnimationFrame(readFromPty);
 }
-  
+
 window.requestAnimationFrame(readFromPty);

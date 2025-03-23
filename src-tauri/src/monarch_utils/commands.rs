@@ -2,9 +2,7 @@ use core::result::Result;
 use log::{error, info};
 use std::env;
 use std::{path::PathBuf, process::Command};
-use tauri::{AppHandle, Manager, State};
-
-use crate::monarch_utils::monarch_terminal::init_monarch_terminal;
+use tauri::{AppHandle, Manager};
 
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
@@ -13,9 +11,10 @@ use super::monarch_settings::{
     get_settings_state, set_default_settings, set_settings_state, write_settings, LauncherSettings,
     Settings,
 };
-use super::monarch_terminal::read_from_pty;
+use super::monarch_terminal::{
+    close_terminal_window, create_terminal_window, read_from_pty, write_to_pty,
+};
 use super::monarch_windows::MiniWindow;
-use crate::monarch_utils::monarch_terminal::AppState;
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
@@ -286,25 +285,35 @@ pub fn hide_quicklaunch(handle: AppHandle) -> Result<(), String> {
 #[tauri::command]
 /// Builds a new terminal window.
 /// Starts as hidden until Monarch runs commands.
-pub async fn init_terminal(handle: AppHandle) -> Result<(), String> {
-    if let Err(e) = init_monarch_terminal(&handle).await {
-        error!("monarch_utils::commands::init_terminal() Failed to build terminal! | Err: {e}");
-        return Err(String::from("Failed to build Monarch terminal!"));
-    }
-    info!("Finished initializing Monarch terminal!");
-    Ok(())
+pub async fn open_terminal(handle: AppHandle) {
+    create_terminal_window(&handle).await.unwrap();
+}
+
+#[tauri::command]
+/// Builds a new terminal window.
+/// Starts as hidden until Monarch runs commands.
+pub async fn close_terminal(handle: AppHandle) {
+    close_terminal_window(&handle).await.unwrap();
 }
 
 #[tauri::command]
 /// Functions for frontend terminal window to read content
 /// of terminal command being run.
-pub async fn async_read_from_pty(state: State<'_, AppState>) -> Result<String, ()> {
-    match read_from_pty(state).await {
+pub async fn async_read_from_pty() -> Result<Option<String>, ()> {
+    match read_from_pty().await {
         Ok(s) => Ok(s),
-        Err(e) => {
+        Err(_e) => {
             error!("monarch_utils::commands::async_read_from_pty() Recieved error when reading pty! | Err:");
-            return Err(())
+            Err(())
         }
+    }
+}
+
+#[tauri::command]
+pub async fn async_write_to_pty(data: &str) -> Result<(), ()> {
+    match write_to_pty(data).await {
+        Ok(_) => Ok(()),
+        Err(_) => Err(()),
     }
 }
 

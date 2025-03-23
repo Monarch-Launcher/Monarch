@@ -7,6 +7,7 @@ use crate::monarch_utils::{
 };
 use anyhow::{Context, Result};
 use log::{error, info};
+use tauri::AppHandle;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -17,7 +18,7 @@ use std::process::Command;
 */
 
 /// Installs SteamCMD for user in .monarch
-pub async fn install_steamcmd() -> Result<()> {
+pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
     let dest_path: PathBuf = get_steamcmd_dir();
 
     if !path_exists(&dest_path) {
@@ -30,15 +31,14 @@ pub async fn install_steamcmd() -> Result<()> {
         r#"mkdir {};
 cd {};
 {};
-sleep 2;"#,
+sleep 2;
+exit;"#,
         dest_path.display(),
         dest_path.display(),
         &download_arg
     ); // Sleep for 2 seconds to allow user to see what is happening.
 
-    info!("Running: SteamCMD installation script: \n----------\n{installation_script}\n----------");
-
-    run_in_terminal(&installation_script)
+    run_in_terminal(handle, &installation_script)
         .await
         .with_context(|| "linux::steam::install_steamcmd() -> ")?;
     Ok(())
@@ -47,13 +47,13 @@ sleep 2;"#,
 /// Runs specified command via SteamCMD
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
-pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
+pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.sh");
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    run_in_terminal(&format!(
-        "{} {}; echo 'Install complete!'; sleep 5;",
+    run_in_terminal(handle, &format!(
+        "{} {}; sleep 3;",
         path.display(),
         args_string
     ))

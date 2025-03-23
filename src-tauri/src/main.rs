@@ -16,14 +16,14 @@ use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
 };
 use monarch_utils::commands::{
-    clear_cached_images, delete_password, get_settings, hide_quicklaunch, init_quicklaunch,
-    open_logs, quicklaunch_is_enabled, revert_settings, set_password, set_settings,
-    show_quicklaunch, init_terminal
+    async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, delete_password,
+    get_settings, hide_quicklaunch, init_quicklaunch, open_logs, open_terminal,
+    quicklaunch_is_enabled, revert_settings, set_password, set_settings, show_quicklaunch,
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
-use tauri::{Manager};
+use tauri::Manager;
 
 fn init() {
     if let Err(e) = monarch_settings::init() {
@@ -36,6 +36,13 @@ fn init() {
 }
 
 fn main() {
+    // Setting this enviornment variable fixes performance issues when
+    // scrolling under Linux.
+    // Also appears like it might help with weird multiwindow rendering
+    // behaviour.
+    #[cfg(target_os = "linux")]
+    std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+
     // Build Monarch Tauri app
     let monarch = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -61,8 +68,10 @@ fn main() {
             show_quicklaunch,
             hide_quicklaunch,
             quicklaunch_is_enabled,
-            init_terminal,
-            
+            async_read_from_pty,
+            async_write_to_pty,
+            open_terminal,
+            close_terminal
         ])
         .on_window_event(|event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {

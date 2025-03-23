@@ -6,13 +6,9 @@ import ReactDOM from 'react-dom/client';
 import initShortcuts from './quicklaunch/initShortcuts'
 
 import App from './App';
-import initTerminal from './terminal/initTerminal';
 
 // Set quicklaunch global shortcuts
 await initShortcuts();
-
-// Init monarch terminal
-await initTerminal();
 
 // Set minimum size of window
 await appWindow.setMinSize(new LogicalSize(800, 600));

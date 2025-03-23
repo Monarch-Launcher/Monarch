@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use log::{error, warn};
+use log::error;
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
 
@@ -35,7 +35,6 @@ impl MiniWindow {
             .always_on_top(true)
             .center()
             .decorations(true)
-            .focused(true)
             .skip_taskbar(false)
             .visible(true)
             .title(&self.name)
@@ -47,16 +46,10 @@ impl MiniWindow {
             PhysicalSize::new((self.width * scale) as u32, (self.height * scale) as u32);
 
         if let Err(e) = window.set_size(size) {
-            error!(
-                "monarch_windows::build_window() Failed to set new window size! | Err: {:#}",
-                e
-            );
+            error!("monarch_windows::build_window() Failed to set new window size! | Err: {e}");
         }
         if let Err(e) = window.center() {
-            error!(
-                "monarch_windows::build_window() Failed to center new window! | Err: {:#}",
-                e
-            );
+            error!("monarch_windows::build_window() Failed to center new window! | Err: {e}");
         }
 
         Ok(())

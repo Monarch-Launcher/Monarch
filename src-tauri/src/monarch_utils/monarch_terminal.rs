@@ -1,21 +1,21 @@
 /*
-* Custom terminal emulator implementation for Monarch to run CMD commands 
-* or applications, such as SteamCMD. 
+* Custom terminal emulator implementation for Monarch to run CMD commands
+* or applications, such as SteamCMD.
 *
-* Massive thanks goes to https://github.com/marc2332/tauri-terminal for 
+* Massive thanks goes to https://github.com/marc2332/tauri-terminal for
 * showing how to write a terminal in Tauri.
 */
 
+use super::monarch_windows::MiniWindow;
 use anyhow::{bail, Context, Result};
 use log::error;
+use log::info;
+use once_cell::sync::Lazy;
 use portable_pty::{native_pty_system, CommandBuilder, PtyPair, PtySize};
-use super::monarch_windows::MiniWindow;
-use tauri::{AppHandle, Manager};
-use std::sync::{Arc, Mutex};
-use tauri::{async_runtime::Mutex as AsyncMutex, State};
 use std::io::{BufRead, BufReader, Read, Write};
-
-static mut HANDLE: Option<Arc<Mutex<AppHandle>>> = None;
+use std::sync::Arc;
+use tauri::async_runtime::Mutex as AsyncMutex;
+use tauri::{AppHandle, Manager};
 
 pub struct AppState {
     pty_pair: Arc<AsyncMutex<PtyPair>>,
@@ -23,54 +23,15 @@ pub struct AppState {
     reader: Arc<AsyncMutex<BufReader<Box<dyn Read + Send>>>>,
 }
 
-/// Initializes the Monarch Terminal instance.
-pub async fn init_monarch_terminal(handle: &AppHandle) -> Result<()> {
-    let term_window: MiniWindow = MiniWindow::new("terminal", "/src/terminal/terminal.html", 854.0, 480.0);
-    term_window.build_window(handle).await.with_context(|| "monarch_terminal::init_monarch_terminal() -> ")?;
-    term_window.hide_window(handle).with_context(|| "monarch_terminal::init_monarch_terminal() -> ")?;
-
-    let w = handle.get_window("terminal").unwrap();
-    w.set_closable(false)?;
-
-    unsafe {
-        HANDLE = Some(Arc::new(Mutex::new(handle.clone())));
-    }
-
-    Ok(())
-}
+static mut APPSTATE: Lazy<Option<AppState>> = Lazy::<Option<AppState>>::new(|| None);
 
 /// Run a command in a new process and display to the user in a custom terminal window.
-pub async fn run_in_terminal(command: &str) -> Result<()> {
-    let handle = unsafe {
-        match &HANDLE {
-            Some(h) => h,
-            None => {
-                bail!("monarch_terminal::run_in_terminal() | Err: HANDLE is None!")
-            }
-        } 
-    };
+pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
+    info!("Running command in terminal: \n{command}");
 
-    let locked_handle = handle.lock().unwrap();
-
-    let w = locked_handle.get_window("terminal");
-
-    if w.is_none() {
-        error!("monarch_terminal::run_in_terminal() handle.get_window() returned None! Attempting to re-init monarch terminal...");
-        bail!("monarch_terminal::run_in_terminal() handle.get_window() returned None, even after reinitializing monarch terminal!")
-    }
-    
-    w.clone().unwrap().show().with_context(|| "monarch_terminal::run_in_terminal() Failed to run window.show() | Err: ")?;
-
-    std::thread::sleep(std::time::Duration::from_secs(3));
-
-    w.unwrap().hide().with_context(|| "monarch_terminal::run_in_terminal() Failed to run window.show() | Err: ")?;
-    
-
-    /*
     let pty_system = native_pty_system();
-
-    let mut pair = pty_system.openpty(PtySize {
-        rows: 60,
+    let pair = pty_system.openpty(PtySize {
+        rows: 80,
         cols: 160,
         // Not all systems support pixel_width, pixel_height,
         // but it is good practice to set it to something
@@ -81,66 +42,97 @@ pub async fn run_in_terminal(command: &str) -> Result<()> {
         pixel_height: 0,
     })?;
 
+    // Read and parse output from the pty with reader
+    let reader = pair.master.try_clone_reader().unwrap();
+    let writer = pair.master.take_writer().unwrap();
+
     // Spawn a shell into the pty
     let mut cmd = CommandBuilder::new_default_prog();
     let shell = cmd.get_shell();
 
     cmd = CommandBuilder::new(shell);
     cmd.args(vec!["-c", command]);
-    let child = pair
+    let mut child = pair
         .slave
         .spawn_command(cmd)
         .with_context(|| "Failed to spawn child commnad! | Err: ")?;
 
-    // Read and parse output from the pty with reader
-    let mut reader = pair.master.try_clone_reader()?;
+    unsafe {
+        *APPSTATE = Some(AppState {
+            pty_pair: Arc::new(AsyncMutex::new(pair)),
+            writer: Arc::new(AsyncMutex::new(writer)),
+            reader: Arc::new(AsyncMutex::new(BufReader::new(reader))),
+        });
+    };
 
-    // Send data to the pty by writing to the master
-    writeln!(pair.master.take_writer()?, "ls -l\r\n")?;
+    if let Err(e) = create_terminal_window(handle).await {
+        error!("monarch_terminal::run_in_terminal() -> {e}");
+    }
 
-    */
+    child
+        .wait()
+        .with_context(|| "Something went wrong while waiting for child process to finish!")?;
+
+    if let Err(e) = close_terminal_window(handle).await {
+        error!("monarch_terminal::run_in_terminal() -> {e}");
+    }
+
     Ok(())
 }
 
-/*
-* TODO: Figure out why tauri-temrinals (working()) function does not
-* get mutable borrow issues, while read_from_pty() does.
-*/
+/// Creates a new Monarch terminal window, meant to be called from frontend.
+pub async fn create_terminal_window(handle: &AppHandle) -> Result<()> {
+    let term_window: MiniWindow =
+        MiniWindow::new("terminal", "/src/terminal/terminal.html", 854.0, 480.0);
+    term_window
+        .build_window(handle)
+        .await
+        .with_context(|| "monarch_terminal::run_in_terminal() -> ")?;
 
-pub async fn read_from_pty(state: State<'_, AppState>) -> Result<String, ()> {
-    Ok(String::new())
+    let w_opt = handle.get_window("terminal");
+    let w = match w_opt {
+        Some(w) => w,
+        None => {
+            error!("monarch_terminal::run_in_terminal() handle.get_window() returned None!");
+            bail!("monarch_terminal::run_in_terminal() handle.get_window() returned None!")
+        }
+    };
+
+    w.set_closable(false)?;
+    w.show().with_context(|| "monarch_terminal::run_in_terminal() Failed to run window.show() after building terminal window! | Err: ")?;
+
+    Ok(())
 }
-/* 
-pub async fn read_from_pty(state: State<'_, AppState>) -> Result<String, ()> {
-    let mut reader = state.reader.lock().await;
 
-    // Read all available text
-    // .with_context(|| "monarch_terminal::read_from_pty() Failed to fill buffer! | Err: ")
-    let data = reader.fill_buf().map_err(|_| ())?;
-
-    // Send te data to the webview if necessary
-    //.with_context(|| "monarch_terminal::read_from_pty() Failed to send data to webview! | Err: ") 
-    if data.len() > 0 {
-        std::str::from_utf8(data)
-            .map(|v| Some(v.to_string())).map_err(|_| ())?;
-  }
-
-    reader.consume(data.len());
-
-    //.with_context(|| "monarch_terminal::read_from_pty() Failed to parse bytes as String! | Err: ") 
-    let data_str = String::from_utf8(data.to_vec()).unwrap();
-    Ok(data_str)
+/// Close terminal window. Meant to be called from frontend.
+pub async fn close_terminal_window(handle: &AppHandle) -> Result<()> {
+    let w_opt = handle.get_window("terminal");
+    match w_opt {
+        Some(w) => {
+            w.close().with_context(|| "monarch_terminal::run_in_terminal() Failed to run window.hide() after child process exited! | Err: ")?;
+            Ok(())
+        }
+        None => {
+            bail!("monarch_terminal::run_in_terminal() No window called 'terminal' found! Must not exist. | Err: handle.get_window(\"terminal\") returned None!")
+        }
+    }
 }
-*/
 
-async fn working(state: State<'_, AppState>) -> Result<Option<String>, ()> {
+pub async fn read_from_pty() -> Result<Option<String>, ()> {
+    unsafe {
+        if (*APPSTATE).is_none() {
+            return Err(());
+        }
+    }
+    let state = unsafe { (*APPSTATE).as_ref().unwrap() };
+
     let mut reader = state.reader.lock().await;
     let data = {
         // Read all available text
         let data = reader.fill_buf().map_err(|_| ())?;
 
         // Send te data to the webview if necessary
-        if data.len() > 0 {
+        if !data.is_empty() {
             std::str::from_utf8(data)
                 .map(|v| Some(v.to_string()))
                 .map_err(|_| ())?
@@ -155,3 +147,15 @@ async fn working(state: State<'_, AppState>) -> Result<Option<String>, ()> {
 
     Ok(data)
 }
+
+pub async fn write_to_pty(data: &str) -> Result<(), ()> {
+    unsafe {
+        if (*APPSTATE).is_none() {
+            return Err(());
+        }
+    }
+    let state = unsafe { (*APPSTATE).as_ref().unwrap() };
+
+    write!(state.writer.lock().await, "{}", data).map_err(|_| ())
+}
+
