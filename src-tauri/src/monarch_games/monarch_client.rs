@@ -111,6 +111,12 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     }
 
     let mut steam_games: Vec<MonarchGame> = steam_client::get_library().await;
+    steam_games = steam_games
+        .iter()
+        .filter(|game| !games.contains(game))
+        .cloned()
+        .collect();
+
     games.append(&mut steam_games);
 
     if let Err(e) = games_library::write_games(games.clone()) {
