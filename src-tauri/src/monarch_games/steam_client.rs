@@ -11,7 +11,7 @@ use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home, path_exists,
 };
-use crate::monarch_utils::monarch_settings::get_settings_state;
+use crate::monarch_utils::monarch_settings::{get_settings_state, LauncherSettings};
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -72,7 +72,11 @@ pub fn launch_game(id: &str) -> Result<()> {
 
 /// Attemps to launch SteamCMD game.
 pub async fn launch_cmd_game(handle: &AppHandle, id: &str) -> Result<()> {
-    let args: Vec<&str> = vec!["+app_launch", id];
+    let settings = get_settings_state();
+    let steam_settings = settings.steam;
+    let login_arg = get_steamcmd_login(&steam_settings)?;
+
+    let args: Vec<&str> = vec!["+@ShutdownOnFailedCommand 1", &login_arg, "+app_launch", id];
     steam::steamcmd_command(handle, args)
         .await
         .with_context(|| "steam_client::launch_cmd_game() -> ")
@@ -88,38 +92,18 @@ pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<M
         bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
     }
 
-    let username: String = steam_settings.username;
-    let password: String =
-        get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
-
     let mut install_dir: PathBuf = PathBuf::from(settings.monarch.game_folder);
     let sanitized_name = name.replace(" ", "\\ ");
     install_dir.push(sanitized_name);
 
     // Directory argument
-    let mut install_dir_arg: String = String::from("+force_install_dir ");
-    install_dir_arg.push_str(&install_dir.to_string_lossy());
+    // TODO: Figure out why force_install_dir wipes libraryfolders.vdf
+    //let mut install_dir_arg: String = String::from("+force_install_dir ");
+    //install_dir_arg.push_str(&install_dir.to_string_lossy());
 
     // Login argument
-    let mut login_arg = String::from("+login ");
-    login_arg.push_str(&username);
-    login_arg.push(' ');
-    login_arg.push_str(&password);
-
-    // During testing a local env var was used to store steam secret for TOTP
-    // TODO: REPLACE std::env::var with a call to keystore to get the shared secret
-    if let Ok(secret) = std::env::var("SHARED_SECRET") {
-        if !secret.is_empty() {
-            info!("Monarch TOTP detected!");
-            let totp = generate(&secret).unwrap();
-            login_arg.push(' ');
-            login_arg.push_str(&totp);
-        } else {
-            info!("No Monarch TOTP detected! Might require mobile 2fa...");
-        }
-    } else {
-        info!("No Monarch TOTP detected! Might require mobile 2fa...");
-    }
+    let login_arg =
+        get_steamcmd_login(&steam_settings).with_context(|| "steam_client::download_game() -> ")?;
 
     // App ID argument
     let mut download_arg = String::from("+app_update ");
@@ -127,7 +111,12 @@ pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<M
     download_arg.push_str(" validate");
 
     // Build the command as a string with arguments in order
-    let command: Vec<&str> = vec![&install_dir_arg, &login_arg, &download_arg, "+quit"];
+    let command: Vec<&str> = vec![
+        "+@ShutdownOnFailedCommand 1",
+        &login_arg,
+        &download_arg,
+        "+quit",
+    ];
 
     // TODO: Wait for Steamcmd to return
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
@@ -148,8 +137,14 @@ pub async fn uninstall_game(handle: &AppHandle, id: &str) -> Result<()> {
         bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
     }
 
+    let login_arg = get_steamcmd_login(&steam_settings)?;
     let remove_arg: String = format!("+app_uninstall {id}");
-    let command: Vec<&str> = vec![&remove_arg, "+quit"];
+    let command: Vec<&str> = vec![
+        "+@ShutdownOnFailedCommand 1",
+        &login_arg,
+        &remove_arg,
+        "+quit",
+    ];
 
     steam::steamcmd_command(handle, command)
         .await
@@ -181,6 +176,37 @@ pub async fn parse_steam_ids(ids: &[String], is_cache: bool) -> Vec<MonarchGame>
     }
 
     games
+}
+
+/// Since login is used for multiple commands it gets
+/// abstracted to it's own function.
+fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
+    let username: &str = &steam_settings.username;
+    let password: String =
+        get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
+
+    // Login argument
+    let mut login_arg = String::from("+login ");
+    login_arg.push_str(username);
+    login_arg.push(' ');
+    login_arg.push_str(&password);
+
+    // During testing a local env var was used to store steam secret for TOTP
+    // TODO: REPLACE std::env::var with a call to keystore to get the shared secret
+    if let Ok(secret) = std::env::var("SHARED_SECRET") {
+        if !secret.is_empty() {
+            info!("Monarch TOTP detected!");
+            let totp = generate(&secret).unwrap();
+            login_arg.push(' ');
+            login_arg.push_str(&totp);
+        } else {
+            info!("No Monarch TOTP detected! Might require mobile 2fa...");
+        }
+    } else {
+        info!("No Monarch TOTP detected! Might require mobile 2fa...");
+    }
+
+    Ok(login_arg)
 }
 
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.
