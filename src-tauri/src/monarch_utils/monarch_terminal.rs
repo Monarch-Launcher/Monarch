@@ -47,11 +47,19 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
     let writer = pair.master.take_writer().unwrap();
 
     // Spawn a shell into the pty
-    let mut cmd = CommandBuilder::new_default_prog();
-    let shell = cmd.get_shell();
+    let shell = if cfg!(windows) {
+        info!("Windows detected, using shell: powershell.exe");
+        String::from("powershell.exe")
+    } else {
+        let cmd = CommandBuilder::new_default_prog();
+        let shell = cmd.get_shell();
 
-    cmd = CommandBuilder::new(shell);
-    cmd.args(vec!["-c", command]);
+        info!("Detecting OS shell: {shell}");
+        shell
+    };
+
+    let mut cmd = CommandBuilder::new(shell);
+    cmd.arg(command);
     let mut child = pair
         .slave
         .spawn_command(cmd)

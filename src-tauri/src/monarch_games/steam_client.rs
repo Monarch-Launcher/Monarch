@@ -36,8 +36,8 @@ pub fn is_installed() -> bool {
 
 #[cfg(windows)]
 /// Downloads and installs SteamCMD on users computer.
-pub async fn download_and_install() -> Result<()> {
-    steam::install_steamcmd()
+pub async fn download_and_install(handle: &AppHandle) -> Result<()> {
+    steam::install_steamcmd(handle)
         .await
         .context("steam_client::download_and_install() failed! | Err")
 }
