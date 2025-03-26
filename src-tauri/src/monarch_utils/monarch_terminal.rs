@@ -18,7 +18,7 @@ use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::{AppHandle, Manager};
 
 pub struct AppState {
-    pty_pair: Arc<AsyncMutex<PtyPair>>,
+    _pty_pair: Arc<AsyncMutex<PtyPair>>,
     writer: Arc<AsyncMutex<Box<dyn Write + Send>>>,
     reader: Arc<AsyncMutex<BufReader<Box<dyn Read + Send>>>>,
 }
@@ -67,7 +67,7 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
 
     unsafe {
         *APPSTATE = Some(AppState {
-            pty_pair: Arc::new(AsyncMutex::new(pair)),
+            _pty_pair: Arc::new(AsyncMutex::new(pair)),
             writer: Arc::new(AsyncMutex::new(writer)),
             reader: Arc::new(AsyncMutex::new(BufReader::new(reader))),
         });

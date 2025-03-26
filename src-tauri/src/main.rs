@@ -98,7 +98,7 @@ fn main() {
     init();
 
     // Start Monarch
-    monarch.run(|app_handle, event| {
+    monarch.run(|_app_handle, _event| {
         // Monarch running...
     });
 }
