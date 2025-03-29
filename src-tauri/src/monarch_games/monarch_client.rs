@@ -77,7 +77,10 @@ pub async fn download_game(
 /// Remove an installed game
 pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &str) -> Result<()> {
     match platform {
-        "steam" => steam_client::uninstall_game(handle, platform_id)
+        "steam" => {
+            bail!("monarch_client::uninstall_game() | Err: Monarch currently does not support uninstalling games from the steam desktop client!")
+        }
+        "steamcmd" => steam_client::uninstall_game(handle, platform_id)
             .await
             .with_context(|| "monarch_client::uninstall_game() -> "),
         &_ => bail!("monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )")
