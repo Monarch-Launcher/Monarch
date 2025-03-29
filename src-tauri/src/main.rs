@@ -18,7 +18,7 @@ use monarch_library::commands::{
 use monarch_utils::commands::{
     async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, delete_password,
     get_settings, hide_quicklaunch, init_quicklaunch, open_logs, open_terminal,
-    quicklaunch_is_enabled, revert_settings, set_password, set_settings, show_quicklaunch,
+    quicklaunch_is_enabled, revert_settings, set_password, set_settings, show_quicklaunch, set_secret, delete_secret
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
@@ -71,7 +71,9 @@ fn main() {
             async_read_from_pty,
             async_write_to_pty,
             open_terminal,
-            close_terminal
+            close_terminal,
+            set_secret,
+            delete_secret,
         ])
         .on_window_event(|event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {

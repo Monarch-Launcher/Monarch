@@ -186,6 +186,64 @@ pub fn delete_password(platform: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+/// Set secret in secure store
+pub fn set_secret(platform: String, secret: String) -> Result<(), String> {
+    let mut settings: Settings = get_settings_state();
+    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
+        "steam" => &mut settings.steam,
+        "epic" => &mut settings.epic,
+        _ => {
+            error!(
+                "monarch_utils::commands::set_password() | Err: Invalid platform: {}",
+                platform
+            );
+            return Err(String::from(
+                "Trying to write user credentials for unknown platform.",
+            ));
+        }
+    };
+
+    if let Err(e) = set_credentials(&format!("{platform}-secret"), &launcher_settings.username, &secret) {
+        error!(
+            "monarch_utils::commands::set_secret() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Something went wrong setting new secret!"));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+/// Delete secret in secure store
+pub fn delete_secret(platform: String) -> Result<(), String> {
+    let mut settings: Settings = get_settings_state();
+    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
+        "steam" => &mut settings.steam,
+        "epic" => &mut settings.epic,
+        _ => {
+            error!(
+                "monarch_utils::commands::delete_secret() | Err: Invalid platform: {}",
+                platform
+            );
+            return Err(String::from(
+                "Trying to write user credentials for unknown platform.",
+            ));
+        }
+    };
+
+    if let Err(e) = delete_credentials(&format!("{platform}-secret"), &launcher_settings.username) {
+        error!(
+            "monarch_utils::commands::delete_password() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from(
+            "Something went wrong while deleting secret!",
+        ));
+    }
+    Ok(())
+}
+
 /*
 * Quicklaunch related commands
 */

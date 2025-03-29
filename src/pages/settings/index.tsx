@@ -51,6 +51,7 @@ type FormValues = {
   settings: Settings;
   username: string;
   password: string;
+  secret: string;
 };
 
 const SettingsPage = () => {
@@ -63,6 +64,19 @@ const SettingsPage = () => {
       const { username, password } = values;
 
       await saveCredentials(username, password);
+    },
+    [updateSettings, saveCredentials],
+  );
+
+  const onSubmitSecret = React.useCallback(
+    async (values: FormValues) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { secret } = values;
+
+      await invoke('set_secret', {
+        platform: "steam",
+        secret: secret,
+      });
     },
     [updateSettings, saveCredentials],
   );
@@ -150,6 +164,21 @@ const SettingsPage = () => {
             Delete user
           </Button>
         </ButtonContainer>
+        <form onSubmit={handleSubmit(onSubmitSecret)}>
+          <FormContainer>
+            <Input
+              placeholder="Steam shared secret"
+              variant="filled"
+              type="password"
+              {...register('secret')}
+            />
+            <ButtonContainer>
+              <Button type="submit" variant="primary">
+                Save
+              </Button>
+            </ButtonContainer>
+          </FormContainer>
+        </form>
       </Section>
     </Page>
   );

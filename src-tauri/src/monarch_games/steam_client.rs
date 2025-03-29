@@ -76,7 +76,7 @@ pub async fn launch_cmd_game(handle: &AppHandle, id: &str) -> Result<()> {
     let steam_settings = settings.steam;
     let login_arg = get_steamcmd_login(&steam_settings)?;
 
-    let args: Vec<&str> = vec!["+@ShutdownOnFailedCommand 1", &login_arg, "+app_launch", id];
+    let args: Vec<&str> = vec!["+@ShutdownOnFailedCommand 1", &login_arg, "+app_launch", id, "+quit"];
     steam::steamcmd_command(handle, args)
         .await
         .with_context(|| "steam_client::launch_cmd_game() -> ")
@@ -184,26 +184,30 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
     let username: &str = &steam_settings.username;
     let password: String =
         get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
-
+    
     // Login argument
     let mut login_arg = String::from("+login ");
     login_arg.push_str(username);
     login_arg.push(' ');
     login_arg.push_str(&password);
 
-    // During testing a local env var was used to store steam secret for TOTP
-    // TODO: REPLACE std::env::var with a call to keystore to get the shared secret
-    if let Ok(secret) = std::env::var("SHARED_SECRET") {
-        if !secret.is_empty() {
-            info!("Monarch TOTP detected!");
-            let totp = generate(&secret).unwrap();
-            login_arg.push(' ');
-            login_arg.push_str(&totp);
-        } else {
-            info!("No Monarch TOTP detected! Might require mobile 2fa...");
+    // Current solution is to store the secret in keystore, which essentially
+    // disables the point of 2fa, at least on computers with Monarch.
+    // TODO: Look into other possible solutions for Steamgaurd.
+    match get_password("steam-secret", username) {
+        Ok(secret) =>  {
+            if !secret.is_empty() {
+                info!("Steam TOTP detected in Monarch!");
+                let totp = generate(&secret).unwrap();
+                login_arg.push(' ');
+                login_arg.push_str(&totp);
+            } else {
+                warn!("Steam TOTP was found! However the string was empty.");
+            }
+        } Err(e) => {
+            error!("steam_client::get_steamcmd_login() Did not find steam secret. | Err: {e}");
+            warn!("No Steam TOTP detected! Might require mobile 2fa.");
         }
-    } else {
-        info!("No Monarch TOTP detected! Might require mobile 2fa...");
     }
 
     Ok(login_arg)
