@@ -97,8 +97,6 @@ pub async fn create_terminal_window(handle: &AppHandle) -> Result<()> {
             bail!("monarch_terminal::run_in_terminal() handle.get_window() returned None!")
         }
     };
-
-    w.set_closable(false)?;
     w.show().with_context(|| "monarch_terminal::run_in_terminal() Failed to run window.show() after building terminal window! | Err: ")?;
 
     Ok(())
@@ -158,4 +156,3 @@ pub async fn write_to_pty(data: &str) -> Result<(), ()> {
 
     write!(state.writer.lock().await, "{}", data).map_err(|_| ())
 }
-
