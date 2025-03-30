@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use log::{error, warn};
+use log::error;
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
 
@@ -35,7 +35,6 @@ impl MiniWindow {
             .always_on_top(true)
             .center()
             .decorations(true)
-            .focused(true)
             .skip_taskbar(false)
             .visible(true)
             .title(&self.name)
@@ -47,16 +46,10 @@ impl MiniWindow {
             PhysicalSize::new((self.width * scale) as u32, (self.height * scale) as u32);
 
         if let Err(e) = window.set_size(size) {
-            error!(
-                "monarch_windows::build_window() Failed to set new window size! | Err: {:#}",
-                e
-            );
+            error!("monarch_windows::build_window() Failed to set new window size! | Err: {e}");
         }
         if let Err(e) = window.center() {
-            error!(
-                "monarch_windows::build_window() Failed to center new window! | Err: {:#}",
-                e
-            );
+            error!("monarch_windows::build_window() Failed to center new window! | Err: {e}");
         }
 
         Ok(())
@@ -125,38 +118,6 @@ impl MiniWindow {
 
         Ok(())
     }
-}
-
-/// Runs specified command in OS terminal.
-///
-/// This function is OS agnostic, however it currently requires gnome-terminal in Linux.
-/// TODO: Replace hard-coded gnome-terminal with something more general under Linux.
-///
-/// This function may contain code injection vaulnerabilities. In that case they will be identified
-/// and patched later. It should be fine for now as users can't run arbitrary code through it yet,
-/// only Monarch runs specific commands through it. Either they are hard-coded or they are run
-/// through another program like Steamcmd, which should perform it's own sanitizing.
-pub fn run_in_terminal(command: &str) -> Result<()> {
-    /*
-    #[cfg(target_os = "linux")]
-    let mut child = Command::new("gnome-terminal")
-        .args(["--", "sh", "-c", &format!(r#"{}"#, command)])
-        .spawn()
-        .with_context(|| format!("monarch_windows::run_in_terminal() Failed running: {command} in terminal! | Err"))?;
-
-    let output = child.wait_with_output().with_context(|| "monarch_windows::run_in_terminal() Encountered error while waiting for child process to finish! | Err")?;
-    let cmd_output = if !output.stdout.is_empty() {
-        String::from_utf8(output.stdout).unwrap()
-    } else {
-        String::from_utf8(output.stderr).unwrap()
-    };
-
-    info!("monarch_windows::run_in_terminal() Command finished with output: {:?}", cmd_output);
-    Ok(())
-    */
-
-    warn!("monarch_windows::run_in_terminal() Function is still WIP! Nothing has been run.");
-    Ok(())
 }
 
 // Returns scale to use based on monitor resolution

@@ -87,11 +87,20 @@ const SettingsProvider = ({ children }: Props) => {
   const saveCredentials = React.useCallback(
     async (username: string, password: string) => {
       try {
-        await invoke('set_password', {
-          platform: "steam",
-          username: username,
-          password: password,
-        });
+        if (username == "secret") {
+          await invoke('set_password', {
+            platform: "steamsecret",
+            username: username,
+            password: password,
+          });
+        } else {
+          await invoke('set_password', {
+            platform: "steam",
+            username: username,
+            password: password,
+          });
+        }
+        
       } catch (err) {
         await dialog.message(`An error has occured: ${err}`, {
           title: 'Error',

@@ -1,6 +1,7 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use log::{error, info};
 use reqwest::Response;
+use tauri::AppHandle;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -11,6 +12,7 @@ use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
 use crate::monarch_utils::monarch_fs::{create_dir, path_exists};
 use crate::monarch_utils::monarch_vdf;
 use crate::monarch_utils::monarch_winreg::is_installed;
+use crate::monarch_utils::monarch_terminal::run_in_terminal;
 
 /*
 * SteamCMD related code.
@@ -19,7 +21,7 @@ use crate::monarch_utils::monarch_winreg::is_installed;
 */
 
 /// Installs SteamCMD for user in .monarch
-pub async fn install_steamcmd() -> Result<()> {
+pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
     let steamcmd_path: PathBuf = get_steamcmd_dir();
 
     // Verify that steamcmd path has to be created
@@ -29,74 +31,41 @@ pub async fn install_steamcmd() -> Result<()> {
 
     // Generate filenames
     let steamcmd_zip: PathBuf = steamcmd_path.join("steamcmd.zip");
-    let steamcmd_exe: PathBuf = steamcmd_path.join("steamcmd.exe");
+    let steamcmd_folder: PathBuf = steamcmd_path.join("steamcmd");
 
     // Download steamcmd
     let download_url: &str = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip";
     let response: Response = reqwest::get(download_url).await.with_context(|| format!("windows::steam::install_steamcmd() error occured running reqwest::get({}) | Err: ", download_url))?;
     let mut file: File = File::create(&steamcmd_zip)?;
-    let content: String = response.text().await.with_context(|| "windows::steam::install_steamcmd() error while reading response.text()! | Err")?;
-    file.write_all(content.as_bytes()).with_context(|| format!("windows::steam::install_steamcmd() error writing content to file: {} | Err", steamcmd_zip.display()))?;
+    let bytes = response.bytes().await.with_context(|| "windows::steam::install_steamcmd() error while reading response.bytes()! | Err")?;
+    file.write_all(&bytes).with_context(|| format!("windows::steam::install_steamcmd() error writing content to file: {} | Err", steamcmd_zip.display()))?;
 
     // Unzip and copy steamcmd to correct directory
-    Command::new("powershell.exe")
-        .arg("Expand-Archive -LiteralPath")
-        .arg(&steamcmd_zip)
-        .arg("-DestinationPath")
-        .arg(&steamcmd_exe)
-        .output()
-        .with_context(|| format!(
-            "windows::steam::install_steamcmd() failed! Failed to unzip {} | Err",
-            steamcmd_zip.display()
-        ))?;
+    let unzip_args = vec!["Expand-Archive", "-LiteralPath", steamcmd_zip.to_str().unwrap(), "-DestinationPath", steamcmd_folder.to_str().unwrap()];
+    let unzip_args_string: String = unzip_args.iter().map(|arg| format!("{arg} ")).collect::<String>();
+
+    run_in_terminal(handle, &unzip_args_string).await.with_context(|| "windows::steam::install_steamcmd() -> ")?;
 
     Ok(())
 }
 
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
-pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
+pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir(); 
+    path.push("steamcmd");
     path.push("steamcmd.exe");
+    let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    match Command::new("powershell.exe")
-        .arg("-NoProfile")
-        .arg("-Command")
-        .arg(format!(
-            "Start-Process {:?} -ArgumentList {} -WindowStyle Normal -Wait",
-            &path,
-            args.iter()
-                .map(|arg| format!("'{}'", arg))
-                .collect::<Vec<_>>()
-                .join(",")
-        ))
-        .spawn()
-    {
-        Ok(mut child) => {
-            // Wait for child process (SteamCMD) to finish and return Result
-            child.wait().with_context(|| "windows::steam::steamcmd_command() failed! Error returned when running SteamCMD child process! | Err")?;
-            Ok(())
-        }
-        Err(e) => {
-            // Anonymize login info in logs.
-            let args_string: String = args
-                .iter()
-                .map(|arg| {
-                    if arg.contains("login") {
-                        format!("+login username password ")
-                    } else {
-                        format!("{} ", arg)
-                    }
-                })
-                .collect::<String>();
+    run_in_terminal(handle, &format!(
+        "{} {}",
+        path.display(),
+        args_string
+    ))
+    .await
+    .with_context(|| "windows::steam::steamcmd_command() -> ")?;
 
-            info!("The error bellow has replaced your login info for privacy reasons.");
-
-            let mut cmd_str: String = path.display().to_string();
-            cmd_str.push_str(&args_string);
-            bail!("windows::steam::steamcmd_command() Failed to run {cmd_str} | Err {e}", )
-        }
-    }
+    Ok(())
 }
 
 /*

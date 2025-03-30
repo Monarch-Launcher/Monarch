@@ -1,7 +1,9 @@
 use anyhow::{bail, Context, Result};
-use log::{error, warn};
+use log::{error, info, warn};
 use reqwest;
+use simple_steam_totp::generate;
 use std::path::PathBuf;
+use tauri::AppHandle;
 use tokio::task;
 
 use super::monarchgame::{MonarchGame, MonarchWebGame};
@@ -9,7 +11,7 @@ use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home, path_exists,
 };
-use crate::monarch_utils::monarch_settings::get_settings_state;
+use crate::monarch_utils::monarch_settings::{get_settings_state, LauncherSettings};
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -34,18 +36,26 @@ pub fn is_installed() -> bool {
 
 #[cfg(windows)]
 /// Downloads and installs SteamCMD on users computer.
-pub async fn download_and_install() -> Result<()> {
-    steam::install_steamcmd()
+pub async fn download_and_install(handle: &AppHandle) -> Result<()> {
+    steam::install_steamcmd(handle)
         .await
         .context("steam_client::download_and_install() failed! | Err")
 }
 
 #[cfg(not(windows))]
 /// Downloads and installs SteamCMD on users computer.
-pub async fn download_and_install() -> Result<()> {
-    steam::install_steamcmd().with_context(|| "steam_client::download_and_install() -> ")?;
-    steam::steamcmd_command(vec!["+set_steam_guard_code"])
+pub async fn download_and_install(handle: &AppHandle) -> Result<()> {
+    steam::install_steamcmd(handle)
+        .await
         .with_context(|| "steam_client::download_and_install() -> ")
+    /*
+    * This code was meant to be a solution to not require steam guard code
+    * on every game download. Does not appear to work. Further research into
+    * SteamCMD is required.
+    steam::steamcmd_command(vec!["+set_steam_guard_code"])
+        .await
+        .with_context(|| "steam_client::download_and_install() -> ")
+    */
 }
 
 /// Returns games installed by Steam Client.
@@ -61,13 +71,19 @@ pub fn launch_game(id: &str) -> Result<()> {
 }
 
 /// Attemps to launch SteamCMD game.
-pub fn launch_cmd_game(id: &str) -> Result<()> {
-    let args: Vec<&str> = vec!["+app_launch", id];
-    steam::steamcmd_command(args).with_context(|| "steam_client::launch_cmd_game() -> ")
+pub async fn launch_cmd_game(handle: &AppHandle, id: &str) -> Result<()> {
+    let settings = get_settings_state();
+    let steam_settings = settings.steam;
+    let login_arg = get_steamcmd_login(&steam_settings)?;
+
+    let args: Vec<&str> = vec!["+@ShutdownOnFailedCommand 1", &login_arg, "+app_launch", id, "+quit"];
+    steam::steamcmd_command(handle, args)
+        .await
+        .with_context(|| "steam_client::launch_cmd_game() -> ")
 }
 
 /// Download a Steam game via Monarch and SteamCMD.
-pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
+pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<MonarchGame> {
     let settings = get_settings_state();
     let steam_settings = settings.steam;
 
@@ -76,22 +92,18 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
         bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
     }
 
-    let username: String = steam_settings.username;
-    let password: String =
-        get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
-
     let mut install_dir: PathBuf = PathBuf::from(settings.monarch.game_folder);
-    install_dir.push(name);
+    let sanitized_name = name.replace(" ", "\\ ");
+    install_dir.push(sanitized_name);
 
     // Directory argument
-    let mut install_dir_arg: String = String::from("+force_install_dir ");
-    install_dir_arg.push_str(&install_dir.to_string_lossy());
+    // TODO: Figure out why force_install_dir wipes libraryfolders.vdf
+    //let mut install_dir_arg: String = String::from("+force_install_dir ");
+    //install_dir_arg.push_str(&install_dir.to_string_lossy());
 
     // Login argument
-    let mut login_arg = String::from("+login ");
-    login_arg.push_str(&username);
-    login_arg.push(' ');
-    login_arg.push_str(&password);
+    let login_arg =
+        get_steamcmd_login(&steam_settings).with_context(|| "steam_client::download_game() -> ")?;
 
     // App ID argument
     let mut download_arg = String::from("+app_update ");
@@ -99,11 +111,18 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
     download_arg.push_str(" validate");
 
     // Build the command as a string with arguments in order
-    let command: Vec<&str> = vec![&install_dir_arg, &login_arg, &download_arg, "+quit"];
+    let command: Vec<&str> = vec![
+        "+@ShutdownOnFailedCommand 1",
+        &login_arg,
+        &download_arg,
+        "+quit",
+    ];
 
     // TODO: Wait for Steamcmd to return
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
-    steam::steamcmd_command(command).with_context(|| "steam_client::download_game() -> ")?;
+    steam::steamcmd_command(handle, command)
+        .await
+        .with_context(|| "steam_client::download_game() -> ")?;
 
     let mut monarchgame: MonarchGame = parse_steam_ids(&[String::from(id)], false).await[0].clone();
     monarchgame.platform = "steamcmd".to_string();
@@ -111,17 +130,25 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
 }
 
 /// Uninstall a Steam game via SteamCMD
-pub async fn uninstall_game(id: &str) -> Result<()> {
+pub async fn uninstall_game(handle: &AppHandle, id: &str) -> Result<()> {
     let steam_settings = get_settings_state().steam;
     if !steam_settings.manage {
         warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
         bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
     }
 
+    let login_arg = get_steamcmd_login(&steam_settings)?;
     let remove_arg: String = format!("+app_uninstall {id}");
-    let command: Vec<&str> = vec![&remove_arg, "+quit"];
+    let command: Vec<&str> = vec![
+        "+@ShutdownOnFailedCommand 1",
+        &login_arg,
+        &remove_arg,
+        "+quit",
+    ];
 
-    steam::steamcmd_command(command).with_context(|| "steam_client::uninstall_game() -> ")
+    steam::steamcmd_command(handle, command)
+        .await
+        .with_context(|| "steam_client::uninstall_game() -> ")
 }
 
 /// Returns path to Monarchs installed version of SteamCMD
@@ -148,7 +175,42 @@ pub async fn parse_steam_ids(ids: &[String], is_cache: bool) -> Vec<MonarchGame>
         }
     }
 
-    return games;
+    games
+}
+
+/// Since login is used for multiple commands it gets
+/// abstracted to it's own function.
+fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
+    let username: &str = &steam_settings.username;
+    let password: String =
+        get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
+    
+    // Login argument
+    let mut login_arg = String::from("+login ");
+    login_arg.push_str(username);
+    login_arg.push(' ');
+    login_arg.push_str(&password);
+
+    // Current solution is to store the secret in keystore, which essentially
+    // disables the point of 2fa, at least on computers with Monarch.
+    // TODO: Look into other possible solutions for Steamgaurd.
+    match get_password("steam-secret", username) {
+        Ok(secret) =>  {
+            if !secret.is_empty() {
+                info!("Steam TOTP detected in Monarch!");
+                let totp = generate(&secret).unwrap();
+                login_arg.push(' ');
+                login_arg.push_str(&totp);
+            } else {
+                warn!("Steam TOTP was found! However the string was empty.");
+            }
+        } Err(e) => {
+            error!("steam_client::get_steamcmd_login() Did not find steam secret. | Err: {e}");
+            warn!("No Steam TOTP detected! Might require mobile 2fa.");
+        }
+    }
+
+    Ok(login_arg)
 }
 
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.

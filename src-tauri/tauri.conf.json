@@ -34,7 +34,10 @@
       },
       "protocol": {
         "asset": true,
-        "assetScope": ["**/.local/share/monarch/resources/**/*.jpg", "**/Monarch/resources/**/*.jpg"]
+        "assetScope": [
+          "**/.local/share/monarch/resources/**/*.jpg",
+          "**/Monarch/resources/**/*.jpg"
+        ]
       }
     },
     "bundle": {
@@ -51,9 +54,19 @@
     },
     "security": {
       "csp": {
-        "default-src": ["'self'"],
-        "img-src": ["'self'", "data:", "asset:", "https://asset.localhost"],
-        "style-src": ["'self'", "'unsafe-inline'"]
+        "default-src": [
+          "'self'"
+        ],
+        "img-src": [
+          "'self'",
+          "data:",
+          "asset:",
+          "https://asset.localhost"
+        ],
+        "style-src": [
+          "'self'",
+          "'unsafe-inline'"
+        ]
       }
     },
     "updater": {

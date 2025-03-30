@@ -42,12 +42,13 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 #[tauri::command]
 /// Launch a game
 pub async fn launch_game(
+    handle: AppHandle,
     name: String,
     platform: String,
     platform_id: String,
 ) -> Result<(), String> {
     info!("Launching game: {name}");
-    if let Err(e) = monarch_client::launch_game(&platform, &platform_id).await {
+    if let Err(e) = monarch_client::launch_game(&handle, &platform, &platform_id).await {
         error!(
             "monarch_games::commands::launch_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -60,6 +61,7 @@ pub async fn launch_game(
 #[tauri::command]
 /// Tells Monarch to download specified game
 pub async fn download_game(
+    handle: AppHandle,
     name: String,
     platform: String,
     platform_id: String,
@@ -67,7 +69,7 @@ pub async fn download_game(
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
     info!("Installing: {name}");
-    match monarch_client::download_game(&name, &platform, &platform_id).await {
+    match monarch_client::download_game(&handle, &name, &platform, &platform_id).await {
         Ok(new_library) => Ok(new_library),
         Err(e) => {
             error!(
@@ -82,12 +84,13 @@ pub async fn download_game(
 #[tauri::command]
 /// Tells Monarch to remove specified game
 pub async fn remove_game(
+    handle: AppHandle,
     name: String,
     platform: String,
     platform_id: String,
 ) -> Result<(), String> {
     info!("Uninstalling: {name}");
-    if let Err(e) = monarch_client::uninstall_game(&platform, &platform_id).await {
+    if let Err(e) = monarch_client::uninstall_game(&handle, &platform, &platform_id).await {
         error!(
             "monarch_games::commands::remove_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

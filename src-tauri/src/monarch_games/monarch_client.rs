@@ -6,6 +6,7 @@ use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use log::{error, info, warn};
 use std::path::PathBuf;
+use tauri::AppHandle;
 
 /// Generates the default path where Monarch wants to store games.
 pub fn generate_default_folder() -> Result<PathBuf> {
@@ -21,10 +22,10 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 }
 
 /// Launches a game
-pub async fn launch_game(platform: &str, platform_id: &str) -> Result<()> {
+pub async fn launch_game(handle: &AppHandle, platform: &str, platform_id: &str) -> Result<()> {
     match platform {
         "steam" => steam_client::launch_game(platform_id),
-        "steamcmd" => steam_client::launch_cmd_game(platform_id),
+        "steamcmd" => steam_client::launch_cmd_game(handle, platform_id).await,
         &_ => {
             bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {platform} | Err: Invalid platform!")
         }
@@ -33,6 +34,7 @@ pub async fn launch_game(platform: &str, platform_id: &str) -> Result<()> {
 
 /// Downloads a game into default folder
 pub async fn download_game(
+    handle: &AppHandle,
     name: &str,
     platform: &str,
     platform_id: &str,
@@ -55,12 +57,12 @@ pub async fn download_game(
                 warn!("monarch_client::download_game() SteamCMD not found!");
                 info!("Attempting to download and install SteamCMD...");
 
-                steam_client::download_and_install()
+                steam_client::download_and_install(handle)
                     .await
                     .with_context(|| "monarch_client::download_game() -> ")?;
             }
 
-            steam_client::download_game(name, platform_id)
+            steam_client::download_game(handle, name, platform_id)
                 .await
                 .with_context(|| "monarch_client::download_game() -> ")?
         }
@@ -73,9 +75,12 @@ pub async fn download_game(
 }
 
 /// Remove an installed game
-pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<()> {
+pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &str) -> Result<()> {
     match platform {
-        "steam" => steam_client::uninstall_game(platform_id)
+        "steam" => {
+            bail!("monarch_client::uninstall_game() | Err: Monarch currently does not support uninstalling games from the steam desktop client!")
+        }
+        "steamcmd" => steam_client::uninstall_game(handle, platform_id)
             .await
             .with_context(|| "monarch_client::uninstall_game() -> "),
         &_ => bail!("monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )")
@@ -109,6 +114,12 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     }
 
     let mut steam_games: Vec<MonarchGame> = steam_client::get_library().await;
+    steam_games = steam_games
+        .iter()
+        .filter(|game| !games.contains(game))
+        .cloned()
+        .collect();
+
     games.append(&mut steam_games);
 
     if let Err(e) = games_library::write_games(games.clone()) {
@@ -141,7 +152,7 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
             &game.name,
             game.id,
             &game.platform,
-            "N/A",
+            &game.platform_id,
             &game.store_page,
             "N/A",
             &thumbnail_path,
@@ -152,4 +163,3 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
 
     monarch_games
 }
-

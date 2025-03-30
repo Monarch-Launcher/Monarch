@@ -1,4 +1,5 @@
 use log::error;
+use tauri::AppHandle;
 use crate::monarch_games::monarchgame::MonarchGame;
 use anyhow::{bail, Result};
 
@@ -7,12 +8,12 @@ use anyhow::{bail, Result};
 * Proper MacOS support is planned in the future.
 */
 
-pub fn install_steamcmd() -> Result<()> {
+pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
     error!("monarch_games::macos::install_steamcmd() MacOS not currently supported!");
     bail!("monarch_games::macos::install_steamcmd() MacOS not currently supported!");
 }
 
-pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
+pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()> {
     error!("monarch_games::macos::steamcmd_command() MacOS not currently supported!");
     bail!("monarch_games::macos::steamcmd_command() MacOS not currently supported!");
 }

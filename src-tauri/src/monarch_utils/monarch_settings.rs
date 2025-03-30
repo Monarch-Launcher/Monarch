@@ -111,7 +111,7 @@ pub fn set_settings_state(settings: Settings) {
 
 /// Function to do unsafe read of SETTINGS_STATE
 pub fn get_settings_state() -> Settings {
-    unsafe { SETTINGS_STATE.clone() }
+    unsafe { (*SETTINGS_STATE).clone() }
 }
 
 /*

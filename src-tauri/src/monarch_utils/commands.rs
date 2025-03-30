@@ -11,6 +11,9 @@ use super::monarch_settings::{
     get_settings_state, set_default_settings, set_settings_state, write_settings, LauncherSettings,
     Settings,
 };
+use super::monarch_terminal::{
+    close_terminal_window, create_terminal_window, read_from_pty, write_to_pty,
+};
 use super::monarch_windows::MiniWindow;
 
 #[cfg(target_os = "windows")]
@@ -151,7 +154,7 @@ pub fn set_password(platform: String, username: String, password: String) -> Res
 #[tauri::command]
 /// Delete password in secure store
 /// TODO: Better error handling if write_settings() fails.
-pub fn delete_password(platform: String, username: String) -> Result<(), String> {
+pub fn delete_password(platform: String) -> Result<(), String> {
     let mut settings: Settings = get_settings_state();
     let launcher_settings: &mut LauncherSettings = match platform.as_str() {
         "steam" => &mut settings.steam,
@@ -167,7 +170,7 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
         }
     };
 
-    if let Err(e) = delete_credentials(&platform, &username) {
+    if let Err(e) = delete_credentials(&platform, &launcher_settings.username) {
         error!(
             "monarch_utils::commands::delete_password() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -177,9 +180,67 @@ pub fn delete_password(platform: String, username: String) -> Result<(), String>
         ));
     }
 
-    launcher_settings.username = username;
+    launcher_settings.username = String::new();
     set_settings_state(settings.clone());
     write_settings(settings).unwrap();
+    Ok(())
+}
+
+#[tauri::command]
+/// Set secret in secure store
+pub fn set_secret(platform: String, secret: String) -> Result<(), String> {
+    let mut settings: Settings = get_settings_state();
+    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
+        "steam" => &mut settings.steam,
+        "epic" => &mut settings.epic,
+        _ => {
+            error!(
+                "monarch_utils::commands::set_password() | Err: Invalid platform: {}",
+                platform
+            );
+            return Err(String::from(
+                "Trying to write user credentials for unknown platform.",
+            ));
+        }
+    };
+
+    if let Err(e) = set_credentials(&format!("{platform}-secret"), &launcher_settings.username, &secret) {
+        error!(
+            "monarch_utils::commands::set_secret() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Something went wrong setting new secret!"));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+/// Delete secret in secure store
+pub fn delete_secret(platform: String) -> Result<(), String> {
+    let mut settings: Settings = get_settings_state();
+    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
+        "steam" => &mut settings.steam,
+        "epic" => &mut settings.epic,
+        _ => {
+            error!(
+                "monarch_utils::commands::delete_secret() | Err: Invalid platform: {}",
+                platform
+            );
+            return Err(String::from(
+                "Trying to write user credentials for unknown platform.",
+            ));
+        }
+    };
+
+    if let Err(e) = delete_credentials(&format!("{platform}-secret"), &launcher_settings.username) {
+        error!(
+            "monarch_utils::commands::delete_password() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from(
+            "Something went wrong while deleting secret!",
+        ));
+    }
     Ok(())
 }
 
@@ -278,6 +339,41 @@ pub fn hide_quicklaunch(handle: AppHandle) -> Result<(), String> {
 /*
 * Misc commands
 */
+
+#[tauri::command]
+/// Builds a new terminal window.
+/// Starts as hidden until Monarch runs commands.
+pub async fn open_terminal(handle: AppHandle) {
+    create_terminal_window(&handle).await.unwrap();
+}
+
+#[tauri::command]
+/// Builds a new terminal window.
+/// Starts as hidden until Monarch runs commands.
+pub async fn close_terminal(handle: AppHandle) {
+    close_terminal_window(&handle).await.unwrap();
+}
+
+#[tauri::command]
+/// Functions for frontend terminal window to read content
+/// of terminal command being run.
+pub async fn async_read_from_pty() -> Result<Option<String>, ()> {
+    match read_from_pty().await {
+        Ok(s) => Ok(s),
+        Err(_e) => {
+            error!("monarch_utils::commands::async_read_from_pty() Recieved error when reading pty! | Err:");
+            Err(())
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn async_write_to_pty(data: &str) -> Result<(), ()> {
+    match write_to_pty(data).await {
+        Ok(_) => Ok(()),
+        Err(_) => Err(()),
+    }
+}
 
 #[tauri::command]
 /// Manually clear all images in the resources/cache directory

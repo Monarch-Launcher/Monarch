@@ -1,0 +1,15 @@
+/* Ensure body and html take up full height */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    background: rgb(47, 47, 47);
+}
+  
+/* Make the terminal div fill the entire page */
+#terminal {
+    height: 100%;
+    width: 100%;
+  }
+  

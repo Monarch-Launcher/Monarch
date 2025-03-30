@@ -1,12 +1,13 @@
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
-use crate::monarch_utils::monarch_windows::run_in_terminal;
+use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::{
     monarch_fs::{create_dir, get_unix_home, path_exists},
     monarch_vdf,
 };
 use anyhow::{Context, Result};
 use log::{error, info};
+use tauri::AppHandle;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -17,7 +18,7 @@ use std::process::Command;
 */
 
 /// Installs SteamCMD for user in .monarch
-pub fn install_steamcmd() -> Result<()> {
+pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
     let dest_path: PathBuf = get_steamcmd_dir();
 
     if !path_exists(&dest_path) {
@@ -30,32 +31,33 @@ pub fn install_steamcmd() -> Result<()> {
         r#"mkdir {};
 cd {};
 {};
-sleep 2;"#,
+sleep 2;
+exit;"#,
         dest_path.display(),
         dest_path.display(),
         &download_arg
     ); // Sleep for 2 seconds to allow user to see what is happening.
 
-    info!("Running: SteamCMD installation script: \n----------\n{installation_script}\n----------");
-
-    run_in_terminal(&installation_script)
-        .with_context(|| format!("linux::steam::install_steamcmd() -> "))?;
+    run_in_terminal(handle, &installation_script)
+        .await
+        .with_context(|| "linux::steam::install_steamcmd() -> ")?;
     Ok(())
 }
 
 /// Runs specified command via SteamCMD
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
-pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
+pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.sh");
-    let args_string: String = args.iter().map(|arg| format!(" {arg}")).collect::<String>();
+    let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    run_in_terminal(&format!(
-        "{} {}; echo 'Install complete!'; sleep 5;",
+    run_in_terminal(handle, &format!(
+        "{} {}; sleep 3;",
         path.display(),
         args_string
     ))
+    .await
     .with_context(|| "linux::steam::steamcmd_command() -> ")?;
 
     //info!("linux::steam::steamcmd_command() Result from steamcmd command {}: {}", format!("\"sh -c {} {}\"", path.display(), args_string), cmd_output);
