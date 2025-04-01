@@ -17,6 +17,7 @@ const StyledInput = styled.input<{
   border-radius: ${({ $hideSearchButton }) =>
     $hideSearchButton ? '0.5rem' : '0.5rem 0 0 0.5rem'};
   border: none;
+  color: ${({ theme }) => theme.colors.white};
   padding: 0.5rem;
   &:focus {
     outline: none;
