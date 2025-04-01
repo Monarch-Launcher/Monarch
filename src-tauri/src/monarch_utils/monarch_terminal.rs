@@ -77,9 +77,11 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
         error!("monarch_terminal::run_in_terminal() -> {e}");
     }
 
-    child
+    let exit_status = child
         .wait()
         .with_context(|| "Something went wrong while waiting for child process to finish!")?;
+
+    println!("Exited terminal with status: {}", exit_status.to_string());
 
     if let Err(e) = close_terminal_window(handle).await {
         error!("monarch_terminal::run_in_terminal() -> {e}");
