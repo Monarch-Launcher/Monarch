@@ -9,6 +9,7 @@ import {
   HiDownload,
   PiButterflyBold,
   SiEpicgames,
+  FaRegTrashAlt,
 } from '@global/icons';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
@@ -150,7 +151,22 @@ const GameCard = ({
         platform,
       });
     } catch (err) {
-      await dialog.message(`An error has occured: Could't download ${name}`, {
+      await dialog.message(`${err}`, {
+        title: 'Error',
+        type: 'error',
+      });
+    }
+  }, [name, platformId, platform]);
+
+  const handleUninstallGame = React.useCallback(async () => {
+    try {
+      await invoke('remove_game', {
+        name,
+        platformId,
+        platform,
+      });
+    } catch (err) {
+      await dialog.message(`${err}`, {
         title: 'Error',
         type: 'error',
       });
@@ -235,7 +251,7 @@ const GameCard = ({
           <Drawer
             open={drawerOpen}
             direction="right"
-            size={550}
+            size={800}
             enableOverlay={false}
             style={drawerStyles}
           >
@@ -246,6 +262,14 @@ const GameCard = ({
               rightIcon={getStoreIcon}
             >
               Go to store page
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleUninstallGame}
+              rightIcon={FaRegTrashAlt}
+            >
+              Uninstall game
             </Button>
           </Drawer>
         </div>

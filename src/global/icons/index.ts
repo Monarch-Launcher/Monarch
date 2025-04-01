@@ -24,6 +24,7 @@ import {
   FaPlay,
   FaRegEdit,
   FaSteam,
+  FaRegTrashAlt,
 } from 'react-icons/fa';
 import { FiRefreshCcw } from 'react-icons/fi';
 import { HiDownload, HiOutlineCog } from 'react-icons/hi';
@@ -53,6 +54,7 @@ export {
   FaFolderPlus,
   FaPlay,
   FaRegEdit,
+  FaRegTrashAlt,
   FaSteam,
   FiRefreshCcw,
   HiDownload,
