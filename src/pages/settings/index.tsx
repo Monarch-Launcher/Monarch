@@ -3,10 +3,10 @@ import Page from '@_ui/page';
 import { useSettings } from '@global/contexts/settingsProvider';
 import { Settings } from '@global/types';
 import { Input, Switch } from '@mantine/core';
+import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
-import { invoke } from '@tauri-apps/api';
 
 const Section = styled.div`
   display: flex;
@@ -65,7 +65,7 @@ const SettingsPage = () => {
 
       await saveCredentials(username, password);
     },
-    [updateSettings, saveCredentials],
+    [saveCredentials],
   );
 
   const onSubmitSecret = React.useCallback(
@@ -74,11 +74,11 @@ const SettingsPage = () => {
       const { secret } = values;
 
       await invoke('set_secret', {
-        platform: "steam",
-        secret: secret,
+        platform: 'steam',
+        secret,
       });
     },
-    [updateSettings, saveCredentials],
+    [],
   );
 
   const toggleQuickLaunch = React.useCallback(
@@ -92,7 +92,7 @@ const SettingsPage = () => {
       };
       await updateSettings(updatedSettings);
     },
-    [settings],
+    [settings, updateSettings],
   );
 
   const toggleSteam = React.useCallback(
@@ -106,15 +106,15 @@ const SettingsPage = () => {
       };
       await updateSettings(updatedSettings);
     },
-    [settings],
+    [settings, updateSettings],
   );
 
   const handleDelete = React.useCallback(
     async () => {
       await invoke('delete_password', {
-        platform: "steam",
+        platform: 'steam',
       });
-    }, []
+    }, [],
   );
 
   return (
