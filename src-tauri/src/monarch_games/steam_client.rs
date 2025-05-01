@@ -1,6 +1,7 @@
 use anyhow::{bail, Context, Result};
 use log::{error, info, warn};
 use reqwest;
+use scraper::{Html, Selector};
 use simple_steam_totp::generate;
 use std::path::PathBuf;
 use tauri::AppHandle;
@@ -76,7 +77,13 @@ pub async fn launch_cmd_game(handle: &AppHandle, id: &str) -> Result<()> {
     let steam_settings = settings.steam;
     let login_arg = get_steamcmd_login(&steam_settings)?;
 
-    let args: Vec<&str> = vec!["+@ShutdownOnFailedCommand 1", &login_arg, "+app_launch", id, "+quit"];
+    let args: Vec<&str> = vec![
+        "+@ShutdownOnFailedCommand 1",
+        &login_arg,
+        "+app_launch",
+        id,
+        "+quit",
+    ];
     steam::steamcmd_command(handle, args)
         .await
         .with_context(|| "steam_client::launch_cmd_game() -> ")
@@ -184,7 +191,7 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
     let username: &str = &steam_settings.username;
     let password: String =
         get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
-    
+
     // Login argument
     let mut login_arg = String::from("+login ");
     login_arg.push_str(username);
@@ -195,7 +202,7 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
     // disables the point of 2fa, at least on computers with Monarch.
     // TODO: Look into other possible solutions for Steamgaurd.
     match get_password("steam-secret", username) {
-        Ok(secret) =>  {
+        Ok(secret) => {
             if !secret.is_empty() {
                 info!("Steam TOTP detected in Monarch!");
                 let totp = generate(&secret).unwrap();
@@ -204,7 +211,8 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
             } else {
                 warn!("Steam TOTP was found! However the string was empty.");
             }
-        } Err(e) => {
+        }
+        Err(e) => {
             error!("steam_client::get_steamcmd_login() Did not find steam secret. | Err: {e}");
             warn!("No Steam TOTP detected! Might require mobile 2fa.");
         }
@@ -266,4 +274,44 @@ async fn parse_id(id: String, is_cache: bool) -> Result<MonarchGame> {
 
     warn!("Failed to parse Steam game with id: {id}");
     bail!("Failed to parse Steam game with id: {id}")
+}
+
+/// Function to search steam store directly from Monarch client, skipping monarch-launcher.com
+pub async fn find_game(name: &str) -> Vec<MonarchGame> {
+    let mut target: String = String::from("https://store.steampowered.com/search/?term=");
+    target.push_str(name);
+
+    let mut games: Vec<MonarchGame> = Vec::new();
+
+    if let Ok(response) = reqwest::get(&target).await {
+        if let Ok(body) = response.text().await {
+            games = parse_steam_page(&body).await;
+        }
+    }
+    games
+}
+
+/// Gets AppIDs and Links from Steam store search
+async fn parse_steam_page(body: &str) -> Vec<MonarchGame> {
+    let mut ids: Vec<String> = Vec::new();
+    let mut links: Vec<String> = Vec::new();
+
+    let game_selector = Selector::parse("a.search_result_row.ds_collapse_flag").unwrap(); // Has to be unwrap rn.
+
+    for css_elem in Html::parse_document(body).select(&game_selector) {
+        // Check for AppID
+        if let Some(id) = css_elem.value().attr("data-ds-appid") {
+            ids.push(id.to_string());
+
+            // Check for link to steam page
+            if let Some(link) = css_elem.value().attr("href") {
+                links.push(link.to_string());
+            } else {
+                // Else remove
+                ids.pop();
+            }
+        }
+    }
+
+    parse_steam_ids(&ids, true).await
 }

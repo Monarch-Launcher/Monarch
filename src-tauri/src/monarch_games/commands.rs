@@ -1,5 +1,5 @@
-use super::monarch_client;
 use super::monarchgame::MonarchGame;
+use super::{monarch_client, steam_client};
 use anyhow::Result;
 use log::{error, info};
 use serde_json::value::Value;
@@ -33,7 +33,7 @@ pub async fn search_games(name: String, useMonarch: bool) -> Vec<MonarchGame> {
     if useMonarch {
         monarch_client::find_games(&name).await
     } else {
-        Vec::new()
+        steam_client::find_game(&name).await
     }
 }
 
