@@ -7,9 +7,9 @@ use crate::monarch_utils::{
 };
 use anyhow::{Context, Result};
 use log::{error, info};
-use tauri::AppHandle;
 use std::path::PathBuf;
 use std::process::Command;
+use tauri::AppHandle;
 
 /*
 * SteamCMD related code.
@@ -52,11 +52,10 @@ pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()>
     path.push("steamcmd.sh");
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    run_in_terminal(handle, &format!(
-        "{} {}; sleep 3;",
-        path.display(),
-        args_string
-    ))
+    run_in_terminal(
+        handle,
+        &format!("{} {}; sleep 3;", path.display(), args_string),
+    )
     .await
     .with_context(|| "linux::steam::steamcmd_command() -> ")?;
 
@@ -107,7 +106,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
     };
 
     if !found_games.is_empty() {
-        games = parse_steam_ids(&found_games, false).await;
+        games = parse_steam_ids(&found_games, false, true).await;
     }
 
     games
