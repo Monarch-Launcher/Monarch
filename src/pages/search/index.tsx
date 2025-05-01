@@ -67,8 +67,14 @@ const Search = () => {
   );
 
   const handleClick = React.useCallback(async () => {
-    // Return early if searchString is empty or the same as previous searchString
-    if (!searchString || searchString === results?.searchString) {
+    // TODO: Come back and check if checkbox has changed to allow search
+    // of the same searchstring then, but otherwise stop if the search term
+    // is the same.
+    // Previous if-statement:
+    // if (!searchString || searchString === results?.searchString) {
+
+    // Return early if searchString is empty
+    if (!searchString) {
       return;
     }
     await searchGames(searchString, searchOnMonarch);

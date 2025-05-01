@@ -13,7 +13,7 @@ type SearchGamesContextType = {
 
 const initialState: SearchGamesContextType = {
   searchedGames: [],
-  searchGames: async () => {},
+  searchGames: async () => { },
   error: false,
   loading: false,
   results: undefined,
@@ -37,12 +37,10 @@ const SearchGamesProvider = ({ children }: Props) => {
     try {
       setLoading(true);
       setError(false);
-      console.log('monarch-launcher.com: ', useMonarchCom);
       const result: MonarchGame[] = await invoke('search_games', {
         name: searchString,
-        use_monarch: false,
+        useMonarch: useMonarchCom,
       });
-      console.log('Got results!');
       setResults({
         empty: result.length === 0,
         emptyMessage: `Couldn't find any games for "${searchString}".`,

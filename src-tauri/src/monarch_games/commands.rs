@@ -29,9 +29,12 @@ pub async fn get_library() -> Result<Value, String> {
 
 #[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
-pub async fn search_games(name: String, use_monarch: bool) -> Vec<MonarchGame> {
-    info!("Searching on monarch-launcher.com is set to {use_monarch}");
-    monarch_client::find_games(&name).await
+pub async fn search_games(name: String, useMonarch: bool) -> Vec<MonarchGame> {
+    if useMonarch {
+        monarch_client::find_games(&name).await
+    } else {
+        Vec::new()
+    }
 }
 
 #[tauri::command]
