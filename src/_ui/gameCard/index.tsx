@@ -10,6 +10,7 @@ import {
   PiButterflyBold,
   SiEpicgames,
   FaRegTrashAlt,
+  GrUpgrade
 } from '@global/icons';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
@@ -57,7 +58,7 @@ const ButtonContainer = styled.div`
   z-index: 3; /* Ensure buttons are on top of everything */
 `;
 
-const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
+const StyledButton = styled(Button) <{ $isInfo?: boolean }>`
   background-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
   border-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
   color: white;
@@ -158,6 +159,21 @@ const GameCard = ({
     }
   }, [name, platformId, platform]);
 
+  const handleUpdate = React.useCallback(async () => {
+    try {
+      await invoke('update_game', {
+        name,
+        platformId,
+        platform,
+      });
+    } catch (err) {
+      await dialog.message(`${err}`, {
+        title: 'Error',
+        type: 'error',
+      });
+    }
+  }, [name, platformId, platform]);
+
   const handleUninstallGame = React.useCallback(async () => {
     try {
       await invoke('remove_game', {
@@ -180,7 +196,7 @@ const GameCard = ({
   // Detect click outside drawer to close it
   React.useEffect(() => {
     if (!drawerOpen) {
-      return () => {};
+      return () => { };
     }
 
     const handleClickOutside = (event: any) => {
@@ -245,6 +261,13 @@ const GameCard = ({
             onClick={hasGame ? handleLaunch : handleDownload}
           >
             {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
+          </StyledButton>
+          <StyledButton
+            variant="primary"
+            type="button"
+            onClick={hasGame ? handleUpdate : handleDownload}
+          >
+            {hasGame ? <GrUpgrade size={20} /> : <HiDownload size={24} />}
           </StyledButton>
         </ButtonContainer>
         <div ref={drawerRef}>

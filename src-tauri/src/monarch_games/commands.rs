@@ -86,6 +86,27 @@ pub async fn download_game(
 }
 
 #[tauri::command]
+/// Tells Monarch to download specified game
+pub async fn update_game(
+    handle: AppHandle,
+    name: String,
+    platform: String,
+    platform_id: String,
+) -> Result<(), String> {
+    info!("Updating: {name}");
+    match monarch_client::update_game(&handle, &platform, &platform_id).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::check_for_game_update() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(format!("Something went wrong while updating: {name} \nMake sure game is installed via Monarch if you want to update."))
+        }
+    }
+}
+
+#[tauri::command]
 /// Tells Monarch to remove specified game
 pub async fn remove_game(
     handle: AppHandle,

@@ -80,6 +80,7 @@ pub async fn launch_cmd_game(handle: &AppHandle, id: &str) -> Result<()> {
 
     let args: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
+        "+@NoPromptForPassword 1",
         &login_arg,
         "+app_launch",
         id,
@@ -121,6 +122,7 @@ pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<M
     // Build the command as a string with arguments in order
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
+        "+@NoPromptForPassword 1",
         &login_arg,
         &download_arg,
         "+quit",
@@ -150,6 +152,7 @@ pub async fn uninstall_game(handle: &AppHandle, id: &str) -> Result<()> {
     let remove_arg: String = format!("+app_uninstall {id}");
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
+        "+@NoPromptForPassword 1",
         &login_arg,
         &remove_arg,
         "+quit",
@@ -158,6 +161,29 @@ pub async fn uninstall_game(handle: &AppHandle, id: &str) -> Result<()> {
     steam::steamcmd_command(handle, command)
         .await
         .with_context(|| "steam_client::uninstall_game() -> ")
+}
+
+/// Uninstall a Steam game via SteamCMD
+pub async fn update_game(handle: &AppHandle, id: &str) -> Result<()> {
+    let steam_settings = get_settings_state().steam;
+    if !steam_settings.manage {
+        warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
+        bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
+    }
+
+    let login_arg = get_steamcmd_login(&steam_settings)?;
+    let update_arg: String = format!("+app_update {id} validate");
+    let command: Vec<&str> = vec![
+        "+@ShutdownOnFailedCommand 1",
+        "+@NoPromptForPassword 1",
+        &login_arg,
+        &update_arg,
+        "+quit",
+    ];
+
+    steam::steamcmd_command(handle, command)
+        .await
+        .with_context(|| "steam_client::update_game() -> ")
 }
 
 /// Returns path to Monarchs installed version of SteamCMD

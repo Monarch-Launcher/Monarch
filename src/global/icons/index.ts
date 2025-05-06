@@ -32,6 +32,7 @@ import { HiOutlineSquares2X2 } from 'react-icons/hi2';
 import { MdClose, MdDeleteForever } from 'react-icons/md';
 import { PiButterflyBold } from 'react-icons/pi';
 import { SiEpicgames } from 'react-icons/si';
+import { GrUpgrade } from "react-icons/gr";
 
 export {
   AiFillInfoCircle,
@@ -64,4 +65,5 @@ export {
   MdDeleteForever,
   PiButterflyBold,
   SiEpicgames,
+  GrUpgrade,
 };

@@ -87,6 +87,19 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
     }
 }
 
+/// Update a game
+pub async fn update_game(handle: &AppHandle, platform: &str, platform_id: &str) -> Result<()> {
+    match platform {
+        "steam" => {
+            bail!("monarch_client::uninstall_game() | Err: Monarch currently does not support updating games from the steam desktop client!")
+        }
+        "steamcmd" => steam_client::update_game(handle, platform_id)
+            .await
+            .with_context(|| "monarch_client::uninstall_game() -> "),
+        &_ => bail!("monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )")
+    }
+}
+
 /// Returns games found in library.json
 fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
