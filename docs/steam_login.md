@@ -34,4 +34,4 @@ The shared secret can then be generated with the following command:
 steamguard setup
 ```
 
-The shared secret can then be put into an authenticator app, such as Bitwarden authenticator, to be used as a normal 2FA. You can also copy the shared secret into the Steam Shared Secret field in the Monarch settings.
+The shared secret can then be put into an authenticator app, such as Bitwarden authenticator ([info](https://www.reddit.com/r/Bitwarden/comments/t9xbkp/til_you_can_use_bitwarden_2fa_for_steam/)), to be used as a normal 2FA. You can also copy the shared secret into the Steam Shared Secret field in the Monarch settings.
