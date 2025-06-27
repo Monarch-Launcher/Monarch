@@ -4,6 +4,7 @@ import Page from '@_ui/page';
 import SearchBar from '@_ui/searchBar';
 import Spinner from '@_ui/spinner';
 import { useSearchGames } from '@global/contexts/searchGamesProvider';
+import { Switch } from '@mantine/core';
 import * as React from 'react';
 import styled from 'styled-components';
 
@@ -30,6 +31,26 @@ const CheckboxContainer = styled.div`
   }
 `;
 
+const MonarchSwitch = styled(Switch)`
+  input:checked + .mantine-Switch-track {
+    background-color: ${({ theme }) => theme.colors.primary};
+    border-color: ${({ theme }) => theme.colors.primary};
+  }
+
+  .mantine-Switch-track {
+    background-color: ${({ theme }) => theme.colors.secondary};
+    border-color: ${({ theme }) => theme.colors.secondary};
+  }
+
+  .mantine-Switch-label {
+    color: ${({ theme }) => theme.colors.white};
+  }
+
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
 const SearchRow = styled.div`
   display: flex;
   align-items: center;
@@ -38,11 +59,9 @@ const SearchRow = styled.div`
   @media (max-width: 600px) {
     flex-direction: column;
     align-items: stretch;
+    gap: 1.5rem; // Adds space between all flex items
 
-    ${CheckboxContainer} {
-      margin-top: 0.5rem;
-      justify-content: flex-start;
-    }
+    ${MonarchSwitch}
   }
 `;
 
@@ -59,7 +78,7 @@ const Search = () => {
     [],
   );
 
-  const handleCheckboxChange = React.useCallback(
+  const handleSwitchChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchOnMonarch(e.target.checked);
     },
@@ -78,7 +97,7 @@ const Search = () => {
       return;
     }
     await searchGames(searchString, searchOnMonarch);
-  }, [searchGames, searchString, results?.searchString, searchOnMonarch]);
+  }, [searchGames, searchString, searchOnMonarch]);
 
   return (
     <Page title="Search">
@@ -90,16 +109,13 @@ const Search = () => {
           placeholder="Search"
           loading={loading}
         />
-        <CheckboxContainer>
-          <label>
-            <input
-              type="checkbox"
-              checked={searchOnMonarch}
-              onChange={handleCheckboxChange}
-            />
-            Search on monarch-launcher.com
-          </label>
-        </CheckboxContainer>
+        <MonarchSwitch
+          checked={searchOnMonarch}
+          onChange={handleSwitchChange}
+          size="md"
+          label="Search on monarch-launcher.com"
+          labelPosition="right"
+        />
       </SearchRow>
       <ResultsContainer>
         {loading ? (

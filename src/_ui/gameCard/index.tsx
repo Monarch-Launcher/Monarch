@@ -10,7 +10,7 @@ import {
   PiButterflyBold,
   SiEpicgames,
   FaRegTrashAlt,
-  GrUpgrade
+  GrUpgrade,
 } from '@global/icons';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
@@ -35,6 +35,10 @@ const CardContainer = styled.div`
   background-color: ${({ theme }) => theme.colors.secondary};
   border-radius: 0.5rem;
   overflow: hidden; /* Ensure the image doesn't overflow the card */
+
+  &:hover button {
+    opacity: 1;
+  }
 `;
 
 const Thumbnail = styled.img<{ $isInfo?: boolean }>`
@@ -44,7 +48,7 @@ const Thumbnail = styled.img<{ $isInfo?: boolean }>`
   position: absolute; /* Position the image absolutely to fill the entire card */
   top: 0;
   left: 0;
-  z-index: 1; /* Place it below the text and buttons */
+  z-index: 0; /* Place it below the text and buttons */
 `;
 
 const ButtonContainer = styled.div`
@@ -58,7 +62,7 @@ const ButtonContainer = styled.div`
   z-index: 3; /* Ensure buttons are on top of everything */
 `;
 
-const StyledButton = styled(Button) <{ $isInfo?: boolean }>`
+const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
   background-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
   border-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
   color: white;
@@ -69,6 +73,19 @@ const StyledButton = styled(Button) <{ $isInfo?: boolean }>`
     background-color: ${({ $isInfo }) => ($isInfo ? 'darkgrey' : 'darkorange')};
     border-color: ${({ $isInfo }) => ($isInfo ? 'darkgrey' : 'darkorange')};
     color: white;
+  }
+`;
+
+const HoverButtonWrapper = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+
+  ${CardContainer}:hover & {
+    opacity: 1;
   }
 `;
 
@@ -196,7 +213,7 @@ const GameCard = ({
   // Detect click outside drawer to close it
   React.useEffect(() => {
     if (!drawerOpen) {
-      return () => { };
+      return () => {};
     }
 
     const handleClickOutside = (event: any) => {
@@ -246,15 +263,7 @@ const GameCard = ({
           src={imageSrc}
           onError={handleImageError}
         />
-        <ButtonContainer>
-          <StyledButton
-            variant="primary"
-            type="button"
-            onClick={toggleDrawer}
-            $isInfo
-          >
-            <AiFillInfoCircle size={24} />
-          </StyledButton>
+        <HoverButtonWrapper>
           <StyledButton
             variant="primary"
             type="button"
@@ -262,40 +271,7 @@ const GameCard = ({
           >
             {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
           </StyledButton>
-          <StyledButton
-            variant="primary"
-            type="button"
-            onClick={hasGame ? handleUpdate : handleDownload}
-          >
-            {hasGame ? <GrUpgrade size={20} /> : <HiDownload size={24} />}
-          </StyledButton>
-        </ButtonContainer>
-        <div ref={drawerRef}>
-          <Drawer
-            open={drawerOpen}
-            direction="right"
-            size={800}
-            enableOverlay={false}
-            style={drawerStyles}
-          >
-            <Button
-              type="button"
-              variant="primary"
-              onClick={openStorePage}
-              rightIcon={getStoreIcon}
-            >
-              Go to store page
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={handleUninstallGame}
-              rightIcon={FaRegTrashAlt}
-            >
-              Uninstall game
-            </Button>
-          </Drawer>
-        </div>
+        </HoverButtonWrapper>
       </CardContainer>
       <Info>{name}</Info> {/* Game name displayed below the card */}
     </CardWrapper>

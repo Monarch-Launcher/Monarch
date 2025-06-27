@@ -12,10 +12,14 @@ const Section = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  margin-bottom: 2rem;
 `;
 
 const SectionTitle = styled.h3`
   color: ${({ theme }) => theme.colors.primary};
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
 `;
 
 const MonarchSwitch = styled(Switch)`
@@ -32,19 +36,56 @@ const MonarchSwitch = styled(Switch)`
   .mantine-Switch-label {
     color: ${({ theme }) => theme.colors.white};
   }
+
+  &:hover {
+    opacity: 0.9;
+  }
 `;
 
 const FormContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  width: 100%;
 `;
 
 const ButtonContainer = styled.div`
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  justify-content: flex-end;
+  margin-top: 1rem;
+`;
+
+const StyledInput = styled(Input)`
+  border-radius: 12px;
+  padding: 10px 14px;
+  background-color: ${({ theme }) => theme.colors.background};
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+
+  &:hover,
+  &:focus {
+    background-color: ${({ theme }) => theme.colors.secondary};
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.black};
+  }
+`;
+
+const StyledButton = styled(Button)`
+  border-radius: 30px;
+  padding: 10px 20px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: ${({ theme }) => theme.colors.primary};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
 `;
 
 type FormValues = {
@@ -60,26 +101,19 @@ const SettingsPage = () => {
 
   const onSubmit = React.useCallback(
     async (values: FormValues) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { username, password } = values;
-
       await saveCredentials(username, password);
     },
     [saveCredentials],
   );
 
-  const onSubmitSecret = React.useCallback(
-    async (values: FormValues) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { secret } = values;
-
-      await invoke('set_secret', {
-        platform: 'steam',
-        secret,
-      });
-    },
-    [],
-  );
+  const onSubmitSecret = React.useCallback(async (values: FormValues) => {
+    const { secret } = values;
+    await invoke('set_secret', {
+      platform: 'steam',
+      secret,
+    });
+  }, []);
 
   const toggleQuickLaunch = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,13 +143,11 @@ const SettingsPage = () => {
     [settings, updateSettings],
   );
 
-  const handleDelete = React.useCallback(
-    async () => {
-      await invoke('delete_password', {
-        platform: 'steam',
-      });
-    }, [],
-  );
+  const handleDelete = React.useCallback(async () => {
+    await invoke('delete_password', {
+      platform: 'steam',
+    });
+  }, []);
 
   return (
     <Page title="Settings">
@@ -141,41 +173,43 @@ const SettingsPage = () => {
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <FormContainer>
-            <Input
+            <StyledInput
               placeholder="Steam username"
               variant="filled"
               {...register('username')}
             />
-            <Input
+            <StyledInput
               placeholder="Steam password"
               variant="filled"
               type="password"
               {...register('password')}
             />
             <ButtonContainer>
-              <Button type="submit" variant="primary">
+              <StyledButton type="submit" variant="primary">
                 Save
-              </Button>
+              </StyledButton>
             </ButtonContainer>
           </FormContainer>
         </form>
+
         <ButtonContainer>
-          <Button type="submit" variant="primary" onClick={handleDelete}>
+          <StyledButton type="button" variant="primary" onClick={handleDelete}>
             Delete user
-          </Button>
+          </StyledButton>
         </ButtonContainer>
+
         <form onSubmit={handleSubmit(onSubmitSecret)}>
           <FormContainer>
-            <Input
+            <StyledInput
               placeholder="Steam shared secret"
               variant="filled"
               type="password"
               {...register('secret')}
             />
             <ButtonContainer>
-              <Button type="submit" variant="primary">
+              <StyledButton type="submit" variant="primary">
                 Save
-              </Button>
+              </StyledButton>
             </ButtonContainer>
           </FormContainer>
         </form>

@@ -1,10 +1,10 @@
-import { Terminal } from '@xterm/xterm';
-import '@xterm/xterm/css/xterm.css';
-import { FitAddon } from '@xterm/addon-fit';
 import { invoke } from '@tauri-apps/api';
+import { FitAddon } from '@xterm/addon-fit';
+import { Terminal } from '@xterm/xterm';
 
-var term = new Terminal();
+const term = new Terminal();
 term.open(document.getElementById('terminal') as HTMLElement);
+// eslint-disable-next-line @typescript-eslint/no-use-before-define
 term.onData(writeToPty);
 
 const fitAddon = new FitAddon();
@@ -13,6 +13,7 @@ fitAddon.fit();
 
 // Write data from the terminal to the pty
 function writeToPty(data: string) {
+  // eslint-disable-next-line no-void
   void invoke('async_write_to_pty', {
     data,
   });
@@ -27,7 +28,6 @@ function writeToTerminal(data: string) {
 
 async function readFromPty() {
   const data = await invoke<string>('async_read_from_pty');
-  console.log(data);
 
   if (data) {
     await writeToTerminal(data);

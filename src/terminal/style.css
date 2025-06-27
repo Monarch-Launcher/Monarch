@@ -4,12 +4,68 @@ html, body {
     padding: 0;
     height: 100%;
     width: 100%;
-    background: rgb(47, 47, 47);
+    background: #0a0a0a; /* Dark background */
+    color: 'orange'; /* Orange text */
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 16px;
 }
-  
+
 /* Make the terminal div fill the entire page */
-#terminal {
+#terminal-container {
     height: 100%;
     width: 100%;
-  }
-  
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    overflow: hidden;
+    background-color: #0a0a0a;
+}
+
+/* Style the terminal text and cursor */
+.xterm {
+    background-color: #0a0a0a; /* Match background */
+    color: 'orange'; /* Terminal orange text */
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 16px;
+    padding: 0 10px;
+}
+
+/* Custom cursor style for XTerm.js */
+.xterm .xterm-cursor {
+    background-color: 'orange';
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+/* Make the terminal container scrollable */
+.xterm-scroll-area {
+    overflow-y: auto;
+}
+
+/* Style the scrollbar to match the theme */
+.xterm-scrollbar {
+    width: 8px;
+    background-color: transparent;
+}
+
+.xterm-scrollbar-thumb {
+    background-color: rgba(0, 255, 0, 0.3);
+    border-radius: 10px;
+}
+
+/* Optional: Style links inside the terminal (if applicable) */
+.xterm a {
+    color: 'orange';
+    text-decoration: none;
+    border-bottom: 1px dotted 'orange';
+}
+
+.xterm a:hover {
+    color: 'orange';
+    border-bottom: 1px solid 'orange';
+}
