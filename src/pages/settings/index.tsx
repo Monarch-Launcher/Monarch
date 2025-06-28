@@ -150,7 +150,7 @@ const SettingsPage = () => {
   }, []);
 
   return (
-    <Page title="Settings">
+    <Page>
       <Section>
         <SectionTitle>Monarch</SectionTitle>
         <MonarchSwitch

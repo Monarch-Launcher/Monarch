@@ -100,7 +100,7 @@ const Search = () => {
   }, [searchGames, searchString, searchOnMonarch]);
 
   return (
-    <Page title="Search">
+    <Page>
       <SearchRow>
         <SearchBar
           value={searchString}

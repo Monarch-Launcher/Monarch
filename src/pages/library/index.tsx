@@ -101,7 +101,7 @@ const Library = () => {
   }, [library, searchTerm, collections]);
 
   return (
-    <Page title="Library">
+    <Page>
       <Row>
         <SearchBar
           value={searchTerm}
