@@ -19,18 +19,6 @@ const ResultsContainer = styled.div`
   justify-content: center;
 `;
 
-const CheckboxContainer = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: 0rem;
-  margin-left: 1rem;
-
-  label {
-    margin-left: 1 rem;
-    user-select: none;
-  }
-`;
-
 const MonarchSwitch = styled(Switch)`
   input:checked + .mantine-Switch-track {
     background-color: ${({ theme }) => theme.colors.primary};
@@ -48,6 +36,16 @@ const MonarchSwitch = styled(Switch)`
 
   &:hover {
     opacity: 0.9;
+  }
+
+  display: flex;
+  align-items: center;
+  margin-bottom: 0rem;
+  margin-left: 1rem;
+
+  label {
+    margin-left: 1 rem;
+    user-select: none;
   }
 `;
 
