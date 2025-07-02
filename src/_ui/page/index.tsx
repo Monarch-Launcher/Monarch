@@ -18,7 +18,7 @@ const ContentContainer = styled.div`
   min-height: 100vh;
   flex: 1; // Makes the content area take up remaining space
   padding-top: 120px;
-  overflow-y: auto;
+  overflow-y: visible;
 `;
 
 const BottomMenuContainer = styled.div`

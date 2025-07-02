@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
+import { FaUser, FaLock, FaKey, FaSave, FaTrash } from 'react-icons/fa';
 
 const Section = styled.div`
   display: flex;
@@ -56,24 +57,6 @@ const ButtonContainer = styled.div`
   margin-top: 1rem;
 `;
 
-const StyledInput = styled(Input)`
-  border-radius: 12px;
-  padding: 10px 14px;
-  background-color: ${({ theme }) => theme.colors.background};
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-
-  &:hover,
-  &:focus {
-    background-color: ${({ theme }) => theme.colors.secondary};
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  &::placeholder {
-    color: ${({ theme }) => theme.colors.black};
-  }
-`;
-
 const StyledButton = styled(Button)`
   border-radius: 30px;
   padding: 10px 20px;
@@ -88,6 +71,69 @@ const StyledButton = styled(Button)`
   }
 `;
 
+const CenteredContainer = styled.div`
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: none;
+  padding: 4rem 0 2rem 0;
+  overflow: hidden;
+`;
+
+const Card = styled.div`
+  background: rgba(255,255,255,0.10);
+  border-radius: 28px;
+  box-shadow: 0 8px 40px 0 rgba(0,0,0,0.25), 0 1.5px 8px 0 rgba(35,41,70,0.10);
+  border: 2px solid ${({ theme }) => theme.colors.primary};
+  padding: 2.5rem 2rem 2rem 2rem;
+  margin-bottom: 2.5rem;
+  width: 100%;
+  max-width: 480px;
+  transition: box-shadow 0.3s, transform 0.2s;
+  backdrop-filter: blur(6px);
+  position: relative;
+  z-index: 1;
+  &:hover {
+    box-shadow: 0 16px 56px 0 rgba(0,0,0,0.32), 0 2px 12px 0 ${({ theme }) => theme.colors.secondary};
+    transform: scale(1.025);
+  }
+`;
+
+const AnimatedButton = styled(StyledButton)<{ $danger?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  ${({ $danger, theme }) =>
+    $danger &&
+    `background: #e74c3c;
+     color: white;
+     &:hover { background: #c0392b; }`}
+  &:hover {
+    background: linear-gradient(90deg, ${({ theme }) => theme.colors.primary} 60%, ${({ theme }) => theme.colors.secondary} 100%);
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  }
+`;
+
+const AnimatedSwitch = styled(MonarchSwitch)`
+  transition: box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+`;
+
+const Feedback = styled.div`
+  color: ${({ theme }) => theme.colors.primary};
+  font-size: 1rem;
+  margin-top: 0.5rem;
+  min-height: 1.2em;
+`;
+
 type FormValues = {
   settings: Settings;
   username: string;
@@ -96,15 +142,21 @@ type FormValues = {
 };
 
 const SettingsPage = () => {
-  const { register, handleSubmit } = useForm<FormValues>();
+  const { register, handleSubmit, reset } = useForm<FormValues>();
   const { settings, updateSettings, saveCredentials } = useSettings();
+  const [feedback, setFeedback] = React.useState<string>('');
+  const [secretFeedback, setSecretFeedback] = React.useState<string>('');
+  const [deleteFeedback, setDeleteFeedback] = React.useState<string>('');
 
   const onSubmit = React.useCallback(
     async (values: FormValues) => {
       const { username, password } = values;
       await saveCredentials(username, password);
+      setFeedback('Credentials saved!');
+      setTimeout(() => setFeedback(''), 2000);
+      reset({ username: '', password: '' });
     },
-    [saveCredentials],
+    [saveCredentials, reset],
   );
 
   const onSubmitSecret = React.useCallback(async (values: FormValues) => {
@@ -113,7 +165,10 @@ const SettingsPage = () => {
       platform: 'steam',
       secret,
     });
-  }, []);
+    setSecretFeedback('Shared secret saved!');
+    setTimeout(() => setSecretFeedback(''), 2000);
+    reset({ secret: '' });
+  }, [reset]);
 
   const toggleQuickLaunch = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,73 +202,83 @@ const SettingsPage = () => {
     await invoke('delete_password', {
       platform: 'steam',
     });
+    setDeleteFeedback('User deleted!');
+    setTimeout(() => setDeleteFeedback(''), 2000);
   }, []);
 
   return (
     <Page>
-      <Section>
-        <SectionTitle>Monarch</SectionTitle>
-        <MonarchSwitch
-          checked={settings.quicklaunch.enabled}
-          onChange={toggleQuickLaunch}
-          size="md"
-          label="Quicklaunch (Windows and MacOS only)"
-          labelPosition="left"
-        />
-      </Section>
-      <Section>
-        <SectionTitle>Steam</SectionTitle>
-        <MonarchSwitch
-          checked={settings.steam.manage}
-          onChange={toggleSteam}
-          size="md"
-          label="Allow Monarch to manage Steam games"
-          labelPosition="left"
-        />
-
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <FormContainer>
-            <StyledInput
-              placeholder="Steam username"
-              variant="filled"
-              {...register('username')}
-            />
-            <StyledInput
-              placeholder="Steam password"
-              variant="filled"
-              type="password"
-              {...register('password')}
-            />
-            <ButtonContainer>
-              <StyledButton type="submit" variant="primary">
-                Save
-              </StyledButton>
-            </ButtonContainer>
-          </FormContainer>
-        </form>
-
-        <ButtonContainer>
-          <StyledButton type="button" variant="primary" onClick={handleDelete}>
-            Delete user
-          </StyledButton>
-        </ButtonContainer>
-
-        <form onSubmit={handleSubmit(onSubmitSecret)}>
-          <FormContainer>
-            <StyledInput
-              placeholder="Steam shared secret"
-              variant="filled"
-              type="password"
-              {...register('secret')}
-            />
-            <ButtonContainer>
-              <StyledButton type="submit" variant="primary">
-                Save
-              </StyledButton>
-            </ButtonContainer>
-          </FormContainer>
-        </form>
-      </Section>
+      <CenteredContainer>
+        <Card>
+          <SectionTitle>Monarch</SectionTitle>
+          <AnimatedSwitch
+            checked={settings.quicklaunch.enabled}
+            onChange={toggleQuickLaunch}
+            size="md"
+            label="Quicklaunch (Windows and MacOS only)"
+            labelPosition="left"
+          />
+        </Card>
+        <Card>
+          <SectionTitle>Steam</SectionTitle>
+          <AnimatedSwitch
+            checked={settings.steam.manage}
+            onChange={toggleSteam}
+            size="md"
+            label="Allow Monarch to manage Steam games"
+            labelPosition="left"
+          />
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <FormContainer>
+              <Input
+                placeholder="Steam username"
+                variant="filled"
+                icon={<FaUser />}
+                radius={"md"}
+                {...register('username')}
+              />
+              <Input
+                placeholder="Steam password"
+                variant="filled"
+                type="password"
+                icon={<FaLock />}
+                radius={"md"}
+                {...register('password')}
+              />
+              <ButtonContainer>
+                <AnimatedButton type="submit" variant="primary">
+                  <FaSave /> Save
+                </AnimatedButton>
+              </ButtonContainer>
+              <Feedback>{feedback}</Feedback>
+            </FormContainer>
+          </form>
+          <ButtonContainer>
+            <AnimatedButton type="button" variant="primary" onClick={handleDelete} $danger>
+              <FaTrash /> Delete user
+            </AnimatedButton>
+          </ButtonContainer>
+          <Feedback>{deleteFeedback}</Feedback>
+          <form onSubmit={handleSubmit(onSubmitSecret)}>
+            <FormContainer>
+              <Input
+                placeholder="Steam shared secret"
+                variant="filled"
+                type="password"
+                icon={<FaKey />}
+                radius={"md"}
+                {...register('secret')}
+              />
+              <ButtonContainer>
+                <AnimatedButton type="submit" variant="primary">
+                  <FaSave /> Save
+                </AnimatedButton>
+              </ButtonContainer>
+              <Feedback>{secretFeedback}</Feedback>
+            </FormContainer>
+          </form>
+        </Card>
+      </CenteredContainer>
     </Page>
   );
 };
