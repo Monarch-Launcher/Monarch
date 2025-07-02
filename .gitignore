@@ -27,3 +27,5 @@ dist-ssr
 # Other stuff
 squashfs-root/
 vite.config.ts.timestamp*
+
+**/.history

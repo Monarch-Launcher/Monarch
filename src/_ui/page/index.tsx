@@ -15,8 +15,10 @@ const PageContainer = styled.div`
 const ContentContainer = styled.div`
   padding: 0.5rem 1rem;
   width: 100%;
+  min-height: 100vh;
   flex: 1; // Makes the content area take up remaining space
   padding-top: 120px;
+  overflow-y: auto;
 `;
 
 const BottomMenuContainer = styled.div`
@@ -47,7 +49,7 @@ const Page = ({ children, hideMenu = false }: PageProps) => {
   return (
     <PageContainer>
       <ContentContainer>
-        {<StyledLogo />}
+        <StyledLogo />
         {children}
       </ContentContainer>
 
