@@ -24,6 +24,7 @@ type LauncherType = {
   game_folders: string[];
   manage: boolean;
   username: string;
+  twofa: boolean;
 };
 
 export type Settings = {

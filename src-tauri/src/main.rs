@@ -10,15 +10,17 @@ use std::process::exit;
 
 use log::{info, warn};
 use monarch_games::commands::{
-    download_game, get_library, launch_game, open_store, refresh_library, remove_game, search_games,
+    download_game, get_home_recomendations, get_library, launch_game, open_store, refresh_library,
+    remove_game, search_games, update_game,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
 };
 use monarch_utils::commands::{
     async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, delete_password,
-    get_settings, hide_quicklaunch, init_quicklaunch, open_logs, open_terminal,
-    quicklaunch_is_enabled, revert_settings, set_password, set_settings, show_quicklaunch, set_secret, delete_secret
+    delete_secret, get_settings, hide_quicklaunch, init_quicklaunch, open_logs, open_terminal,
+    quicklaunch_is_enabled, revert_settings, set_password, set_secret, set_settings,
+    show_quicklaunch,
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
@@ -51,6 +53,7 @@ fn main() {
             get_library,
             launch_game,
             download_game,
+            update_game,
             open_store,
             create_collection,
             update_collection,
@@ -64,6 +67,7 @@ fn main() {
             set_password,
             delete_password,
             remove_game,
+            get_home_recomendations,
             init_quicklaunch,
             show_quicklaunch,
             hide_quicklaunch,

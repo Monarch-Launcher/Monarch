@@ -1,7 +1,9 @@
-use super::monarch_client;
 use super::monarchgame::MonarchGame;
+use super::{monarch_client, steam_client};
 use anyhow::Result;
 use log::{error, info};
+use rand::rng;
+use rand::seq::SliceRandom;
 use serde_json::value::Value;
 use tauri::AppHandle;
 
@@ -28,9 +30,36 @@ pub async fn get_library() -> Result<Value, String> {
 }
 
 #[tauri::command]
+pub async fn get_home_recomendations() -> Result<Value, String> {
+    match games_library::get_games() {
+        Ok(games) => {
+            let mut games_vec: Vec<MonarchGame> = serde_json::from_value(games.clone()).unwrap();
+            if games_vec.len() > 4 {
+                games_vec.shuffle(&mut rng());
+                let recomended_games: &[MonarchGame] = &games_vec[0..4];
+                Ok(serde_json::to_value(recomended_games).unwrap_or_default())
+            } else {
+                return Ok(games);
+            }
+        }
+        Err(e) => {
+            error!(
+                "monarch_games::commands::get_library -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from("Something went wrong getting library!"))
+        }
+    }
+}
+
+#[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
-pub async fn search_games(name: String) -> Vec<MonarchGame> {
-    monarch_client::find_games(&name).await
+pub async fn search_games(name: String, useMonarch: bool) -> Vec<MonarchGame> {
+    if useMonarch {
+        monarch_client::find_games(&name).await
+    } else {
+        steam_client::find_game(&name).await
+    }
 }
 
 #[tauri::command]
@@ -77,6 +106,27 @@ pub async fn download_game(
                 e.chain().map(|e| e.to_string()).collect::<String>()
             );
             Err(format!("Something went wrong while downloading: {name}"))
+        }
+    }
+}
+
+#[tauri::command]
+/// Tells Monarch to download specified game
+pub async fn update_game(
+    handle: AppHandle,
+    name: String,
+    platform: String,
+    platform_id: String,
+) -> Result<(), String> {
+    info!("Updating: {name}");
+    match monarch_client::update_game(&handle, &platform, &platform_id).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::check_for_game_update() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(format!("Something went wrong while updating: {name} \nMake sure game is installed via Monarch if you want to update."))
         }
     }
 }

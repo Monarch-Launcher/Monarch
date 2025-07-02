@@ -27,7 +27,7 @@ static mut APPSTATE: Lazy<Option<AppState>> = Lazy::<Option<AppState>>::new(|| N
 
 /// Run a command in a new process and display to the user in a custom terminal window.
 pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
-    info!("Running command in terminal: \n{command}");
+    info!("Starting Monarch terminal...");
 
     let pty_system = native_pty_system();
     let pair = pty_system.openpty(PtySize {
@@ -46,20 +46,28 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
     let reader = pair.master.try_clone_reader().unwrap();
     let writer = pair.master.take_writer().unwrap();
 
+    let term_command: String= command.to_string() + "; sleep 3";
+
     // Spawn a shell into the pty
-    let shell = if cfg!(windows) {
+    let cmd: CommandBuilder = if cfg!(windows) {
         info!("Windows detected, using shell: powershell.exe");
-        String::from("powershell.exe")
+        let mut cmd = CommandBuilder::new("powershell.exe");
+        cmd.arg(&term_command);
+
+        info!("Running command: powershell.exe {term_command}");
+        cmd
     } else {
         let cmd = CommandBuilder::new_default_prog();
         let shell = cmd.get_shell();
+        info!("Detecting system shell: {shell}");
 
-        info!("Detecting OS shell: {shell}");
-        shell
+        let mut cmd = CommandBuilder::new(&shell);
+        cmd.args(["-c", &term_command]);
+
+        info!("Running command: {shell} -c {term_command}");
+        cmd
     };
 
-    let mut cmd = CommandBuilder::new(shell);
-    cmd.arg(command);
     let mut child = pair
         .slave
         .spawn_command(cmd)
@@ -77,7 +85,7 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
         error!("monarch_terminal::run_in_terminal() -> {e}");
     }
 
-    child
+    let _exit_status = child
         .wait()
         .with_context(|| "Something went wrong while waiting for child process to finish!")?;
 
@@ -112,6 +120,13 @@ pub async fn create_terminal_window(handle: &AppHandle) -> Result<()> {
 
 /// Close terminal window. Meant to be called from frontend.
 pub async fn close_terminal_window(handle: &AppHandle) -> Result<()> {
+    unsafe {
+        if (*APPSTATE).is_none() {
+            bail!("monarch_terminal::close_terminal_window() | Err: APPSTATE is already None!")
+        }
+        *APPSTATE = None;
+    }
+
     let w_opt = handle.get_window("terminal");
     match w_opt {
         Some(w) => {

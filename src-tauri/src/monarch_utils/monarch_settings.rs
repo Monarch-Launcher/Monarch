@@ -23,6 +23,7 @@ pub struct LauncherSettings {
     pub game_folders: Vec<String>,
     pub manage: bool,
     pub username: String,
+    pub twofa: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,12 +86,14 @@ impl Default for Settings {
             game_folders: Vec::new(),
             manage: false,
             username: String::new(),
+            twofa: false,
         };
 
         let epic: LauncherSettings = LauncherSettings {
             game_folders: Vec::new(),
             manage: false,
             username: String::new(),
+            twofa: false,
         };
 
         Self {
