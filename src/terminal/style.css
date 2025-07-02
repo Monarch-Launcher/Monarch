@@ -5,34 +5,52 @@ html, body {
     height: 100%;
     width: 100%;
     background: #0a0a0a; /* Dark background */
-    color: 'orange'; /* Orange text */
-    font-family: 'Courier New', Courier, monospace;
+    color: #FF6000; /* Monarch orange */
+    font-family: 'IBM Plex Mono', 'Courier New', Courier, monospace;
     font-size: 16px;
 }
 
-/* Make the terminal div fill the entire page */
-#terminal-container {
+/* Make the terminal div fill its parent and look distinct */
+#terminal {
     height: 100%;
     width: 100%;
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
+    margin: 0;
+    background: #181818;
+    color: #FF6000;
+    border-radius: 10px;
+    border: 2px solid #FF6000;
+    box-shadow: 0 4px 32px 0 #000a, 0 1.5px 0 0 #FF6000 inset;
+    padding: 0;
     overflow: hidden;
-    background-color: #0a0a0a;
-}
-
-/* Style the terminal text and cursor */
-.xterm {
-    background-color: #0a0a0a; /* Match background */
-    color: 'orange'; /* Terminal orange text */
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'IBM Plex Mono', 'Courier New', Courier, monospace;
     font-size: 16px;
-    padding: 0 10px;
+    letter-spacing: 0.02em;
+    z-index: 0;
+    display: block;
 }
 
-/* Custom cursor style for XTerm.js */
+/* Ensure .xterm fills the #terminal container */
+.xterm {
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    color: #FF6000;
+    font-family: 'IBM Plex Mono', 'Courier New', Courier, monospace;
+    font-size: 16px;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Ensure the xterm viewport fills the height */
+.xterm-viewport {
+    height: 100% !important;
+    width: 100% !important;
+}
+
 .xterm .xterm-cursor {
-    background-color: 'orange';
+    background-color: #FF6000 !important;
+    color: #181818 !important;
+    border-radius: 2px;
     animation: blink 1s step-end infinite;
 }
 
@@ -42,30 +60,30 @@ html, body {
     }
 }
 
-/* Make the terminal container scrollable */
-.xterm-scroll-area {
-    overflow-y: auto;
+/* Scrollbar styling for terminal */
+#terminal::-webkit-scrollbar, .xterm-scroll-area::-webkit-scrollbar {
+    width: 10px;
+    background: #222;
+}
+#terminal::-webkit-scrollbar-thumb, .xterm-scroll-area::-webkit-scrollbar-thumb {
+    background: #FF6000;
+    border-radius: 8px;
+    border: 2px solid #181818;
 }
 
-/* Style the scrollbar to match the theme */
-.xterm-scrollbar {
-    width: 8px;
-    background-color: transparent;
-}
-
-.xterm-scrollbar-thumb {
-    background-color: rgba(0, 255, 0, 0.3);
-    border-radius: 10px;
-}
-
-/* Optional: Style links inside the terminal (if applicable) */
+/* Style links inside the terminal (if applicable) */
 .xterm a {
-    color: 'orange';
-    text-decoration: none;
-    border-bottom: 1px dotted 'orange';
+    color: #FF6000;
+    text-decoration: underline dotted #FF6000;
+    transition: color 0.2s, border-bottom 0.2s;
+}
+.xterm a:hover {
+    color: #fff;
+    border-bottom: 1px solid #FF6000;
 }
 
-.xterm a:hover {
-    color: 'orange';
-    border-bottom: 1px solid 'orange';
+/* Optional: subtle glow for prompt or important text */
+.xterm .xterm-bold {
+    color: #fff;
+    text-shadow: 0 0 4px #FF6000, 0 0 2px #FF6000;
 }
