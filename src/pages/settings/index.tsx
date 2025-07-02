@@ -6,15 +6,8 @@ import { Input, Switch } from '@mantine/core';
 import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
+import { FaKey, FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
 import styled from 'styled-components';
-import { FaUser, FaLock, FaKey, FaSave, FaTrash } from 'react-icons/fa';
-
-const Section = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-`;
 
 const SectionTitle = styled.h3`
   color: ${({ theme }) => theme.colors.primary};
@@ -84,9 +77,10 @@ const CenteredContainer = styled.div`
 `;
 
 const Card = styled.div`
-  background: rgba(255,255,255,0.10);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 28px;
-  box-shadow: 0 8px 40px 0 rgba(0,0,0,0.25), 0 1.5px 8px 0 rgba(35,41,70,0.10);
+  box-shadow: 0 8px 40px 0 rgba(0, 0, 0, 0.25),
+    0 1.5px 8px 0 rgba(35, 41, 70, 0.1);
   border: 2px solid ${({ theme }) => theme.colors.primary};
   padding: 2.5rem 2rem 2rem 2rem;
   margin-bottom: 2.5rem;
@@ -97,7 +91,8 @@ const Card = styled.div`
   position: relative;
   z-index: 1;
   &:hover {
-    box-shadow: 0 16px 56px 0 rgba(0,0,0,0.32), 0 2px 12px 0 ${({ theme }) => theme.colors.secondary};
+    box-shadow: 0 16px 56px 0 rgba(0, 0, 0, 0.32),
+      0 2px 12px 0 ${({ theme }) => theme.colors.secondary};
     transform: scale(1.025);
   }
 `;
@@ -113,17 +108,21 @@ const AnimatedButton = styled(StyledButton)<{ $danger?: boolean }>`
      color: white;
      &:hover { background: #c0392b; }`}
   &:hover {
-    background: linear-gradient(90deg, ${({ theme }) => theme.colors.primary} 60%, ${({ theme }) => theme.colors.secondary} 100%);
+    background: linear-gradient(
+      90deg,
+      ${({ theme }) => theme.colors.primary} 60%,
+      ${({ theme }) => theme.colors.secondary} 100%
+    );
     transform: translateY(-3px) scale(1.04);
-    box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
   }
 `;
 
 const AnimatedSwitch = styled(MonarchSwitch)`
   transition: box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   &:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   }
 `;
 
@@ -159,16 +158,19 @@ const SettingsPage = () => {
     [saveCredentials, reset],
   );
 
-  const onSubmitSecret = React.useCallback(async (values: FormValues) => {
-    const { secret } = values;
-    await invoke('set_secret', {
-      platform: 'steam',
-      secret,
-    });
-    setSecretFeedback('Shared secret saved!');
-    setTimeout(() => setSecretFeedback(''), 2000);
-    reset({ secret: '' });
-  }, [reset]);
+  const onSubmitSecret = React.useCallback(
+    async (values: FormValues) => {
+      const { secret } = values;
+      await invoke('set_secret', {
+        platform: 'steam',
+        secret,
+      });
+      setSecretFeedback('Shared secret saved!');
+      setTimeout(() => setSecretFeedback(''), 2000);
+      reset({ secret: '' });
+    },
+    [reset],
+  );
 
   const toggleQuickLaunch = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -234,7 +236,7 @@ const SettingsPage = () => {
                 placeholder="Steam username"
                 variant="filled"
                 icon={<FaUser />}
-                radius={"md"}
+                radius={'md'}
                 {...register('username')}
               />
               <Input
@@ -242,7 +244,7 @@ const SettingsPage = () => {
                 variant="filled"
                 type="password"
                 icon={<FaLock />}
-                radius={"md"}
+                radius={'md'}
                 {...register('password')}
               />
               <ButtonContainer>
@@ -254,7 +256,12 @@ const SettingsPage = () => {
             </FormContainer>
           </form>
           <ButtonContainer>
-            <AnimatedButton type="button" variant="primary" onClick={handleDelete} $danger>
+            <AnimatedButton
+              type="button"
+              variant="primary"
+              onClick={handleDelete}
+              $danger
+            >
               <FaTrash /> Delete user
             </AnimatedButton>
           </ButtonContainer>
@@ -266,7 +273,7 @@ const SettingsPage = () => {
                 variant="filled"
                 type="password"
                 icon={<FaKey />}
-                radius={"md"}
+                radius={'md'}
                 {...register('secret')}
               />
               <ButtonContainer>
