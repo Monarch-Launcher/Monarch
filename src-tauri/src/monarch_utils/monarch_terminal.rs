@@ -46,13 +46,15 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
     let reader = pair.master.try_clone_reader().unwrap();
     let writer = pair.master.take_writer().unwrap();
 
+    let term_command: String= command.to_string() + "; sleep 3";
+
     // Spawn a shell into the pty
     let cmd: CommandBuilder = if cfg!(windows) {
         info!("Windows detected, using shell: powershell.exe");
         let mut cmd = CommandBuilder::new("powershell.exe");
-        cmd.arg(command);
+        cmd.arg(&term_command);
 
-        info!("Running command: powershell.exe {command}");
+        info!("Running command: powershell.exe {term_command}");
         cmd
     } else {
         let cmd = CommandBuilder::new_default_prog();
@@ -60,9 +62,9 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
         info!("Detecting system shell: {shell}");
 
         let mut cmd = CommandBuilder::new(&shell);
-        cmd.args(["-c", command]);
+        cmd.args(["-c", &term_command]);
 
-        info!("Running command: {shell} -c {command}");
+        info!("Running command: {shell} -c {term_command}");
         cmd
     };
 
