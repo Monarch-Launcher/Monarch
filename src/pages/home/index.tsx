@@ -1,45 +1,8 @@
 import GameCard from '@_ui/gameCard';
 import Page from '@_ui/page';
 import fallback from '@assets/fallback.jpg';
-
-const mockGames = [
-  {
-    id: '1',
-    platformId: 'steam_1',
-    executablePath: '/games/game1.exe',
-    name: 'Elder Realms',
-    platform: 'steam',
-    thumbnailPath: fallback,
-    storePage: 'https://store.steampowered.com/app/1',
-  },
-  {
-    id: '2',
-    platformId: 'epic_2',
-    executablePath: '/games/game2.exe',
-    name: 'Cyber Runner',
-    platform: 'epic',
-    thumbnailPath: fallback,
-    storePage: 'https://www.epicgames.com/store/en-US/p/game2',
-  },
-  {
-    id: '3',
-    platformId: 'custom_3',
-    executablePath: '/games/game3.exe',
-    name: 'Pixel Quest',
-    platform: 'custom',
-    thumbnailPath: fallback,
-    storePage: 'https://example.com/game3',
-  },
-  {
-    id: '4',
-    platformId: 'steam_4',
-    executablePath: '/games/game4.exe',
-    name: 'Space Odyssey',
-    platform: 'steam',
-    thumbnailPath: fallback,
-    storePage: 'https://store.steampowered.com/app/4',
-  },
-];
+import { invoke } from '@tauri-apps/api';
+import * as React from 'react';
 
 const gridStyle: React.CSSProperties = {
   display: 'flex',
@@ -50,6 +13,27 @@ const gridStyle: React.CSSProperties = {
 };
 
 const Home = () => {
+  const [games, setGames] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchGames = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await invoke<any[]>('get_home_recomendations');
+        // Defensive: fallback to [] if not an array
+        setGames(Array.isArray(result) ? result : []);
+      } catch (err: any) {
+        setError('Failed to load recommendations.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchGames();
+  }, []);
+
   return (
     <Page>
       <h1 style={{ textAlign: 'center', fontSize: '2.5rem', margin: '1rem 0' }}>
@@ -58,9 +42,21 @@ const Home = () => {
       <p style={{ textAlign: 'center', color: '#aaa', fontSize: '1.2rem' }}>
         Your personal game library and launcher. Here are some featured games:
       </p>
+      {loading && <p style={{ textAlign: 'center' }}>Loading recommendations...</p>}
+      {error && <p style={{ textAlign: 'center', color: 'red' }}>{error}</p>}
       <div style={gridStyle}>
-        {mockGames.map((game) => (
-          <GameCard key={game.id} {...game} cardWidth="24rem" />
+        {games.map((game) => (
+          <GameCard
+            key={game.id}
+            id={game.id}
+            platformId={game.platform_id}
+            executablePath={game.executable_path}
+            name={game.name}
+            platform={game.platform}
+            thumbnailPath={game.thumbnail_path || fallback}
+            storePage={game.store_page}
+            cardWidth="24rem"
+          />
         ))}
       </div>
     </Page>

@@ -2,6 +2,8 @@ use super::monarchgame::MonarchGame;
 use super::{monarch_client, steam_client};
 use anyhow::Result;
 use log::{error, info};
+use rand::rng;
+use rand::seq::SliceRandom;
 use serde_json::value::Value;
 use tauri::AppHandle;
 
@@ -17,6 +19,29 @@ use crate::monarch_utils::monarch_windows::MiniWindow;
 pub async fn get_library() -> Result<Value, String> {
     match games_library::get_games() {
         Ok(games) => Ok(games),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::get_library -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from("Something went wrong getting library!"))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn get_home_recomendations() -> Result<Value, String> {
+    match games_library::get_games() {
+        Ok(games) => {
+            let mut games_vec: Vec<MonarchGame> = serde_json::from_value(games.clone()).unwrap();
+            if games_vec.len() > 4 {
+                games_vec.shuffle(&mut rng());
+                let recomended_games: &[MonarchGame] = &games_vec[0..4];
+                Ok(serde_json::to_value(recomended_games).unwrap_or_default())
+            } else {
+                return Ok(games);
+            }
+        }
         Err(e) => {
             error!(
                 "monarch_games::commands::get_library -> {}",

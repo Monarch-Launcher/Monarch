@@ -52,12 +52,12 @@ export const NavigationMenu = () => {
   };
 
   const iconStyle: React.CSSProperties = {
-    width: '24px',
-    height: '24px',
+    width: '28px',
+    height: '28px',
   };
 
   const labelStyle: React.CSSProperties = {
-    fontSize: '12px',
+    fontSize: '14px',
     marginTop: '4px',
     color: 'inherit',
   };
@@ -78,7 +78,7 @@ export const NavigationMenu = () => {
               // eslint-disable-next-line no-return-assign
               onMouseEnter={(e) =>
                 (e.currentTarget.style.backgroundColor =
-                  itemHoverStyle.backgroundColor)
+                  itemHoverStyle.backgroundColor!)
               }
               // eslint-disable-next-line no-return-assign
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}

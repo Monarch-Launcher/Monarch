@@ -4,17 +4,17 @@ import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
 import {
   FaPlay,
+  FaRegEdit,
   FaSteam,
   HiDownload,
   PiButterflyBold,
   SiEpicgames,
-  FaRegEdit,
 } from '@global/icons';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import * as React from 'react';
-import styled, { keyframes } from 'styled-components';
 import { FiInfo } from 'react-icons/fi';
+import styled, { keyframes } from 'styled-components';
 
 import Button from '../button';
 
@@ -400,6 +400,7 @@ const GameCard = ({
       }
     };
     document.addEventListener('mousedown', handleClick);
+    // eslint-disable-next-line consistent-return
     return () => document.removeEventListener('mousedown', handleClick);
   }, [optionsOpen]);
 

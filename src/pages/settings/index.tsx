@@ -3,7 +3,6 @@ import Page from '@_ui/page';
 import { useSettings } from '@global/contexts/settingsProvider';
 import { Settings } from '@global/types';
 import { Input, Switch } from '@mantine/core';
-import { invoke } from '@tauri-apps/api';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { FaKey, FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
@@ -29,6 +28,9 @@ const MonarchSwitch = styled(Switch)`
 
   .mantine-Switch-label {
     color: ${({ theme }) => theme.colors.white};
+    font-family: 'IBM Plex Mono', Inter, Avenir, Helvetica, Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
   }
 
   &:hover {
@@ -121,6 +123,11 @@ const AnimatedButton = styled(StyledButton)<{ $danger?: boolean }>`
 const AnimatedSwitch = styled(MonarchSwitch)`
   transition: box-shadow 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  .mantine-Switch-label {
+    font-family: 'IBM Plex Mono', Inter, Avenir, Helvetica, Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+  }
   &:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   }
@@ -142,7 +149,14 @@ type FormValues = {
 
 const SettingsPage = () => {
   const { register, handleSubmit, reset } = useForm<FormValues>();
-  const { settings, updateSettings, saveCredentials } = useSettings();
+  const {
+    settings,
+    updateSettings,
+    saveCredentials,
+    deleteCredentials,
+    deleteSecret,
+    saveSecret,
+  } = useSettings();
   const [feedback, setFeedback] = React.useState<string>('');
   const [secretFeedback, setSecretFeedback] = React.useState<string>('');
   const [deleteFeedback, setDeleteFeedback] = React.useState<string>('');
@@ -150,7 +164,7 @@ const SettingsPage = () => {
   const onSubmit = React.useCallback(
     async (values: FormValues) => {
       const { username, password } = values;
-      await saveCredentials(username, password);
+      await saveCredentials(username, password, 'steam');
       setFeedback('Credentials saved!');
       setTimeout(() => setFeedback(''), 2000);
       reset({ username: '', password: '' });
@@ -161,10 +175,7 @@ const SettingsPage = () => {
   const onSubmitSecret = React.useCallback(
     async (values: FormValues) => {
       const { secret } = values;
-      await invoke('set_secret', {
-        platform: 'steam',
-        secret,
-      });
+      saveSecret(secret, 'steam');
       setSecretFeedback('Shared secret saved!');
       setTimeout(() => setSecretFeedback(''), 2000);
       reset({ secret: '' });
@@ -201,12 +212,14 @@ const SettingsPage = () => {
   );
 
   const handleDelete = React.useCallback(async () => {
-    await invoke('delete_password', {
-      platform: 'steam',
-    });
+    deleteCredentials('steam');
     setDeleteFeedback('User deleted!');
     setTimeout(() => setDeleteFeedback(''), 2000);
   }, []);
+
+  const handleDeleteSecret = React.useCallback(async () => {
+    await deleteSecret('steam');
+  }, [deleteSecret]);
 
   return (
     <Page>
@@ -256,14 +269,27 @@ const SettingsPage = () => {
             </FormContainer>
           </form>
           <ButtonContainer>
-            <AnimatedButton
-              type="button"
-              variant="primary"
-              onClick={handleDelete}
-              $danger
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+              }}
             >
-              <FaTrash /> Delete user
-            </AnimatedButton>
+              <span style={{ color: '#fff', fontWeight: 500 }}>
+                Steam login:{' '}
+                {settings.steam.username ? settings.steam.username : 'no login'}
+              </span>
+              <AnimatedButton
+                type="button"
+                variant="primary"
+                onClick={handleDelete}
+                $danger
+              >
+                <FaTrash /> Delete user
+              </AnimatedButton>
+            </div>
           </ButtonContainer>
           <Feedback>{deleteFeedback}</Feedback>
           <form onSubmit={handleSubmit(onSubmitSecret)}>
@@ -280,6 +306,28 @@ const SettingsPage = () => {
                 <AnimatedButton type="submit" variant="primary">
                   <FaSave /> Save
                 </AnimatedButton>
+              </ButtonContainer>
+              <ButtonContainer>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                  }}
+                >
+                  <span style={{ color: '#fff', fontWeight: 500 }}>
+                    {settings.steam.twofa ? 'Secret set' : 'Secret not set'}
+                  </span>
+                  <AnimatedButton
+                    type="button"
+                    variant="primary"
+                    onClick={handleDeleteSecret}
+                    $danger
+                  >
+                    <FaTrash /> Delete secret
+                  </AnimatedButton>
+                </div>
               </ButtonContainer>
               <Feedback>{secretFeedback}</Feedback>
             </FormContainer>

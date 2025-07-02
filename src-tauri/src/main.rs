@@ -10,8 +10,8 @@ use std::process::exit;
 
 use log::{info, warn};
 use monarch_games::commands::{
-    download_game, get_library, launch_game, open_store, refresh_library, remove_game,
-    search_games, update_game,
+    download_game, get_home_recomendations, get_library, launch_game, open_store, refresh_library,
+    remove_game, search_games, update_game,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
@@ -67,6 +67,7 @@ fn main() {
             set_password,
             delete_password,
             remove_game,
+            get_home_recomendations,
             init_quicklaunch,
             show_quicklaunch,
             hide_quicklaunch,

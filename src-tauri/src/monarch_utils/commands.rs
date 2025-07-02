@@ -114,7 +114,11 @@ pub fn revert_settings() -> Result<Settings, String> {
 #[tauri::command]
 /// Set password in secure store
 /// TODO: Better error handling if write_settings() fails.
-pub fn set_password(platform: String, username: String, password: String) -> Result<(), String> {
+pub fn set_password(
+    platform: String,
+    username: String,
+    password: String,
+) -> Result<Settings, String> {
     let mut settings: Settings = get_settings_state();
     let launcher_settings: &mut LauncherSettings = match platform.as_str() {
         "steam" => &mut settings.steam,
@@ -147,14 +151,14 @@ pub fn set_password(platform: String, username: String, password: String) -> Res
 
     launcher_settings.username = username;
     set_settings_state(settings.clone());
-    write_settings(settings).unwrap();
-    Ok(())
+    write_settings(settings.clone()).unwrap();
+    Ok(settings)
 }
 
 #[tauri::command]
 /// Delete password in secure store
 /// TODO: Better error handling if write_settings() fails.
-pub fn delete_password(platform: String) -> Result<(), String> {
+pub fn delete_password(platform: String) -> Result<Settings, String> {
     let mut settings: Settings = get_settings_state();
     let launcher_settings: &mut LauncherSettings = match platform.as_str() {
         "steam" => &mut settings.steam,
@@ -182,13 +186,13 @@ pub fn delete_password(platform: String) -> Result<(), String> {
 
     launcher_settings.username = String::new();
     set_settings_state(settings.clone());
-    write_settings(settings).unwrap();
-    Ok(())
+    write_settings(settings.clone()).unwrap();
+    Ok(settings)
 }
 
 #[tauri::command]
 /// Set secret in secure store
-pub fn set_secret(platform: String, secret: String) -> Result<(), String> {
+pub fn set_secret(platform: String, secret: String) -> Result<Settings, String> {
     let mut settings: Settings = get_settings_state();
     let launcher_settings: &mut LauncherSettings = match platform.as_str() {
         "steam" => &mut settings.steam,
@@ -204,19 +208,27 @@ pub fn set_secret(platform: String, secret: String) -> Result<(), String> {
         }
     };
 
-    if let Err(e) = set_credentials(&format!("{platform}-secret"), &launcher_settings.username, &secret) {
+    if let Err(e) = set_credentials(
+        &format!("{platform}-secret"),
+        &launcher_settings.username,
+        &secret,
+    ) {
         error!(
             "monarch_utils::commands::set_secret() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
         return Err(String::from("Something went wrong setting new secret!"));
     }
-    Ok(())
+    launcher_settings.twofa = true;
+
+    set_settings_state(settings.clone());
+    write_settings(settings.clone()).unwrap();
+    Ok(settings)
 }
 
 #[tauri::command]
 /// Delete secret in secure store
-pub fn delete_secret(platform: String) -> Result<(), String> {
+pub fn delete_secret(platform: String) -> Result<Settings, String> {
     let mut settings: Settings = get_settings_state();
     let launcher_settings: &mut LauncherSettings = match platform.as_str() {
         "steam" => &mut settings.steam,
@@ -237,11 +249,14 @@ pub fn delete_secret(platform: String) -> Result<(), String> {
             "monarch_utils::commands::delete_password() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(String::from(
-            "Something went wrong while deleting secret!",
-        ));
+        return Err(String::from("Something went wrong while deleting secret!"));
     }
-    Ok(())
+
+    launcher_settings.twofa = false;
+
+    set_settings_state(settings.clone());
+    write_settings(settings.clone()).unwrap();
+    Ok(settings)
 }
 
 /*
