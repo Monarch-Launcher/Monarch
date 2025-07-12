@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
-use log::{error, info, warn};
 use regex::Regex;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::{fs, process::exit};
+use tracing::{error, info, warn};
 
 use super::monarch_settings::{get_settings_state, Settings};
 

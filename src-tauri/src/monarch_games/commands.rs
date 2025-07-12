@@ -1,11 +1,11 @@
 use super::monarchgame::MonarchGame;
 use super::{monarch_client, steam_client};
 use anyhow::Result;
-use log::{error, info};
 use rand::rng;
 use rand::seq::SliceRandom;
 use serde_json::value::Value;
 use tauri::AppHandle;
+use tracing::{error, info};
 
 use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_windows::MiniWindow;

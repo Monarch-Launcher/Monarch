@@ -5,7 +5,6 @@
     Also meant to help maintain a smaller footprint on users OS.
 */
 
-use log::{error, info};
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -13,6 +12,7 @@ use std::thread::sleep;
 use std::time::SystemTime;
 use std::{fs, time::Duration};
 use sysinfo::{System, SystemExt};
+use tracing::{error, info};
 
 use super::monarch_fs::get_resources_cache;
 

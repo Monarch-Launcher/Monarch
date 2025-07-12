@@ -1,5 +1,5 @@
 use anyhow::{bail, Context, Result};
-use log::{error, info};
+use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, value::Value};
 use std::collections::hash_map::DefaultHasher;

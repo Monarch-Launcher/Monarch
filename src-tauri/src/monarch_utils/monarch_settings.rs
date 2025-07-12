@@ -1,11 +1,11 @@
 use anyhow::{bail, Context, Result};
-use log::error;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use toml::Table;
+use tracing::error;
 
 use super::monarch_fs::{create_dir, generate_monarch_home, get_settings_path, path_exists};
 use crate::monarch_games::monarch_client::generate_default_folder;

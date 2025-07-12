@@ -1,7 +1,7 @@
 use super::collections;
 use core::result::Result; // Using different Result type for sending to frontend.
-use log::error;
 use serde_json::Value;
+use tracing::error;
 
 #[tauri::command]
 /// Creates a new collection and writes to JSON

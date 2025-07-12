@@ -8,14 +8,14 @@
 
 use super::monarch_windows::MiniWindow;
 use anyhow::{bail, Context, Result};
-use log::error;
-use log::info;
 use once_cell::sync::Lazy;
 use portable_pty::{native_pty_system, CommandBuilder, PtyPair, PtySize};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::sync::Arc;
 use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::{AppHandle, Manager};
+use tracing::error;
+use tracing::info;
 
 pub struct AppState {
     _pty_pair: Arc<AsyncMutex<PtyPair>>,
@@ -46,7 +46,7 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
     let reader = pair.master.try_clone_reader().unwrap();
     let writer = pair.master.take_writer().unwrap();
 
-    let term_command: String= command.to_string() + "; sleep 3";
+    let term_command: String = command.to_string() + "; sleep 3";
 
     // Spawn a shell into the pty
     let cmd: CommandBuilder = if cfg!(windows) {

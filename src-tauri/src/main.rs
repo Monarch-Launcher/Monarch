@@ -8,7 +8,6 @@ mod monarch_utils;
 
 use std::process::exit;
 
-use log::{info, warn};
 use monarch_games::commands::{
     download_game, get_home_recomendations, get_library, launch_game, open_store, refresh_library,
     remove_game, search_games, update_game,
@@ -26,6 +25,7 @@ use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
 use tauri::Manager;
+use tracing::{info, warn};
 
 fn init() {
     if let Err(e) = monarch_settings::init() {

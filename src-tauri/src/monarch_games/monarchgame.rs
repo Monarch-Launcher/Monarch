@@ -1,6 +1,6 @@
-use log::error;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use tracing::error;
 
 use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::path_exists;
@@ -97,4 +97,3 @@ pub struct MonarchWebGame {
     pub cover_url: String,
     pub artwork_url: String,
 }
-
