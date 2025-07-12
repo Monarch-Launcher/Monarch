@@ -1,8 +1,8 @@
 use core::result::Result;
-use log::{error, info};
 use std::env;
 use std::{path::PathBuf, process::Command};
 use tauri::{AppHandle, Manager};
+use tracing::{error, info};
 
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};

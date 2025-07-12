@@ -1,5 +1,4 @@
 use anyhow::{bail, Context, Result};
-use log::{error, info, warn};
 use reqwest;
 use scraper::{Html, Selector};
 use serde_json::Value;
@@ -7,6 +6,7 @@ use simple_steam_totp::generate;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tokio::task;
+use tracing::{error, info, warn};
 
 use super::monarchgame::{MonarchGame, MonarchWebGame};
 use crate::monarch_utils::monarch_credentials::get_password;

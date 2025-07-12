@@ -6,10 +6,10 @@ use crate::monarch_utils::{
     monarch_vdf,
 };
 use anyhow::{Context, Result};
-use log::{error, info};
 use std::path::PathBuf;
 use std::process::Command;
 use tauri::AppHandle;
+use tracing::{error, info};
 
 /*
 * SteamCMD related code.

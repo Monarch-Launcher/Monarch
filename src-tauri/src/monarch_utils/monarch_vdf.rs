@@ -3,10 +3,10 @@
     It is used for reading content related to steam such as the users installed library, library locations in the filesystem, etc.
 */
 use anyhow::{bail, Context, Result};
+use keyvalues_parser::Vdf;
 use std::fs;
 use std::path::Path;
-use log::info;
-use keyvalues_parser::Vdf;
+use tracing::info;
 
 /// Parses steams libraryfolders.vdf file to structs that can be used to find
 /// installed games, folder locations, etc...
@@ -32,12 +32,15 @@ pub fn parse_library_file(path: &Path) -> Result<Vec<String>> {
     for library_location in library_folders.value.unwrap_obj().values().flatten() {
         if let Some((_, apps)) = library_location.clone().unwrap_obj().get_key_value("apps") {
             for app in apps {
-                game_ids.append(&mut (app.clone()
-                                         .unwrap_obj()
-                                         .0
-                                         .keys()
-                                         .map(|key| key.to_string())
-                                         .collect::<Vec<String>>()));
+                game_ids.append(
+                    &mut (app
+                        .clone()
+                        .unwrap_obj()
+                        .0
+                        .keys()
+                        .map(|key| key.to_string())
+                        .collect::<Vec<String>>()),
+                );
             }
         }
     }

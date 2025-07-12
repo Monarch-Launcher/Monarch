@@ -1,7 +1,7 @@
-use log::error;
-use tauri::AppHandle;
 use crate::monarch_games::monarchgame::MonarchGame;
 use anyhow::{bail, Result};
+use tauri::AppHandle;
+use tracing::error;
 
 /*
 * This file is currently only here to allow for MacOS compilation.

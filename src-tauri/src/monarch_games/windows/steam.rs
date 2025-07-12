@@ -1,18 +1,18 @@
 use anyhow::{Context, Result};
-use log::{error, info};
 use reqwest::Response;
-use tauri::AppHandle;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use tauri::AppHandle;
+use tracing::{error, info};
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
 use crate::monarch_utils::monarch_fs::{create_dir, path_exists};
+use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::monarch_vdf;
 use crate::monarch_utils::monarch_winreg::is_installed;
-use crate::monarch_utils::monarch_terminal::run_in_terminal;
 
 /*
 * SteamCMD related code.
@@ -35,16 +35,39 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
 
     // Download steamcmd
     let download_url: &str = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip";
-    let response: Response = reqwest::get(download_url).await.with_context(|| format!("windows::steam::install_steamcmd() error occured running reqwest::get({}) | Err: ", download_url))?;
+    let response: Response = reqwest::get(download_url).await.with_context(|| {
+        format!(
+            "windows::steam::install_steamcmd() error occured running reqwest::get({}) | Err: ",
+            download_url
+        )
+    })?;
     let mut file: File = File::create(&steamcmd_zip)?;
-    let bytes = response.bytes().await.with_context(|| "windows::steam::install_steamcmd() error while reading response.bytes()! | Err")?;
-    file.write_all(&bytes).with_context(|| format!("windows::steam::install_steamcmd() error writing content to file: {} | Err", steamcmd_zip.display()))?;
+    let bytes = response.bytes().await.with_context(|| {
+        "windows::steam::install_steamcmd() error while reading response.bytes()! | Err"
+    })?;
+    file.write_all(&bytes).with_context(|| {
+        format!(
+            "windows::steam::install_steamcmd() error writing content to file: {} | Err",
+            steamcmd_zip.display()
+        )
+    })?;
 
     // Unzip and copy steamcmd to correct directory
-    let unzip_args = vec!["Expand-Archive", "-LiteralPath", steamcmd_zip.to_str().unwrap(), "-DestinationPath", steamcmd_folder.to_str().unwrap()];
-    let unzip_args_string: String = unzip_args.iter().map(|arg| format!("{arg} ")).collect::<String>();
+    let unzip_args = vec![
+        "Expand-Archive",
+        "-LiteralPath",
+        steamcmd_zip.to_str().unwrap(),
+        "-DestinationPath",
+        steamcmd_folder.to_str().unwrap(),
+    ];
+    let unzip_args_string: String = unzip_args
+        .iter()
+        .map(|arg| format!("{arg} "))
+        .collect::<String>();
 
-    run_in_terminal(handle, &unzip_args_string).await.with_context(|| "windows::steam::install_steamcmd() -> ")?;
+    run_in_terminal(handle, &unzip_args_string)
+        .await
+        .with_context(|| "windows::steam::install_steamcmd() -> ")?;
 
     Ok(())
 }
@@ -52,18 +75,14 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
 pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()> {
-    let mut path: PathBuf = get_steamcmd_dir(); 
+    let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd");
     path.push("steamcmd.exe");
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    run_in_terminal(handle, &format!(
-        "{} {}",
-        path.display(),
-        args_string
-    ))
-    .await
-    .with_context(|| "windows::steam::steamcmd_command() -> ")?;
+    run_in_terminal(handle, &format!("{} {}", path.display(), args_string))
+        .await
+        .with_context(|| "windows::steam::steamcmd_command() -> ")?;
 
     Ok(())
 }
@@ -102,7 +121,11 @@ pub fn run_command(args: &str) -> Result<()> {
         .arg("start")
         .arg(args)
         .spawn()
-        .with_context(|| format!("windows::steam::run_command() failed! Failed to run Steam command {args} | Err"))?;
+        .with_context(|| {
+            format!(
+                "windows::steam::run_command() failed! Failed to run Steam command {args} | Err"
+            )
+        })?;
 
     Ok(())
 }

@@ -4,9 +4,9 @@ use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home}
 use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
-use log::{error, info, warn};
 use std::path::PathBuf;
 use tauri::AppHandle;
+use tracing::{error, info, warn};
 
 /// Generates the default path where Monarch wants to store games.
 pub fn generate_default_folder() -> Result<PathBuf> {

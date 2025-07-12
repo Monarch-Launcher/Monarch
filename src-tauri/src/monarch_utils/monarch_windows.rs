@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
-use log::error;
 use tauri::window::{Window, WindowBuilder};
 use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
+use tracing::error;
 
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
 
