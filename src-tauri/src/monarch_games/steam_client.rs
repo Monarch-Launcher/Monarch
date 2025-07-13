@@ -66,8 +66,15 @@ pub async fn get_library() -> Vec<MonarchGame> {
 }
 
 /// Attempts to launch Steam Client game.
-pub fn launch_game(id: &str) -> Result<()> {
+pub fn launch_client_game(id: &str) -> Result<()> {
     let mut command: String = String::from("steam://rungameid/");
+    command.push_str(id);
+    steam::run_command(&command).with_context(|| "steam_client::launch_game() -> ")
+}
+
+/// Attempts to uninstall a Steam Client game.
+pub fn uninstall_client_game(id: &str) -> Result<()> {
+    let mut command: String = String::from("steam://uninstall/");
     command.push_str(id);
     steam::run_command(&command).with_context(|| "steam_client::launch_game() -> ")
 }

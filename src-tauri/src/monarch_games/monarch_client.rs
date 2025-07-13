@@ -24,7 +24,7 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 /// Launches a game
 pub async fn launch_game(handle: &AppHandle, platform: &str, platform_id: &str) -> Result<()> {
     match platform {
-        "steam" => steam_client::launch_game(platform_id),
+        "steam" => steam_client::launch_client_game(platform_id),
         "steamcmd" => steam_client::launch_cmd_game(handle, platform_id).await,
         &_ => {
             bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {platform} | Err: Invalid platform!")
@@ -78,7 +78,7 @@ pub async fn download_game(
 pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &str) -> Result<()> {
     match platform {
         "steam" => {
-            bail!("monarch_client::uninstall_game() | Err: Monarch currently does not support uninstalling games from the steam desktop client!")
+            steam_client::uninstall_client_game(platform_id)
         }
         "steamcmd" => steam_client::uninstall_game(handle, platform_id)
             .await
