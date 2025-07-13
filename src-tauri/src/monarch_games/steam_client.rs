@@ -36,28 +36,11 @@ pub fn is_installed() -> bool {
     path_exists(&path)
 }
 
-#[cfg(windows)]
-/// Downloads and installs SteamCMD on users computer.
-pub async fn download_and_install(handle: &AppHandle) -> Result<()> {
-    steam::install_steamcmd(handle)
-        .await
-        .context("steam_client::download_and_install() failed! | Err")
-}
-
-#[cfg(not(windows))]
 /// Downloads and installs SteamCMD on users computer.
 pub async fn download_and_install(handle: &AppHandle) -> Result<()> {
     steam::install_steamcmd(handle)
         .await
         .with_context(|| "steam_client::download_and_install() -> ")
-    /*
-    * This code was meant to be a solution to not require steam guard code
-    * on every game download. Does not appear to work. Further research into
-    * SteamCMD is required.
-    steam::steamcmd_command(vec!["+set_steam_guard_code"])
-        .await
-        .with_context(|| "steam_client::download_and_install() -> ")
-    */
 }
 
 /// Returns games installed by Steam Client.
