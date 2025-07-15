@@ -44,7 +44,7 @@ const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
 const GameContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
 `;
 
 const LibraryLayout = styled.div`
@@ -177,11 +177,14 @@ const Library = () => {
           <Modal opened={opened} close={close} library={library} />
         </Sidebar>
         <LibraryContainer>
-          <GameContainer>
-            {collections.length !== 0 &&
-              collections.map((collection) => (
+          {collections.length !== 0 && (
+            <>
+              {collections.map((collection) => (
                 <Collection key={collection.id} collection={collection} />
               ))}
+            </>
+          )}
+          <GameContainer>
             {filteredLibrary.length === 0 && loading ? (
               <Spinner />
             ) : (

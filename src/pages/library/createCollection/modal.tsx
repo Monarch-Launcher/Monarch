@@ -20,11 +20,12 @@ const ModalHeaderContainer = styled.div`
   justify-content: space-between;
   align-items: flex-start;
   width: 100%;
+  color: #fff;
 `;
 
 const ModalHeader = styled.h2`
   margin: 0.5rem 0;
-  color: ${({ theme }) => theme.colors.primary};
+  color: #fff;
 `;
 
 const ModalButtons = styled.div`
@@ -33,9 +34,12 @@ const ModalButtons = styled.div`
   align-items: center;
   gap: 1rem;
   margin: 2rem 0 1rem;
+  color: #fff;
 `;
 
-const ModalContentContainer = styled.div``;
+const ModalContentContainer = styled.div`
+  color: #fff;
+`;
 
 const ErrorText = styled.p`
   margin: 0.2rem 0 0 0;
@@ -49,6 +53,12 @@ const GameContainer = styled.div`
   margin-top: 1rem;
   height: 50vh;
   overflow-y: scroll;
+  color: #fff;
+`;
+
+const Section = styled.div`
+  margin-bottom: 1rem;
+  color: #fff;
 `;
 
 type Props = {

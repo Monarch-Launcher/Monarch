@@ -9,6 +9,7 @@ const StyledModal = styled(Modal)`
 
   .mantine-Modal-content {
     border-radius: 0.5rem;
+    border: 2px solid #FA5002;
   }
 
   .mantine-Modal-header {

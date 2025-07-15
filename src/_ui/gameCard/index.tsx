@@ -14,8 +14,10 @@ import { convertFileSrc } from '@tauri-apps/api/tauri';
 import * as React from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useLayoutEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 
 import Button from '../button';
+import Modal from '../modal';
 
 const CardWrapper = styled.div`
   display: flex;
@@ -122,7 +124,7 @@ const DropdownMenu = styled.div`
   border: 1px solid ${({ theme }) => theme.colors.primary};
   border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 10;
+  z-index: 20000;
   width: 180px;
   padding: 0.5rem 0;
   display: flex;
@@ -309,6 +311,16 @@ const GameCard = ({
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const optionsRef = React.useRef<HTMLButtonElement | null>(null);
   const { library, refreshLibrary } = useLibrary();
+  const [gameData, setGameData] = React.useState(() => {
+    const found = library.find((g) => g.id === id);
+    return found ? { ...found } : { compatibility: '', launch_args: '' };
+  });
+
+  // Keep local state in sync with library updates
+  React.useEffect(() => {
+    const found = library.find((g) => g.id === id);
+    if (found) setGameData({ ...found });
+  }, [library, id]);
 
   const toggleDrawer = React.useCallback(() => {
     setDrawerOpen((prev) => !prev);
@@ -425,6 +437,23 @@ const GameCard = ({
     }
   }, [storePage]);
 
+  const [propertiesOpen, setPropertiesOpen] = React.useState(false);
+  const [launchCommands, setLaunchCommands] = React.useState(gameData.launch_args || '');
+  const [compatibilityLayer, setCompatibilityLayer] = React.useState(gameData.compatibility || '');
+
+  // Update game properties in backend when fields change
+  React.useEffect(() => {
+    if (!propertiesOpen) return;
+    const updatedGame = {
+      ...gameData,
+      launch_args: launchCommands,
+      compatibility: compatibilityLayer,
+    };
+    invoke('update_game_properties', { game: updatedGame });
+    // Optionally, refresh the library after update
+    // refreshLibrary();
+  }, [launchCommands, compatibilityLayer, propertiesOpen]);
+
   React.useEffect(() => {
     if (!optionsOpen) return;
     const handleClick = (e: MouseEvent) => {
@@ -441,10 +470,10 @@ const GameCard = ({
   }, [optionsOpen]);
 
   // Add state and effect for menu positioning
-  const [, setMenuPosition] = useState({ left: 0, top: 0 });
+  const [menuPosition, setMenuPosition] = React.useState<{ left: number; top: number }>({ left: 0, top: 0 });
   const menuRef = React.useRef<HTMLDivElement | null>(null);
 
-  useLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     if (optionsOpen && optionsRef.current) {
       const rect = optionsRef.current.getBoundingClientRect();
       setMenuPosition({
@@ -453,6 +482,13 @@ const GameCard = ({
       });
     }
   }, [optionsOpen]);
+
+  const compatibilityOptions = [
+    { value: '', label: 'None' },
+    { value: 'proton', label: 'Proton' },
+    { value: 'wine', label: 'Wine' },
+    { value: 'custom', label: 'Custom' },
+  ];
 
   return (
     <CardWrapper style={{ width: cardWidth }}>
@@ -512,15 +548,15 @@ const GameCard = ({
           >
             <BsThreeDotsVertical />
           </MeatballsButton>
-          {optionsOpen && (
+          {optionsOpen && ReactDOM.createPortal(
             <DropdownMenu
               ref={menuRef}
               style={{
                 position: 'absolute',
-                right: 0,
-                top: '100%',
+                left: menuPosition.left,
+                top: menuPosition.top,
                 minWidth: '10rem',
-                zIndex: 100,
+                zIndex: 20000,
               }}
             >
               <DropdownItem
@@ -552,9 +588,19 @@ const GameCard = ({
                   >
                     Uninstall
                   </DropdownItem>
+                  <DropdownItem
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setOptionsOpen(false);
+                      setPropertiesOpen(true);
+                    }}
+                  >
+                    Properties
+                  </DropdownItem>
                 </>
               )}
-            </DropdownMenu>
+            </DropdownMenu>,
+            document.body
           )}
         </div>
       </InfoRow>
@@ -632,8 +678,47 @@ const GameCard = ({
           </Drawer>
         </DrawerOverlay>
       )}
+      {/* Properties Modal */}
+      <Modal
+        opened={propertiesOpen}
+        onClose={() => setPropertiesOpen(false)}
+        title={<WhiteModalTitle>Properties for {name}</WhiteModalTitle>}
+        centered
+        withCloseButton={false}
+        size="900px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', minWidth: 600, padding: 40, color: '#fff' }}>
+          <label style={{ color: '#fff', fontWeight: 600 }}>
+            Launch Commands
+            <input
+              type="text"
+              value={launchCommands}
+              onChange={e => setLaunchCommands(e.target.value)}
+              placeholder="e.g. --fullscreen"
+              style={{ width: '100%', marginTop: 4, padding: 8, borderRadius: 4, border: '1px solid #333', background: '#222', color: '#fff' }}
+            />
+          </label>
+          <label style={{ color: '#fff', fontWeight: 600 }}>
+            Compatibility Layer
+            <select
+              value={compatibilityLayer}
+              onChange={e => setCompatibilityLayer(e.target.value)}
+              style={{ width: '100%', marginTop: 4, padding: 8, borderRadius: 4, border: '1px solid #333', background: '#222', color: '#fff' }}
+            >
+              {compatibilityOptions.map(opt => (
+                <option key={opt.value} value={opt.value} style={{ color: '#000', background: '#fff' }}>{opt.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </Modal>
     </CardWrapper>
   );
 };
 
 export default GameCard;
+
+// Style for white modal title
+const WhiteModalTitle = styled.span`
+  color: #fff;
+`;

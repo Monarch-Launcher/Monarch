@@ -31,7 +31,7 @@ const StyledLogo = styled(Logo as AnyStyledComponent)`
   position: absolute;
   top: 1rem;
   left: 0rem;
-  margin: 0;
+  margin: 0 0 0 1rem;
   width: auto;
   height: 80px;
   max-width: none;

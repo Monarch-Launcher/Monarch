@@ -19,10 +19,12 @@ const ModalHeaderContainer = styled.div`
 
 const ModalHeader = styled.h2`
   margin: 0.5rem 0;
-  color: ${({ theme }) => theme.colors.primary};
+  color: #fff;
 `;
 
-const ContentContainer = styled.div``;
+const ContentContainer = styled.div`
+  color: #fff;
+`;
 
 const GamesContainer = styled.div`
   display: flex;
@@ -30,6 +32,7 @@ const GamesContainer = styled.div`
   justify-content: center;
   height: 70vh;
   overflow-y: scroll;
+  color: #fff;
 `;
 
 const Flex = styled.div`
@@ -46,41 +49,22 @@ type Props = {
 };
 
 const CollectionModal = ({ opened, close, collection }: Props) => {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const { library } = useLibrary();
-
-  const toggleEditing = React.useCallback(() => {
-    setIsEditing((prev) => !prev);
-  }, []);
+  // Remove isEditing state and toggleEditing
+  // const [isEditing, setIsEditing] = React.useState(false);
+  // const toggleEditing = React.useCallback(() => {
+  //   setIsEditing((prev) => !prev);
+  // }, []);
 
   const modalHeader = React.useMemo<JSX.Element>(() => {
     return (
       <ModalHeaderContainer>
         <ModalHeader>
-          <Flex>
-            {!isEditing ? collection.name : `Edit ${collection.name}`}
-            {!isEditing && (
-              <Button
-                type="button"
-                variant="primary"
-                rightIcon={BiEdit}
-                onClick={toggleEditing}
-              >
-                Edit
-              </Button>
-            )}
-          </Flex>
+          Edit {collection.name}
         </ModalHeader>
-        <Button type="button" variant="icon" onClick={close}>
-          <MdClose color="black" size={24} />
-        </Button>
+        {/* Remove close (X) button */}
       </ModalHeaderContainer>
     );
-  }, [close, collection.name, isEditing, toggleEditing]);
-
-  const collectionGames = React.useMemo<MonarchGame[]>(() => {
-    return library.filter((game) => collection.gameIds.includes(game.id));
-  }, [library, collection.gameIds]);
+  }, [close, collection.name]);
 
   return (
     <Modal
@@ -92,29 +76,11 @@ const CollectionModal = ({ opened, close, collection }: Props) => {
       size="60vw"
     >
       <ContentContainer>
-        {!isEditing ? (
-          <GamesContainer>
-            {collectionGames.map((game) => (
-              <GameCard
-                key={game.id}
-                id={game.id}
-                executablePath={game.executable_path}
-                platform={game.platform}
-                name={game.name}
-                platformId={game.platform_id}
-                thumbnailPath={game.thumbnail_path}
-                storePage={game.store_page}
-                isLibrary
-              />
-            ))}
-          </GamesContainer>
-        ) : (
-          <EditCollectionForm
-            closeCollection={close}
-            toggleEditing={toggleEditing}
-            collection={collection}
-          />
-        )}
+        <EditCollectionForm
+          closeCollection={close}
+          toggleEditing={() => {}}
+          collection={collection}
+        />
       </ContentContainer>
     </Modal>
   );

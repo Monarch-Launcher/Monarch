@@ -98,3 +98,22 @@ pub fn add_game(game: MonarchGame) -> Result<()> {
     games.push(game);
     write_games(games)
 }
+
+/// Updates the properties of a game in the library.
+pub fn update_game_properties(game: MonarchGame) -> Result<()> {
+    let games_json: Value = get_games().with_context(|| "games_library::update_game_properties() -> ")?;
+
+    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| {
+        "games_library::update_game_properties() Failed to parse json to Vec<MonarchGame>! | Err: "
+    })?;
+
+    for library_game in games.iter_mut() {
+        if library_game.id == game.id {
+            library_game.compatibility = game.compatibility;
+            library_game.launch_args = game.launch_args;
+            break;
+        }
+    }
+
+    write_games(games)
+}

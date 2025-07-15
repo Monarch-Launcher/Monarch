@@ -175,3 +175,20 @@ pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
     }
     Ok(())
 }
+
+#[tauri::command]
+/// Updates the properties of a game in the library.
+pub async fn update_game_properties(game: MonarchGame) -> Result<(), String> {
+    match games_library::update_game_properties(game) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::update_game_properties() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from(
+                "Something went wrong while updating game properties!",
+            ))
+        }
+    }
+}
