@@ -3,7 +3,7 @@ import Modal from '@_ui/modal';
 import SearchBar from '@_ui/searchBar';
 import { useCollections } from '@global/contexts/collectionsProvider';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import { BiCheck, BiLeftArrowAlt, BiTrash, MdClose } from '@global/icons';
+import { BiCheck, BiTrash, MdClose } from '@global/icons';
 import { Collection, MonarchGame } from '@global/types';
 import { useDisclosure } from '@mantine/hooks';
 import * as React from 'react';

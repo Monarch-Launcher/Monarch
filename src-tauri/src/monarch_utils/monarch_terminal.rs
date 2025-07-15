@@ -52,7 +52,7 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
     let cmd: CommandBuilder = if cfg!(windows) {
         info!("Windows detected, using shell: powershell.exe");
         let mut cmd = CommandBuilder::new("powershell.exe");
-        cmd.arg(&term_command);
+        cmd.args([&term_command]);
 
         info!("Running command: powershell.exe {term_command}");
         cmd

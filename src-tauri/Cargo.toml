@@ -47,6 +47,7 @@ anyhow = "1.0.86"
 portable-pty = "0.9.0"
 simple-steam-totp = { version = "0.1.0", git = "https://github.com/Monarch-Launcher/simple-steam-totp.git" }
 rand = "0.9.1"
+zip = "4.3.0"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52.0"

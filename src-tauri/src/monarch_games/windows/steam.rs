@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tauri::AppHandle;
 use tracing::{error, info};
+use std::fs;
+use zip::ZipArchive;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
@@ -53,12 +55,48 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
     })?;
 
     // Unzip and copy steamcmd to correct directory
+    let zip_file = File::open(&steamcmd_zip)
+        .with_context(|| format!("Failed to open zip file: {}", steamcmd_zip.display()))?;
+    let mut archive = ZipArchive::new(zip_file)
+        .with_context(|| format!("Failed to read zip archive: {}", steamcmd_zip.display()))?;
+
+    if !steamcmd_folder.exists() {
+        fs::create_dir_all(&steamcmd_folder)
+            .with_context(|| format!("Failed to create directory: {}", steamcmd_folder.display()))?;
+    }
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)
+            .with_context(|| format!("Failed to access file in zip at index {}", i))?;
+        let outpath = steamcmd_folder.join(file.name());
+
+        if file.name().ends_with('/') {
+            fs::create_dir_all(&outpath)
+                .with_context(|| format!("Failed to create directory: {}", outpath.display()))?;
+        } else {
+            if let Some(parent) = outpath.parent() {
+                if !parent.exists() {
+                    fs::create_dir_all(parent)
+                        .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
+                }
+            }
+            let mut outfile = File::create(&outpath)
+                .with_context(|| format!("Failed to create file: {}", outpath.display()))?;
+            std::io::copy(&mut file, &mut outfile)
+                .with_context(|| format!("Failed to write file: {}", outpath.display()))?;
+        }
+    }
+    /* 
+    // Unzip and copy steamcmd to correct directory
     let unzip_args = vec![
-        "Expand-Archive",
+        "-Command",
+        "\"Expand-Archive",
         "-LiteralPath",
         steamcmd_zip.to_str().unwrap(),
         "-DestinationPath",
         steamcmd_folder.to_str().unwrap(),
+        "\"",
+        "; sleep 10"
     ];
     let unzip_args_string: String = unzip_args
         .iter()
@@ -68,6 +106,7 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
     run_in_terminal(handle, &unzip_args_string)
         .await
         .with_context(|| "windows::steam::install_steamcmd() -> ")?;
+    */
 
     Ok(())
 }
