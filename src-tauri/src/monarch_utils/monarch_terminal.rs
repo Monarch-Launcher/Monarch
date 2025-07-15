@@ -46,7 +46,7 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
     let reader = pair.master.try_clone_reader().unwrap();
     let writer = pair.master.take_writer().unwrap();
 
-    let term_command: String = command.to_string() + "; sleep 3";
+    let term_command: String = command.to_string();
 
     // Spawn a shell into the pty
     let cmd: CommandBuilder = if cfg!(windows) {

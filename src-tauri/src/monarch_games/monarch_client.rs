@@ -1,5 +1,6 @@
 use super::{monarchgame::MonarchGame, steam_client};
 use crate::monarch_games::monarchgame::MonarchWebGame;
+use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
@@ -80,9 +81,22 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
         "steam" => {
             steam_client::uninstall_client_game(platform_id)
         }
-        "steamcmd" => steam_client::uninstall_game(handle, platform_id)
+        "steamcmd" => {
+            steam_client::uninstall_game(handle, platform_id)
             .await
-            .with_context(|| "monarch_client::uninstall_game() -> "),
+            .with_context(|| "monarch_client::uninstall_game() -> ")?;
+
+            let mut monarch_games = games_library::get_monarchgames().with_context(|| "monarch_client::update_game() -> ")?;
+
+            for (i, game) in monarch_games.clone().iter().enumerate() {
+                if game.platform == platform && game.platform_id == platform_id {
+                    monarch_games.remove(i);
+                    return write_monarch_games(monarch_games).with_context(|| "monarch_client::update_game() -> ")
+                }
+            }
+            bail!("monarch_client::update_game() | Err: Game: {platform_id} uninstalled, not removed from monarch_games.json, due to not found!")
+        }
+
         &_ => bail!("monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )")
     }
 }
@@ -93,9 +107,11 @@ pub async fn update_game(handle: &AppHandle, platform: &str, platform_id: &str) 
         "steam" => {
             bail!("monarch_client::uninstall_game() | Err: Monarch currently does not support updating games from the steam desktop client!")
         }
-        "steamcmd" => steam_client::update_game(handle, platform_id)
+        "steamcmd" => {
+            steam_client::update_game(handle, platform_id)
             .await
-            .with_context(|| "monarch_client::uninstall_game() -> "),
+            .with_context(|| "monarch_client::uninstall_game() -> ")
+        }
         &_ => bail!("monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )")
     }
 }
@@ -142,8 +158,8 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 }
 
 /// Search for the name of a game and return the results.
-/// TODO: Add support for things, like filters in the future.
-/// TODO: Remove unwraps, after testing
+/// TODO: Add support for things like filters in the future.
+/// TODO: Remove unwraps after testing
 pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     let search_term: String = format!(
         "https://monarch-launcher.com/api/games?search={}",

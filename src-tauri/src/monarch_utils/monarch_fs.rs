@@ -47,8 +47,6 @@ pub fn get_unix_home() -> Result<PathBuf> {
 /// Returns the monarch data folder from settings.toml
 pub fn get_monarch_home() -> PathBuf {
     let settings: Settings = get_settings_state();
-
-    // Remove " " and ' ' that are still in Strings parsed from toml
     PathBuf::from(settings.monarch.monarch_home)
 }
 

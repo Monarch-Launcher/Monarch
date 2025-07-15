@@ -75,7 +75,7 @@ const CenteredContainer = styled.div`
   justify-content: flex-start;
   background: none;
   padding: 4rem 0 2rem 0;
-  overflow: hidden;
+  overflow: auto;
 `;
 
 const Card = styled.div`

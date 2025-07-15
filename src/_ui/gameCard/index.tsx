@@ -272,9 +272,9 @@ const GameCard = ({
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
-  const { library } = useLibrary();
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const optionsRef = React.useRef<HTMLButtonElement | null>(null);
+  const { library, refreshLibrary } = useLibrary();
 
   const toggleDrawer = React.useCallback(() => {
     setDrawerOpen((prev) => !prev);
@@ -320,13 +320,14 @@ const GameCard = ({
         platformId,
         platform,
       });
+      await refreshLibrary();
     } catch (err) {
       await dialog.message(`${err}`, {
         title: 'Error',
         type: 'error',
       });
     }
-  }, [name, platformId, platform]);
+  }, [name, platformId, platform, refreshLibrary]);
 
   const handleUpdate = React.useCallback(async () => {
     try {
@@ -350,13 +351,14 @@ const GameCard = ({
         platformId,
         platform,
       });
+      await refreshLibrary();
     } catch (err) {
       await dialog.message(`${err}`, {
         title: 'Error',
         type: 'error',
       });
     }
-  }, [name, platformId, platform]);
+  }, [name, platformId, platform, refreshLibrary]);
 
   const hasGame = React.useMemo<boolean>(() => {
     return !!library.find((game) => game.id === id);

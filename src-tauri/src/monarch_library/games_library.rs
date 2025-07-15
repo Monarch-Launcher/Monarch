@@ -9,9 +9,16 @@ use crate::monarch_utils::monarch_fs::{
     get_library_json_path, get_monarch_games_path, path_exists, write_json_content,
 };
 
+/// Overwrites library.json
 pub fn write_games(games: Vec<MonarchGame>) -> Result<()> {
     let path: PathBuf = get_library_json_path();
+    write_json_content(json!(games), &path).with_context(|| "games_library::write_games() -> ")
+}
 
+/// Overwrites list of games found in monarch_games.json
+/// Use with caution
+pub fn write_monarch_games(games: Vec<MonarchGame>) -> Result<()> {
+    let path: PathBuf = get_monarch_games_path();
     write_json_content(json!(games), &path).with_context(|| "games_library::write_games() -> ")
 }
 
@@ -84,7 +91,9 @@ pub fn add_game(game: MonarchGame) -> Result<()> {
 
     let games_json: Value = get_games().with_context(|| "games_library::add_game() -> ")?;
 
-    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| "games_library::add_game() Failed to parse json to Vec<MonarchGame>! | Err: ")?;
+    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| {
+        "games_library::add_game() Failed to parse json to Vec<MonarchGame>! | Err: "
+    })?;
 
     games.push(game);
     write_games(games)
