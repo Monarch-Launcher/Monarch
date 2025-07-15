@@ -1,5 +1,58 @@
 import { House, Library, Search, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import styled from 'styled-components';
+
+const Nav = styled.nav`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(34, 34, 34, 0.8);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  z-index: 1000;
+`;
+
+const Container = styled.div`
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+`;
+
+const NavItem = styled(Link)<{ $active?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px 20px;
+  min-width: 80px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #a0a0a0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  text-align: center;
+  background: none;
+  ${({ $active, theme }) =>
+    $active && `color: ${theme.colors.primary};`}
+  &:hover {
+    background-color: rgba(150, 150, 150, 0.2);
+  }
+`;
+
+const IconStyle = styled.span`
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const Label = styled.span`
+  font-size: 14px;
+  margin-top: 4px;
+  color: inherit;
+`;
 
 export const NavigationMenu = () => {
   const location = useLocation();
@@ -11,85 +64,26 @@ export const NavigationMenu = () => {
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
 
-  // Inline style objects
-  const navStyle: React.CSSProperties = {
-    position: 'fixed',
-    bottom: '0',
-    left: '0',
-    right: '0',
-    backgroundColor: 'rgba(34, 34, 34, 0.8)', // bg-secondary with opacity
-    backdropFilter: 'blur(10px)', // backdrop blur effect
-    borderTop: '1px solid rgba(255, 255, 255, 0.1)', // border-white/10
-    padding: '8px 16px',
-  };
-
-  const containerStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    width: '100%', // ensure the items are evenly spread
-  };
-
-  const itemStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '15px 20px', // increased padding for a wider/fatter button
-    minWidth: '80px', // increase the minimum width
-    borderRadius: '8px',
-    textDecoration: 'none',
-    color: '#a0a0a0', // text-muted-foreground
-    transition: 'background-color 0.3s ease',
-    textAlign: 'center', // center the text
-  };
-
-  const itemHoverStyle: React.CSSProperties = {
-    backgroundColor: 'rgba(150, 150, 150, 0.2)', // hover:bg-muted
-  };
-
-  const activeItemStyle: React.CSSProperties = {
-    color: 'orange', // text-primary
-  };
-
-  const iconStyle: React.CSSProperties = {
-    width: '28px',
-    height: '28px',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: '14px',
-    marginTop: '4px',
-    color: 'inherit',
-  };
-
   return (
-    <nav style={navStyle}>
-      <div style={containerStyle}>
+    <Nav>
+      <Container>
         {menuItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
-            <Link
+            <NavItem
               key={item.label}
               to={item.path}
-              style={{
-                ...itemStyle,
-                ...(isActive ? activeItemStyle : {}),
-              }}
-              // eslint-disable-next-line no-return-assign
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor =
-                  itemHoverStyle.backgroundColor!)
-              }
-              // eslint-disable-next-line no-return-assign
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
+              $active={isActive}
             >
-              <item.icon style={iconStyle} />
-              <span style={labelStyle}>{item.label}</span>
-            </Link>
+              <IconStyle>
+                <item.icon style={{ width: 28, height: 28 }} />
+              </IconStyle>
+              <Label>{item.label}</Label>
+            </NavItem>
           );
         })}
-      </div>
-    </nav>
+      </Container>
+    </Nav>
   );
 };
 

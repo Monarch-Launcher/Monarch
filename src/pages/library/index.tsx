@@ -24,11 +24,6 @@ const LibraryContainer = styled.div`
   margin: 1rem 0;
 `;
 
-const Row = styled.div`
-  display: flex;
-  gap: 1rem;
-`;
-
 const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
   ${({ $loading }) =>
     $loading &&
@@ -50,6 +45,42 @@ const GameContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+`;
+
+const LibraryLayout = styled.div`
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+`;
+
+const Sidebar = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 220px;
+  max-width: 260px;
+  padding: 1.5rem 1rem 1rem 0.5rem;
+  gap: 1.5rem;
+`;
+
+const StackedButton = styled(Button)`
+  height: 3.5rem;
+  font-size: 1rem;
+  justify-content: flex-start;
+  padding-left: 0.75rem;
+  margin-bottom: 1rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  svg {
+    margin-right: 0.75rem;
+  }
+`;
+
+const SidebarButtonGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 `;
 
 const Library = () => {
@@ -102,75 +133,86 @@ const Library = () => {
 
   return (
     <Page>
-      <Row>
-        <SearchBar
-          value={searchTerm}
-          onChange={handleSearchTermChange}
-          placeholder="Search"
-        />
-        <Button
-          type="button"
-          variant="primary"
-          onClick={refreshLibrary}
-          title={loading ? 'Loading...' : 'Refresh'}
-          loading={loading}
-        >
-          <StyledRefreshIcon $loading={loading} />
-        </Button>
-        <Button
-          type="button"
-          variant="primary"
-          onClick={open}
-          title="Add new collection"
-        >
-          <FaFolderPlus />
-        </Button>
-        <Button
-          type="button"
-          variant="primary"
-          onClick={handleOpenDialog}
-          title="Add game folder"
-        >
-          <FaFolderOpen />
-        </Button>
-        <Modal opened={opened} close={close} library={library} />
-      </Row>
-      <LibraryContainer>
-        <GameContainer>
-          {collections.length !== 0 &&
-            collections.map((collection) => (
-              <Collection key={collection.id} collection={collection} />
-            ))}
-          {filteredLibrary.length === 0 && loading ? (
-            <Spinner />
-          ) : (
-            filteredLibrary.map((game) => (
-              <GameCard
-                key={game.id}
-                id={game.id}
-                executablePath={game.executable_path}
-                platform={game.platform}
-                name={game.name}
-                platformId={game.platform_id}
-                thumbnailPath={game.thumbnail_path}
-                storePage={game.store_page}
-                isLibrary
-              />
-            ))
-          )}
-        </GameContainer>
-
-        {!loading && results?.empty && <p>{results.emptyMessage}</p>}
-        {error && (
-          <Error description="Couldn't load library" onRetry={refreshLibrary} />
-        )}
-        {dialogError && (
-          <Error
-            description="Couldn't open file explorer"
-            onRetry={handleOpenDialog}
+      <LibraryLayout>
+        <Sidebar>
+          <SearchBar
+            value={searchTerm}
+            onChange={handleSearchTermChange}
+            placeholder="Search Library"
+            fullWidth
           />
-        )}
-      </LibraryContainer>
+          <SidebarButtonGroup>
+            <StackedButton
+              type="button"
+              variant="primary"
+              onClick={refreshLibrary}
+              title={loading ? 'Loading...' : 'Refresh'}
+              loading={loading}
+              fullWidth
+            >
+              <StyledRefreshIcon $loading={loading} />
+              Refresh Library
+            </StackedButton>
+            <StackedButton
+              type="button"
+              variant="primary"
+              onClick={open}
+              title="Add new collection"
+              fullWidth
+            >
+              <FaFolderPlus />
+              New Collection
+            </StackedButton>
+            <StackedButton
+              type="button"
+              variant="primary"
+              onClick={handleOpenDialog}
+              title="Add game folder"
+              fullWidth
+            >
+              <FaFolderOpen />
+              Add Game Manually
+            </StackedButton>
+          </SidebarButtonGroup>
+          <Modal opened={opened} close={close} library={library} />
+        </Sidebar>
+        <LibraryContainer>
+          <GameContainer>
+            {collections.length !== 0 &&
+              collections.map((collection) => (
+                <Collection key={collection.id} collection={collection} />
+              ))}
+            {filteredLibrary.length === 0 && loading ? (
+              <Spinner />
+            ) : (
+              filteredLibrary.map((game) => (
+                <GameCard
+                  key={game.id}
+                  id={game.id}
+                  executablePath={game.executable_path}
+                  platform={game.platform}
+                  name={game.name}
+                  platformId={game.platform_id}
+                  thumbnailPath={game.thumbnail_path}
+                  storePage={game.store_page}
+                  isLibrary
+                />
+              ))
+            )}
+          </GameContainer>
+
+          {!loading && results?.empty && <p>{results.emptyMessage}</p>}
+          {error && (
+            <Error description="Couldn't load library" onRetry={refreshLibrary} />
+          )}
+          {dialogError && (
+            <Error
+              description="Couldn't open file explorer"
+              onRetry={handleOpenDialog}
+            />
+          )}
+        </LibraryContainer>
+      </LibraryLayout>
     </Page>
   );
 };

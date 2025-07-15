@@ -146,7 +146,7 @@ pub fn path_exists(path: &Path) -> bool {
 
 /// Attempts to create an empty directory and returns result
 pub fn create_dir(path: &Path) -> Result<()> {
-    fs::create_dir_all(path).with_context(|| format!("monarch_fs::write_json_content() Something went wrong trying to write new library to: {dir} | Err: ", dir = path.display()))?;
+    fs::create_dir_all(path).with_context(|| format!("monarch_fs::create_dir() Something went wrong trying to create directory: {dir} | Err: ", dir = path.display()))?;
     Ok(())
 }
 

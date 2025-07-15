@@ -58,6 +58,7 @@ const StyledButton = styled(Button)`
   font-weight: bold;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  border: none !important;
 
   &:hover {
     background-color: ${({ theme }) => theme.colors.primary};
@@ -67,7 +68,7 @@ const StyledButton = styled(Button)`
 `;
 
 const CenteredContainer = styled.div`
-  min-height: 100vh;
+  height: 100vh;
   width: 100vw;
   display: flex;
   flex-direction: column;
@@ -75,7 +76,7 @@ const CenteredContainer = styled.div`
   justify-content: flex-start;
   background: none;
   padding: 4rem 0 2rem 0;
-  overflow: auto;
+  overflow-y: auto;
 `;
 
 const Card = styled.div`
@@ -103,12 +104,14 @@ const AnimatedButton = styled(StyledButton)<{ $danger?: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
-  ${({ $danger, theme }) =>
-    $danger &&
-    `background: #e74c3c;
-     color: white;
-     &:hover { background: #c0392b; }`}
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s, border 0.2s;
+  ${({ $danger }) =>
+    $danger && `
+      background: #e74c3c;
+      color: white;
+      border: none !important;
+      &:hover { background: #c0392b; }
+    `}
   &:hover {
     background: linear-gradient(
       90deg,

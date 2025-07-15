@@ -367,7 +367,7 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
     }
 
     let game_json: Value = serde_json::from_str(&game_info).unwrap();
-    let name: String = game_json[&id]["data"]["name"].to_string();
+    let name: String = game_json[&id]["data"]["name"].to_string().trim_matches('"').to_string();
 
     let store_url = format!("https://store.steampowered.com/app/{id}");
     let cover_url: String =

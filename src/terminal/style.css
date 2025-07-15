@@ -5,7 +5,7 @@ html, body {
     height: 100%;
     width: 100%;
     background: #0a0a0a; /* Dark background */
-    color: #FF6000; /* Monarch orange */
+    color: #FA5002; /* Monarch orange */
     font-family: 'IBM Plex Mono', 'Courier New', Courier, monospace;
     font-size: 16px;
 }
@@ -16,10 +16,10 @@ html, body {
     width: 100%;
     margin: 0;
     background: #181818;
-    color: #FF6000;
+    color: #FA5002;
     border-radius: 10px;
-    border: 2px solid #FF6000;
-    box-shadow: 0 4px 32px 0 #000a, 0 1.5px 0 0 #FF6000 inset;
+    border: 2px solid #FA5002;
+    box-shadow: 0 4px 32px 0 #000a, 0 1.5px 0 0 #FA5002 inset;
     padding: 0;
     overflow: hidden;
     font-family: 'IBM Plex Mono', 'Courier New', Courier, monospace;
@@ -34,7 +34,7 @@ html, body {
     width: 100%;
     height: 100%;
     background-color: transparent;
-    color: #FF6000;
+    color: #FA5002;
     font-family: 'IBM Plex Mono', 'Courier New', Courier, monospace;
     font-size: 16px;
     padding: 0;
@@ -48,7 +48,7 @@ html, body {
 }
 
 .xterm .xterm-cursor {
-    background-color: #FF6000 !important;
+    background-color: #FA5002 !important;
     color: #181818 !important;
     border-radius: 2px;
     animation: blink 1s step-end infinite;
@@ -66,24 +66,24 @@ html, body {
     background: #222;
 }
 #terminal::-webkit-scrollbar-thumb, .xterm-scroll-area::-webkit-scrollbar-thumb {
-    background: #FF6000;
+    background: #FA5002;
     border-radius: 8px;
     border: 2px solid #181818;
 }
 
 /* Style links inside the terminal (if applicable) */
 .xterm a {
-    color: #FF6000;
-    text-decoration: underline dotted #FF6000;
+    color: #FA5002;
+    text-decoration: underline dotted #FA5002;
     transition: color 0.2s, border-bottom 0.2s;
 }
 .xterm a:hover {
     color: #fff;
-    border-bottom: 1px solid #FF6000;
+    border-bottom: 1px solid #FA5002;
 }
 
 /* Optional: subtle glow for prompt or important text */
 .xterm .xterm-bold {
     color: #fff;
-    text-shadow: 0 0 4px #FF6000, 0 0 2px #FF6000;
+    text-shadow: 0 0 4px #FA5002, 0 0 2px #FA5002;
 }

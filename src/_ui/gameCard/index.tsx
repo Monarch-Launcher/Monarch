@@ -3,18 +3,17 @@ import 'react-modern-drawer/dist/index.css';
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
 import {
-  FaPlay,
-  FaRegEdit,
   FaSteam,
   HiDownload,
   PiButterflyBold,
   SiEpicgames,
 } from '@global/icons';
+import { BsThreeDotsVertical } from 'react-icons/bs';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import * as React from 'react';
-import { FiInfo } from 'react-icons/fi';
 import styled, { keyframes } from 'styled-components';
+import { useLayoutEffect, useState } from 'react';
 
 import Button from '../button';
 
@@ -33,6 +32,7 @@ const CardContainer = styled.div`
   background-color: ${({ theme }) => theme.colors.secondary};
   border-radius: 0.5rem;
   overflow: hidden; /* Ensure the image doesn't overflow the card */
+  color: #fff;
 
   &:hover button {
     opacity: 1;
@@ -50,16 +50,27 @@ const Thumbnail = styled.img<{ $isInfo?: boolean }>`
 `;
 
 const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
-  background-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
-  border-color: ${({ $isInfo }) => ($isInfo ? 'grey' : 'orange')};
+  background-color: ${({ $isInfo, theme }) =>
+    $isInfo ? 'grey' : theme.colors.primary};
+  border-color: ${({ $isInfo, theme }) =>
+    $isInfo ? 'grey' : theme.colors.primary};
   color: white;
   z-index: 4; /* Ensure buttons are on top */
+  font-size: 1.5rem;
+  padding: 1.2rem 2.25rem;
+  svg {
+    width: 32px !important;
+    height: 32px !important;
+  }
 
   &:hover,
   &:focus {
-    background-color: ${({ $isInfo }) => ($isInfo ? 'darkgrey' : 'darkorange')};
-    border-color: ${({ $isInfo }) => ($isInfo ? 'darkgrey' : 'darkorange')};
-    color: white;
+    background-color: ${({ $isInfo, theme }) =>
+      $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBackground};
+    border-color: ${({ $isInfo, theme }) =>
+      $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBorder};
+    color: ${({ $isInfo, theme }) =>
+      $isInfo ? 'white' : theme.colors.button.primary.hoverText};
   }
 `;
 
@@ -78,71 +89,54 @@ const HoverButtonWrapper = styled.div`
 
 const Info = styled.p`
   font-weight: 700;
-  color: ${({ theme }) => theme.colors.primary};
+  color: #fff;
   margin-top: 0.5rem;
   text-align: center;
 `;
 
-const OptionsButton = styled.button`
-  position: absolute;
-  bottom: 0.5rem;
-  left: 0.5rem;
-  background: rgba(30, 30, 30, 0.85);
-  border: 1px solid ${({ theme }) => theme.colors.primary};
-  border-radius: 50%;
-  padding: 0.3rem;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
-  width: 2.5rem;
-  height: 2.5rem;
+const MeatballsButton = styled.button`
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${({ theme }) => theme.colors.primary};
-  cursor: pointer;
-  z-index: 5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  opacity: 0;
-  pointer-events: none;
-  transition: background 0.2s, opacity 0.2s, border 0.2s, color 0.2s;
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.5rem;
+  font-size: 1.5rem;
+  transition: color 0.2s;
   svg {
-    color: ${({ theme }) => theme.colors.primary};
-    transition: color 0.2s;
-  }
-  ${CardContainer}:hover & {
-    opacity: 1;
-    pointer-events: auto;
+    transform: rotate(90deg);
+    color: #fff;
   }
   &:hover {
-    background: rgba(30, 30, 30, 1);
     color: #fff;
-    border: 1px solid ${({ theme }) => theme.colors.primary};
-    svg {
-      color: #fff;
-    }
+    opacity: 0.7;
   }
 `;
 
 const DropdownMenu = styled.div`
   position: absolute;
-  top: 2.5rem;
-  right: 0.5rem;
-  background: ${({ theme }) => theme.colors.secondary};
+  background: rgba(34, 34, 34, 0.8);
   border: 1px solid ${({ theme }) => theme.colors.primary};
   border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   z-index: 10;
-  min-width: 8rem;
+  width: 180px;
   padding: 0.5rem 0;
   display: flex;
   flex-direction: column;
   pointer-events: auto;
+  color: #fff;
+  white-space: normal;
+  word-break: break-word;
 `;
 
 const DropdownItem = styled.button`
   background: none;
   border: none;
-  color: ${({ theme }) => theme.colors.primary};
+  color: #fff;
   padding: 0.5rem 1rem;
   text-align: left;
   width: 100%;
@@ -216,33 +210,73 @@ const StoreIconButton = styled(Button)`
   font-size: 1.2rem;
 `;
 
-const DetailsButton = styled(Button)`
-  position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
-  z-index: 6;
-  background: rgba(30, 30, 30, 0.85);
-  border: 1px solid ${({ theme }) => theme.colors.primary};
-  border-radius: 50%;
-  padding: 0.3rem;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
-  width: 2.5rem;
-  height: 2.5rem;
+const InfoRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${({ theme }) => theme.colors.primary};
-  opacity: 0;
+  width: 100%;
+  position: relative;
+  min-height: 2.5rem;
+`;
+
+const CenteredInfo = styled(Info)`
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  width: calc(100% - 3rem);
+  max-width: calc(100% - 3rem);
   pointer-events: none;
-  transition: background 0.2s, opacity 0.2s, color 0.2s;
-  ${CardContainer}:hover & {
-    opacity: 1;
-    pointer-events: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 2.5rem;
+`;
+
+const DrawerButton = styled(StyledButton)`
+  background-color: rgba(34, 34, 34, 0.8) !important;
+  border-color: rgba(34, 34, 34, 0.8) !important;
+  color: #fff !important;
+  font-size: 0.95rem;
+  padding: 0.4rem 0.9rem;
+  &:hover, &:focus {
+    background-color: rgba(34, 34, 34, 1) !important;
+    border-color: rgba(34, 34, 34, 1) !important;
+    color: #FA5002 !important;
   }
-  &:hover {
-    background: rgba(30, 30, 30, 1);
-    color: #fff;
+`;
+
+const DrawerStoreButton = styled(StoreIconButton)`
+  background-color: rgba(34, 34, 34, 0.8) !important;
+  border-color: rgba(34, 34, 34, 0.8) !important;
+  color: #fff !important;
+  font-size: 0.95rem;
+  padding: 0.4rem 0.9rem;
+  &:hover, &:focus {
+    background-color: rgba(34, 34, 34, 1) !important;
+    border-color: rgba(34, 34, 34, 1) !important;
+    color: #FA5002 !important;
+  }
+`;
+
+const IconOnlyButton = styled.button`
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 4;
+  width: 64px;
+  height: 64px;
+  &:hover, &:focus {
+    background: none;
+    border: none;
+    outline: none;
+    box-shadow: none;
   }
 `;
 
@@ -406,79 +440,124 @@ const GameCard = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [optionsOpen]);
 
+  // Add state and effect for menu positioning
+  const [, setMenuPosition] = useState({ left: 0, top: 0 });
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (optionsOpen && optionsRef.current) {
+      const rect = optionsRef.current.getBoundingClientRect();
+      setMenuPosition({
+        left: rect.left + window.scrollX,
+        top: rect.bottom + window.scrollY + 4,
+      });
+    }
+  }, [optionsOpen]);
+
   return (
     <CardWrapper style={{ width: cardWidth }}>
-      <CardContainer>
+      <CardContainer
+        onClick={(e) => {
+          // Only open drawer if not clicking the launch button
+          if (
+            e.target instanceof HTMLElement &&
+            !e.target.closest('.launch-btn')
+          ) {
+            toggleDrawer();
+          }
+        }}
+        style={{ cursor: 'pointer' }}
+      >
         <Thumbnail
           alt="game-thumbnail"
           src={imageSrc}
           onError={handleImageError}
         />
-        {/* Options Button (dropdown) at bottom left */}
-        <OptionsButton
-          ref={optionsRef}
-          onClick={() => setOptionsOpen((v) => !v)}
-          title="Game options"
-        >
-          <FaRegEdit size={20} />
-        </OptionsButton>
-        {optionsOpen && (
-          <DropdownMenu
-            style={{ left: 0, bottom: '3rem', right: 'auto', top: 'auto' }}
-          >
-            <DropdownItem
-              onMouseDown={async (e) => {
+        <HoverButtonWrapper>
+          {hasGame ? (
+            <IconOnlyButton
+              className="launch-btn"
+              type="button"
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
-                await openStorePage();
-                setOptionsOpen(false);
+                handleLaunch();
               }}
             >
-              Open Store Page
-            </DropdownItem>
-            {isLibrary && (
-              <>
-                <DropdownItem
-                  onMouseDown={async (e) => {
-                    e.stopPropagation();
-                    await handleUpdate();
-                    setOptionsOpen(false);
-                  }}
-                >
-                  Update
-                </DropdownItem>
-                <DropdownItem
-                  onMouseDown={async (e) => {
-                    e.stopPropagation();
-                    await handleUninstallGame();
-                    setOptionsOpen(false);
-                  }}
-                >
-                  Uninstall
-                </DropdownItem>
-              </>
-            )}
-          </DropdownMenu>
-        )}
-        {/* Info Icon Button to open drawer */}
-        <DetailsButton
-          type="button"
-          variant="icon"
-          onClick={toggleDrawer}
-          title="Show details"
-        >
-          <FiInfo size={20} />
-        </DetailsButton>
-        <HoverButtonWrapper>
-          <StyledButton
-            variant="primary"
-            type="button"
-            onClick={hasGame ? handleLaunch : handleDownload}
-          >
-            {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
-          </StyledButton>
+              <svg width="64" height="64" viewBox="0 0 32 32" style={{ display: 'block' }}>
+                <polygon points="6,4 28,16 6,28" fill="#FA5002" />
+              </svg>
+            </IconOnlyButton>
+          ) : (
+            <StyledButton
+              className="launch-btn"
+              variant="primary"
+              type="button"
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.stopPropagation();
+                handleDownload();
+              }}
+            >
+              <HiDownload size={24} />
+            </StyledButton>
+          )}
         </HoverButtonWrapper>
       </CardContainer>
-      <Info>{name}</Info>
+      <InfoRow>
+        <CenteredInfo>{name}</CenteredInfo>
+        <div style={{ marginLeft: 'auto', zIndex: 2, position: 'relative' }}>
+          <MeatballsButton
+            ref={optionsRef}
+            onClick={() => setOptionsOpen((v) => !v)}
+            title="Game options"
+          >
+            <BsThreeDotsVertical />
+          </MeatballsButton>
+          {optionsOpen && (
+            <DropdownMenu
+              ref={menuRef}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: '100%',
+                minWidth: '10rem',
+                zIndex: 100,
+              }}
+            >
+              <DropdownItem
+                onMouseDown={async (e) => {
+                  e.stopPropagation();
+                  await openStorePage();
+                  setOptionsOpen(false);
+                }}
+              >
+                Open Store Page
+              </DropdownItem>
+              {isLibrary && (
+                <>
+                  <DropdownItem
+                    onMouseDown={async (e) => {
+                      e.stopPropagation();
+                      await handleUpdate();
+                      setOptionsOpen(false);
+                    }}
+                  >
+                    Update
+                  </DropdownItem>
+                  <DropdownItem
+                    onMouseDown={async (e) => {
+                      e.stopPropagation();
+                      await handleUninstallGame();
+                      setOptionsOpen(false);
+                    }}
+                  >
+                    Uninstall
+                  </DropdownItem>
+                </>
+              )}
+            </DropdownMenu>
+          )}
+        </div>
+      </InfoRow>
       {/* Custom Drawer for game details */}
       {drawerOpen && (
         <DrawerOverlay onClick={toggleDrawer}>
@@ -512,33 +591,32 @@ const GameCard = ({
               Platform: {platform}
             </p>
             <DrawerButtonRow>
-              <StyledButton
+              <DrawerButton
                 variant="primary"
                 type="button"
                 onClick={hasGame ? handleLaunch : handleDownload}
               >
-                {hasGame ? <FaPlay size={20} /> : <HiDownload size={24} />}
                 {hasGame ? 'Launch' : 'Download'}
-              </StyledButton>
+              </DrawerButton>
               {isLibrary && (
-                <StyledButton
+                <DrawerButton
                   variant="secondary"
                   type="button"
                   onClick={handleUpdate}
                 >
                   Update
-                </StyledButton>
+                </DrawerButton>
               )}
               {isLibrary && (
-                <StyledButton
+                <DrawerButton
                   variant="danger"
                   type="button"
                   onClick={handleUninstallGame}
                 >
                   Uninstall
-                </StyledButton>
+                </DrawerButton>
               )}
-              <StoreIconButton
+              <DrawerStoreButton
                 variant="secondary"
                 type="button"
                 onClick={openStorePage}
@@ -549,7 +627,7 @@ const GameCard = ({
                   style: { marginRight: 8 },
                 })}
                 Store
-              </StoreIconButton>
+              </DrawerStoreButton>
             </DrawerButtonRow>
           </Drawer>
         </DrawerOverlay>
