@@ -20,7 +20,7 @@ pub fn init_logger() {
         Err(_) => tracing_subscriber::EnvFilter::new("info"),
     };
 
-    let logfile = OpenOptions::new()
+    let logfile: File = OpenOptions::new()
         .append(true)
         .create(true)
         .open(monarch_logs)

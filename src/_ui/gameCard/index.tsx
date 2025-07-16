@@ -175,14 +175,16 @@ const slideIn = keyframes`
 
 const Drawer = styled.div`
   position: relative;
-  width: 600px;
+  width: 900px;
   max-width: 98vw;
-  height: 90vh;
-  margin: auto 0;
-  box-shadow: -2px 0 16px rgba(0, 0, 0, 0.2);
+  height: 100vh;
+  margin: 0;
+  /* box-shadow removed to eliminate glow effect */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   animation: ${slideIn} 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-left: 1rem;
 `;
 
 const DrawerCloseButton = styled(Button)`
@@ -193,7 +195,7 @@ const DrawerCloseButton = styled(Button)`
 `;
 
 const DrawerTitle = styled.h2`
-  color: ${({ theme }) => theme.colors.primary};
+  color: #fff;
   margin-bottom: 1rem;
 `;
 
@@ -282,6 +284,28 @@ const IconOnlyButton = styled.button`
     outline: none;
     box-shadow: none;
   }
+`;
+
+const DrawerBackground = styled.img`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(16px);
+  z-index: 1;
+`;
+
+// Add DrawerBackgroundOverlay styled component
+const DrawerBackgroundOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 10, 10, 0.75);
+  z-index: 2;
 `;
 
 type GameCardProps = {
@@ -458,7 +482,7 @@ const GameCard = ({
     invoke('update_game_properties', { game: updatedGame });
     // Optionally, refresh the library after update
     // refreshLibrary();
-  }, [launchCommands, compatibilityLayer, propertiesOpen]);
+  }, [launchCommands, compatibilityLayer, propertiesOpen, gameData]);
 
   React.useEffect(() => {
     if (!optionsOpen) return;
@@ -620,79 +644,103 @@ const GameCard = ({
         </div>
       </InfoRow>
       {/* Custom Drawer for game details */}
-      {drawerOpen && (
-        <DrawerOverlay onClick={toggleDrawer}>
-          <Drawer
-            style={drawerStyles}
-            onClick={(e) => e.stopPropagation()}
-            ref={drawerRef}
-          >
-            <DrawerCloseButton
-              type="button"
-              variant="icon"
-              onClick={toggleDrawer}
-              title="Close"
+      {drawerOpen &&
+        ReactDOM.createPortal(
+          <DrawerOverlay onClick={toggleDrawer}>
+            <Drawer
+              style={drawerStyles}
+              onClick={(e) => e.stopPropagation()}
+              ref={drawerRef}
             >
-              ×
-            </DrawerCloseButton>
-            <DrawerTitle>{name}</DrawerTitle>
-            <Thumbnail
-              alt="game-thumbnail"
-              src={imageSrc}
-              onError={handleImageError}
-              style={{
-                position: 'static',
-                width: '80%',
-                height: 'auto',
-                borderRadius: '0.5rem',
-                marginBottom: '1rem',
-              }}
-            />
-            <p style={{ color: '#aaa', marginBottom: '1rem' }}>
-              Platform: {platform}
-            </p>
-            <DrawerButtonRow>
-              <DrawerButton
-                variant="primary"
+              <DrawerCloseButton
                 type="button"
-                onClick={hasGame ? handleLaunch : handleDownload}
+                variant="icon"
+                onClick={toggleDrawer}
+                title="Close"
               >
-                {hasGame ? 'Launch' : 'Download'}
-              </DrawerButton>
-              {isLibrary && (
-                <DrawerButton
-                  variant="secondary"
-                  type="button"
-                  onClick={handleUpdate}
-                >
-                  Update
-                </DrawerButton>
-              )}
-              {isLibrary && (
-                <DrawerButton
-                  variant="danger"
-                  type="button"
-                  onClick={handleUninstallGame}
-                >
-                  Uninstall
-                </DrawerButton>
-              )}
-              <DrawerStoreButton
-                variant="secondary"
-                type="button"
-                onClick={openStorePage}
-                title="Open Store Page"
-              >
-                {React.createElement(getStoreIcon, {
-                  size: 24,
-                  style: { marginRight: 8 },
-                })}
-                Store
-              </DrawerStoreButton>
-            </DrawerButtonRow>
-          </Drawer>
-        </DrawerOverlay>
-      )}
+                ×
+              </DrawerCloseButton>
+              {/* Blurry background image */}
+              <DrawerBackground
+                alt="game-thumbnail-bg"
+                src={imageSrc}
+                onError={handleImageError}
+              />
+              {/* Dark overlay over the blurred background */}
+              <DrawerBackgroundOverlay />
+              {/* Drawer content on top */}
+              <div style={{ position: 'relative', zIndex: 3 }}>
+                <Thumbnail
+                  alt="game-thumbnail"
+                  src={imageSrc}
+                  onError={handleImageError}
+                  style={{
+                    position: 'static',
+                    width: '65%',
+                    height: 'auto',
+                    borderRadius: '0.5rem',
+                    marginTop: '1rem',
+                    marginBottom: '1rem',
+                  }}
+                />
+                <DrawerTitle>{name}</DrawerTitle>
+                <p style={{ color: '#aaa', marginBottom: '1rem' }}>
+                  Platform: {platform}
+                </p>
+                <DrawerButtonRow>
+                  <DrawerButton
+                    variant="primary"
+                    type="button"
+                    onClick={hasGame ? handleLaunch : handleDownload}
+                  >
+                    {hasGame ? 'Launch' : 'Download'}
+                  </DrawerButton>
+                  {isLibrary && (
+                    <DrawerButton
+                      variant="secondary"
+                      type="button"
+                      onClick={handleUpdate}
+                    >
+                      Update
+                    </DrawerButton>
+                  )}
+                  {isLibrary && (
+                    <DrawerButton
+                      variant="danger"
+                      type="button"
+                      onClick={handleUninstallGame}
+                    >
+                      Uninstall
+                    </DrawerButton>
+                  )}
+                  {/* Add Reinstall in Monarch button for Steam games in library */}
+                  {platform === 'steam' && isLibrary && (
+                    <DrawerButton
+                      variant="secondary"
+                      type="button"
+                      onClick={() => console.log('reinstalling')}
+                    >
+                      Reinstall in Monarch
+                    </DrawerButton>
+                  )}
+                  <DrawerStoreButton
+                    variant="secondary"
+                    type="button"
+                    onClick={openStorePage}
+                    title="Open Store Page"
+                  >
+                    {React.createElement(getStoreIcon, {
+                      size: 24,
+                      style: { marginRight: 8 },
+                    })}
+                    Store
+                  </DrawerStoreButton>
+                </DrawerButtonRow>
+              </div>
+            </Drawer>
+          </DrawerOverlay>,
+          document.body
+        )}
       {/* Properties Modal */}
       <Modal
         opened={propertiesOpen}
