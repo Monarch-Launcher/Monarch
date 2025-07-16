@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::PathBuf;
 use tracing::info;
@@ -20,7 +20,12 @@ pub fn init_logger() {
         Err(_) => tracing_subscriber::EnvFilter::new("info"),
     };
 
-    let logfile = File::create(monarch_logs).unwrap();
+    let logfile = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(monarch_logs)
+        .unwrap();
+
     let file_layer = layer()
         .with_ansi(false)
         .with_writer(logfile)
