@@ -56,11 +56,6 @@ const GameContainer = styled.div`
   color: #fff;
 `;
 
-const Section = styled.div`
-  margin-bottom: 1rem;
-  color: #fff;
-`;
-
 type Props = {
   opened: boolean;
   close: () => void;

@@ -8,13 +8,12 @@ import {
   PiButterflyBold,
   SiEpicgames,
 } from '@global/icons';
-import { BsThreeDotsVertical } from 'react-icons/bs';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import * as React from 'react';
-import styled, { keyframes } from 'styled-components';
-import { useLayoutEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { BsThreeDotsVertical } from 'react-icons/bs';
+import styled, { keyframes } from 'styled-components';
 
 import Button from '../button';
 import Modal from '../modal';
@@ -241,10 +240,11 @@ const DrawerButton = styled(StyledButton)`
   color: #fff !important;
   font-size: 0.95rem;
   padding: 0.4rem 0.9rem;
-  &:hover, &:focus {
+  &:hover,
+  &:focus {
     background-color: rgba(34, 34, 34, 1) !important;
     border-color: rgba(34, 34, 34, 1) !important;
-    color: #FA5002 !important;
+    color: #fa5002 !important;
   }
 `;
 
@@ -254,10 +254,11 @@ const DrawerStoreButton = styled(StoreIconButton)`
   color: #fff !important;
   font-size: 0.95rem;
   padding: 0.4rem 0.9rem;
-  &:hover, &:focus {
+  &:hover,
+  &:focus {
     background-color: rgba(34, 34, 34, 1) !important;
     border-color: rgba(34, 34, 34, 1) !important;
-    color: #FA5002 !important;
+    color: #fa5002 !important;
   }
 `;
 
@@ -274,7 +275,8 @@ const IconOnlyButton = styled.button`
   z-index: 4;
   width: 64px;
   height: 64px;
-  &:hover, &:focus {
+  &:hover,
+  &:focus {
     background: none;
     border: none;
     outline: none;
@@ -438,8 +440,12 @@ const GameCard = ({
   }, [storePage]);
 
   const [propertiesOpen, setPropertiesOpen] = React.useState(false);
-  const [launchCommands, setLaunchCommands] = React.useState(gameData.launch_args || '');
-  const [compatibilityLayer, setCompatibilityLayer] = React.useState(gameData.compatibility || '');
+  const [launchCommands, setLaunchCommands] = React.useState(
+    gameData.launch_args || '',
+  );
+  const [compatibilityLayer, setCompatibilityLayer] = React.useState(
+    gameData.compatibility || '',
+  );
 
   // Update game properties in backend when fields change
   React.useEffect(() => {
@@ -470,7 +476,10 @@ const GameCard = ({
   }, [optionsOpen]);
 
   // Add state and effect for menu positioning
-  const [menuPosition, setMenuPosition] = React.useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const [menuPosition, setMenuPosition] = React.useState<{
+    left: number;
+    top: number;
+  }>({ left: 0, top: 0 });
   const menuRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useLayoutEffect(() => {
@@ -519,7 +528,12 @@ const GameCard = ({
                 handleLaunch();
               }}
             >
-              <svg width="64" height="64" viewBox="0 0 32 32" style={{ display: 'block' }}>
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 32 32"
+                style={{ display: 'block' }}
+              >
                 <polygon points="6,4 28,16 6,28" fill="#FA5002" />
               </svg>
             </IconOnlyButton>
@@ -548,60 +562,61 @@ const GameCard = ({
           >
             <BsThreeDotsVertical />
           </MeatballsButton>
-          {optionsOpen && ReactDOM.createPortal(
-            <DropdownMenu
-              ref={menuRef}
-              style={{
-                position: 'absolute',
-                left: menuPosition.left,
-                top: menuPosition.top,
-                minWidth: '10rem',
-                zIndex: 20000,
-              }}
-            >
-              <DropdownItem
-                onMouseDown={async (e) => {
-                  e.stopPropagation();
-                  await openStorePage();
-                  setOptionsOpen(false);
+          {optionsOpen &&
+            ReactDOM.createPortal(
+              <DropdownMenu
+                ref={menuRef}
+                style={{
+                  position: 'absolute',
+                  left: menuPosition.left,
+                  top: menuPosition.top,
+                  minWidth: '10rem',
+                  zIndex: 20000,
                 }}
               >
-                Open Store Page
-              </DropdownItem>
-              {isLibrary && (
-                <>
-                  <DropdownItem
-                    onMouseDown={async (e) => {
-                      e.stopPropagation();
-                      await handleUpdate();
-                      setOptionsOpen(false);
-                    }}
-                  >
-                    Update
-                  </DropdownItem>
-                  <DropdownItem
-                    onMouseDown={async (e) => {
-                      e.stopPropagation();
-                      await handleUninstallGame();
-                      setOptionsOpen(false);
-                    }}
-                  >
-                    Uninstall
-                  </DropdownItem>
-                  <DropdownItem
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      setOptionsOpen(false);
-                      setPropertiesOpen(true);
-                    }}
-                  >
-                    Properties
-                  </DropdownItem>
-                </>
-              )}
-            </DropdownMenu>,
-            document.body
-          )}
+                <DropdownItem
+                  onMouseDown={async (e) => {
+                    e.stopPropagation();
+                    await openStorePage();
+                    setOptionsOpen(false);
+                  }}
+                >
+                  Open Store Page
+                </DropdownItem>
+                {isLibrary && (
+                  <>
+                    <DropdownItem
+                      onMouseDown={async (e) => {
+                        e.stopPropagation();
+                        await handleUpdate();
+                        setOptionsOpen(false);
+                      }}
+                    >
+                      Update
+                    </DropdownItem>
+                    <DropdownItem
+                      onMouseDown={async (e) => {
+                        e.stopPropagation();
+                        await handleUninstallGame();
+                        setOptionsOpen(false);
+                      }}
+                    >
+                      Uninstall
+                    </DropdownItem>
+                    <DropdownItem
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setOptionsOpen(false);
+                        setPropertiesOpen(true);
+                      }}
+                    >
+                      Properties
+                    </DropdownItem>
+                  </>
+                )}
+              </DropdownMenu>,
+              document.body,
+            )}
         </div>
       </InfoRow>
       {/* Custom Drawer for game details */}
@@ -687,26 +702,57 @@ const GameCard = ({
         withCloseButton={false}
         size="900px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', minWidth: 600, padding: 40, color: '#fff' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '3rem',
+            minWidth: 600,
+            padding: 40,
+            color: '#fff',
+          }}
+        >
           <label style={{ color: '#fff', fontWeight: 600 }}>
             Launch Commands
             <input
               type="text"
               value={launchCommands}
-              onChange={e => setLaunchCommands(e.target.value)}
+              onChange={(e) => setLaunchCommands(e.target.value)}
               placeholder="e.g. --fullscreen"
-              style={{ width: '100%', marginTop: 4, padding: 8, borderRadius: 4, border: '1px solid #333', background: '#222', color: '#fff' }}
+              style={{
+                width: '100%',
+                marginTop: 4,
+                padding: 8,
+                borderRadius: 4,
+                border: '1px solid #333',
+                background: '#222',
+                color: '#fff',
+              }}
             />
           </label>
           <label style={{ color: '#fff', fontWeight: 600 }}>
             Compatibility Layer
             <select
               value={compatibilityLayer}
-              onChange={e => setCompatibilityLayer(e.target.value)}
-              style={{ width: '100%', marginTop: 4, padding: 8, borderRadius: 4, border: '1px solid #333', background: '#222', color: '#fff' }}
+              onChange={(e) => setCompatibilityLayer(e.target.value)}
+              style={{
+                width: '100%',
+                marginTop: 4,
+                padding: 8,
+                borderRadius: 4,
+                border: '1px solid #333',
+                background: '#222',
+                color: '#fff',
+              }}
             >
-              {compatibilityOptions.map(opt => (
-                <option key={opt.value} value={opt.value} style={{ color: '#000', background: '#fff' }}>{opt.label}</option>
+              {compatibilityOptions.map((opt) => (
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  style={{ color: '#000', background: '#fff' }}
+                >
+                  {opt.label}
+                </option>
               ))}
             </select>
           </label>

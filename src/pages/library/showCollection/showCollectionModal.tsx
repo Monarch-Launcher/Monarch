@@ -1,9 +1,5 @@
-import Button from '@_ui/button';
-import GameCard from '@_ui/gameCard';
 import Modal from '@_ui/modal';
-import { useLibrary } from '@global/contexts/libraryProvider';
-import { BiEdit, MdClose } from '@global/icons';
-import type { Collection, MonarchGame } from '@global/types';
+import type { Collection } from '@global/types';
 import * as React from 'react';
 import styled from 'styled-components';
 
@@ -26,22 +22,6 @@ const ContentContainer = styled.div`
   color: #fff;
 `;
 
-const GamesContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  height: 70vh;
-  overflow-y: scroll;
-  color: #fff;
-`;
-
-const Flex = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-`;
-
 type Props = {
   opened: boolean;
   close: () => void;
@@ -58,13 +38,11 @@ const CollectionModal = ({ opened, close, collection }: Props) => {
   const modalHeader = React.useMemo<JSX.Element>(() => {
     return (
       <ModalHeaderContainer>
-        <ModalHeader>
-          Edit {collection.name}
-        </ModalHeader>
+        <ModalHeader>Edit {collection.name}</ModalHeader>
         {/* Remove close (X) button */}
       </ModalHeaderContainer>
     );
-  }, [close, collection.name]);
+  }, [collection.name]);
 
   return (
     <Modal
