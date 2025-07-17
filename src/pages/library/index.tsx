@@ -123,12 +123,14 @@ const Library = () => {
       (game) => !gamesInCollection.includes(game.id),
     );
 
-    return notInCollection.filter((game) =>
-      game.name
-        .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
-        .toLowerCase()
-        .match(searchTerm.toLowerCase()),
-    );
+    return notInCollection
+      .filter((game) =>
+        game.name
+          .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
+          .toLowerCase()
+          .match(searchTerm.toLowerCase()),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [library, searchTerm, collections]);
 
   return (

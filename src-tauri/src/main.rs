@@ -10,7 +10,7 @@ use std::process::exit;
 
 use monarch_games::commands::{
     download_game, get_home_recomendations, get_library, launch_game, open_store, refresh_library,
-    remove_game, search_games, update_game, update_game_properties,
+    remove_game, search_games, update_game, update_game_properties, move_game_to_monarch
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
@@ -79,6 +79,7 @@ fn main() {
             set_secret,
             delete_secret,
             update_game_properties,
+            move_game_to_monarch,
         ])
         .on_window_event(|event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {

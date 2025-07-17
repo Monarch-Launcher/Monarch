@@ -10,7 +10,7 @@ import {
 } from '@global/icons';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
-import * as React from 'react';
+import React, { useEffect,useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import styled, { keyframes } from 'styled-components';
@@ -301,6 +301,181 @@ const DrawerBackgroundOverlay = styled.div`
   z-index: 2;
 `;
 
+// CustomDropdown component for full styling control
+const dropdownStyles: { [key: string]: React.CSSProperties } = {
+  container: {
+    position: 'relative',
+    width: '100%',
+    marginTop: '4px',
+    fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
+    fontSize: '1rem',
+    fontWeight: 500,
+    color: '#fff',
+  },
+  selected: {
+    background: '#222',
+    color: '#fff',
+    padding: '8px',
+    borderRadius: '4px',
+    border: '1px solid #333',
+    cursor: 'pointer',
+    width: '100%',
+    textAlign: 'left' as React.CSSProperties['textAlign'],
+    outline: 'none',
+  },
+  list: {
+    position: 'absolute' as React.CSSProperties['position'],
+    top: '100%',
+    left: 0,
+    right: 0,
+    background: '#222',
+    border: '1px solid #333',
+    borderRadius: '4px',
+    zIndex: 1000,
+    marginTop: '2px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+    maxHeight: '180px',
+    overflowY: 'auto' as React.CSSProperties['overflowY'],
+  },
+  option: {
+    padding: '8px',
+    cursor: 'pointer',
+    color: '#fff',
+    background: '#222',
+    fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
+    fontSize: '1rem',
+    fontWeight: 500,
+    border: 'none',
+    textAlign: 'left' as React.CSSProperties['textAlign'],
+  },
+  optionActive: {
+    background: '#333',
+    color: '#fff',
+  },
+};
+
+interface CustomDropdownOption {
+  value: string;
+  label: string;
+}
+interface CustomDropdownProps {
+  options: CustomDropdownOption[];
+  value: string;
+  onChange: (v: string) => void;
+}
+
+// Helper to get the absolute position of an element
+function getAbsoluteRect(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  return {
+    top: rect.top + window.scrollY,
+    left: rect.left + window.scrollX,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function CustomDropdown({ options, value, onChange }: CustomDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(-1);
+  const ref = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (!open) setHighlighted(-1);
+  }, [open]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && e.target instanceof Node && !ref.current.contains(e.target)) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  // When opening, calculate the absolute position for the dropdown list
+  useEffect(() => {
+    if (open && ref.current) {
+      const pos = getAbsoluteRect(ref.current);
+      setDropdownPos({ top: pos.top + pos.height, left: pos.left, width: pos.width });
+    } else {
+      setDropdownPos(null);
+    }
+  }, [open]);
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!open) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+        setOpen(true);
+        e.preventDefault();
+      }
+      return;
+    }
+    if (e.key === 'Escape') {
+      setOpen(false);
+    } else if (e.key === 'ArrowDown') {
+      setHighlighted((h) => (h + 1) % options.length);
+    } else if (e.key === 'ArrowUp') {
+      setHighlighted((h) => (h - 1 + options.length) % options.length);
+    } else if (e.key === 'Enter' && highlighted >= 0) {
+      onChange(options[highlighted].value);
+      setOpen(false);
+    }
+  }
+
+  const selectedLabel = options.find((opt) => opt.value === value)?.label || 'Select...';
+
+  return (
+    <div style={dropdownStyles.container} ref={ref}>
+      <div
+        tabIndex={0}
+        style={dropdownStyles.selected}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={handleKeyDown}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        role="button"
+      >
+        {selectedLabel}
+      </div>
+      {open && dropdownPos && ReactDOM.createPortal(
+        <div
+          style={{
+            ...dropdownStyles.list,
+            position: 'absolute',
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            width: dropdownPos.width,
+          }}
+          role="listbox"
+        >
+          {options.map((opt, idx) => (
+            <div
+              key={opt.value}
+              tabIndex={0}
+              style={{
+                ...dropdownStyles.option,
+                ...(highlighted === idx ? dropdownStyles.optionActive : {}),
+                ...(opt.value === value ? { fontWeight: 700 } : {}),
+              }}
+              role="option"
+              aria-selected={opt.value === value}
+              onMouseEnter={() => setHighlighted(idx)}
+              onMouseDown={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 type GameCardProps = {
   id: string;
   platformId: string;
@@ -516,6 +691,30 @@ const GameCard = ({
     { value: 'custom', label: 'Custom' },
   ];
 
+  // Modular handler for moving a game to Monarch
+  const handleMoveGameToMonarch = React.useCallback(async () => {
+    try {
+      await invoke('move_game_to_monarch', {
+        name,
+        platform,
+        platformId,
+      });
+      await refreshLibrary();
+    } catch (err) {
+      await dialog.message(`${err}`, {
+        title: 'Error',
+        type: 'error',
+      });
+    }
+  }, [name, platform, platformId, refreshLibrary]);
+
+  // Style for white modal title
+  const WhiteModalTitle = styled.span`
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 700;
+  `;
+
   return (
     <CardWrapper style={{ width: cardWidth }}>
       <CardContainer
@@ -704,7 +903,7 @@ const GameCard = ({
                     <DrawerButton
                       variant="secondary"
                       type="button"
-                      onClick={() => console.log('reinstalling')}
+                      onClick={handleMoveGameToMonarch}
                     >
                       Reinstall in Monarch
                     </DrawerButton>
@@ -755,40 +954,25 @@ const GameCard = ({
               placeholder="e.g. --fullscreen"
               style={{
                 width: '100%',
-                marginTop: 4,
-                padding: 8,
-                borderRadius: 4,
+                marginTop: '4px',
+                padding: '8px',
+                borderRadius: '4px',
                 border: '1px solid #333',
                 background: '#222',
                 color: '#fff',
+                fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
+                fontSize: '1rem',
+                fontWeight: 500,
               }}
             />
           </label>
           <label style={{ color: '#fff', fontWeight: 600 }}>
             Compatibility Layer
-            <select
+            <CustomDropdown
+              options={compatibilityOptions}
               value={compatibilityLayer}
-              onChange={(e) => setCompatibilityLayer(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: 4,
-                padding: 8,
-                borderRadius: 4,
-                border: '1px solid #333',
-                background: '#222',
-                color: '#fff',
-              }}
-            >
-              {compatibilityOptions.map((opt) => (
-                <option
-                  key={opt.value}
-                  value={opt.value}
-                  style={{ color: '#000', background: '#fff' }}
-                >
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onChange={setCompatibilityLayer}
+            />
           </label>
         </div>
       </Modal>
@@ -797,8 +981,3 @@ const GameCard = ({
 };
 
 export default GameCard;
-
-// Style for white modal title
-const WhiteModalTitle = styled.span`
-  color: #fff;
-`;

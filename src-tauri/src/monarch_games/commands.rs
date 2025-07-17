@@ -151,6 +151,32 @@ pub async fn remove_game(
 }
 
 #[tauri::command]
+pub async fn move_game_to_monarch(handle: AppHandle, name: String, platform: String, platform_id: String) -> Result<(), String> {
+    info!("Moving {name} from {platform} to Monarch...");
+
+    // First remove the game from old platform
+    if let Err(e) = monarch_client::uninstall_game(&handle, &platform, &platform_id).await {
+        error!(
+            "monarch_games::commands::move_game_to_monarch() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(format!("Something went wrong while removing: {name}"));
+    }
+
+    // Then reinstall on Monarch
+    if let Err(e) = monarch_client::download_game(&handle, &name, &platform, &platform_id).await {
+        error!(
+            "monarch_games::commands::move_game_to_monarch() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(format!("Something went wrong while downloading: {name}"));
+    }
+
+    info!("Finished moving {name} to Monarch");
+    Ok(())
+}
+
+#[tauri::command]
 /// Open "Purchase window" for a game
 pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
     let window: MiniWindow = MiniWindow::new("store", &url, 1280.0, 720.0);
