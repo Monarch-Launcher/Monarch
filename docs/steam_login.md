@@ -1,7 +1,7 @@
 # Steam login
 
 ## Basics
-In the settings menu you can add your username and passward. The username is stored in plain text in settings.json, the password is stored in your operating systems secure store, and are *never* sent to a remote server by 
+In the settings menu you can add your username and passward. The username is stored in plain text in settings.toml, the password is stored in your operating systems secure store, and are *never* sent to a remote server by 
 Monarch. If you are interested in the actual code you can check out `src-tauri/src/monarch_utils/monarch_credentials.rs`.  
 The recomended method for ease of use is to only enter your username. This will let SteamCMD prompt you for a password and 2FA on firs use.
 All other SteamCMD commands *should* then be able to use these cached credentials.  
