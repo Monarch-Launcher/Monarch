@@ -117,7 +117,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
 }
 
 /// Returns default path used by steam on Linux systems ($HOME/.steam)
-fn get_default_location() -> Result<PathBuf> {
+pub fn get_default_location() -> Result<PathBuf> {
     let path: PathBuf =
         get_unix_home().with_context(|| "linux::steam::get_default_location() -> ".to_string())?;
 

@@ -8,6 +8,7 @@ use tauri::AppHandle;
 use tracing::{error, info};
 
 use crate::monarch_library::games_library;
+use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
 
 /*
@@ -214,6 +215,47 @@ pub async fn update_game_properties(game: MonarchGame) -> Result<(), String> {
             );
             Err(String::from(
                 "Something went wrong while updating game properties!",
+            ))
+        }
+    }
+}
+
+#[tauri::command]
+pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
+
+    #[cfg(target_os = "windows")]
+    use super::windows::steam;
+
+    #[cfg(target_os = "macos")]
+    use super::macos::steam;
+
+    #[cfg(target_os = "linux")]
+    use super::linux::steam;
+
+    // Get libraryfolders.vdf
+    let library_path = match steam::get_default_location() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(
+                "monarch_games::commands::proton_versions() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            return Err(String::from(
+                "Something went wrong while getting proton versions!",
+            ))
+        }
+    };
+
+    // Then get proton versions
+    match get_proton_versions(&library_path) {
+        Ok(p) => Ok(p),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::proton_versions() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from(
+                "Something went wrong while getting proton versions!",
             ))
         }
     }

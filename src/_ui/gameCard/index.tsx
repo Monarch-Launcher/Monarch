@@ -1,21 +1,18 @@
-import 'react-modern-drawer/dist/index.css';
-
+import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import {
-  FaSteam,
-  HiDownload,
-  PiButterflyBold,
-  SiEpicgames,
-} from '@global/icons';
+import type { ProtonVersion } from '@global/types';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
-import React, { useEffect,useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { BsThreeDotsVertical } from 'react-icons/bs';
+import { FaSteam } from 'react-icons/fa';
+import { HiDownload } from 'react-icons/hi';
+import { PiButterflyBold } from 'react-icons/pi';
+import { SiEpicgames } from 'react-icons/si';
 import styled, { keyframes } from 'styled-components';
 
-import Button from '../button';
 import Modal from '../modal';
 
 const CardWrapper = styled.div`
@@ -631,13 +628,42 @@ const GameCard = ({
     }
   }, [storePage]);
 
-  const [propertiesOpen, setPropertiesOpen] = React.useState(false);
-  const [launchCommands, setLaunchCommands] = React.useState(
-    gameData.launch_args || '',
-  );
-  const [compatibilityLayer, setCompatibilityLayer] = React.useState(
-    gameData.compatibility || '',
-  );
+  const [propertiesOpen, setPropertiesOpen] = React.useState<boolean>(false);
+  const [launchCommands, setLaunchCommands] = React.useState<string>(gameData.launch_args || '');
+  const [compatibilityLayer, setCompatibilityLayer] = React.useState<string>(gameData.compatibility || '');
+
+  // Compatibility layer options state
+  const [protonOptions, setProtonOptions] = React.useState<ProtonVersion[]>([]);
+  const [protonLoading, setProtonLoading] = React.useState(false);
+  const [protonError, setProtonError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchProtonVersions = async () => {
+      setProtonLoading(true);
+      setProtonError(null);
+      try {
+        const result = await invoke<ProtonVersion[]>('proton_versions');
+        setProtonOptions(Array.isArray(result) ? result : []);
+      } catch (err: any) {
+        setProtonError('Failed to load Proton versions');
+      } finally {
+        setProtonLoading(false);
+      }
+    };
+    fetchProtonVersions();
+  }, []);
+
+  // Build compatibility options from backend and static options
+  const compatibilityOptions = React.useMemo(() => {
+    const staticOptions = [
+      { value: '', label: 'Native' },
+    ];
+    const protonMapped = protonOptions.map((p) => ({ value: p.path, label: p.name }));
+    return [
+      staticOptions[0],
+      ...protonMapped,
+    ];
+  }, [protonOptions]);
 
   // Update game properties in backend when fields change
   React.useEffect(() => {
@@ -683,13 +709,6 @@ const GameCard = ({
       });
     }
   }, [optionsOpen]);
-
-  const compatibilityOptions = [
-    { value: '', label: 'None' },
-    { value: 'proton', label: 'Proton' },
-    { value: 'wine', label: 'Wine' },
-    { value: 'custom', label: 'Custom' },
-  ];
 
   // Modular handler for moving a game to Monarch
   const handleMoveGameToMonarch = React.useCallback(async () => {
@@ -973,6 +992,8 @@ const GameCard = ({
               value={compatibilityLayer}
               onChange={setCompatibilityLayer}
             />
+            {protonLoading && <span style={{ color: '#aaa', marginLeft: 8 }}>Loading Proton versions...</span>}
+            {protonError && <span style={{ color: 'red', marginLeft: 8 }}>{protonError}</span>}
           </label>
         </div>
       </Modal>

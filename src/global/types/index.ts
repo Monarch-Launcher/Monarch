@@ -46,3 +46,8 @@ export type Settings = {
     size: string;
   };
 };
+
+export type ProtonVersion = {
+  name: string;
+  path: string;
+};
