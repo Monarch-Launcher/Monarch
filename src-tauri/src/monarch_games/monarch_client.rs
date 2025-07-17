@@ -63,9 +63,11 @@ pub async fn download_game(
                     .with_context(|| "monarch_client::download_game() -> ")?;
             }
 
-            steam_client::download_game(handle, name, platform_id)
+            let mut new_game = steam_client::download_game(handle, name, platform_id)
                 .await
-                .with_context(|| "monarch_client::download_game() -> ")?
+                .with_context(|| "monarch_client::download_game() -> ")?;
+            new_game.platform = "steamcmd".to_string();
+            new_game
         }
         &_ => bail!("monarch_client::download_game() Invalid platform!"),
     };

@@ -70,7 +70,6 @@ pub async fn launch_cmd_game(handle: &AppHandle, id: &str) -> Result<()> {
 
     let args: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
-        "+@NoPromptForPassword 1",
         &login_arg,
         "+app_launch",
         id,
@@ -112,7 +111,6 @@ pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<M
     // Build the command as a string with arguments in order
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
-        "+@NoPromptForPassword 1",
         &login_arg,
         &download_arg,
         "+quit",
@@ -142,7 +140,6 @@ pub async fn uninstall_game(handle: &AppHandle, id: &str) -> Result<()> {
     let remove_arg: String = format!("+app_uninstall {id}");
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
-        "+@NoPromptForPassword 1",
         &login_arg,
         &remove_arg,
         "+quit",
@@ -165,7 +162,6 @@ pub async fn update_game(handle: &AppHandle, id: &str) -> Result<()> {
     let update_arg: String = format!("+app_update {id} validate");
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
-        "+@NoPromptForPassword 1",
         &login_arg,
         &update_arg,
         "+quit",
@@ -215,14 +211,23 @@ pub async fn parse_steam_ids(
 /// abstracted to it's own function.
 fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
     let username: &str = &steam_settings.username;
-    let password: String =
-        get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
+    let password: String = match get_password("steam", &username) {
+        Ok(p) => p,
+        Err(e) => {
+            warn!("steam_client::get_steamcmd_login() Failed to get password for {username}! | Err: {e}");
+            info!("SteamCMD will prompt for password.");
+            String::from("")
+        }
+    };
 
     // Login argument
     let mut login_arg = String::from("+login ");
     login_arg.push_str(username);
-    login_arg.push(' ');
-    login_arg.push_str(&password);
+
+    if !password.is_empty() {
+        login_arg.push(' ');
+        login_arg.push_str(&password);
+    }
 
     // Current solution is to store the secret in keystore, which essentially
     // disables the point of 2fa, at least on computers with Monarch.
@@ -367,7 +372,10 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
     }
 
     let game_json: Value = serde_json::from_str(&game_info).unwrap();
-    let name: String = game_json[&id]["data"]["name"].to_string().trim_matches('"').to_string();
+    let name: String = game_json[&id]["data"]["name"]
+        .to_string()
+        .trim_matches('"')
+        .to_string();
 
     let store_url = format!("https://store.steampowered.com/app/{id}");
     let cover_url: String =

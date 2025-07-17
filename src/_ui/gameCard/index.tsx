@@ -187,13 +187,6 @@ const Drawer = styled.div`
   padding-left: 1rem;
 `;
 
-const DrawerCloseButton = styled(Button)`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 10;
-`;
-
 const DrawerTitle = styled.h2`
   color: #fff;
   margin-bottom: 1rem;
@@ -652,14 +645,7 @@ const GameCard = ({
               onClick={(e) => e.stopPropagation()}
               ref={drawerRef}
             >
-              <DrawerCloseButton
-                type="button"
-                variant="icon"
-                onClick={toggleDrawer}
-                title="Close"
-              >
-                ×
-              </DrawerCloseButton>
+              {/* Remove DrawerCloseButton (the × close button) */}
               {/* Blurry background image */}
               <DrawerBackground
                 alt="game-thumbnail-bg"

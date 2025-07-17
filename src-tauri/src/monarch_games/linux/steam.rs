@@ -28,12 +28,10 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
     let download_arg: &str = r#"curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -"#;
 
     let installation_script = format!(
-        r#"mkdir {};
-cd {};
+        r#"cd {};
 {};
-sleep 2;
+sleep 3;
 exit;"#,
-        dest_path.display(),
         dest_path.display(),
         &download_arg
     ); // Sleep for 2 seconds to allow user to see what is happening.

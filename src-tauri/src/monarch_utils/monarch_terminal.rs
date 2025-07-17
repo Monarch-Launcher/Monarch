@@ -85,9 +85,21 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
         error!("monarch_terminal::run_in_terminal() -> {e}");
     }
 
-    let _exit_status = child
-        .wait()
-        .with_context(|| "Something went wrong while waiting for child process to finish!")?;
+    loop {
+        info!("Polling child...");
+        let exit_status = child
+            .try_wait()
+            .with_context(|| "Something went wrong while waiting for child process to finish!")?;
+
+        if exit_status.is_some() {
+            info!("Child done.");
+            info!("Child process exited with status: {:?}", exit_status);
+            break;
+        }
+        info!("Child running...");
+
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    }
 
     if let Err(e) = close_terminal_window(handle).await {
         error!("monarch_terminal::run_in_terminal() -> {e}");
