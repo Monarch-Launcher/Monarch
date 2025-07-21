@@ -504,7 +504,9 @@ const GameCard = ({
   const { library, refreshLibrary } = useLibrary();
   const [gameData, setGameData] = React.useState(() => {
     const found = library.find((g) => g.id === id);
-    return found ? { ...found } : { compatibility: '', launch_args: '' };
+    return found
+      ? { ...found, executable_path: found.executable_path || '' }
+      : { compatibility: '', launch_args: '', executable_path: '' };
   });
 
   // Keep local state in sync with library updates
@@ -733,6 +735,12 @@ const GameCard = ({
     font-size: 2rem;
     font-weight: 700;
   `;
+
+  // Handler for setting executable path
+  const handleSetExecutablePath = React.useCallback(async (newPath: string) => {
+    setGameData((prev) => ({ ...prev, executable_path: newPath }));
+    await invoke('update_game_properties', { game: { ...gameData, executable_path: newPath } });
+  }, [gameData]);
 
   return (
     <CardWrapper style={{ width: cardWidth }}>

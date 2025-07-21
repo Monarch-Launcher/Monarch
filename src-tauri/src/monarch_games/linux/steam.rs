@@ -36,7 +36,7 @@ exit;"#,
         &download_arg
     ); // Sleep for 2 seconds to allow user to see what is happening.
 
-    run_in_terminal(handle, &installation_script)
+    run_in_terminal(handle, &installation_script, None)
         .await
         .with_context(|| "linux::steam::install_steamcmd() -> ")?;
     Ok(())
@@ -52,7 +52,8 @@ pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()>
 
     run_in_terminal(
         handle,
-        &format!("{} {}; sleep 3;", path.display(), args_string),
+        &format!("{} {}; sleep 3;", path.display(), args_string), 
+        None
     )
     .await
     .with_context(|| "linux::steam::steamcmd_command() -> ")?;
@@ -93,7 +94,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
     let mut games: Vec<MonarchGame> = Vec::new();
 
-    let found_games: Vec<String> = match get_default_location() {
+    let found_games: Vec<String> = match get_default_libraryfolders_location() {
         Ok(path) => match monarch_vdf::parse_library_file(&path) {
             Ok(g) => g,
             Err(e) => {
@@ -116,12 +117,21 @@ pub async fn get_library() -> Vec<MonarchGame> {
     games
 }
 
+
 /// Returns default path used by steam on Linux systems ($HOME/.steam)
 pub fn get_default_location() -> Result<PathBuf> {
     let path: PathBuf =
         get_unix_home().with_context(|| "linux::steam::get_default_location() -> ".to_string())?;
 
-    Ok(path.join(".steam/steam/steamapps/libraryfolders.vdf")) // Add path to libraryfolders.vdf
+    Ok(path.join(".steam/steam/")) // Add path to libraryfolders.vdf
+}
+
+/// Returns default path to libraryfolders.vdf used by steam on Linux systems 
+pub fn get_default_libraryfolders_location() -> Result<PathBuf> {
+    let path: PathBuf =
+        get_default_location().with_context(|| "linux::steam::get_default_libraryfolders_location() -> ".to_string())?;
+
+    Ok(path.join("steamapps/libraryfolders.vdf")) // Add path to libraryfolders.vdf
 }
 
 /// Runs specified command via Steam

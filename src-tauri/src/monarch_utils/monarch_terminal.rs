@@ -16,6 +16,7 @@ use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::{AppHandle, Manager};
 use tracing::error;
 use tracing::info;
+use std::collections::HashMap;
 
 pub struct AppState {
     _pty_pair: Arc<AsyncMutex<PtyPair>>,
@@ -26,7 +27,7 @@ pub struct AppState {
 static mut APPSTATE: Lazy<Option<AppState>> = Lazy::<Option<AppState>>::new(|| None);
 
 /// Run a command in a new process and display to the user in a custom terminal window.
-pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
+pub async fn run_in_terminal(handle: &AppHandle, command: &str, env_vars: Option<HashMap<&str, &str>>) -> Result<()> {
     info!("Starting Monarch terminal...");
 
     let pty_system = native_pty_system();
@@ -54,6 +55,12 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
         let mut cmd = CommandBuilder::new("powershell.exe");
         cmd.args([&term_command]);
 
+        if let Some(vars) = env_vars {
+            for (k, v) in vars {
+                cmd.env(k, v);
+            }
+        }
+
         info!("Running command: powershell.exe {term_command}");
         cmd
     } else {
@@ -63,6 +70,12 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
 
         let mut cmd = CommandBuilder::new(&shell);
         cmd.args(["-c", &term_command]);
+
+        if let Some(vars) = env_vars {
+            for (k, v) in vars {
+                cmd.env(k, v);
+            }
+        }
 
         info!("Running command: {shell} -c {term_command}");
         cmd

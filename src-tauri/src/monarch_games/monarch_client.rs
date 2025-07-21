@@ -1,10 +1,13 @@
 use super::{monarchgame::MonarchGame, steam_client};
+use crate::monarch_games::linux;
 use crate::monarch_games::monarchgame::MonarchWebGame;
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
+use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
@@ -23,12 +26,35 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 }
 
 /// Launches a game
-pub async fn launch_game(handle: &AppHandle, platform: &str, platform_id: &str) -> Result<()> {
-    match platform {
-        "steam" => steam_client::launch_client_game(platform_id),
-        "steamcmd" => steam_client::launch_cmd_game(handle, platform_id).await,
+pub async fn launch_game(handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+    // Check if game should be launched with exectutable, such as 
+    // the game binary or Proton executable
+    if !game.compatibility.is_empty() {
+        if !cfg!(target_os = "linux") {
+            bail!("monarch_client::launch_game() User tried launching a game using compatibility layer on OS other than Linux! | Err: Cannot use compatibilty layer under anything other than Linux!")
+        }
+
+        if game.executable_path.is_empty() {
+            bail!("monarch_client::launch_game() Game needs a set executable path to launch with compatiblity layer. | Err: Cannot find game executable.")
+        }
+
+        let compat_client_install_dir = linux::steam::get_default_location().with_context(|| "monarch_client::launch_game() -> ")?;
+        let compatdata_dir = compat_client_install_dir.join("steamapps/compatdata");
+
+        let compat_client_install_dir_str = compat_client_install_dir.to_str().unwrap_or("");
+        let compatdata_dir_str = compatdata_dir.to_str().unwrap_or("");
+        let env_vars: HashMap<&str, &str> = HashMap::from([("STEAM_COMPAT_CLIENT_INSTALL_PATH", compat_client_install_dir_str), ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str)]);
+
+        let command: String = format!("{} run {}", game.compatibility, game.executable_path);
+        return run_in_terminal(handle, &command, Some(env_vars)).await.with_context(|| "monarch_client::launch_game() -> ")
+    }
+
+    // Otherwise launch via platform
+    match game.platform.as_str() {
+        "steam" => steam_client::launch_client_game(&game.platform_id),
+        "steamcmd" => steam_client::launch_cmd_game(handle, &game.platform_id).await,
         &_ => {
-            bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {platform} | Err: Invalid platform!")
+            bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {} | Err: Invalid platform!", game.platform)
         }
     }
 }
@@ -179,15 +205,8 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
                 .to_str()
                 .unwrap(),
         );
-        let new_monarchgame = MonarchGame::new(
-            &game.name,
-            game.id,
-            &game.platform,
-            &game.platform_id,
-            &game.store_page,
-            "N/A",
-            &thumbnail_path,
-        );
+        let mut new_monarchgame = MonarchGame::from(&game);
+        new_monarchgame.thumbnail_path = thumbnail_path;
         new_monarchgame.download_thumbnail(game.cover_url).await; // Do not await, this allows image to download concurrently as other monarchgames are parsed
         monarch_games.push(new_monarchgame);
     }

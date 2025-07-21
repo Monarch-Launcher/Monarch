@@ -291,15 +291,9 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
                     .unwrap(),
             )
         };
-        let monarch_game = MonarchGame::new(
-            &game_info.name,
-            game_info.id,
-            &game_info.platform,
-            &game_info.platform_id,
-            &game_info.store_page,
-            "N/A",
-            &thumbnail_path,
-        );
+        
+        let mut monarch_game = MonarchGame::from(&game_info);
+        monarch_game.thumbnail_path = thumbnail_path;
         monarch_game.download_thumbnail(game_info.cover_url).await;
         return Ok(monarch_game);
     }
@@ -388,7 +382,7 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
         String::from(generate_library_image_path(&name).to_str().unwrap())
     };
     let monarch_game =
-        MonarchGame::new(&name, -1, "steam", &id, &store_url, "N/A", &thumbnail_path);
+        MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
     monarch_game.download_thumbnail(cover_url).await;
     Ok(monarch_game)
 }

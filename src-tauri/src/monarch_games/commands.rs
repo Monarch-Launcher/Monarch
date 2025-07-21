@@ -73,17 +73,15 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 /// Launch a game
 pub async fn launch_game(
     handle: AppHandle,
-    name: String,
-    platform: String,
-    platform_id: String,
+    game: MonarchGame,
 ) -> Result<(), String> {
-    info!("Launching game: {name}");
-    if let Err(e) = monarch_client::launch_game(&handle, &platform, &platform_id).await {
+    info!("Launching game: {}", game.name);
+    if let Err(e) = monarch_client::launch_game(&handle, &game).await {
         error!(
             "monarch_games::commands::launch_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(format!("Something went wrong while launching: {name}"));
+        return Err(format!("Something went wrong while launching: {}", game.name));
     }
     Ok(())
 }
@@ -233,7 +231,7 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
     use super::linux::steam;
 
     // Get libraryfolders.vdf
-    let library_path = match steam::get_default_location() {
+    let library_path = match steam::get_default_libraryfolders_location() {
         Ok(p) => p,
         Err(e) => {
             error!(
