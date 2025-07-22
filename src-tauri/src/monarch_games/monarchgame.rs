@@ -73,13 +73,13 @@ impl MonarchGame {
         Self {
             name: other.name.to_string(),
             id: other.id.to_string(),
-            platform: "".to_string(),
-            platform_id: "".to_string(),
+            platform: other.platform.to_string(),
+            platform_id: other.platform_id.to_string(),
             executable_path: "".to_string(),
             thumbnail_path: "".to_string(),
             launch_args: "".to_string(),
             compatibility: "".to_string(),
-            store_page: "".to_string(),
+            store_page: other.store_page.to_string(),
         }
     }
 }
@@ -107,7 +107,11 @@ impl Eq for MonarchGame {}
 pub struct MonarchWebGame {
     pub name: String,
     pub id: String,
-    pub igdb_id: String,
+    pub igdb_id: i32,
     pub cover_url: String,
     pub artwork_url: String,
+    pub summary: String,
+    pub platform: String,
+    pub platform_id: String,
+    pub store_page: String, 
 }
