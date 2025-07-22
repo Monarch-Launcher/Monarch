@@ -69,6 +69,7 @@ impl MonarchGame {
         }
     }
 
+    /// Convert MonarchWebGame to MonarchGame
     pub fn from(other: &MonarchWebGame) -> Self {
         Self {
             name: other.name.to_string(),
