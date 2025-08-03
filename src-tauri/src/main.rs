@@ -9,8 +9,9 @@ mod monarch_utils;
 use std::process::exit;
 
 use monarch_games::commands::{
-    download_game, get_home_recomendations, get_library, launch_game, open_store, refresh_library,
-    remove_game, search_games, update_game, update_game_properties, move_game_to_monarch, proton_versions
+    download_game, get_home_recomendations, get_library, launch_game, move_game_to_monarch,
+    open_store, proton_versions, refresh_library, remove_game, search_games, update_game,
+    update_game_properties,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
@@ -27,6 +28,8 @@ use monarch_utils::{housekeeping, monarch_settings};
 use tauri::Manager;
 use tracing::{info, warn};
 
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
+
 fn init() {
     if let Err(e) = monarch_settings::init() {
         // Crash program if this fails
@@ -34,6 +37,12 @@ fn init() {
     }
     init_logger(); // Starts logger
     verify_monarch_folders(); // Checks that directories are as Monarch expects
+
+    // Set initial monarch state
+    unsafe {
+        MONARCH_STATE.set_library_games(&crate::monarch_games::monarch_client::get_library());
+    }
+
     housekeeping::start(); // Starts housekeeping loop
 }
 

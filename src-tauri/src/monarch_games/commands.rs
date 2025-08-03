@@ -71,17 +71,17 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
 #[tauri::command]
 /// Launch a game
-pub async fn launch_game(
-    handle: AppHandle,
-    game: MonarchGame,
-) -> Result<(), String> {
+pub async fn launch_game(handle: AppHandle, mut game: MonarchGame) -> Result<(), String> {
     info!("Launching game: {}", game.name);
-    if let Err(e) = monarch_client::launch_game(&handle, &game).await {
+    if let Err(e) = monarch_client::launch_game(&handle, &mut game).await {
         error!(
             "monarch_games::commands::launch_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(format!("Something went wrong while launching: {}", game.name));
+        return Err(format!(
+            "Something went wrong while launching: {}",
+            game.name
+        ));
     }
     Ok(())
 }
@@ -150,7 +150,12 @@ pub async fn remove_game(
 }
 
 #[tauri::command]
-pub async fn move_game_to_monarch(handle: AppHandle, name: String, platform: String, platform_id: String) -> Result<(), String> {
+pub async fn move_game_to_monarch(
+    handle: AppHandle,
+    name: String,
+    platform: String,
+    platform_id: String,
+) -> Result<(), String> {
     info!("Moving {name} from {platform} to Monarch...");
 
     // First remove the game from old platform
@@ -204,7 +209,7 @@ pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
 #[tauri::command]
 /// Updates the properties of a game in the library.
 pub async fn update_game_properties(game: MonarchGame) -> Result<(), String> {
-    match games_library::update_game_properties(game) {
+    match games_library::update_game_properties(&game) {
         Ok(_) => Ok(()),
         Err(e) => {
             error!(
@@ -220,12 +225,8 @@ pub async fn update_game_properties(game: MonarchGame) -> Result<(), String> {
 
 #[tauri::command]
 pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
-
-    #[cfg(target_os = "windows")]
-    use super::windows::steam;
-
-    #[cfg(target_os = "macos")]
-    use super::macos::steam;
+    #[cfg(not(target_os = "linux"))]
+    return Ok(vec![]);
 
     #[cfg(target_os = "linux")]
     use super::linux::steam;
@@ -240,7 +241,7 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
             );
             return Err(String::from(
                 "Something went wrong while getting proton versions!",
-            ))
+            ));
         }
     };
 

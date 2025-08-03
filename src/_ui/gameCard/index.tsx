@@ -1,13 +1,13 @@
 import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import type { ProtonVersion } from '@global/types';
+import type { MonarchGame, ProtonVersion } from '@global/types';
 import { dialog, invoke } from '@tauri-apps/api';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { BsThreeDotsVertical } from 'react-icons/bs';
-import { FaSteam } from 'react-icons/fa';
+import { FaSteam, FaFolderOpen } from 'react-icons/fa';
 import { HiDownload } from 'react-icons/hi';
 import { PiButterflyBold } from 'react-icons/pi';
 import { SiEpicgames } from 'react-icons/si';
@@ -541,16 +541,16 @@ const GameCard = ({
     };
   }, []);
 
-  const handleLaunch = React.useCallback(async () => {
+  const handleLaunch = React.useCallback(async (game: MonarchGame) => {
     try {
-      await invoke('launch_game', { name, platformId, platform });
+      await invoke('launch_game', { game });
     } catch (err) {
-      await dialog.message(`An error has occured: Could't launch ${name}`, {
+      await dialog.message(`An error has occured: ${err}`, {
         title: 'Error',
         type: 'error',
       });
     }
-  }, [name, platformId, platform]);
+  }, []);
 
   const handleDownload = React.useCallback(async () => {
     try {
@@ -633,6 +633,7 @@ const GameCard = ({
   const [propertiesOpen, setPropertiesOpen] = React.useState<boolean>(false);
   const [launchCommands, setLaunchCommands] = React.useState<string>(gameData.launch_args || '');
   const [compatibilityLayer, setCompatibilityLayer] = React.useState<string>(gameData.compatibility || '');
+  const [customExecutablePath, setCustomExecutablePath] = React.useState<string>(gameData.executable_path || '');
 
   // Compatibility layer options state
   const [protonOptions, setProtonOptions] = React.useState<ProtonVersion[]>([]);
@@ -674,11 +675,12 @@ const GameCard = ({
       ...gameData,
       launch_args: launchCommands,
       compatibility: compatibilityLayer,
+      executable_path: customExecutablePath,
     };
     invoke('update_game_properties', { game: updatedGame });
     // Optionally, refresh the library after update
     // refreshLibrary();
-  }, [launchCommands, compatibilityLayer, propertiesOpen, gameData]);
+  }, [launchCommands, compatibilityLayer, customExecutablePath, propertiesOpen, gameData]);
 
   React.useEffect(() => {
     if (!optionsOpen) return;
@@ -742,6 +744,32 @@ const GameCard = ({
     await invoke('update_game_properties', { game: { ...gameData, executable_path: newPath } });
   }, [gameData]);
 
+  // Handler for file picker
+  const handleFilePicker = React.useCallback(async () => {
+    try {
+      const selected = await dialog.open({
+        multiple: false,
+        title: 'Select Executable File',
+        filters: [
+          {
+            name: 'Executable Files',
+            extensions: ['exe', 'app', 'sh', 'bin', ''],
+          },
+        ],
+      });
+
+      if (selected && typeof selected === 'string') {
+        setCustomExecutablePath(selected);
+        await handleSetExecutablePath(selected);
+      }
+    } catch (err) {
+      await dialog.message('Failed to open file picker', {
+        title: 'Error',
+        type: 'error',
+      });
+    }
+  }, [handleSetExecutablePath]);
+
   return (
     <CardWrapper style={{ width: cardWidth }}>
       <CardContainer
@@ -768,7 +796,10 @@ const GameCard = ({
               type="button"
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
-                handleLaunch();
+                const game = library.find((g) => g.id === id);
+                if (game) {
+                  handleLaunch(game);
+                }
               }}
             >
               <svg
@@ -903,7 +934,16 @@ const GameCard = ({
                   <DrawerButton
                     variant="primary"
                     type="button"
-                    onClick={hasGame ? handleLaunch : handleDownload}
+                    onClick={() => {
+                      const game = library.find((g) => g.id === id);
+                      if (game) {
+                        if (hasGame) {
+                          handleLaunch(game);
+                        } else {
+                          handleDownload();
+                        }
+                      }
+                    }}
                   >
                     {hasGame ? 'Launch' : 'Download'}
                   </DrawerButton>
@@ -992,6 +1032,50 @@ const GameCard = ({
                 fontWeight: 500,
               }}
             />
+          </label>
+          <label style={{ color: '#fff', fontWeight: 600 }}>
+            Executable Path
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+              <input
+                type="text"
+                value={customExecutablePath}
+                onChange={(e) => setCustomExecutablePath(e.target.value)}
+                placeholder="Path to executable file"
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  borderRadius: '4px',
+                  border: '1px solid #333',
+                  background: '#222',
+                  color: '#fff',
+                  fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleFilePicker}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  border: '1px solid #FA5002',
+                  background: '#FA5002',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                }}
+                title="Browse for executable file"
+              >
+                <FaFolderOpen size={16} />
+                Browse
+              </button>
+            </div>
           </label>
           <label style={{ color: '#fff', fontWeight: 600 }}>
             Compatibility Layer

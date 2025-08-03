@@ -98,8 +98,11 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str, env_vars: Option
         error!("monarch_terminal::run_in_terminal() -> {e}");
     }
 
+    // NOTE: This loop was written while debugging linked list corruption error.
+    // The cause is still not found. Hopefully updating to Tauri 2.0 will fix it.
+    // TODO: Rewrite to make it "prettier"/simpler.
     loop {
-        info!("Polling child...");
+        //info!("Polling child...");
         let exit_status = child
             .try_wait()
             .with_context(|| "Something went wrong while waiting for child process to finish!")?;
@@ -109,8 +112,7 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str, env_vars: Option
             info!("Child process exited with status: {:?}", exit_status);
             break;
         }
-        info!("Child running...");
-
+        //info!("Child running...");
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     }
 

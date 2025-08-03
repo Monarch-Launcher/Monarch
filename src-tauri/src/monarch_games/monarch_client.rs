@@ -4,6 +4,7 @@ use crate::monarch_games::monarchgame::MonarchWebGame;
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
@@ -26,33 +27,73 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 }
 
 /// Launches a game
-pub async fn launch_game(handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-    // Check if game should be launched with exectutable, such as 
+pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Result<()> {
+    let mut game: MonarchGame;
+    unsafe {
+        game = MONARCH_STATE
+            .get_game(&frontend_game.id)
+            .with_context(|| "monarch_client::launch_game() -> ")?;
+    }
+
+    // Check if game should be launched with exectutable, such as
     // the game binary or Proton executable
-    if !game.compatibility.is_empty() {
-        if !cfg!(target_os = "linux") {
-            bail!("monarch_client::launch_game() User tried launching a game using compatibility layer on OS other than Linux! | Err: Cannot use compatibilty layer under anything other than Linux!")
+    if !game.executable_path.is_empty() {
+        info!(
+            "Launching game with executable path: {}",
+            game.executable_path
+        );
+        game.executable_path = game.executable_path.replace(" ", "\\ ");
+
+        // Run with compatibility layer
+        if !game.compatibility.is_empty() {
+            if !cfg!(target_os = "linux") {
+                bail!("monarch_client::launch_game() User tried launching a game using executable path on OS other than Linux! | Err: Cannot use executable path under anything other than Linux!")
+            }
+
+            info!("Compatibility layer set: {}", game.compatibility);
+            game.compatibility = game.compatibility.replace(" ", "\\ ");
+
+            let compat_client_install_dir = linux::steam::get_default_location()
+                .with_context(|| "monarch_client::launch_game() -> ")?;
+            let compatdata_dir = compat_client_install_dir.join("steamapps/compatdata");
+
+            let compat_client_install_dir_str = compat_client_install_dir.to_str().unwrap_or("");
+            let compatdata_dir_str = compatdata_dir.to_str().unwrap_or("");
+            let env_vars: HashMap<&str, &str> = HashMap::from([
+                (
+                    "STEAM_COMPAT_CLIENT_INSTALL_PATH",
+                    compat_client_install_dir_str,
+                ),
+                ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str),
+            ]);
+
+            let command: String = format!("{} run {}", game.compatibility, game.executable_path);
+
+            return run_in_terminal(handle, &command, Some(env_vars))
+                .await
+                .with_context(|| "monarch_client::launch_game() -> ");
         }
 
-        if game.executable_path.is_empty() {
-            bail!("monarch_client::launch_game() Game needs a set executable path to launch with compatiblity layer. | Err: Cannot find game executable.")
-        }
-
-        let compat_client_install_dir = linux::steam::get_default_location().with_context(|| "monarch_client::launch_game() -> ")?;
-        let compatdata_dir = compat_client_install_dir.join("steamapps/compatdata");
-
-        let compat_client_install_dir_str = compat_client_install_dir.to_str().unwrap_or("");
-        let compatdata_dir_str = compatdata_dir.to_str().unwrap_or("");
-        let env_vars: HashMap<&str, &str> = HashMap::from([("STEAM_COMPAT_CLIENT_INSTALL_PATH", compat_client_install_dir_str), ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str)]);
-
-        let command: String = format!("{} run {}", game.compatibility, game.executable_path);
-        return run_in_terminal(handle, &command, Some(env_vars)).await.with_context(|| "monarch_client::launch_game() -> ")
+        // Run without compatibility layer
+        let command: String = format!("{}", game.executable_path);
+        return run_in_terminal(handle, &command, None)
+            .await
+            .with_context(|| "monarch_client::launch_game() -> ");
     }
 
     // Otherwise launch via platform
     match game.platform.as_str() {
-        "steam" => steam_client::launch_client_game(&game.platform_id),
-        "steamcmd" => steam_client::launch_cmd_game(handle, &game.platform_id).await,
+        "steam" => {
+            info!("Launching game via steam client: {}", game.platform_id);
+            steam_client::launch_client_game(&game.platform_id)
+                .with_context(|| "monarch_client::launch_game() -> ")
+        }
+        "steamcmd" => {
+            info!("Launching game via steamcmd: {}", game.platform_id);
+            steam_client::launch_cmd_game(handle, &game.platform_id)
+                .await
+                .with_context(|| "monarch_client::launch_game() -> ")
+        }
         &_ => {
             bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {} | Err: Invalid platform!", game.platform)
         }
@@ -119,6 +160,9 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
             for (i, game) in monarch_games.clone().iter().enumerate() {
                 if game.platform == platform && game.platform_id == platform_id {
                     monarch_games.remove(i);
+                    unsafe {
+                        MONARCH_STATE.set_library_games(&monarch_games);
+                    }
                     return write_monarch_games(monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")
                 }
             }
@@ -145,7 +189,7 @@ pub async fn update_game(handle: &AppHandle, platform: &str, platform_id: &str) 
 }
 
 /// Returns games found in library.json
-fn get_library() -> Vec<MonarchGame> {
+pub fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     match games_library::get_games() {
         Ok(library_json) => {
@@ -181,6 +225,9 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
     if let Err(e) = games_library::write_games(games.clone()) {
         error!("monarch_client::refresh_library() -> {e}");
+    }
+    unsafe {
+        MONARCH_STATE.set_library_games(&games);
     }
     games
 }
