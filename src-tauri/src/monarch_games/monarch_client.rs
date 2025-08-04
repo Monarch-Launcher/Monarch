@@ -5,6 +5,7 @@ use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home}
 use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_terminal::run_in_terminal;
+use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use std::collections::HashMap;
@@ -27,6 +28,10 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 
 /// Launches a game
 pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Result<()> {
+    if let Err(e) = hide_quicklaunch(handle) {
+        warn!("monarch_client::launch_game() Error while hiding quicklaunch. Possibly already hidden. | Err: {e}");
+    }
+
     let mut game: MonarchGame;
     unsafe {
         game = MONARCH_STATE

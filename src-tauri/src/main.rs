@@ -8,6 +8,7 @@ mod monarch_utils;
 
 use std::process::exit;
 
+use futures::executor;
 use monarch_games::commands::{
     download_game, get_home_recomendations, get_library, launch_game, move_game_to_monarch,
     open_store, proton_versions, refresh_library, remove_game, search_games, update_game,
@@ -18,17 +19,17 @@ use monarch_library::commands::{
 };
 use monarch_utils::commands::{
     async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, delete_password,
-    delete_secret, get_settings, hide_quicklaunch, init_quicklaunch, open_logs, open_terminal,
-    quicklaunch_is_enabled, revert_settings, set_password, set_secret, set_settings,
-    show_quicklaunch,
+    delete_secret, get_settings, open_logs, open_terminal, revert_settings, set_password,
+    set_secret, set_settings,
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
 use monarch_utils::{housekeeping, monarch_settings};
 use tauri::Manager;
-use tracing::{info, warn};
+use tracing::{error, info};
 
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
+use crate::monarch_utils::quicklaunch::{init_quicklaunch, quicklaunch_is_enabled};
 
 fn init() {
     if let Err(e) = monarch_settings::init() {
@@ -47,6 +48,9 @@ fn init() {
 }
 
 fn main() {
+    // Run some initial checks and setup
+    init();
+
     // Setting this enviornment variable fixes performance issues when
     // scrolling under Linux.
     // Also appears like it might help with weird multiwindow rendering
@@ -57,7 +61,6 @@ fn main() {
     // Build Monarch Tauri app
     let monarch = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
@@ -81,10 +84,6 @@ fn main() {
             delete_password,
             remove_game,
             get_home_recomendations,
-            init_quicklaunch,
-            show_quicklaunch,
-            hide_quicklaunch,
-            quicklaunch_is_enabled,
             async_read_from_pty,
             async_write_to_pty,
             open_terminal,
@@ -95,6 +94,17 @@ fn main() {
             move_game_to_monarch,
             proton_versions,
         ])
+        .setup(|app| {
+            #[cfg(desktop)]
+            {
+                if quicklaunch_is_enabled() {
+                    if let Err(e) = executor::block_on(init_quicklaunch(app.handle())) {
+                        error!("main() Failed to initialize quicklaunch! | Err: {e}")
+                    }
+                }
+            }
+            Ok(())
+        })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 // Only exit monarch on main window close
@@ -103,16 +113,13 @@ fn main() {
                     api.prevent_close();
                     window.app_handle().cleanup_before_exit();
                     // Log success and exit
-                    info!("main() All windows closed! Exiting...");
+                    info!("main() Tauri cleanup done! Exiting...");
                     exit(0);
                 }
             }
         })
         .build(tauri::generate_context!())
         .expect("Failed to build Monarch!");
-
-    // Run some initial checks and setup
-    init();
 
     // Start Monarch
     monarch.run(|_app_handle, _event| {

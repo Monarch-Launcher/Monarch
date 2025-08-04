@@ -225,11 +225,16 @@ const SettingsPage = () => {
       <CenteredContainer>
         <Card>
           <SectionTitle>Monarch</SectionTitle>
+          <p style={{ color: '#fff', margin: '1rem 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 400 }}>
+            Our start-menu like launcher. Enables quicker access to launching games by not requiring you 
+            to navigate through the main application.
+            Stability issues under Linux running Wayland. This is due to how Wayland handles global shortcuts.
+          </p>
           <AnimatedSwitch
             checked={settings.quicklaunch.enabled}
             onChange={toggleQuickLaunch}
             size="md"
-            label="Quicklaunch (Windows and MacOS only)"
+            label="Quicklaunch (Requires application restart. Shortcut: Ctrl+Enter)"
             labelPosition="left"
           />
         </Card>
