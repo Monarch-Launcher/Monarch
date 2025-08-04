@@ -11,6 +11,16 @@ use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
 
+
+#[cfg(target_os = "windows")]
+use super::windows::steam;
+
+#[cfg(target_os = "macos")]
+use super::macos::steam;
+
+#[cfg(target_os = "linux")]
+use super::linux::steam;
+
 /*
 ---------- General game related functions ----------
 */
@@ -227,9 +237,6 @@ pub async fn update_game_properties(game: MonarchGame) -> Result<(), String> {
 pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
     #[cfg(not(target_os = "linux"))]
     return Ok(vec![]);
-
-    #[cfg(target_os = "linux")]
-    use super::linux::steam;
 
     // Get libraryfolders.vdf
     let library_path = match steam::get_default_libraryfolders_location() {

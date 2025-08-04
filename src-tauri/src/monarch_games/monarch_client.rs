@@ -1,5 +1,4 @@
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_games::linux;
 use crate::monarch_games::monarchgame::MonarchWebGame;
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
@@ -46,32 +45,12 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
 
         // Run with compatibility layer
         if !game.compatibility.is_empty() {
-            if !cfg!(target_os = "linux") {
-                bail!("monarch_client::launch_game() User tried launching a game using executable path on OS other than Linux! | Err: Cannot use executable path under anything other than Linux!")
+            if cfg!(not(target_os = "linux")) {
+                bail!("monarch_client::launch_game() User tried launching a game using compatibility layer on OS other than Linux! | Err: Cannot use compatibility layer under anything other than Linux!")
             }
-
-            info!("Compatibility layer set: {}", game.compatibility);
-            game.compatibility = game.compatibility.replace(" ", "\\ ");
-
-            let compat_client_install_dir = linux::steam::get_default_location()
-                .with_context(|| "monarch_client::launch_game() -> ")?;
-            let compatdata_dir = compat_client_install_dir.join("steamapps/compatdata");
-
-            let compat_client_install_dir_str = compat_client_install_dir.to_str().unwrap_or("");
-            let compatdata_dir_str = compatdata_dir.to_str().unwrap_or("");
-            let env_vars: HashMap<&str, &str> = HashMap::from([
-                (
-                    "STEAM_COMPAT_CLIENT_INSTALL_PATH",
-                    compat_client_install_dir_str,
-                ),
-                ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str),
-            ]);
-
-            let command: String = format!("{} run {}", game.compatibility, game.executable_path);
-
-            return run_in_terminal(handle, &command, Some(env_vars))
-                .await
-                .with_context(|| "monarch_client::launch_game() -> ");
+            
+            #[cfg(target_os = "linux")]
+            return execute_compatibility_game(game);
         }
 
         // Run without compatibility layer
@@ -259,4 +238,32 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     }
 
     monarch_games
+}
+
+#[cfg(target_os = "linux")]
+fn execute_compatibility_game(game: &mut MonarchGame) -> Result<()> {
+    use super::linux;
+
+    info!("Compatibility layer set: {}", game.compatibility);
+    game.compatibility = game.compatibility.replace(" ", "\\ ");
+
+    let compat_client_install_dir = linux::steam::get_default_location()
+        .with_context(|| "monarch_client::launch_game() -> ")?;
+    let compatdata_dir = compat_client_install_dir.join("steamapps/compatdata");
+
+    let compat_client_install_dir_str = compat_client_install_dir.to_str().unwrap_or("");
+    let compatdata_dir_str = compatdata_dir.to_str().unwrap_or("");
+    let env_vars: HashMap<&str, &str> = HashMap::from([
+        (
+            "STEAM_COMPAT_CLIENT_INSTALL_PATH",
+            compat_client_install_dir_str,
+        ),
+        ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str),
+    ]);
+
+    format!("{} run {}", game.compatibility, game.executable_path);
+
+    run_in_terminal(handle, &command, Some(env_vars))
+        .await
+        .with_context(|| "monarch_client::launch_game() -> ")
 }

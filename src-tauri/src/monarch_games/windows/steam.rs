@@ -119,7 +119,7 @@ pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()>
     path.push("steamcmd.exe");
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    run_in_terminal(handle, &format!("{} {}", path.display(), args_string))
+    run_in_terminal(handle, &format!("{} {}", path.display(), args_string),None)
         .await
         .with_context(|| "windows::steam::steamcmd_command() -> ")?;
 
@@ -144,7 +144,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
         return Vec::new();
     }
 
-    let path = Path::new("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
+    let path = get_default_libraryfolders_location().unwrap();
     match monarch_vdf::parse_library_file(&path) {
         Ok(found_games) => return parse_steam_ids(&found_games, false, true).await,
         Err(e) => {
@@ -152,6 +152,19 @@ pub async fn get_library() -> Vec<MonarchGame> {
             vec![]
         }
     }
+}
+
+/// Returns default path used by steam on Windows systems
+/// Currently returns a result to match the definition of the linux function.
+pub fn get_default_location() -> Result<PathBuf> {
+    Ok(PathBuf::from("C:\\Program Files (x86)\\Steam\\")) // Add path to libraryfolders.vdf
+}
+
+/// Returns default path to libraryfolders.vdf used by steam on Windows systems 
+/// Currently returns a result to match the definition of the linux function.
+pub fn get_default_libraryfolders_location() -> Result<PathBuf> {
+    let path: PathBuf = get_default_location().unwrap();
+    Ok(path.join("steamapps\\libraryfolders.vdf")) // Add path to libraryfolders.vdf
 }
 
 /// Runs specified command via Steam
