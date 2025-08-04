@@ -563,7 +563,7 @@ const GameCard = ({
     } catch (err) {
       await dialog.message(`An error has occured: ${err}`, {
         title: 'Error',
-        type: 'error',
+        kind: 'error',
       });
     }
   }, []);
@@ -579,7 +579,7 @@ const GameCard = ({
     } catch (err) {
       await dialog.message(`${err}`, {
         title: 'Error',
-        type: 'error',
+        kind: 'error',
       });
     }
   }, [name, platformId, platform, refreshLibrary]);
@@ -594,7 +594,7 @@ const GameCard = ({
     } catch (err) {
       await dialog.message(`${err}`, {
         title: 'Error',
-        type: 'error',
+        kind: 'error',
       });
     }
   }, [name, platformId, platform]);
@@ -610,7 +610,7 @@ const GameCard = ({
     } catch (err) {
       await dialog.message(`${err}`, {
         title: 'Error',
-        type: 'error',
+        kind: 'error',
       });
     }
   }, [name, platformId, platform, refreshLibrary]);
@@ -640,7 +640,7 @@ const GameCard = ({
         `An error has occured: Could not open store page ${storePage}`,
         {
           title: 'Error',
-          type: 'error',
+          kind: 'error',
         },
       );
     }
@@ -751,7 +751,7 @@ const GameCard = ({
     } catch (err) {
       await dialog.message(`${err}`, {
         title: 'Error',
-        type: 'error',
+        kind: 'error',
       });
     }
   }, [name, platform, platformId, refreshLibrary]);
@@ -795,7 +795,7 @@ const GameCard = ({
     } catch (err) {
       await dialog.message('Failed to open file picker', {
         title: 'Error',
-        type: 'error',
+        kind: 'error',
       });
     }
   }, [handleSetExecutablePath]);
