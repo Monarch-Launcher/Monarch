@@ -6,6 +6,14 @@ import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
 import styled from 'styled-components';
 
+const ButtonWrapper = styled.div`
+  &:focus-within {
+    outline: 2px solid ${({ theme }) => theme.colors.primary};
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+`;
+
 const StyledButton = styled(Button)`
   font-size: 1.5rem;
   min-height: 3.75rem;
@@ -28,25 +36,41 @@ const Thumbnail = styled.img`
 
 type Props = {
   game: MonarchGame;
+  isFocused?: boolean;
+  onFocus?: () => void;
 };
 
-const GameButton = ({ game }: Props) => {
+const GameButton = ({ game, isFocused = false, onFocus }: Props) => {
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+
   const handleLaunch = React.useCallback(async () => {
-    const { name, platform_id: platformId, platform } = game;
     try {
-      await invoke('launch_game', { name, platformId, platform });
-      await invoke('hide_quicklaunch');
+      await invoke('launch_game', { game });
       // TODO: Close window instance
     } catch (err) {
-      await dialog.message(`An error has occured: Could't launch ${name}`, {
+      await dialog.message(`An error has occured: ${err}`, {
         title: 'Error',
         kind: 'error',
       });
     }
   }, [game]);
 
+  const handleKeyDown = React.useCallback((event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleLaunch();
+    }
+  }, [handleLaunch]);
+
+  // Auto-focus when isFocused prop changes to true
+  React.useEffect(() => {
+    if (isFocused && wrapperRef.current) {
+      wrapperRef.current.focus();
+    }
+  }, [isFocused]);
+
   const imageSrc = React.useMemo<string>(() => {
-    if (!game.thumbnail_path || game.thumbnail_path === ('' || 'temp')) {
+    if (!game.thumbnail_path || game.thumbnail_path === '' || game.thumbnail_path === 'temp') {
       return fallback;
     }
 
@@ -54,15 +78,22 @@ const GameButton = ({ game }: Props) => {
   }, [game.thumbnail_path]);
 
   return (
-    <StyledButton
-      type="button"
-      variant="secondary"
-      onClick={handleLaunch}
-      fullWidth
+    <ButtonWrapper
+      ref={wrapperRef}
+      onKeyDown={handleKeyDown}
+      onFocus={onFocus}
+      tabIndex={isFocused ? 0 : -1} // Only make focused button tabbable
     >
-      <Thumbnail src={imageSrc} alt="game thumnbail" />
-      <Title>{game.name}</Title>
-    </StyledButton>
+      <StyledButton
+        type="button"
+        variant="secondary"
+        onClick={handleLaunch}
+        fullWidth
+      >
+        <Thumbnail src={imageSrc} alt="game thumnbail" />
+        <Title>{game.name}</Title>
+      </StyledButton>
+    </ButtonWrapper>
   );
 };
 

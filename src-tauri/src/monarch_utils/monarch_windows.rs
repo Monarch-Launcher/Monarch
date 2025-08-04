@@ -31,7 +31,7 @@ impl MiniWindow {
         };
 
         let window: WebviewWindow = WebviewWindowBuilder::new(handle, &self.name, window_url)
-            .always_on_top(true)
+            .always_on_top(false)
             .center()
             .decorations(true)
             .skip_taskbar(false)
@@ -114,6 +114,7 @@ impl MiniWindow {
 
         window.set_decorations(false)?;
         window.set_skip_taskbar(true)?;
+        window.set_always_on_top(true)?;
 
         Ok(())
     }
