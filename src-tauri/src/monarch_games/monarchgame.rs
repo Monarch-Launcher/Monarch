@@ -114,5 +114,5 @@ pub struct MonarchWebGame {
     pub summary: String,
     pub platform: String,
     pub platform_id: String,
-    pub store_page: String, 
+    pub store_page: String,
 }

@@ -1,9 +1,9 @@
-import { invoke } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 import {
   isRegistered,
   register,
   unregisterAll,
-} from '@tauri-apps/api/globalShortcut';
+} from '@tauri-apps/plugin-global-shortcut';
 import { Settings } from '@global/types';
 
 // TODO: PROPER ERROR HANDLING

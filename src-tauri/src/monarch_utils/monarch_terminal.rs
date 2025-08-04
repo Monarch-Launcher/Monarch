@@ -10,13 +10,13 @@ use super::monarch_windows::MiniWindow;
 use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
 use portable_pty::{native_pty_system, CommandBuilder, PtyPair, PtySize};
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::sync::Arc;
 use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::{AppHandle, Manager};
 use tracing::error;
 use tracing::info;
-use std::collections::HashMap;
 
 pub struct AppState {
     _pty_pair: Arc<AsyncMutex<PtyPair>>,
@@ -27,7 +27,11 @@ pub struct AppState {
 static mut APPSTATE: Lazy<Option<AppState>> = Lazy::<Option<AppState>>::new(|| None);
 
 /// Run a command in a new process and display to the user in a custom terminal window.
-pub async fn run_in_terminal(handle: &AppHandle, command: &str, env_vars: Option<HashMap<&str, &str>>) -> Result<()> {
+pub async fn run_in_terminal(
+    handle: &AppHandle,
+    command: &str,
+    env_vars: Option<HashMap<&str, &str>>,
+) -> Result<()> {
     info!("Starting Monarch terminal...");
 
     let pty_system = native_pty_system();
@@ -132,7 +136,7 @@ pub async fn create_terminal_window(handle: &AppHandle) -> Result<()> {
         .await
         .with_context(|| "monarch_terminal::run_in_terminal() -> ")?;
 
-    let w_opt = handle.get_window("terminal");
+    let w_opt = handle.get_webview_window("terminal");
     let w = match w_opt {
         Some(w) => w,
         None => {
@@ -154,7 +158,7 @@ pub async fn close_terminal_window(handle: &AppHandle) -> Result<()> {
         *APPSTATE = None;
     }
 
-    let w_opt = handle.get_window("terminal");
+    let w_opt = handle.get_webview_window("terminal");
     match w_opt {
         Some(w) => {
             w.close().with_context(|| "monarch_terminal::run_in_terminal() Failed to run window.hide() after child process exited! | Err: ")?;

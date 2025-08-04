@@ -9,12 +9,13 @@ import { useLibrary } from '@global/contexts/libraryProvider';
 import { FaFolderOpen, FaFolderPlus, FiRefreshCcw } from '@global/icons';
 import type { MonarchGame } from '@global/types';
 import { useDisclosure } from '@mantine/hooks';
-import { dialog } from '@tauri-apps/api';
+import {  } from '@tauri-apps/api';
 import * as React from 'react';
 import styled, { css } from 'styled-components';
 
 import Modal from './createCollection/modal';
 import Collection from './showCollection/collection';
+import * as dialog from "@tauri-apps/plugin-dialog"
 
 const LibraryContainer = styled.div`
   width: 100%;

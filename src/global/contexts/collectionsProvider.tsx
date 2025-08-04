@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 
 import type { Collection } from '../types';
@@ -23,9 +23,9 @@ const initialState: CollectionsContextType = {
   collections: [],
   error: false,
   loading: false,
-  updateCollection: async () => {},
-  deleteCollection: async () => {},
-  createCollection: async () => {},
+  updateCollection: async () => { },
+  deleteCollection: async () => { },
+  createCollection: async () => { },
 };
 
 const CollectionsContext =

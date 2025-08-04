@@ -1,8 +1,8 @@
 import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { MonarchGame } from '@global/types';
-import { dialog, invoke } from '@tauri-apps/api';
-import { convertFileSrc } from '@tauri-apps/api/tauri';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
 import styled from 'styled-components';
 
@@ -40,7 +40,7 @@ const GameButton = ({ game }: Props) => {
     } catch (err) {
       await dialog.message(`An error has occured: Could't launch ${name}`, {
         title: 'Error',
-        type: 'error',
+        kind: 'error',
       });
     }
   }, [game]);

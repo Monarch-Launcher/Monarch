@@ -322,7 +322,7 @@ pub async fn init_quicklaunch(handle: AppHandle) -> Result<(), String> {
 #[tauri::command]
 /// Show quicklaunch and focus quicklaunch window
 pub fn show_quicklaunch(handle: AppHandle) -> Result<(), String> {
-    if let Some(window) = handle.get_window("quicklaunch") {
+    if let Some(window) = handle.get_webview_window("quicklaunch") {
         if let Err(e) = window.show() {
             error!("monarch_utils::commands::show_quicklaunch() Failed to show quicklaunch! | Err: {e}");
             return Err(String::from("Failed to hide quicklaunch window!"));
@@ -340,7 +340,7 @@ pub fn show_quicklaunch(handle: AppHandle) -> Result<(), String> {
 #[tauri::command]
 /// Hide quicklaunch window
 pub fn hide_quicklaunch(handle: AppHandle) -> Result<(), String> {
-    if let Some(window) = handle.get_window("quicklaunch") {
+    if let Some(window) = handle.get_webview_window("quicklaunch") {
         if let Err(e) = window.hide() {
             error!("monarch_utils::commands::hide_quicklaunch() Failed to hide quicklaunch! | Err: {e}");
             return Err(String::from("Failed to hide quicklaunch!"));

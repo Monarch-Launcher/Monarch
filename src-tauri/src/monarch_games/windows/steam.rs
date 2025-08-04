@@ -1,12 +1,12 @@
 use anyhow::{Context, Result};
 use reqwest::Response;
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tauri::AppHandle;
 use tracing::{error, info};
-use std::fs;
 use zip::ZipArchive;
 
 use crate::monarch_games::monarchgame::MonarchGame;
@@ -61,12 +61,14 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
         .with_context(|| format!("Failed to read zip archive: {}", steamcmd_zip.display()))?;
 
     if !steamcmd_folder.exists() {
-        fs::create_dir_all(&steamcmd_folder)
-            .with_context(|| format!("Failed to create directory: {}", steamcmd_folder.display()))?;
+        fs::create_dir_all(&steamcmd_folder).with_context(|| {
+            format!("Failed to create directory: {}", steamcmd_folder.display())
+        })?;
     }
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i)
+        let mut file = archive
+            .by_index(i)
             .with_context(|| format!("Failed to access file in zip at index {}", i))?;
         let outpath = steamcmd_folder.join(file.name());
 
@@ -76,8 +78,9 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
         } else {
             if let Some(parent) = outpath.parent() {
                 if !parent.exists() {
-                    fs::create_dir_all(parent)
-                        .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
+                    fs::create_dir_all(parent).with_context(|| {
+                        format!("Failed to create directory: {}", parent.display())
+                    })?;
                 }
             }
             let mut outfile = File::create(&outpath)
@@ -86,7 +89,7 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
                 .with_context(|| format!("Failed to write file: {}", outpath.display()))?;
         }
     }
-    /* 
+    /*
     // Unzip and copy steamcmd to correct directory
     let unzip_args = vec![
         "-Command",
@@ -119,7 +122,7 @@ pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()>
     path.push("steamcmd.exe");
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    run_in_terminal(handle, &format!("{} {}", path.display(), args_string),None)
+    run_in_terminal(handle, &format!("{} {}", path.display(), args_string), None)
         .await
         .with_context(|| "windows::steam::steamcmd_command() -> ")?;
 
@@ -160,7 +163,7 @@ pub fn get_default_location() -> Result<PathBuf> {
     Ok(PathBuf::from("C:\\Program Files (x86)\\Steam\\")) // Add path to libraryfolders.vdf
 }
 
-/// Returns default path to libraryfolders.vdf used by steam on Windows systems 
+/// Returns default path to libraryfolders.vdf used by steam on Windows systems
 /// Currently returns a result to match the definition of the linux function.
 pub fn get_default_libraryfolders_location() -> Result<PathBuf> {
     let path: PathBuf = get_default_location().unwrap();

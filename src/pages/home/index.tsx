@@ -1,7 +1,7 @@
 import GameCard from '@_ui/gameCard';
 import Page from '@_ui/page';
 import fallback from '@assets/fallback.jpg';
-import { invoke } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 
 const gridStyle: React.CSSProperties = {

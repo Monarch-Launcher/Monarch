@@ -11,7 +11,6 @@ use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
 
-
 #[cfg(target_os = "windows")]
 use super::windows::steam;
 

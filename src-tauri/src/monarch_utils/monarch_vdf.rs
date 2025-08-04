@@ -51,7 +51,8 @@ pub struct ProtonVersion {
 /// Parses steams libraryfolders.vdf file to structs that can be used to find
 /// installed games, folder locations, etc...
 pub fn parse_library_file(path: &Path) -> Result<Vec<String>> {
-    let folders: LibraryFolders = LibraryFolders::read(path).with_context(||"monarch_vdf::parse_library_file() -> ")?;
+    let folders: LibraryFolders =
+        LibraryFolders::read(path).with_context(|| "monarch_vdf::parse_library_file() -> ")?;
 
     // Detect all .acf files and extract app_id from each library folder path
     let mut games: Vec<String> = Vec::new();
@@ -77,7 +78,8 @@ pub fn parse_library_file(path: &Path) -> Result<Vec<String>> {
 
 /// Possibly slow implementation for getting Proton versions installed on system.
 pub fn get_proton_versions(libraryfolders_vdf: &Path) -> Result<Vec<ProtonVersion>> {
-    let folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf).with_context(||"monarch_vdf::get_proton_versions() -> ")?;
+    let folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf)
+        .with_context(|| "monarch_vdf::get_proton_versions() -> ")?;
 
     let mut proton_versions: Vec<ProtonVersion> = Vec::new();
 
@@ -101,7 +103,10 @@ pub fn get_proton_versions(libraryfolders_vdf: &Path) -> Result<Vec<ProtonVersio
                         let proton_path = path.join("proton");
                         let proton_path_string = proton_path.to_str().unwrap_or("").to_string();
 
-                        proton_versions.push(ProtonVersion { name: name_string, path: proton_path_string});
+                        proton_versions.push(ProtonVersion {
+                            name: name_string,
+                            path: proton_path_string,
+                        });
                     }
                 }
             }
