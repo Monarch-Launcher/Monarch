@@ -38,7 +38,7 @@ pub async fn init_quicklaunch(handle: &AppHandle) -> Result<()> {
         .with_context(|| "monarch_utils::commands::init_quicklaunch() -> ")?;
 
     // Setup shortcut handlers for quicklaunch
-    let show_shortcut = Shortcut::new(Some(Modifiers::SUPER), Code::Backspace);
+    let show_shortcut = Shortcut::new(Some(Modifiers::SUPER), Code::Enter);
     let hide_shortcut = Shortcut::new(None, Code::Escape);
 
     handle.plugin(
@@ -63,6 +63,9 @@ pub async fn init_quicklaunch(handle: &AppHandle) -> Result<()> {
             })
             .build(),
     ).with_context(|| "quicklaunch::init_quicklaunch() Failed to init quicklaunch! | Err: ")?;
+
+    handle.global_shortcut().unregister_all()?;
+    info!("Unregistered global shortcuts.");
 
     handle.global_shortcut().register(show_shortcut)?;
     info!("Registered shortcut: {show_shortcut}");
