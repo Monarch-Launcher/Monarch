@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use futures::task::waker;
 use tauri::{AppHandle, Manager};
 
 use crate::monarch_utils::monarch_settings::get_settings_state;
@@ -38,24 +39,23 @@ pub async fn init_quicklaunch(handle: &AppHandle) -> Result<()> {
         .with_context(|| "monarch_utils::commands::init_quicklaunch() -> ")?;
 
     // Setup shortcut handlers for quicklaunch
-    let show_shortcut = Shortcut::new(Some(Modifiers::SUPER), Code::Enter);
+    let show_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::Enter);
     let hide_shortcut = Shortcut::new(None, Code::Escape);
 
+    // Initialize the global shortcut plugin with handlers
     handle.plugin(
         tauri_plugin_global_shortcut::Builder::new()
-            .with_handler(move |_app, shortcut, event| {
-                info!("Pressed: {shortcut}");
+            .with_handler(move |app, shortcut, event| {
+                if event.state() == ShortcutState::Pressed {
+                    info!("Pressed: {shortcut}");
 
-                if shortcut == &show_shortcut {
-                    if event.state() == ShortcutState::Pressed {
-                        if let Err(e) = show_quicklaunch(_app) {
+                    if shortcut == &show_shortcut {
+                        if let Err(e) = show_quicklaunch(app) {
                             error!("Shortcut handler error! Error while executing show_quicklaunch() | Err: {e}");
                         }
                     }
-                }
-                if shortcut == &hide_shortcut {
-                    if event.state() == ShortcutState::Pressed {
-                        if let Err(e) = hide_quicklaunch(_app) {
+                    if shortcut == &hide_shortcut {
+                        if let Err(e) = hide_quicklaunch(app) {
                             error!("Shortcut handler error! Error while executing hide_quicklaunch() | Err: {e}");
                         }
                     }
@@ -64,9 +64,7 @@ pub async fn init_quicklaunch(handle: &AppHandle) -> Result<()> {
             .build(),
     ).with_context(|| "quicklaunch::init_quicklaunch() Failed to init quicklaunch! | Err: ")?;
 
-    handle.global_shortcut().unregister_all()?;
-    info!("Unregistered global shortcuts.");
-
+    // Register the shortcuts
     handle.global_shortcut().register(show_shortcut)?;
     info!("Registered shortcut: {show_shortcut}");
 

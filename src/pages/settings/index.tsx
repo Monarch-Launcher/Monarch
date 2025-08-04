@@ -229,7 +229,7 @@ const SettingsPage = () => {
             checked={settings.quicklaunch.enabled}
             onChange={toggleQuickLaunch}
             size="md"
-            label="Quicklaunch (Windows and MacOS only)"
+            label="Quicklaunch (Requires application restart. Shortcut: Ctrl+Enter)"
             labelPosition="left"
           />
         </Card>

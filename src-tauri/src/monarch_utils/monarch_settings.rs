@@ -77,7 +77,7 @@ impl Default for Settings {
 
         let quicklaunch: QuicklaunchSettings = QuicklaunchSettings {
             close_shortcut: String::from("Esc"),
-            open_shortcut: String::from("Super+Enter"),
+            open_shortcut: String::from("Control+Enter"),
             enabled: true,
             size: String::from("medium"),
         };
