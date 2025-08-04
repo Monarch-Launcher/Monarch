@@ -48,9 +48,9 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             if cfg!(not(target_os = "linux")) {
                 bail!("monarch_client::launch_game() User tried launching a game using compatibility layer on OS other than Linux! | Err: Cannot use compatibility layer under anything other than Linux!")
             }
-            
+
             #[cfg(target_os = "linux")]
-            return execute_compatibility_game(game);
+            return execute_compatibility_game(handle, &mut game).await;
         }
 
         // Run without compatibility layer
@@ -241,7 +241,7 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
 }
 
 #[cfg(target_os = "linux")]
-fn execute_compatibility_game(game: &mut MonarchGame) -> Result<()> {
+async fn execute_compatibility_game(handle: &AppHandle, game: &mut MonarchGame) -> Result<()> {
     use super::linux;
 
     info!("Compatibility layer set: {}", game.compatibility);
@@ -261,7 +261,7 @@ fn execute_compatibility_game(game: &mut MonarchGame) -> Result<()> {
         ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str),
     ]);
 
-    format!("{} run {}", game.compatibility, game.executable_path);
+    let command: String = format!("{} run {}", game.compatibility, game.executable_path);
 
     run_in_terminal(handle, &command, Some(env_vars))
         .await
