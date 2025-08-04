@@ -1,15 +1,22 @@
 # Steam login
 
 ## Basics
-In the settings menu you can add your username and passward. These are stored in your operating systems secure store, and are *never* sent to a remote server by Monarch. If you are interested in the actual code you can check out `src-tauri/src/monarch_utils/monarch_credentials.rs`. 
+In the settings menu you can add your username and passward. The username is stored in plain text in settings.toml, the password is stored in your operating systems secure store, and are *never* sent to a remote server by 
+Monarch. If you are interested in the actual code you can check out `src-tauri/src/monarch_utils/monarch_credentials.rs`.  
+The recomended method for ease of use is to only enter your username. This will let SteamCMD prompt you for a password and 2FA on firs use.
+All other SteamCMD commands *should* then be able to use these cached credentials.  
+
+If this fails you can proceed with the other meassures below.
 
 ## SteamGuard
 If you have SteamGuard enabled on your account you will be prompted to put in the SteamGuard code in the terminal when running any SteamCMD command. 
-Monarch attempts to minimize the amount of times you get prompted by using `@NoPromptForPassword 1` which tells SteamCMD to cache your login. If however you don't want to
-have to enter your SteamGuard or it happens too often, there are ways of circumventing this. 
+Monarch attempts to minimize the amount of times you get prompted by letting SteamCMD cache your login. If however it fails and you don't want to have 
+to enter your SteamGuard or it happens too often, there are ways of circumventing this. 
 
 1. Disable SteamGuard. A pretty straight-forward way to get around the SteamGuard issue. This is however a security risk as you now no longer have 2FA.
-2. Replace your existing SteamGuard. Below is a guide for replacing your existing SteamGuard with a Monarch compatible version. **WARNING:** This is also a security risk as Monarch will be able to calculate your SteamGuard code for you. If anyone manages to get access to your machine both your login and 2FA is compromised. You have been warned, proceed with caution.
+2. Replace your existing SteamGuard. Below is a guide for replacing your existing SteamGuard with a Monarch compatible version. **WARNING:** This is also 
+a security risk as Monarch will be able to calculate your SteamGuard code for you. If anyone manages to get access to your machine both your login and 
+2FA is compromised. You have been warned, proceed with caution.
 
 ## Replacing SteamGuard
 **This guide is inspired by:** https://gist.github.com/mathielo/8367e464baa73941a075bae4dd5eed90

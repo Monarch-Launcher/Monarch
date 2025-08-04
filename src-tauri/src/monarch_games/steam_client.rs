@@ -36,28 +36,11 @@ pub fn is_installed() -> bool {
     path_exists(&path)
 }
 
-#[cfg(windows)]
-/// Downloads and installs SteamCMD on users computer.
-pub async fn download_and_install(handle: &AppHandle) -> Result<()> {
-    steam::install_steamcmd(handle)
-        .await
-        .context("steam_client::download_and_install() failed! | Err")
-}
-
-#[cfg(not(windows))]
 /// Downloads and installs SteamCMD on users computer.
 pub async fn download_and_install(handle: &AppHandle) -> Result<()> {
     steam::install_steamcmd(handle)
         .await
         .with_context(|| "steam_client::download_and_install() -> ")
-    /*
-    * This code was meant to be a solution to not require steam guard code
-    * on every game download. Does not appear to work. Further research into
-    * SteamCMD is required.
-    steam::steamcmd_command(vec!["+set_steam_guard_code"])
-        .await
-        .with_context(|| "steam_client::download_and_install() -> ")
-    */
 }
 
 /// Returns games installed by Steam Client.
@@ -66,8 +49,15 @@ pub async fn get_library() -> Vec<MonarchGame> {
 }
 
 /// Attempts to launch Steam Client game.
-pub fn launch_game(id: &str) -> Result<()> {
+pub fn launch_client_game(id: &str) -> Result<()> {
     let mut command: String = String::from("steam://rungameid/");
+    command.push_str(id);
+    steam::run_command(&command).with_context(|| "steam_client::launch_game() -> ")
+}
+
+/// Attempts to uninstall a Steam Client game.
+pub fn uninstall_client_game(id: &str) -> Result<()> {
+    let mut command: String = String::from("steam://uninstall/");
     command.push_str(id);
     steam::run_command(&command).with_context(|| "steam_client::launch_game() -> ")
 }
@@ -80,7 +70,6 @@ pub async fn launch_cmd_game(handle: &AppHandle, id: &str) -> Result<()> {
 
     let args: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
-        "+@NoPromptForPassword 1",
         &login_arg,
         "+app_launch",
         id,
@@ -122,7 +111,6 @@ pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<M
     // Build the command as a string with arguments in order
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
-        "+@NoPromptForPassword 1",
         &login_arg,
         &download_arg,
         "+quit",
@@ -152,7 +140,6 @@ pub async fn uninstall_game(handle: &AppHandle, id: &str) -> Result<()> {
     let remove_arg: String = format!("+app_uninstall {id}");
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
-        "+@NoPromptForPassword 1",
         &login_arg,
         &remove_arg,
         "+quit",
@@ -175,7 +162,6 @@ pub async fn update_game(handle: &AppHandle, id: &str) -> Result<()> {
     let update_arg: String = format!("+app_update {id} validate");
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
-        "+@NoPromptForPassword 1",
         &login_arg,
         &update_arg,
         "+quit",
@@ -225,14 +211,23 @@ pub async fn parse_steam_ids(
 /// abstracted to it's own function.
 fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
     let username: &str = &steam_settings.username;
-    let password: String =
-        get_password("steam", &username).with_context(|| "steam_client::download_game() -> ")?;
+    let password: String = match get_password("steam", &username) {
+        Ok(p) => p,
+        Err(e) => {
+            warn!("steam_client::get_steamcmd_login() Failed to get password for {username}! | Err: {e}");
+            info!("SteamCMD will prompt for password.");
+            String::from("")
+        }
+    };
 
     // Login argument
     let mut login_arg = String::from("+login ");
     login_arg.push_str(username);
-    login_arg.push(' ');
-    login_arg.push_str(&password);
+
+    if !password.is_empty() {
+        login_arg.push(' ');
+        login_arg.push_str(&password);
+    }
 
     // Current solution is to store the secret in keystore, which essentially
     // disables the point of 2fa, at least on computers with Monarch.
@@ -296,15 +291,9 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
                     .unwrap(),
             )
         };
-        let monarch_game = MonarchGame::new(
-            &game_info.name,
-            game_info.id,
-            &game_info.platform,
-            &game_info.platform_id,
-            &game_info.store_page,
-            "N/A",
-            &thumbnail_path,
-        );
+        
+        let mut monarch_game = MonarchGame::from(&game_info);
+        monarch_game.thumbnail_path = thumbnail_path;
         monarch_game.download_thumbnail(game_info.cover_url).await;
         return Ok(monarch_game);
     }
@@ -377,7 +366,10 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
     }
 
     let game_json: Value = serde_json::from_str(&game_info).unwrap();
-    let name: String = game_json[&id]["data"]["name"].to_string();
+    let name: String = game_json[&id]["data"]["name"]
+        .to_string()
+        .trim_matches('"')
+        .to_string();
 
     let store_url = format!("https://store.steampowered.com/app/{id}");
     let cover_url: String =
@@ -390,7 +382,7 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
         String::from(generate_library_image_path(&name).to_str().unwrap())
     };
     let monarch_game =
-        MonarchGame::new(&name, -1, "steam", &id, &store_url, "N/A", &thumbnail_path);
+        MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
     monarch_game.download_thumbnail(cover_url).await;
     Ok(monarch_game)
 }

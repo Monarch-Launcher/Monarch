@@ -6,6 +6,8 @@ export type MonarchGame = {
   platform: string;
   thumbnail_path: string;
   store_page: string;
+  compatibility: string;
+  launch_args: string;
 };
 
 export type Result = {
@@ -43,4 +45,9 @@ export type Settings = {
     enabled: boolean;
     size: string;
   };
+};
+
+export type ProtonVersion = {
+  name: string;
+  path: string;
 };

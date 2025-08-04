@@ -31,9 +31,9 @@ const StyledInput = styled.input<{
 `;
 
 const SearchButton = styled(Button)`
-  border-radius: 0 40% 40% 0;
+  border-radius: 0 0.5rem 0.5rem 0;
   border: none;
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.3rem;
 
   &:hover,
   &:focus {

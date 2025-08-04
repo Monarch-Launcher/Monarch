@@ -3,7 +3,7 @@ import Modal from '@_ui/modal';
 import SearchBar from '@_ui/searchBar';
 import { useCollections } from '@global/contexts/collectionsProvider';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import { BiCheck, BiLeftArrowAlt, BiTrash, MdClose } from '@global/icons';
+import { BiCheck, BiTrash, MdClose } from '@global/icons';
 import { Collection, MonarchGame } from '@global/types';
 import { useDisclosure } from '@mantine/hooks';
 import * as React from 'react';
@@ -17,6 +17,15 @@ const StyledInput = styled.input`
   border-radius: 0.5rem;
   border: none;
   padding: 0.5rem;
+  color: #fff;
+  &::placeholder {
+    color: #fff;
+    opacity: 0.7;
+  }
+  &::selection {
+    background: ${({ theme }) => theme.colors.primary};
+    color: #fff;
+  }
   &:focus {
     outline: none;
   }
@@ -24,12 +33,14 @@ const StyledInput = styled.input`
 
 const Section = styled.div`
   margin-bottom: 1rem;
+  color: #fff;
 `;
 
 const Label = styled.p`
   margin: 0 0 0.5rem 0;
   font-size: 1.1rem;
   font-weight: 600;
+  color: #fff;
 `;
 
 const GameContainer = styled.div`
@@ -39,6 +50,7 @@ const GameContainer = styled.div`
   margin-top: 1rem;
   height: 40vh;
   overflow-y: scroll;
+  color: #fff;
 `;
 
 const ButtonContainer = styled.div<{ $justify: string }>`
@@ -57,6 +69,7 @@ const ModalText = styled.p`
   margin: 0 0 2rem 0;
   text-align: center;
   font-size: 1.1rem;
+  color: #fff;
 `;
 
 const ModalHeaderContainer = styled.div`
@@ -69,7 +82,7 @@ const ModalHeaderContainer = styled.div`
 
 const ModalHeader = styled.h2`
   margin: 0.5rem 0;
-  color: ${({ theme }) => theme.colors.primary};
+  color: #fff;
 `;
 
 type Props = {
@@ -204,14 +217,7 @@ const EditCollectionForm = ({
           Delete
         </Button>
         <Row>
-          <Button
-            type="button"
-            variant="secondary"
-            leftIcon={BiLeftArrowAlt}
-            onClick={toggleEditing}
-          >
-            Back
-          </Button>
+          {/* Remove Back button */}
           <Button type="submit" variant="primary" rightIcon={BiCheck}>
             Save
           </Button>

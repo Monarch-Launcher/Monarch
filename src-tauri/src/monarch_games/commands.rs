@@ -8,7 +8,18 @@ use tauri::AppHandle;
 use tracing::{error, info};
 
 use crate::monarch_library::games_library;
+use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
+
+
+#[cfg(target_os = "windows")]
+use super::windows::steam;
+
+#[cfg(target_os = "macos")]
+use super::macos::steam;
+
+#[cfg(target_os = "linux")]
+use super::linux::steam;
 
 /*
 ---------- General game related functions ----------
@@ -70,19 +81,17 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
 #[tauri::command]
 /// Launch a game
-pub async fn launch_game(
-    handle: AppHandle,
-    name: String,
-    platform: String,
-    platform_id: String,
-) -> Result<(), String> {
-    info!("Launching game: {name}");
-    if let Err(e) = monarch_client::launch_game(&handle, &platform, &platform_id).await {
+pub async fn launch_game(handle: AppHandle, mut game: MonarchGame) -> Result<(), String> {
+    info!("Launching game: {}", game.name);
+    if let Err(e) = monarch_client::launch_game(&handle, &mut game).await {
         error!(
             "monarch_games::commands::launch_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(format!("Something went wrong while launching: {name}"));
+        return Err(format!(
+            "Something went wrong while launching: {}",
+            game.name
+        ));
     }
     Ok(())
 }
@@ -151,6 +160,37 @@ pub async fn remove_game(
 }
 
 #[tauri::command]
+pub async fn move_game_to_monarch(
+    handle: AppHandle,
+    name: String,
+    platform: String,
+    platform_id: String,
+) -> Result<(), String> {
+    info!("Moving {name} from {platform} to Monarch...");
+
+    // First remove the game from old platform
+    if let Err(e) = monarch_client::uninstall_game(&handle, &platform, &platform_id).await {
+        error!(
+            "monarch_games::commands::move_game_to_monarch() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(format!("Something went wrong while removing: {name}"));
+    }
+
+    // Then reinstall on Monarch
+    if let Err(e) = monarch_client::download_game(&handle, &name, &platform, &platform_id).await {
+        error!(
+            "monarch_games::commands::move_game_to_monarch() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(format!("Something went wrong while downloading: {name}"));
+    }
+
+    info!("Finished moving {name} to Monarch");
+    Ok(())
+}
+
+#[tauri::command]
 /// Open "Purchase window" for a game
 pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
     let window: MiniWindow = MiniWindow::new("store", &url, 1280.0, 720.0);
@@ -174,4 +214,55 @@ pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
         ));
     }
     Ok(())
+}
+
+#[tauri::command]
+/// Updates the properties of a game in the library.
+pub async fn update_game_properties(game: MonarchGame) -> Result<(), String> {
+    match games_library::update_game_properties(&game) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::update_game_properties() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from(
+                "Something went wrong while updating game properties!",
+            ))
+        }
+    }
+}
+
+#[tauri::command]
+pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
+    #[cfg(not(target_os = "linux"))]
+    return Ok(vec![]);
+
+    // Get libraryfolders.vdf
+    let library_path = match steam::get_default_libraryfolders_location() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(
+                "monarch_games::commands::proton_versions() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            return Err(String::from(
+                "Something went wrong while getting proton versions!",
+            ));
+        }
+    };
+
+    // Then get proton versions
+    match get_proton_versions(&library_path) {
+        Ok(p) => Ok(p),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::proton_versions() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from(
+                "Something went wrong while getting proton versions!",
+            ))
+        }
+    }
 }

@@ -79,7 +79,7 @@ const MonarchButton = styled.button<{
 type ButtonProps = {
   type: 'button' | 'submit' | 'reset';
   variant: keyof ButtonVariant;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
   loading?: boolean;
   children: React.ReactNode;

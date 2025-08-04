@@ -5,7 +5,7 @@ import { Settings } from '@global/types';
 import { Input, Switch } from '@mantine/core';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
-import { FaKey, FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
+import { FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
 import styled from 'styled-components';
 
 const SectionTitle = styled.h3`
@@ -58,6 +58,7 @@ const StyledButton = styled(Button)`
   font-weight: bold;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  border: none !important;
 
   &:hover {
     background-color: ${({ theme }) => theme.colors.primary};
@@ -67,7 +68,7 @@ const StyledButton = styled(Button)`
 `;
 
 const CenteredContainer = styled.div`
-  min-height: 100vh;
+  height: 100vh;
   width: 100vw;
   display: flex;
   flex-direction: column;
@@ -75,26 +76,22 @@ const CenteredContainer = styled.div`
   justify-content: flex-start;
   background: none;
   padding: 4rem 0 2rem 0;
-  overflow: hidden;
+  overflow-y: auto;
 `;
 
 const Card = styled.div`
   background: rgba(255, 255, 255, 0.1);
   border-radius: 28px;
-  box-shadow: 0 8px 40px 0 rgba(0, 0, 0, 0.25),
-    0 1.5px 8px 0 rgba(35, 41, 70, 0.1);
   border: 2px solid ${({ theme }) => theme.colors.primary};
   padding: 2.5rem 2rem 2rem 2rem;
   margin-bottom: 2.5rem;
   width: 100%;
-  max-width: 480px;
+  max-width: 720px;
   transition: box-shadow 0.3s, transform 0.2s;
   backdrop-filter: blur(6px);
   position: relative;
   z-index: 1;
   &:hover {
-    box-shadow: 0 16px 56px 0 rgba(0, 0, 0, 0.32),
-      0 2px 12px 0 ${({ theme }) => theme.colors.secondary};
     transform: scale(1.025);
   }
 `;
@@ -103,12 +100,14 @@ const AnimatedButton = styled(StyledButton)<{ $danger?: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
-  ${({ $danger, theme }) =>
-    $danger &&
-    `background: #e74c3c;
-     color: white;
-     &:hover { background: #c0392b; }`}
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s, border 0.2s;
+  ${({ $danger }) =>
+    $danger && `
+      background: #e74c3c;
+      color: white;
+      border: none !important;
+      &:hover { background: #c0392b; }
+    `}
   &:hover {
     background: linear-gradient(
       90deg,
@@ -154,12 +153,12 @@ const SettingsPage = () => {
     updateSettings,
     saveCredentials,
     deleteCredentials,
-    deleteSecret,
     saveSecret,
+    deleteSecret,
   } = useSettings();
   const [feedback, setFeedback] = React.useState<string>('');
-  const [secretFeedback, setSecretFeedback] = React.useState<string>('');
   const [deleteFeedback, setDeleteFeedback] = React.useState<string>('');
+  const [secretFeedback, setSecretFeedback] = React.useState<string>('');
 
   const onSubmit = React.useCallback(
     async (values: FormValues) => {
@@ -170,17 +169,6 @@ const SettingsPage = () => {
       reset({ username: '', password: '' });
     },
     [saveCredentials, reset],
-  );
-
-  const onSubmitSecret = React.useCallback(
-    async (values: FormValues) => {
-      const { secret } = values;
-      saveSecret(secret, 'steam');
-      setSecretFeedback('Shared secret saved!');
-      setTimeout(() => setSecretFeedback(''), 2000);
-      reset({ secret: '' });
-    },
-    [reset],
   );
 
   const toggleQuickLaunch = React.useCallback(
@@ -217,6 +205,17 @@ const SettingsPage = () => {
     setTimeout(() => setDeleteFeedback(''), 2000);
   }, []);
 
+  const onSubmitSecret = React.useCallback(
+    async (values: FormValues) => {
+      const { secret } = values;
+      saveSecret(secret, 'steam');
+      setSecretFeedback('Shared secret saved!');
+      setTimeout(() => setSecretFeedback(''), 2000);
+      reset({ secret: '' });
+    },
+    [reset, saveSecret],
+  );
+
   const handleDeleteSecret = React.useCallback(async () => {
     await deleteSecret('steam');
   }, [deleteSecret]);
@@ -243,13 +242,26 @@ const SettingsPage = () => {
             label="Allow Monarch to manage Steam games"
             labelPosition="left"
           />
+          {/* Info paragraph about Steam login */}
+          <p style={{ color: '#fff', margin: '1rem 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 400 }}>
+            We recommend only filling in username to begin with, as you&apos;ll then be prompted by SteamCMD to enter a password
+            on the first run. After that SteamCMD should remember you.
+          </p>
+          <a
+            href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#fa5002', textDecoration: 'underline', fontWeight: 600 }}
+          >
+            How Monarch handles user authentication
+          </a>
           <form onSubmit={handleSubmit(onSubmit)}>
             <FormContainer>
               <Input
                 placeholder="Steam username"
                 variant="filled"
                 icon={<FaUser />}
-                radius={'md'}
+                radius="md"
                 {...register('username')}
               />
               <Input
@@ -257,7 +269,7 @@ const SettingsPage = () => {
                 variant="filled"
                 type="password"
                 icon={<FaLock />}
-                radius={'md'}
+                radius="md"
                 {...register('password')}
               />
               <ButtonContainer>
@@ -265,41 +277,51 @@ const SettingsPage = () => {
                   <FaSave /> Save
                 </AnimatedButton>
               </ButtonContainer>
+              <ButtonContainer>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                  }}
+                >
+                  <span style={{ color: '#fff', fontWeight: 500 }}>
+                    Steam login: {settings.steam.username ? settings.steam.username : 'no login'}
+                  </span>
+                  <AnimatedButton
+                    type="button"
+                    variant="primary"
+                    onClick={handleDelete}
+                    $danger
+                  >
+                    <FaTrash /> Delete user
+                  </AnimatedButton>
+                </div>
+              </ButtonContainer>
               <Feedback>{feedback}</Feedback>
             </FormContainer>
           </form>
-          <ButtonContainer>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-              }}
-            >
-              <span style={{ color: '#fff', fontWeight: 500 }}>
-                Steam login:{' '}
-                {settings.steam.username ? settings.steam.username : 'no login'}
-              </span>
-              <AnimatedButton
-                type="button"
-                variant="primary"
-                onClick={handleDelete}
-                $danger
-              >
-                <FaTrash /> Delete user
-              </AnimatedButton>
-            </div>
-          </ButtonContainer>
-          <Feedback>{deleteFeedback}</Feedback>
           <form onSubmit={handleSubmit(onSubmitSecret)}>
             <FormContainer>
+              {/* Instructional text and tutorial link for shared secret */}
+              <div style={{ color: '#fff', marginBottom: '0.5rem', fontWeight: 500 }}>
+                Insert your Steam shared secret, if using a 3rd party 2FA. (Advanced) <br />
+                <a
+                  href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#fa5002', textDecoration: 'underline', fontWeight: 600 }}
+                >
+                  How to set up your Steam shared secret (guide)
+                </a>
+              </div>
               <Input
                 placeholder="Steam shared secret"
                 variant="filled"
                 type="password"
-                icon={<FaKey />}
-                radius={'md'}
+                icon={<FaLock />}
+                radius="md"
                 {...register('secret')}
               />
               <ButtonContainer>
@@ -332,6 +354,7 @@ const SettingsPage = () => {
               <Feedback>{secretFeedback}</Feedback>
             </FormContainer>
           </form>
+          <Feedback>{deleteFeedback}</Feedback>
         </Card>
       </CenteredContainer>
     </Page>

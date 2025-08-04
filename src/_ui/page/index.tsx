@@ -6,19 +6,20 @@ import NavigationMenu from './navigation-menu';
 
 const PageContainer = styled.div`
   width: 100%;
-  height: 100%;
+  height: 100vh;
   display: flex;
-  flex-direction: column; // Stack items vertically
-  overflow-y: hidden;
+  flex-direction: column;
+  overflow: hidden;
 `;
 
 const ContentContainer = styled.div`
   padding: 0.5rem 1rem;
   width: 100%;
-  min-height: 100vh;
-  flex: 1; // Makes the content area take up remaining space
+  flex: 1;
   padding-top: 120px;
-  overflow-y: visible;
+  padding-bottom: 80px; // Add space for navbar
+  overflow-y: auto;
+  min-height: 0;
 `;
 
 const BottomMenuContainer = styled.div`
@@ -27,14 +28,14 @@ const BottomMenuContainer = styled.div`
 
 // TODO: Proper svg setup for styled components
 const StyledLogo = styled(Logo as AnyStyledComponent)`
-  position: absolute; // Position the logo in the top-left corner
-  top: 0;
-  left: 0;
-  margin: 1rem; // Add some space around the logo
-  width: auto; // Allow for natural scaling
-  height: 80px; // Adjust this to make it larger
-  max-width: none; // Allow the logo to grow larger than its container width (if needed)
-  max-height: none; // Remove max height limitation
+  position: absolute;
+  top: 1rem;
+  left: 0rem;
+  margin: 0 0 0 1rem;
+  width: auto;
+  height: 80px;
+  max-width: none;
+  max-height: none;
   .st0 {
     fill: ${({ theme }) => theme.colors.primary};
   }

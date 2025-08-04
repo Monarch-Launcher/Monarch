@@ -16,6 +16,7 @@ use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::{AppHandle, Manager};
 use tracing::error;
 use tracing::info;
+use std::collections::HashMap;
 
 pub struct AppState {
     _pty_pair: Arc<AsyncMutex<PtyPair>>,
@@ -26,7 +27,7 @@ pub struct AppState {
 static mut APPSTATE: Lazy<Option<AppState>> = Lazy::<Option<AppState>>::new(|| None);
 
 /// Run a command in a new process and display to the user in a custom terminal window.
-pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
+pub async fn run_in_terminal(handle: &AppHandle, command: &str, env_vars: Option<HashMap<&str, &str>>) -> Result<()> {
     info!("Starting Monarch terminal...");
 
     let pty_system = native_pty_system();
@@ -46,13 +47,19 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
     let reader = pair.master.try_clone_reader().unwrap();
     let writer = pair.master.take_writer().unwrap();
 
-    let term_command: String = command.to_string() + "; sleep 3";
+    let term_command: String = command.to_string();
 
     // Spawn a shell into the pty
     let cmd: CommandBuilder = if cfg!(windows) {
         info!("Windows detected, using shell: powershell.exe");
         let mut cmd = CommandBuilder::new("powershell.exe");
-        cmd.arg(&term_command);
+        cmd.args([&term_command]);
+
+        if let Some(vars) = env_vars {
+            for (k, v) in vars {
+                cmd.env(k, v);
+            }
+        }
 
         info!("Running command: powershell.exe {term_command}");
         cmd
@@ -63,6 +70,12 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
 
         let mut cmd = CommandBuilder::new(&shell);
         cmd.args(["-c", &term_command]);
+
+        if let Some(vars) = env_vars {
+            for (k, v) in vars {
+                cmd.env(k, v);
+            }
+        }
 
         info!("Running command: {shell} -c {term_command}");
         cmd
@@ -85,9 +98,23 @@ pub async fn run_in_terminal(handle: &AppHandle, command: &str) -> Result<()> {
         error!("monarch_terminal::run_in_terminal() -> {e}");
     }
 
-    let _exit_status = child
-        .wait()
-        .with_context(|| "Something went wrong while waiting for child process to finish!")?;
+    // NOTE: This loop was written while debugging linked list corruption error.
+    // The cause is still not found. Hopefully updating to Tauri 2.0 will fix it.
+    // TODO: Rewrite to make it "prettier"/simpler.
+    loop {
+        //info!("Polling child...");
+        let exit_status = child
+            .try_wait()
+            .with_context(|| "Something went wrong while waiting for child process to finish!")?;
+
+        if exit_status.is_some() {
+            info!("Child done.");
+            info!("Child process exited with status: {:?}", exit_status);
+            break;
+        }
+        //info!("Child running...");
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    }
 
     if let Err(e) = close_terminal_window(handle).await {
         error!("monarch_terminal::run_in_terminal() -> {e}");

@@ -47,8 +47,6 @@ pub fn get_unix_home() -> Result<PathBuf> {
 /// Returns the monarch data folder from settings.toml
 pub fn get_monarch_home() -> PathBuf {
     let settings: Settings = get_settings_state();
-
-    // Remove " " and ' ' that are still in Strings parsed from toml
     PathBuf::from(settings.monarch.monarch_home)
 }
 
@@ -148,7 +146,7 @@ pub fn path_exists(path: &Path) -> bool {
 
 /// Attempts to create an empty directory and returns result
 pub fn create_dir(path: &Path) -> Result<()> {
-    fs::create_dir_all(path).with_context(|| format!("monarch_fs::write_json_content() Something went wrong trying to write new library to: {dir} | Err: ", dir = path.display()))?;
+    fs::create_dir_all(path).with_context(|| format!("monarch_fs::create_dir() Something went wrong trying to create directory: {dir} | Err: ", dir = path.display()))?;
     Ok(())
 }
 
