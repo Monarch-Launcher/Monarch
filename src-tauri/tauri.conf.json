@@ -2,76 +2,27 @@
   "build": {
     "beforeDevCommand": "yarn web-dev",
     "beforeBuildCommand": "yarn web-build",
-    "devPath": "http://localhost:1420",
-    "distDir": "../dist",
-    "withGlobalTauri": false
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
   },
-  "package": {
-    "productName": "Monarch",
-    "version": "0.0.1"
+  "bundle": {
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "targets": "all"
   },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "shell": {
-        "all": true,
-        "open": true
-      },
-      "dialog": {
-        "open": true,
-        "message": true,
-        "ask": true,
-        "confirm": true
-      },
-      "fs": {
-        "readFile": true
-      },
-      "globalShortcut": {
-        "all": true
-      },
-      "window": {
-        "setMinSize": true
-      },
-      "protocol": {
-        "asset": true,
-        "assetScope": [
-          "**/.local/share/monarch/resources/**/*.jpg",
-          "**/Monarch/resources/**/*.jpg"
-        ]
-      }
-    },
-    "bundle": {
-      "active": true,
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "monarch",
-      "targets": "all"
-    },
-    "security": {
-      "csp": {
-        "default-src": [
-          "'self'"
-        ],
-        "img-src": [
-          "'self'",
-          "data:",
-          "asset:",
-          "https://asset.localhost"
-        ],
-        "style-src": [
-          "'self'",
-          "'unsafe-inline'"
-        ]
-      }
-    },
-    "updater": {
-      "active": false
-    },
+  "productName": "Monarch",
+  "mainBinaryName": "Monarch",
+  "version": "0.0.1",
+  "identifier": "monarch",
+  "plugins": {},
+  "app": {
+    "withGlobalTauri": false,
     "windows": [
       {
         "fullscreen": false,
@@ -80,8 +31,36 @@
         "width": 1280,
         "height": 720,
         "theme": "Dark",
-        "titleBarStyle": "Overlay"
+        "titleBarStyle": "Overlay",
+        "useHttpsScheme": true
       }
-    ]
+    ],
+    "security": {
+      "assetProtocol": {
+        "scope": [
+          "**/.local/share/monarch/resources/**/*.jpg",
+          "**/Monarch/resources/**/*.jpg"
+        ],
+        "enable": true
+      },
+      "csp": {
+        "img-src": [
+          "'self'",
+          "data:",
+          "asset:",
+          "https://asset.localhost"
+        ],
+        "default-src": [
+          "'self'"
+        ],
+        "connect-src": [
+          "ipc: http://ipc.localhost"
+        ],
+        "style-src": [
+          "'self'",
+          "'unsafe-inline'"
+        ]
+      }
+    }
   }
 }

@@ -15,7 +15,11 @@
     "@emotion/react": "^11.10.8",
     "@mantine/core": "^6.0.21",
     "@mantine/hooks": "^6.0.21",
-    "@tauri-apps/api": "^1.2.0",
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "~2",
+    "@tauri-apps/plugin-fs": "~2",
+    "@tauri-apps/plugin-global-shortcut": "~2",
+    "@tauri-apps/plugin-shell": "~2",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
     "eslint": "^8.37.0",
@@ -30,7 +34,7 @@
     "vite-plugin-svgr": "^2.4.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.2.2",
+    "@tauri-apps/cli": "^2.7.1",
     "@types/node": "^18.7.10",
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",

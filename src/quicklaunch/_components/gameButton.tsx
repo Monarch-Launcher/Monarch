@@ -1,10 +1,11 @@
 import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { MonarchGame } from '@global/types';
-import { dialog, invoke } from '@tauri-apps/api';
-import { convertFileSrc } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import * as React from 'react';
 import styled from 'styled-components';
+import * as dialog from "@tauri-apps/plugin-dialog"
 
 const StyledButton = styled(Button)`
   font-size: 1.5rem;

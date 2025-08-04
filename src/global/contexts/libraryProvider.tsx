@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 
 import type { MonarchGame, Result } from '../types';
@@ -13,7 +13,7 @@ type LibraryContextType = {
 
 const initialState: LibraryContextType = {
   library: [],
-  refreshLibrary: async () => {},
+  refreshLibrary: async () => { },
   error: false,
   loading: false,
   results: undefined,

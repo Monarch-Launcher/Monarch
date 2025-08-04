@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 
 import type { MonarchGame, Result } from '../types';

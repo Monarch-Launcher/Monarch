@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
-use tauri::window::{Window, WindowBuilder};
-use tauri::{AppHandle, Manager, PhysicalSize, WindowUrl};
+use tauri::{AppHandle, Manager, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tracing::error;
 
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
@@ -25,13 +24,13 @@ impl MiniWindow {
 
     /// Builds a window. Must be async on Windows to not deadlock.
     pub async fn build_window(&self, handle: &AppHandle) -> Result<()> {
-        let window_url: WindowUrl = if self.url.starts_with("https") {
-            WindowUrl::External(self.url.parse().unwrap())
+        let window_url: WebviewUrl = if self.url.starts_with("https") {
+            WebviewUrl::External(self.url.parse().unwrap())
         } else {
-            WindowUrl::App(self.url.parse().unwrap())
+            WebviewUrl::App(self.url.parse().unwrap())
         };
 
-        let window: Window = WindowBuilder::new(handle, &self.name, window_url)
+        let window: WebviewWindow = WebviewWindowBuilder::new(handle, &self.name, window_url)
             .always_on_top(true)
             .center()
             .decorations(true)
@@ -57,7 +56,7 @@ impl MiniWindow {
 
     /// Shows a window with specified label
     pub fn show_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(|| {
+        let window = handle.get_webview_window(&self.name).with_context(|| {
             format!(
                 "monarch_windows::show_window() Failed to find window: {} | Err:",
                 self.name
@@ -74,7 +73,7 @@ impl MiniWindow {
 
     /// Hides a window with specified label
     pub fn hide_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(|| {
+        let window = handle.get_webview_window(&self.name).with_context(|| {
             format!(
                 "monarch_windows::hide_window() Failed to find window: {} | Err:",
                 self.name
@@ -90,7 +89,7 @@ impl MiniWindow {
     }
 
     pub fn _close_window(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(|| {
+        let window = handle.get_webview_window(&self.name).with_context(|| {
             format!(
                 "monarch_windows::close_window() Failed to find window: {} | Err:",
                 self.name
@@ -106,7 +105,7 @@ impl MiniWindow {
     }
 
     pub fn set_quicklaunch_stuff(&self, handle: &AppHandle) -> Result<()> {
-        let window = handle.get_window(&self.name).with_context(|| {
+        let window = handle.get_webview_window(&self.name).with_context(|| {
             format!(
                 "monarch_windows::show_window() Failed to find window: {} | Err:",
                 self.name
@@ -121,7 +120,7 @@ impl MiniWindow {
 }
 
 // Returns scale to use based on monitor resolution
-fn get_scale(window: &Window) -> f64 {
+fn get_scale(window: &WebviewWindow) -> f64 {
     if let Ok(monitor_option) = window.current_monitor() {
         match monitor_option {
             Some(monitor) => return monitor.size().height as f64 / STANDARD_HEIGHT,

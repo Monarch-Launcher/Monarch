@@ -1,7 +1,8 @@
-import { dialog, invoke } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 
 import type { Settings } from '../types';
+import * as dialog from "@tauri-apps/plugin-dialog"
 
 type SettingsContextType = {
   settings: Settings;
@@ -95,12 +96,12 @@ const SettingsProvider = ({ children }: Props) => {
   const saveCredentials = React.useCallback(
     async (username: string, password: string, platform: string) => {
       try {
-          const result: Settings = await invoke('set_password', {
-            platform: platform,
-            username: username,
-            password: password,
-          });
-          setSettings(result);
+        const result: Settings = await invoke('set_password', {
+          platform: platform,
+          username: username,
+          password: password,
+        });
+        setSettings(result);
       } catch (err) {
         await dialog.message(`An error has occured: ${err}`, {
           title: 'Error',
@@ -133,27 +134,27 @@ const SettingsProvider = ({ children }: Props) => {
     }, []
   )
 
-const saveSecret = React.useCallback(
-  async (secret: string, platform: string) => {
-    try {
-      const result: Settings = await invoke('set_secret', {
-        platform: platform,
-        secret: secret,
-      });
-      setSettings(result);
-    } catch (err) {
-      await dialog.message(`An error has occured: ${err}`, {
-        title: 'Error',
-        type: 'error',
-      });
-      await getSettings();
-    } finally {
-      setLoading(false);
-    }
-  }, []
-);
+  const saveSecret = React.useCallback(
+    async (secret: string, platform: string) => {
+      try {
+        const result: Settings = await invoke('set_secret', {
+          platform: platform,
+          secret: secret,
+        });
+        setSettings(result);
+      } catch (err) {
+        await dialog.message(`An error has occured: ${err}`, {
+          title: 'Error',
+          type: 'error',
+        });
+        await getSettings();
+      } finally {
+        setLoading(false);
+      }
+    }, []
+  );
 
- const deleteSecret = React.useCallback(
+  const deleteSecret = React.useCallback(
     async (platform: string) => {
       try {
         const result: Settings = await invoke('delete_secret', {
@@ -170,7 +171,7 @@ const saveSecret = React.useCallback(
         setLoading(false);
       }
     }, []
-  ) 
+  )
 
   React.useEffect(() => {
     getSettings();

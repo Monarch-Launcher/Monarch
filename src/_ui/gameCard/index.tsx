@@ -2,12 +2,12 @@ import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
 import type { MonarchGame, ProtonVersion } from '@global/types';
-import { dialog, invoke } from '@tauri-apps/api';
-import { convertFileSrc } from '@tauri-apps/api/tauri';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import * as dialog from '@tauri-apps/plugin-dialog';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { BsThreeDotsVertical } from 'react-icons/bs';
-import { FaSteam, FaFolderOpen } from 'react-icons/fa';
+import { FaFolderOpen, FaSteam } from 'react-icons/fa';
 import { HiDownload } from 'react-icons/hi';
 import { PiButterflyBold } from 'react-icons/pi';
 import { SiEpicgames } from 'react-icons/si';
@@ -376,7 +376,11 @@ function CustomDropdown({ options, value, onChange }: CustomDropdownProps) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!open) setHighlighted(-1);
@@ -384,7 +388,12 @@ function CustomDropdown({ options, value, onChange }: CustomDropdownProps) {
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && e.target instanceof Node && !ref.current.contains(e.target)) setOpen(false);
+      if (
+        ref.current &&
+        e.target instanceof Node &&
+        !ref.current.contains(e.target)
+      )
+        setOpen(false);
     }
     if (open) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -394,7 +403,11 @@ function CustomDropdown({ options, value, onChange }: CustomDropdownProps) {
   useEffect(() => {
     if (open && ref.current) {
       const pos = getAbsoluteRect(ref.current);
-      setDropdownPos({ top: pos.top + pos.height, left: pos.left, width: pos.width });
+      setDropdownPos({
+        top: pos.top + pos.height,
+        left: pos.left,
+        width: pos.width,
+      });
     } else {
       setDropdownPos(null);
     }
@@ -420,7 +433,8 @@ function CustomDropdown({ options, value, onChange }: CustomDropdownProps) {
     }
   }
 
-  const selectedLabel = options.find((opt) => opt.value === value)?.label || 'Select...';
+  const selectedLabel =
+    options.find((opt) => opt.value === value)?.label || 'Select...';
 
   return (
     <div style={dropdownStyles.container} ref={ref}>
@@ -435,40 +449,42 @@ function CustomDropdown({ options, value, onChange }: CustomDropdownProps) {
       >
         {selectedLabel}
       </div>
-      {open && dropdownPos && ReactDOM.createPortal(
-        <div
-          style={{
-            ...dropdownStyles.list,
-            position: 'absolute',
-            top: dropdownPos.top,
-            left: dropdownPos.left,
-            width: dropdownPos.width,
-          }}
-          role="listbox"
-        >
-          {options.map((opt, idx) => (
-            <div
-              key={opt.value}
-              tabIndex={0}
-              style={{
-                ...dropdownStyles.option,
-                ...(highlighted === idx ? dropdownStyles.optionActive : {}),
-                ...(opt.value === value ? { fontWeight: 700 } : {}),
-              }}
-              role="option"
-              aria-selected={opt.value === value}
-              onMouseEnter={() => setHighlighted(idx)}
-              onMouseDown={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-            >
-              {opt.label}
-            </div>
-          ))}
-        </div>,
-        document.body
-      )}
+      {open &&
+        dropdownPos &&
+        ReactDOM.createPortal(
+          <div
+            style={{
+              ...dropdownStyles.list,
+              position: 'absolute',
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              width: dropdownPos.width,
+            }}
+            role="listbox"
+          >
+            {options.map((opt, idx) => (
+              <div
+                key={opt.value}
+                tabIndex={0}
+                style={{
+                  ...dropdownStyles.option,
+                  ...(highlighted === idx ? dropdownStyles.optionActive : {}),
+                  ...(opt.value === value ? { fontWeight: 700 } : {}),
+                }}
+                role="option"
+                aria-selected={opt.value === value}
+                onMouseEnter={() => setHighlighted(idx)}
+                onMouseDown={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+              >
+                {opt.label}
+              </div>
+            ))}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -631,9 +647,14 @@ const GameCard = ({
   }, [storePage]);
 
   const [propertiesOpen, setPropertiesOpen] = React.useState<boolean>(false);
-  const [launchCommands, setLaunchCommands] = React.useState<string>(gameData.launch_args || '');
-  const [compatibilityLayer, setCompatibilityLayer] = React.useState<string>(gameData.compatibility || '');
-  const [customExecutablePath, setCustomExecutablePath] = React.useState<string>(gameData.executable_path || '');
+  const [launchCommands, setLaunchCommands] = React.useState<string>(
+    gameData.launch_args || '',
+  );
+  const [compatibilityLayer, setCompatibilityLayer] = React.useState<string>(
+    gameData.compatibility || '',
+  );
+  const [customExecutablePath, setCustomExecutablePath] =
+    React.useState<string>(gameData.executable_path || '');
 
   // Compatibility layer options state
   const [protonOptions, setProtonOptions] = React.useState<ProtonVersion[]>([]);
@@ -658,14 +679,12 @@ const GameCard = ({
 
   // Build compatibility options from backend and static options
   const compatibilityOptions = React.useMemo(() => {
-    const staticOptions = [
-      { value: '', label: 'Native' },
-    ];
-    const protonMapped = protonOptions.map((p) => ({ value: p.path, label: p.name }));
-    return [
-      staticOptions[0],
-      ...protonMapped,
-    ];
+    const staticOptions = [{ value: '', label: 'Native' }];
+    const protonMapped = protonOptions.map((p) => ({
+      value: p.path,
+      label: p.name,
+    }));
+    return [staticOptions[0], ...protonMapped];
   }, [protonOptions]);
 
   // Update game properties in backend when fields change
@@ -680,7 +699,13 @@ const GameCard = ({
     invoke('update_game_properties', { game: updatedGame });
     // Optionally, refresh the library after update
     // refreshLibrary();
-  }, [launchCommands, compatibilityLayer, customExecutablePath, propertiesOpen, gameData]);
+  }, [
+    launchCommands,
+    compatibilityLayer,
+    customExecutablePath,
+    propertiesOpen,
+    gameData,
+  ]);
 
   React.useEffect(() => {
     if (!optionsOpen) return;
@@ -739,10 +764,15 @@ const GameCard = ({
   `;
 
   // Handler for setting executable path
-  const handleSetExecutablePath = React.useCallback(async (newPath: string) => {
-    setGameData((prev) => ({ ...prev, executable_path: newPath }));
-    await invoke('update_game_properties', { game: { ...gameData, executable_path: newPath } });
-  }, [gameData]);
+  const handleSetExecutablePath = React.useCallback(
+    async (newPath: string) => {
+      setGameData((prev) => ({ ...prev, executable_path: newPath }));
+      await invoke('update_game_properties', {
+        game: { ...gameData, executable_path: newPath },
+      });
+    },
+    [gameData],
+  );
 
   // Handler for file picker
   const handleFilePicker = React.useCallback(async () => {
@@ -991,7 +1021,7 @@ const GameCard = ({
               </div>
             </Drawer>
           </DrawerOverlay>,
-          document.body
+          document.body,
         )}
       {/* Properties Modal */}
       <Modal
@@ -1027,7 +1057,8 @@ const GameCard = ({
                 border: '1px solid #333',
                 background: '#222',
                 color: '#fff',
-                fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
+                fontFamily:
+                  'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
                 fontSize: '1rem',
                 fontWeight: 500,
               }}
@@ -1048,7 +1079,8 @@ const GameCard = ({
                   border: '1px solid #333',
                   background: '#222',
                   color: '#fff',
-                  fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
+                  fontFamily:
+                    'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
                   fontSize: '1rem',
                   fontWeight: 500,
                 }}
@@ -1066,7 +1098,8 @@ const GameCard = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
+                  fontFamily:
+                    'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
                   fontSize: '1rem',
                   fontWeight: 500,
                 }}
@@ -1084,8 +1117,14 @@ const GameCard = ({
               value={compatibilityLayer}
               onChange={setCompatibilityLayer}
             />
-            {protonLoading && <span style={{ color: '#aaa', marginLeft: 8 }}>Loading Proton versions...</span>}
-            {protonError && <span style={{ color: 'red', marginLeft: 8 }}>{protonError}</span>}
+            {protonLoading && (
+              <span style={{ color: '#aaa', marginLeft: 8 }}>
+                Loading Proton versions...
+              </span>
+            )}
+            {protonError && (
+              <span style={{ color: 'red', marginLeft: 8 }}>{protonError}</span>
+            )}
           </label>
         </div>
       </Modal>
