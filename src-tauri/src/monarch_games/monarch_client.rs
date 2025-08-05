@@ -273,9 +273,16 @@ async fn execute_compatibility_game(handle: &AppHandle, game: &mut MonarchGame) 
         ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str),
     ]);
 
-    let command: String = format!("{} run {}", game.compatibility, game.executable_path);
+    let launch_command: String = format!("{} run {}", game.compatibility, game.executable_path);
 
-    run_in_terminal(handle, &command, Some(env_vars))
+    // Order launch args and command in proper order
+    let full_command: String = if game.launch_args.find("%command%").is_some() {
+        game.launch_args.replace("%command%", &launch_command)
+    } else {
+        format!("{} {}", launch_command, game.launch_args)
+    };
+
+    run_in_terminal(handle, &full_command, Some(env_vars))
         .await
         .with_context(|| "monarch_client::launch_game() -> ")
 }
