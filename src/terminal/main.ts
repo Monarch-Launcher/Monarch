@@ -64,7 +64,8 @@ async function readFromPty() {
     await writeToTerminal(data);
   }
 
-  window.requestAnimationFrame(readFromPty);
+  // Read twice per second instead of continuously
+  setTimeout(readFromPty, 500);
 }
 
-window.requestAnimationFrame(readFromPty);
+setTimeout(readFromPty, 500);
