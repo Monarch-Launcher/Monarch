@@ -49,9 +49,8 @@ pub async fn get_library() -> Vec<MonarchGame> {
 }
 
 /// Attempts to launch Steam Client game.
-pub fn launch_client_game(id: &str) -> Result<()> {
-    let mut command: String = String::from("steam://rungameid/");
-    command.push_str(id);
+pub fn launch_client_game(game: &MonarchGame) -> Result<()> {
+    let command: String = format!("steam://rungameid/{}", &game.platform_id);
     steam::run_command(&command).with_context(|| "steam_client::launch_game() -> ")
 }
 
@@ -63,7 +62,7 @@ pub fn uninstall_client_game(id: &str) -> Result<()> {
 }
 
 /// Attemps to launch SteamCMD game.
-pub async fn launch_cmd_game(handle: &AppHandle, id: &str) -> Result<()> {
+pub async fn launch_cmd_game(handle: &AppHandle, game: &MonarchGame) -> Result<()> {
     let settings = get_settings_state();
     let steam_settings = settings.steam;
     let login_arg = get_steamcmd_login(&steam_settings)?;
@@ -72,9 +71,11 @@ pub async fn launch_cmd_game(handle: &AppHandle, id: &str) -> Result<()> {
         "+@ShutdownOnFailedCommand 1",
         &login_arg,
         "+app_launch",
-        id,
-        "+quit",
+        &game.platform_id,
+        &game.launch_args,
+        "quit",
     ];
+
     steam::steamcmd_command(handle, args)
         .await
         .with_context(|| "steam_client::launch_cmd_game() -> ")

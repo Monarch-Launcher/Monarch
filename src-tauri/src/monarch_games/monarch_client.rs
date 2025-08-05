@@ -59,8 +59,16 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
         }
 
         // Run without compatibility layer
-        let command: String = format!("{}", game.executable_path);
-        return run_in_terminal(handle, &command, None)
+        let launch_command: String = format!("{}", game.executable_path);
+
+        // Order launch args and command in proper order
+        let full_command: String = if game.launch_args.find("%command%").is_some() {
+            game.launch_args.replace("%command%", &launch_command)
+        } else {
+            format!("{} {}", launch_command, game.launch_args)
+        };
+
+        return run_in_terminal(handle, &full_command, None)
             .await
             .with_context(|| "monarch_client::launch_game() -> ");
     }
@@ -69,12 +77,12 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
     match game.platform.as_str() {
         "steam" => {
             info!("Launching game via steam client: {}", game.platform_id);
-            steam_client::launch_client_game(&game.platform_id)
+            steam_client::launch_client_game(&game)
                 .with_context(|| "monarch_client::launch_game() -> ")
         }
         "steamcmd" => {
             info!("Launching game via steamcmd: {}", game.platform_id);
-            steam_client::launch_cmd_game(handle, &game.platform_id)
+            steam_client::launch_cmd_game(handle, &game)
                 .await
                 .with_context(|| "monarch_client::launch_game() -> ")
         }
@@ -273,9 +281,16 @@ async fn execute_compatibility_game(handle: &AppHandle, game: &mut MonarchGame) 
         ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str),
     ]);
 
-    let command: String = format!("{} run {}", game.compatibility, game.executable_path);
+    let launch_command: String = format!("{} run {}", game.compatibility, game.executable_path);
 
-    run_in_terminal(handle, &command, Some(env_vars))
+    // Order launch args and command in proper order
+    let full_command: String = if game.launch_args.find("%command%").is_some() {
+        game.launch_args.replace("%command%", &launch_command)
+    } else {
+        format!("{} {}", launch_command, game.launch_args)
+    };
+
+    run_in_terminal(handle, &full_command, Some(env_vars))
         .await
         .with_context(|| "monarch_client::launch_game() -> ")
 }
