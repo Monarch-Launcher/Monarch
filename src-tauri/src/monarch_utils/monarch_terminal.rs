@@ -15,16 +15,20 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::sync::Arc;
 use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::{AppHandle, Manager};
-use tracing::error;
-use tracing::info;
+use tracing::{error, info, warn};
 
+/*
+ * Currently the write_to_pty() breaks if we remove the inner Arc<AsyncMutex<...>> 
+ * Therefore they can stay here at the potential cost to performance of locking and 
+ * unlocking more.
+*/
 pub struct AppState {
-    _pty_pair: Arc<AsyncMutex<PtyPair>>,
+    _pty_pair: PtyPair,
     writer: Arc<AsyncMutex<Box<dyn Write + Send>>>,
     reader: Arc<AsyncMutex<BufReader<Box<dyn Read + Send>>>>,
 }
 
-static mut APPSTATE: Lazy<Option<AppState>> = Lazy::<Option<AppState>>::new(|| None);
+static APPSTATE: Lazy<Arc<AsyncMutex<Option<AppState>>>> = Lazy::new(|| Arc::new(AsyncMutex::new(None)));
 
 /// Run a command in a new process and display to the user in a custom terminal window.
 pub async fn run_in_terminal(
@@ -90,35 +94,22 @@ pub async fn run_in_terminal(
         .spawn_command(cmd)
         .with_context(|| "Failed to spawn child commnad! | Err: ")?;
 
-    unsafe {
-        *APPSTATE = Some(AppState {
-            _pty_pair: Arc::new(AsyncMutex::new(pair)),
+    {
+        let mut appstate_lock = APPSTATE.lock().await;
+        *appstate_lock = Some(AppState {
+            _pty_pair: pair,
             writer: Arc::new(AsyncMutex::new(writer)),
             reader: Arc::new(AsyncMutex::new(BufReader::new(reader))),
         });
-    };
+    } // Lock is released here
 
     if let Err(e) = create_terminal_window(handle).await {
         error!("monarch_terminal::run_in_terminal() -> {e}");
     }
 
-    // NOTE: This loop was written while debugging linked list corruption error.
-    // The cause is still not found. Hopefully updating to Tauri 2.0 will fix it.
-    // TODO: Rewrite to make it "prettier"/simpler.
-    loop {
-        //info!("Polling child...");
-        let exit_status = child
-            .try_wait()
-            .with_context(|| "Something went wrong while waiting for child process to finish!")?;
-
-        if exit_status.is_some() {
-            info!("Child done.");
-            info!("Child process exited with status: {:?}", exit_status);
-            break;
-        }
-        //info!("Child running...");
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-    }
+    let exit_status= child.wait().with_context(|| "Something went wrong while waiting for child process to finish! | Err: ")?;
+    info!("Child exited.");
+    info!("Child process exited with status: {:?}", exit_status);
 
     if let Err(e) = close_terminal_window(handle).await {
         error!("monarch_terminal::run_in_terminal() -> {e}");
@@ -151,12 +142,11 @@ pub async fn create_terminal_window(handle: &AppHandle) -> Result<()> {
 
 /// Close terminal window. Meant to be called from frontend.
 pub async fn close_terminal_window(handle: &AppHandle) -> Result<()> {
-    unsafe {
-        if (*APPSTATE).is_none() {
-            bail!("monarch_terminal::close_terminal_window() | Err: APPSTATE is already None!")
-        }
-        *APPSTATE = None;
+    let mut appstate_lock = APPSTATE.lock().await;
+    if appstate_lock.is_none() {
+        bail!("monarch_terminal::close_terminal_window() | Err: APPSTATE is already None!")
     }
+    *appstate_lock = None;
 
     let w_opt = handle.get_webview_window("terminal");
     match w_opt {
@@ -171,19 +161,21 @@ pub async fn close_terminal_window(handle: &AppHandle) -> Result<()> {
 }
 
 pub async fn read_from_pty() -> Result<Option<String>, ()> {
-    unsafe {
-        if (*APPSTATE).is_none() {
-            return Err(());
-        }
-    }
-    let state = unsafe { (*APPSTATE).as_ref().unwrap() };
+    let appstate_lock = APPSTATE.lock().await;
+    let state = match appstate_lock.as_ref() {
+        Some(state) => state,
+        None => return Err(()),
+    };
+    // Clone the Arc to drop the lock before awaiting on reader
+    let reader_arc = state.reader.clone();
+    drop(appstate_lock);
 
-    let mut reader = state.reader.lock().await;
+    let mut reader = reader_arc.lock().await;
     let data = {
         // Read all available text
         let data = reader.fill_buf().map_err(|_| ())?;
 
-        // Send te data to the webview if necessary
+        // Send the data to the webview if necessary
         if !data.is_empty() {
             std::str::from_utf8(data)
                 .map(|v| Some(v.to_string()))
@@ -201,12 +193,17 @@ pub async fn read_from_pty() -> Result<Option<String>, ()> {
 }
 
 pub async fn write_to_pty(data: &str) -> Result<(), ()> {
-    unsafe {
-        if (*APPSTATE).is_none() {
-            return Err(());
-        }
-    }
-    let state = unsafe { (*APPSTATE).as_ref().unwrap() };
+    let appstate_lock = APPSTATE.lock().await;
+    let state = match appstate_lock.as_ref() {
+        Some(state) => state,
+        None => return Err(()),
+    };
+    // Clone the Arc to drop the lock before awaiting on writer
+    let writer_arc = state.writer.clone();
+    drop(appstate_lock);
 
-    write!(state.writer.lock().await, "{}", data).map_err(|_| ())
+    {
+        let mut writer = writer_arc.lock().await;
+        write!(writer, "{}", data).map_err(|_| ())
+    }
 }
