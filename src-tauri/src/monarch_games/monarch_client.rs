@@ -284,7 +284,6 @@ async fn execute_compatibility_game(handle: &AppHandle, game: &mut MonarchGame) 
     let launch_command: String = format!("{} run {}", game.compatibility, game.executable_path);
 
     // Order launch args and command in proper order
-    info!("Launch args: {}", game.launch_args);
     let full_command: String = if game.launch_args.find("%command%").is_some() {
         game.launch_args.replace("%command%", &launch_command)
     } else {

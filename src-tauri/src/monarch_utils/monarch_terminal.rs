@@ -69,8 +69,7 @@ pub async fn run_in_terminal(
             }
         }
 
-        //info!("Running command: powershell.exe {term_command}");
-        info!("Running command...");
+        info!("Running command: powershell.exe {term_command}");
         cmd
     } else {
         let cmd = CommandBuilder::new_default_prog();
@@ -86,8 +85,7 @@ pub async fn run_in_terminal(
             }
         }
 
-        //info!("Running command: {shell} -c {term_command}");
-        info!("Running command...");
+        info!("Running command: {shell} -c {term_command}");
         cmd
     };
 
