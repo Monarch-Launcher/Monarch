@@ -92,7 +92,7 @@ pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<M
     }
 
     let mut install_dir: PathBuf = PathBuf::from(settings.monarch.game_folder);
-    let sanitized_name = name.replace(" ", "\\ ");
+    let sanitized_name: String = name.replace(" ", "\\ ");
     install_dir.push(sanitized_name);
 
     // Directory argument

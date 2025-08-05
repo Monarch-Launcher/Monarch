@@ -3,9 +3,10 @@ import Page from '@_ui/page';
 import { useSettings } from '@global/contexts/settingsProvider';
 import { Settings } from '@global/types';
 import { Input, Switch } from '@mantine/core';
+import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
-import { FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
+import { FaFolderOpen, FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
 import styled from 'styled-components';
 
 const SectionTitle = styled.h3`
@@ -144,10 +145,11 @@ type FormValues = {
   username: string;
   password: string;
   secret: string;
+  gameFolder: string;
 };
 
 const SettingsPage = () => {
-  const { register, handleSubmit, reset } = useForm<FormValues>();
+  const { register, handleSubmit, reset, setValue } = useForm<FormValues>();
   const {
     settings,
     updateSettings,
@@ -159,6 +161,7 @@ const SettingsPage = () => {
   const [feedback, setFeedback] = React.useState<string>('');
   const [deleteFeedback, setDeleteFeedback] = React.useState<string>('');
   const [secretFeedback, setSecretFeedback] = React.useState<string>('');
+  const [gameFolderFeedback, setGameFolderFeedback] = React.useState<string>('');
 
   const onSubmit = React.useCallback(
     async (values: FormValues) => {
@@ -220,13 +223,49 @@ const SettingsPage = () => {
     await deleteSecret('steam');
   }, [deleteSecret]);
 
+  const handleGameFolderBrowse = React.useCallback(async () => {
+    try {
+      const selected = await dialog.open({
+        multiple: false,
+        title: 'Choose Game Folder',
+        directory: true,
+      });
+
+      if (selected && typeof selected === 'string') {
+        setValue('gameFolder', selected);
+      }
+    } catch (err) {
+      console.error('Failed to open folder picker:', err);
+    }
+  }, [setValue]);
+
+  const handleGameFolderSave = React.useCallback(
+    async (values: FormValues) => {
+      const { gameFolder } = values;
+      if (gameFolder.trim()) {
+        const updatedSettings: Settings = {
+          ...settings,
+          monarch: {
+            ...settings.monarch,
+            game_folder: gameFolder.trim(),
+          },
+        };
+        await updateSettings(updatedSettings);
+        setGameFolderFeedback('Game folder saved!');
+        setTimeout(() => setGameFolderFeedback(''), 2000);
+        reset({ gameFolder: '' });
+      }
+    },
+    [settings, updateSettings, reset],
+  );
+
   return (
     <Page>
       <CenteredContainer>
         <Card>
           <SectionTitle>Monarch</SectionTitle>
           <p style={{ color: '#fff', margin: '1rem 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 400 }}>
-            Our start-menu like launcher. Enables quicker access to launching games by not requiring you 
+            Our start-menu like launcher. Enables quicker access to launching games by not requiring you
             to navigate through the main application.
             Stability issues under Linux running Wayland. This is due to how Wayland handles global shortcuts.
           </p>
@@ -237,6 +276,46 @@ const SettingsPage = () => {
             label="Quicklaunch (Requires application restart. Shortcut: Ctrl+Enter)"
             labelPosition="left"
           />
+
+          {/* Game Folder Section */}
+          <div style={{ marginTop: '2rem' }}>
+            <p style={{ color: '#fff', margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 400 }}>
+              Set the default folder where Monarch will download new games to.
+            </p>
+            <p style={{ color: '#fff', margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 400 }}>
+              (Currently disabled due to weird SteamCMD behaviour. Games will instead be installed in 
+              your default steam library location.)
+            </p>
+            <form onSubmit={handleSubmit(handleGameFolderSave)}>
+              <FormContainer>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                  <Input
+                    placeholder="Path to game folder"
+                    variant="filled"
+                    radius="md"
+                    style={{ flex: 1 }}
+                    {...register('gameFolder')}
+                  />
+                  <AnimatedButton
+                    type="button"
+                    variant="primary"
+                    onClick={handleGameFolderBrowse}
+                  >
+                    <FaFolderOpen /> Browse
+                  </AnimatedButton>
+                </div>
+                <ButtonContainer>
+                  <AnimatedButton type="submit" variant="primary">
+                    <FaSave /> Save Game Folder
+                  </AnimatedButton>
+                </ButtonContainer>
+                <div style={{ color: '#fff', fontWeight: 500 }}>
+                  Current folder: {settings.monarch.game_folder || 'Not set'}
+                </div>
+                <Feedback>{gameFolderFeedback}</Feedback>
+              </FormContainer>
+            </form>
+          </div>
         </Card>
         <Card>
           <SectionTitle>Steam</SectionTitle>
