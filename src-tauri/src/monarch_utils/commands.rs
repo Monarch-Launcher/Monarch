@@ -1,8 +1,7 @@
 use core::result::Result;
-use std::env;
 use std::{path::PathBuf, process::Command};
-use tauri::{AppHandle, Manager};
-use tracing::{error, info};
+use tauri::AppHandle;
+use tracing::error;
 
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
@@ -14,7 +13,6 @@ use super::monarch_settings::{
 use super::monarch_terminal::{
     close_terminal_window, create_terminal_window, read_from_pty, write_to_pty,
 };
-use super::monarch_windows::MiniWindow;
 
 #[cfg(target_os = "windows")]
 #[tauri::command]

@@ -1,5 +1,4 @@
 use anyhow::{bail, Context, Result};
-use futures::task::waker;
 use tauri::{AppHandle, Manager};
 
 use crate::monarch_utils::monarch_settings::get_settings_state;

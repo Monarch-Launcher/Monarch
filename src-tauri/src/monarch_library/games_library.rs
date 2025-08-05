@@ -99,6 +99,9 @@ pub fn add_game(game: MonarchGame) -> Result<()> {
     games.push(game);
     unsafe {
         MONARCH_STATE.set_library_games(&games);
+
+        // Replace games with the updated list of library games
+        games = MONARCH_STATE.get_library_games();
     }
     write_games(games)
 }
