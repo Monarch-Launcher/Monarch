@@ -50,6 +50,8 @@ impl MonarchState {
                 new_games.push(game.clone());
             }
         }
+
+        self.library_games = new_games;
     }
 
     /// Update a game.
