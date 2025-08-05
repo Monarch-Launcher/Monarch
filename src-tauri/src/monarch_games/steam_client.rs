@@ -73,7 +73,7 @@ pub async fn launch_cmd_game(handle: &AppHandle, game: &MonarchGame) -> Result<(
         "+app_launch",
         &game.platform_id,
         &game.launch_args,
-        "quit",
+        "+quit",
     ];
 
     steam::steamcmd_command(handle, args)
