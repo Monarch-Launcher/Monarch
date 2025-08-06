@@ -12,6 +12,7 @@ As stated above, Monarch is still in development (not even an alpha); therefore,
 
 I (an0nymoos3) feel the need to preface that Monarch is currently being developed. This means that if you are simply here to try Monarch out, you are going to be disappointed. While we will be working as fast as possible to get Monarch ready, we have other obligations, such as studying or working. Therefore, you are welcome to join the Discord server in the meantime to follow our progress. If you still want to give Monarch a spin, you can do so by following the instructions on how to compile it under **How do I get it?**.
 
+
 ## Features
 
 These are some of the features we want to include in Monarch and their development status. Not all are going to be developed in the order below, and not all will be in the first official release of Monarch, but the core features planned for the first release are **game management**, **quicklaunch**, **game collections**, and some **quality of life** features.
