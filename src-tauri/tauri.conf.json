@@ -17,8 +17,8 @@
     "targets": "all"
   },
   "productName": "Monarch",
-  "mainBinaryName": "Monarch",
-  "version": "0.0.1",
+  "mainBinaryName": "monarch",
+  "version": "0.1.0",
   "identifier": "monarch",
   "plugins": {},
   "app": {
