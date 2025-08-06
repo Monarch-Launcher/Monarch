@@ -7,6 +7,9 @@ on:
         description: 'Release version (e.g., v1.2.3)'
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -50,8 +53,8 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          args: ${{ matrix.args }}
         with:
-          tagName: ${{ github.event.inputs.version }}
-          releaseName: Monarch v${{ github.event.inputs.version }}
+          tagName: monarch-v__VERSION__
+          releaseName: 'Monarch v__VERSION__'
           releaseDraft: true
+          args: ${{ matrix.args }}
