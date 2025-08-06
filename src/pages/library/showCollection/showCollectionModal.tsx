@@ -1,9 +1,5 @@
-import Button from '@_ui/button';
-import GameCard from '@_ui/gameCard';
 import Modal from '@_ui/modal';
-import { useLibrary } from '@global/contexts/libraryProvider';
-import { BiEdit, MdClose } from '@global/icons';
-import type { Collection, MonarchGame } from '@global/types';
+import type { Collection } from '@global/types';
 import * as React from 'react';
 import styled from 'styled-components';
 
@@ -19,24 +15,11 @@ const ModalHeaderContainer = styled.div`
 
 const ModalHeader = styled.h2`
   margin: 0.5rem 0;
-  color: ${({ theme }) => theme.colors.primary};
+  color: #fff;
 `;
 
-const ContentContainer = styled.div``;
-
-const GamesContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  height: 70vh;
-  overflow-y: scroll;
-`;
-
-const Flex = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
+const ContentContainer = styled.div`
+  color: #fff;
 `;
 
 type Props = {
@@ -46,41 +29,20 @@ type Props = {
 };
 
 const CollectionModal = ({ opened, close, collection }: Props) => {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const { library } = useLibrary();
-
-  const toggleEditing = React.useCallback(() => {
-    setIsEditing((prev) => !prev);
-  }, []);
+  // Remove isEditing state and toggleEditing
+  // const [isEditing, setIsEditing] = React.useState(false);
+  // const toggleEditing = React.useCallback(() => {
+  //   setIsEditing((prev) => !prev);
+  // }, []);
 
   const modalHeader = React.useMemo<JSX.Element>(() => {
     return (
       <ModalHeaderContainer>
-        <ModalHeader>
-          <Flex>
-            {!isEditing ? collection.name : `Edit ${collection.name}`}
-            {!isEditing && (
-              <Button
-                type="button"
-                variant="primary"
-                rightIcon={BiEdit}
-                onClick={toggleEditing}
-              >
-                Edit
-              </Button>
-            )}
-          </Flex>
-        </ModalHeader>
-        <Button type="button" variant="icon" onClick={close}>
-          <MdClose color="black" size={24} />
-        </Button>
+        <ModalHeader>Edit {collection.name}</ModalHeader>
+        {/* Remove close (X) button */}
       </ModalHeaderContainer>
     );
-  }, [close, collection.name, isEditing, toggleEditing]);
-
-  const collectionGames = React.useMemo<MonarchGame[]>(() => {
-    return library.filter((game) => collection.gameIds.includes(game.id));
-  }, [library, collection.gameIds]);
+  }, [collection.name]);
 
   return (
     <Modal
@@ -92,28 +54,11 @@ const CollectionModal = ({ opened, close, collection }: Props) => {
       size="60vw"
     >
       <ContentContainer>
-        {!isEditing ? (
-          <GamesContainer>
-            {collectionGames.map((game) => (
-              <GameCard
-                key={game.id}
-                id={game.id}
-                executablePath={game.executable_path}
-                platform={game.platform}
-                name={game.name}
-                platformId={game.platform_id}
-                thumbnailPath={game.thumbnail_path}
-                isLibrary
-              />
-            ))}
-          </GamesContainer>
-        ) : (
-          <EditCollectionForm
-            closeCollection={close}
-            toggleEditing={toggleEditing}
-            collection={collection}
-          />
-        )}
+        <EditCollectionForm
+          closeCollection={close}
+          toggleEditing={() => {}}
+          collection={collection}
+        />
       </ContentContainer>
     </Modal>
   );

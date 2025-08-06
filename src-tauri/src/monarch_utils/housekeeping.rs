@@ -5,14 +5,14 @@
     Also meant to help maintain a smaller footprint on users OS.
 */
 
-use log::{info, error};
 use std::fs::ReadDir;
-use std::{fs, time::Duration};
-use std::path::{PathBuf, Path};
-use std::time::SystemTime;
-use std::thread::sleep;
+use std::path::{Path, PathBuf};
 use std::thread;
+use std::thread::sleep;
+use std::time::SystemTime;
+use std::{fs, time::Duration};
 use sysinfo::{System, SystemExt};
+use tracing::{error, info};
 
 use super::monarch_fs::get_resources_cache;
 
@@ -28,9 +28,9 @@ pub fn start() {
                 clear_cached_thumbnails();
 
                 break; // For now assume that program will be restarted at some point within next few days.
-                // Can therefor stop the housekeeping service
-                // Housekeeping also doesn't do anything rn except clear images. Can implement more logic later
-                // as it's needed.
+                       // Can therefor stop the housekeeping service
+                       // Housekeeping also doesn't do anything rn except clear images. Can implement more logic later
+                       // as it's needed.
             }
 
             sleep(Duration::new(3600, 0));
@@ -42,7 +42,7 @@ pub fn start() {
 /// Currently only checks a certain level of CPU usage, will possibly update later
 /// to check more metrics such as disk usage, memory, etc...
 fn low_system_usage(system: &System) -> bool {
-    return system.load_average().one < 15.0 // Check that system CPU usage 1 min ago is below 15% 
+    system.load_average().one < 15.0 // Check that system CPU usage 1 min ago is below 15%
 }
 
 /*
@@ -51,14 +51,13 @@ fn low_system_usage(system: &System) -> bool {
 
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
 pub fn clear_cached_thumbnails() {
-    match get_resources_cache() {
-        Ok(cache) => {
-            if let Ok(files) = fs::read_dir(cache) {                
-                clear_dir(files);
-            }
+    let path: PathBuf = get_resources_cache();
+    match fs::read_dir(path) {
+        Ok(files) => {
+            clear_dir(files);
         }
         Err(e) => {
-            error!("housekeeping::clear_cached_thumbnails() failed! Cannot get resources/cache/ ! | Error: {e}");
+            error!("housekeeping::clear_cached_thumbnails() Encountered error while running fs::read_dir() | Err: {e}");
         }
     }
 }
@@ -67,24 +66,27 @@ pub fn clear_cached_thumbnails() {
 fn clear_dir(files: ReadDir) {
     let mut logged_event: bool = false;
 
-    for file in files {
-        if let Ok(file_dir_entry) = file {
-            let file_path: PathBuf = file_dir_entry.path();
-            if time_to_remove(&file_path) {
-                if !logged_event {
-                    info!("Monarch Housekeeper: Clearing cached images...");
-                    logged_event = true;
-                }
-                remove_thumbnail(&file_path);
+    // Only iterate over Ok()
+    for file_ in files.into_iter().flatten() {
+        let file_path: PathBuf = file_.path();
+
+        if time_to_remove(&file_path) {
+            if !logged_event {
+                info!("Monarch Housekeeper: Clearing cached images...");
+                logged_event = true;
             }
-        }       
-    }    
+            remove_thumbnail(&file_path);
+        }
+    }
 }
 
 /// Removes old cache file if old enough
 fn remove_thumbnail(file: &Path) {
     if let Err(e) = fs::remove_file(file) {
-        error!("housekeeping::remove_thumbnail() failed! Error while removing: {path} | Error: {e}", path = file.display());
+        error!(
+            "housekeeping::remove_thumbnail() Error while removing: {path} | Err: {e}",
+            path = file.display()
+        );
     }
 }
 
@@ -93,7 +95,8 @@ fn time_to_remove(file: &Path) -> bool {
     if let Ok(metadata) = fs::metadata(file) {
         if let Ok(time) = metadata.modified() {
             if let Ok(age) = SystemTime::now().duration_since(time) {
-                return age.as_secs() >= 1209600 // Return if file is older than 14 days [REPLACE WITH CUSTOM SETTING USER CAN CAHNGE FOR HOW LONG TO STORE IMAGES]
+                return age.as_secs() >= 1209600; // Return if file is older than 14 days
+                                                 // TODO: REPLACE WITH CUSTOM SETTING USER CAN CAHNGE FOR HOW LONG TO STORE IMAGES
             }
         }
     }
@@ -103,26 +106,26 @@ fn time_to_remove(file: &Path) -> bool {
 /// Removes all files in /resources/cache, meant for UI so that user can clear folder if wanted
 pub fn clear_all_cache() {
     info!("Manually clearing all cached images...");
+    let path: PathBuf = get_resources_cache();
 
-    match get_resources_cache() {
-
-        Ok(cache) => {
-            match fs::read_dir(cache.clone()) {
-                Ok(files) => {
-                    for file in files {
-                        match file {
-                            Ok(f) => { remove_thumbnail(&f.path()); }
-                            Err(e) => { error!("housekeeping::clear_all_cache() failed! Could not read file! | Error: {e}"); }
-                        }
+    match fs::read_dir(&path) {
+        Ok(files) => {
+            for file in files {
+                match file {
+                    Ok(f) => {
+                        remove_thumbnail(&f.path());
                     }
-                }
-                Err(e) => {
-                    error!("housekeeping::clear_all_cache() failed! Error while reading files from: {dir} | Error: {e}", dir = cache.display());
+                    Err(e) => {
+                        error!("housekeeping::clear_all_cache() Could not read file! | Err: {e}");
+                    }
                 }
             }
         }
         Err(e) => {
-            error!("housekeeping::clear_all_cache() failed! Cannot get path to resources/ ! | Error: {e}");
+            error!(
+                "housekeeping::clear_all_cache() Error while reading files from: {dir} | Err: {e}",
+                dir = path.display()
+            );
         }
     }
 }
@@ -130,4 +133,3 @@ pub fn clear_all_cache() {
 /*
     Clearing temporary files
 */
-

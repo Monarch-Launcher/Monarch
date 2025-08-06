@@ -1,10 +1,11 @@
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
+import { defineConfig } from 'vite';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig({
   plugins: [
     react(),
     svgr({
@@ -26,11 +27,23 @@ export default defineConfig(async () => ({
   envPrefix: ['VITE_', 'TAURI_'],
   build: {
     // Tauri supports es2021
-    //target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
+    // target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
     target: 'esnext',
     // don't minify for debug builds
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     // produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_DEBUG,
+
+    // This is some frontend magic that allows other windows than main to exist in release builds
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        quicklaunch_window: resolve(
+          __dirname,
+          'src/quicklaunch/quicklaunch.html',
+        ),
+        terminal_window: resolve(__dirname, 'src/terminal/terminal.html'),
+      },
+    },
   },
-}));
+});

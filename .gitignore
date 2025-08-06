@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.yarn
 
 # Editor directories and files
 .vscode/*
@@ -26,3 +27,5 @@ dist-ssr
 # Other stuff
 squashfs-root/
 vite.config.ts.timestamp*
+
+**/.history

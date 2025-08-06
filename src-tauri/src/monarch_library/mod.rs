@@ -1,3 +1,3 @@
 pub mod collections;
-pub mod games_library;
 pub mod commands;
+pub mod games_library;

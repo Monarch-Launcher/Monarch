@@ -26,7 +26,7 @@ const NotFound = () => {
   }, [navigate]);
 
   return (
-    <Page hideMenu>
+    <Page>
       <Container>
         <h1>Page not found</h1>
         <InfoText>There is no page at {pathname}.</InfoText>

@@ -1,13 +1,15 @@
 use super::super::monarchgame::MonarchGame;
-use crate::monarch_games::steam_client::{parse_steam_ids, get_steamcmd_dir};
+use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
+use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::{
-    monarch_fs::{create_dir, get_home_path, path_exists},
+    monarch_fs::{create_dir, get_unix_home, path_exists},
     monarch_vdf,
 };
 use anyhow::{Context, Result};
-use log::{error, info};
 use std::path::PathBuf;
 use std::process::Command;
+use tauri::AppHandle;
+use tracing::{error, info};
 
 /*
 * SteamCMD related code.
@@ -15,64 +17,48 @@ use std::process::Command;
 * Monarchs way of handling steam games managed by Monarch itself.
 */
 
-
 /// Installs SteamCMD for user in .monarch
-pub fn install_steamcmd() -> Result<()> {
-    let dest_path: PathBuf = get_steamcmd_dir().with_context(||
-        -> String {format!("linux::steam::install_steamcmd() failed! Error returned when getting SteamCMD directory! | Err")})?;
+pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
+    let dest_path: PathBuf = get_steamcmd_dir();
 
     if !path_exists(&dest_path) {
-        create_dir(&dest_path).context("linux::steam::install_steamcmd() failed! Error creating SteamCMD directory! | Err")?;
+        create_dir(&dest_path).with_context(|| "linux::steam::install_steamcmd() -> ")?;
     }
 
-    let mut download_arg: String = String::from("curl -sqL ");
-    download_arg.push_str(
-        r#""https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" -o "#,
-    );
-    download_arg.push_str(dest_path.to_str().unwrap());
-    download_arg.push_str("/steamcmd_linux.tar.gz");
+    let download_arg: &str = r#"curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -"#;
 
-    let mut tar_arg: String = String::from("tar zxvf ");
-    tar_arg.push_str(dest_path.to_str().unwrap());
-    tar_arg.push_str("/steamcmd_linux.tar.gz");
-    tar_arg.push_str(" -C ");
-    tar_arg.push_str(dest_path.to_str().unwrap());
+    let installation_script = format!(
+        r#"cd {};
+{};
+sleep 3;
+exit;"#,
+        dest_path.display(),
+        &download_arg
+    ); // Sleep for 2 seconds to allow user to see what is happening.
 
-    info!("Running: {download_arg} && {tar_arg}");
-
-    Command::new("sh")
-        .arg("-c")
-        .arg(&download_arg)
-        .output()
-        .context(format!("linux::steam::install_steamcmd() failed! Failed to run: {download_arg} | Err"))?;
-
-
-    Command::new("sh")
-        .arg("-c")
-        .arg(&tar_arg)
-        .output()
-        .context(format!("linux::steam::install_steamcmd() failed! Failed to run: {tar_arg} | Err"))?;
-
+    run_in_terminal(handle, &installation_script, None)
+        .await
+        .with_context(|| "linux::steam::install_steamcmd() -> ")?;
     Ok(())
 }
 
 /// Runs specified command via SteamCMD
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
-pub fn steamcmd_command(args: Vec<&str>) -> Result<()> {
-    let mut path: PathBuf = get_steamcmd_dir().with_context(|| 
-        -> String {format!("linux::steam::steamcmd_command() failed! Error returned when getting SteamCMD directory! | Err")})?;
+pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()> {
+    let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd.sh");
+    let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    Command::new("sh")
-        .arg(path)
-        .arg(format!("{}",
-            args.iter()
-            .map(|arg| format!("{}", arg))
-            .collect::<String>()))
-        .output()
-        .context("linux::steam::steamcmd_command() failed! Error returned when running SteamCMD child process! | Err")?;
-    
+    run_in_terminal(
+        handle,
+        &format!("{} {}; sleep 3;", path.display(), args_string),
+        None,
+    )
+    .await
+    .with_context(|| "linux::steam::steamcmd_command() -> ")?;
+
+    //info!("linux::steam::steamcmd_command() Result from steamcmd command {}: {}", format!("\"sh -c {} {}\"", path.display(), args_string), cmd_output);
     Ok(())
 }
 
@@ -88,8 +74,8 @@ pub fn steam_is_installed() -> bool {
         .arg("/usr/bin")
         .arg("-name")
         .arg("steam")
-        .output() {
-        
+        .output()
+    {
         // (for now) Assume that non-empty result means Steam is installed on System
         if !result.stdout.is_empty() {
             return true;
@@ -108,39 +94,50 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
     let mut games: Vec<MonarchGame> = Vec::new();
 
-    let found_games: Vec<String> = match get_default_location() {
-        Ok(path) => monarch_vdf::parse_library_file(&path).unwrap(),
+    let found_games: Vec<String> = match get_default_libraryfolders_location() {
+        Ok(path) => match monarch_vdf::parse_library_file(&path) {
+            Ok(g) => g,
+            Err(e) => {
+                error!("linux::steam::get_library() -> {e}");
+                Vec::new()
+            }
+        },
         Err(e) => {
             error!(
-                "Failed to get default path to Steam library.vdf! | Err: {:?}",
-                e
+                "linux::steam::get_library() Failed to get default path to Steam library.vdf! | Err: {e}",
             );
             Vec::new()
         }
     };
 
     if !found_games.is_empty() {
-        games = parse_steam_ids(found_games, false).await;
+        games = parse_steam_ids(&found_games, false, true).await;
     }
 
     games
 }
 
 /// Returns default path used by steam on Linux systems ($HOME/.steam)
-fn get_default_location() -> Result<PathBuf> {
-    let mut path: PathBuf = get_home_path().with_context(|| 
-        -> String {format!("linux::steam::get_default_location() failed! Failed to get home directory! | Err")})?;
+pub fn get_default_location() -> Result<PathBuf> {
+    let path: PathBuf =
+        get_unix_home().with_context(|| "linux::steam::get_default_location() -> ".to_string())?;
 
-    path.pop(); // Remove .monarch from path
-    Ok(path.join(".steam/steam/steamapps/libraryfolders.vdf")) // Add path to libraryfolders.vdf
+    Ok(path.join(".steam/steam/")) // Add path to libraryfolders.vdf
+}
+
+/// Returns default path to libraryfolders.vdf used by steam on Linux systems
+pub fn get_default_libraryfolders_location() -> Result<PathBuf> {
+    let path: PathBuf = get_default_location()
+        .with_context(|| "linux::steam::get_default_libraryfolders_location() -> ".to_string())?;
+
+    Ok(path.join("steamapps/libraryfolders.vdf")) // Add path to libraryfolders.vdf
 }
 
 /// Runs specified command via Steam
 pub fn run_command(args: &str) -> Result<()> {
-    Command::new("steam")
-        .arg(args)
-        .spawn()
-        .context(format!("linux::steam::run_command() failed! Failed to run Steam command {args} | Err"))?;
+    Command::new("steam").arg(args).spawn().with_context(|| {
+        format!("linux::steam::run_command() Failed to run Steam command {args} | Err")
+    })?;
 
     Ok(())
 }

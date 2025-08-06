@@ -13,10 +13,17 @@
   },
   "dependencies": {
     "@emotion/react": "^11.10.8",
-    "@mantine/core": "^6.0.9",
-    "@mantine/hooks": "^6.0.9",
-    "@tauri-apps/api": "^1.2.0",
+    "@mantine/core": "^6.0.21",
+    "@mantine/hooks": "^6.0.21",
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "~2",
+    "@tauri-apps/plugin-fs": "~2",
+    "@tauri-apps/plugin-global-shortcut": "~2",
+    "@tauri-apps/plugin-shell": "~2",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "eslint": "^8.37.0",
+    "lucide-react": "^0.525.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.43.9",
@@ -27,7 +34,7 @@
     "vite-plugin-svgr": "^2.4.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.2.2",
+    "@tauri-apps/cli": "^2.7.1",
     "@types/node": "^18.7.10",
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",
@@ -46,5 +53,6 @@
     "typescript": "^4.9.5",
     "vite": "^4.2.1",
     "vite-tsconfig-paths": "^4.2.0"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
