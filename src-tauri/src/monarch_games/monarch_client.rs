@@ -131,7 +131,7 @@ pub async fn download_game(
         &_ => bail!("monarch_client::download_game() Invalid platform!"),
     };
 
-    games_library::add_game(new_game).with_context(|| "monarch_client::download_game() -> ")?;
+    games_library::add_game(&new_game).with_context(|| "monarch_client::download_game() -> ")?;
 
     Ok(get_library()) // Return new library
 }

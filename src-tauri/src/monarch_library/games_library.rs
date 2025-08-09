@@ -87,22 +87,20 @@ pub fn get_monarchgames() -> Result<Vec<MonarchGame>> {
 }
 
 /// Backend functionality for adding a new game that's been installed.
-pub fn add_game(game: MonarchGame) -> Result<()> {
+pub fn add_game(game: &MonarchGame) -> Result<()> {
     write_monarchgame(game.clone()).with_context(|| "games_library::add_game() -> ")?;
 
-    let games_json: Value = get_games().with_context(|| "games_library::add_game() -> ")?;
-
-    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| {
-        "games_library::add_game() Failed to parse json to Vec<MonarchGame>! | Err: "
-    })?;
-
-    games.push(game);
+    let mut games: Vec<MonarchGame>;
     unsafe {
+        games = MONARCH_STATE.get_library_games();
+        games.push(game.clone());
+
         MONARCH_STATE.set_library_games(&games);
 
         // Replace games with the updated list of library games
         games = MONARCH_STATE.get_library_games();
     }
+
     write_games(games)
 }
 

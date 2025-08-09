@@ -7,7 +7,7 @@ use serde_json::value::Value;
 use tauri::AppHandle;
 use tracing::{error, info};
 
-use crate::monarch_library::games_library;
+use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
 
@@ -264,4 +264,14 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
             ))
         }
     }
+}
+
+#[tauri::command]
+pub async fn manual_add_game(game: MonarchGame) -> Result<(), String> {
+    if let Err(e) = monarch_library::games_library::add_game(&game) {
+        error!("monarch_games::commands::manual_add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        return Err(format!("Failed to add new game: {}", game.name))
+    }
+
+    return Ok(())
 }
