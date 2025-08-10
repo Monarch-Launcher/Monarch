@@ -268,6 +268,8 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
 
 #[tauri::command]
 pub async fn manual_add_game(game: MonarchGame) -> Result<(), String> {
+    info!("User adding game manually: {:?}", game);
+
     if let Err(e) = monarch_library::games_library::add_game(&game) {
         error!("monarch_games::commands::manual_add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
         return Err(format!("Failed to add new game: {}", game.name))

@@ -1,6 +1,8 @@
 import Button from '@_ui/button';
 import Modal from '@_ui/modal';
 import { MdClose } from '@global/icons';
+import { MonarchGame } from '@global/types';
+import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 import styled from 'styled-components';
 
@@ -20,16 +22,16 @@ const ModalHeader = styled.h2`
 
 const ModalButtons = styled.div`
   display: flex;
-  justify-content: right;
+  justify-content: flex-end;
   align-items: center;
   gap: 1rem;
-  margin: 2rem 0 1rem;
+  margin: 2rem 0 1rem 0;
   color: #fff;
 `;
 
 const ModalContentContainer = styled.div`
   color: #fff;
-  margin-right: 1.75rem;
+  padding-right: 1.75rem;
 `;
 
 const FormGroup = styled.div`
@@ -118,13 +120,21 @@ export default ({ opened, close, selectedFilePath }: Props) => {
       return;
     }
 
-    // TODO: Invoke function that adds the game with metadata
-    // await invoke('add_game_manually', {
-    //   name: gameName,
-    //   executablePath: selectedFilePath
-    // });
+    const game: MonarchGame = {
+      id: "",
+      platform_id: "",
+      executable_path: selectedFilePath,
+      name: gameName,
+      platform: "",
+      thumbnail_path: "",
+      store_page: "",
+      compatibility: "",
+      launch_args: "",
+    }
 
-    console.log('Adding game:', { name: gameName, path: selectedFilePath });
+    await invoke('manual_add_game', {
+      game: game,
+    });
 
     close();
     setGameName('');
