@@ -107,7 +107,7 @@ const Library = () => {
         filters: [
           {
             name: 'Executables',
-            extensions: ['exe', 'app', 'sh', 'bin', 'run'],
+            extensions: ['exe', 'app', 'sh', 'bin', 'run', 'x86_64'],
           },
           {
             name: 'All Files',
