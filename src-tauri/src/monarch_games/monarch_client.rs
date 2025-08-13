@@ -158,7 +158,7 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
                         // Replace games with the updated list of library games
                         monarch_games = MONARCH_STATE.get_library_games();
                     }
-                    return write_monarch_games(monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")
+                    return write_monarch_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")
                 }
             }
             bail!("monarch_client::update_game() | Err: Game: {platform_id} uninstalled, not removed from monarch_games.json, due to not found!")
@@ -225,7 +225,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
         games = MONARCH_STATE.get_library_games();
     }
 
-    if let Err(e) = games_library::write_games(games.clone()) {
+    if let Err(e) = games_library::write_games(&games) {
         error!("monarch_client::refresh_library() -> {e}");
     }
     games

@@ -11,20 +11,20 @@ use crate::monarch_utils::monarch_fs::{
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 /// Overwrites library.json
-pub fn write_games(games: Vec<MonarchGame>) -> Result<()> {
+pub fn write_games(games: &[MonarchGame]) -> Result<()> {
     let path: PathBuf = get_library_json_path();
     write_json_content(json!(games), &path).with_context(|| "games_library::write_games() -> ")
 }
 
 /// Overwrites list of games found in monarch_games.json
 /// Use with caution
-pub fn write_monarch_games(games: Vec<MonarchGame>) -> Result<()> {
+pub fn write_monarch_games(games: &[MonarchGame]) -> Result<()> {
     let path: PathBuf = get_monarch_games_path();
     write_json_content(json!(games), &path).with_context(|| "games_library::write_games() -> ")
 }
 
 /// Writes new games to monarch_games.json for Monarch to track what games it installed itself.
-pub fn write_monarchgame(game: MonarchGame) -> Result<()> {
+pub fn write_monarchgame(game: &MonarchGame) -> Result<()> {
     let path: PathBuf = get_monarch_games_path();
     let mut games: Vec<MonarchGame> = Vec::new();
 
@@ -48,7 +48,7 @@ pub fn write_monarchgame(game: MonarchGame) -> Result<()> {
         }
     }
 
-    games.push(game);
+    games.push(game.clone());
     write_json_content(json!(games), &path)
         .with_context(|| "games_library::write_monarchgame() -> ")
 }
@@ -88,20 +88,41 @@ pub fn get_monarchgames() -> Result<Vec<MonarchGame>> {
 
 /// Backend functionality for adding a new game that's been installed.
 pub fn add_game(game: &MonarchGame) -> Result<()> {
-    write_monarchgame(game.clone()).with_context(|| "games_library::add_game() -> ")?;
-
     let mut games: Vec<MonarchGame>;
     unsafe {
         games = MONARCH_STATE.get_library_games();
         games.push(game.clone());
 
         MONARCH_STATE.set_library_games(&games);
-
-        // Replace games with the updated list of library games
-        games = MONARCH_STATE.get_library_games();
     }
 
-    write_games(games)
+    write_monarchgame(game)
+}
+
+/// Backend functionality for removing a game from library.json 
+pub fn remove_game(game: &MonarchGame) -> Result<()> {
+    let mut games: Vec<MonarchGame>;
+    unsafe {
+        games = MONARCH_STATE.get_library_games();
+
+        for (i, g) in games.iter_mut().enumerate() {
+            if g.id == game.id {
+                games.remove(i);
+                break;
+            }
+        }
+
+        MONARCH_STATE.set_library_games(&games);
+    }
+
+    let mut monarch_games = get_monarchgames().with_context(|| "games_library::remove_game() -> ")?;
+    for (i, g) in monarch_games.iter_mut().enumerate() {
+        if g.id == game.id {
+            monarch_games.remove(i);
+            break;
+        }
+    }
+    write_monarch_games(&monarch_games)
 }
 
 /// Updates the properties of a game in the library.
@@ -127,5 +148,5 @@ pub fn update_game_properties(game: &MonarchGame) -> Result<()> {
             .update_game(&game)
             .with_context(|| "games_library::update_game_properties() -> ")?;
     }
-    write_games(games)
+    write_games(&games)
 }

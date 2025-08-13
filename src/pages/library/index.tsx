@@ -198,6 +198,7 @@ const Library = () => {
             opened={addGameOpened}
             close={closeAddGame}
             selectedFilePath={selectedFilePath}
+            onGameAdded={refreshLibrary}
           />
         </Sidebar>
         <LibraryContainer>

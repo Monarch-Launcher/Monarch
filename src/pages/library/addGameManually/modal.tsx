@@ -1,8 +1,10 @@
 import Button from '@_ui/button';
 import Modal from '@_ui/modal';
-import { MdClose } from '@global/icons';
+import { useLibrary } from '@global/contexts/libraryProvider';
+import { FaFolderOpen, MdClose } from '@global/icons';
 import { MonarchGame } from '@global/types';
 import { invoke } from '@tauri-apps/api/core';
+import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
 import styled from 'styled-components';
 
@@ -91,14 +93,32 @@ const ErrorText = styled.p`
   color: ${({ theme }) => theme.colors.error};
 `;
 
+const InputGroup = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+`;
+
+const InputWithButton = styled(Input)`
+  flex: 1;
+`;
+
+const BrowseButton = styled(Button)`
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+`;
+
 type Props = {
   opened: boolean;
   close: () => void;
   selectedFilePath?: string;
+  onGameAdded?: () => void;
 };
 
-export default ({ opened, close, selectedFilePath }: Props) => {
+export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
+  const { addGameToLibrary } = useLibrary();
   const [gameName, setGameName] = React.useState('');
+  const [thumbnailPath, setThumbnailPath] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
 
   const handleGameNameChange = React.useCallback(
@@ -108,6 +128,41 @@ export default ({ opened, close, selectedFilePath }: Props) => {
     },
     [],
   );
+
+  const handleThumbnailPathChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setThumbnailPath(e.target.value);
+      setErrorMessage(undefined);
+    },
+    [],
+  );
+
+  const handleBrowseThumbnail = React.useCallback(async () => {
+    try {
+      const selected = await dialog.open({
+        multiple: false,
+        title: 'Choose a thumbnail image',
+        directory: false,
+        filters: [
+          {
+            name: 'Image Files',
+            extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg'],
+          },
+          {
+            name: 'All Files',
+            extensions: ['*'],
+          },
+        ],
+      });
+
+      if (selected) {
+        setThumbnailPath(selected as string);
+        setErrorMessage(undefined);
+      }
+    } catch (error) {
+      setErrorMessage('Failed to open file dialog.');
+    }
+  }, []);
 
   const handleAddGame = React.useCallback(async () => {
     if (gameName.length === 0) {
@@ -121,29 +176,39 @@ export default ({ opened, close, selectedFilePath }: Props) => {
     }
 
     const game: MonarchGame = {
-      id: "",
-      platform_id: "",
+      id: '',
+      platform_id: '',
       executable_path: selectedFilePath,
       name: gameName,
-      platform: "",
-      thumbnail_path: "",
-      store_page: "",
-      compatibility: "",
-      launch_args: "",
-    }
+      platform: 'monarch-binary',
+      thumbnail_path: thumbnailPath,
+      store_page: '',
+      compatibility: '',
+      launch_args: '',
+    };
+
+    // Add game to frontend library immediately for instant feedback
+    addGameToLibrary(game);
 
     await invoke('manual_add_game', {
-      game: game,
+      game,
     });
+
+    // Refresh the library after adding the game
+    if (onGameAdded) {
+      onGameAdded();
+    }
 
     close();
     setGameName('');
+    setThumbnailPath('');
     setErrorMessage(undefined);
-  }, [close, gameName, selectedFilePath]);
+  }, [close, gameName, selectedFilePath, thumbnailPath, onGameAdded, addGameToLibrary]);
 
   const handleCancel = React.useCallback(() => {
     close();
     setGameName('');
+    setThumbnailPath('');
     setErrorMessage(undefined);
   }, [close]);
 
@@ -186,6 +251,28 @@ export default ({ opened, close, selectedFilePath }: Props) => {
             placeholder="No file selected"
             readOnly
           />
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="thumbnailPath">Thumbnail Path (Optional)</Label>
+          <InputGroup>
+            <InputWithButton
+              id="thumbnailPath"
+              type="text"
+              value={thumbnailPath}
+              onChange={handleThumbnailPathChange}
+              placeholder="Enter path to thumbnail image"
+              maxLength={500}
+            />
+            <BrowseButton
+              type="button"
+              variant="secondary"
+              onClick={handleBrowseThumbnail}
+              leftIcon={FaFolderOpen}
+            >
+              Browse
+            </BrowseButton>
+          </InputGroup>
         </FormGroup>
 
         {errorMessage && errorMessage.length !== 0 && (

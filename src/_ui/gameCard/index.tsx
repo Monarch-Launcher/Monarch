@@ -517,7 +517,7 @@ const GameCard = ({
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const optionsRef = React.useRef<HTMLButtonElement | null>(null);
-  const { library, refreshLibrary } = useLibrary();
+  const { library, refreshLibrary, removeGameFromLibrary } = useLibrary();
   const [gameData, setGameData] = React.useState(() => {
     const found = library.find((g) => g.id === id);
     return found
@@ -614,6 +614,45 @@ const GameCard = ({
       });
     }
   }, [name, platformId, platform, refreshLibrary]);
+
+  const handleRemoveManualGame = React.useCallback(async () => {
+    try {
+      // Remove game from frontend library immediately for instant feedback
+      removeGameFromLibrary(id);
+
+      const game: MonarchGame = {
+        id,
+        platform_id: platformId,
+        executable_path: executablePath,
+        name,
+        platform,
+        thumbnail_path: thumbnailPath,
+        store_page: storePage,
+        compatibility: '',
+        launch_args: '',
+      };
+
+      await invoke('manual_remove_game', {
+        game,
+      });
+      await refreshLibrary();
+    } catch (err) {
+      await dialog.message(`${err}`, {
+        title: 'Error',
+        kind: 'error',
+      });
+    }
+  }, [
+    id,
+    platformId,
+    executablePath,
+    name,
+    platform,
+    thumbnailPath,
+    storePage,
+    refreshLibrary,
+    removeGameFromLibrary,
+  ]);
 
   const hasGame = React.useMemo<boolean>(() => {
     return !!library.find((game) => game.id === id);
@@ -905,11 +944,15 @@ const GameCard = ({
                     <DropdownItem
                       onMouseDown={async (e) => {
                         e.stopPropagation();
-                        await handleUninstallGame();
+                        if (platform === 'monarch-binary') {
+                          await handleRemoveManualGame();
+                        } else {
+                          await handleUninstallGame();
+                        }
                         setOptionsOpen(false);
                       }}
                     >
-                      Uninstall
+                      {platform === 'monarch-binary' ? 'Remove' : 'Uninstall'}
                     </DropdownItem>
                     <DropdownItem
                       onMouseDown={(e) => {
@@ -994,9 +1037,9 @@ const GameCard = ({
                     <DrawerButton
                       variant="danger"
                       type="button"
-                      onClick={handleUninstallGame}
+                      onClick={platform === 'monarch-binary' ? handleRemoveManualGame : handleUninstallGame}
                     >
-                      Uninstall
+                      {platform === 'monarch-binary' ? 'Remove' : 'Uninstall'}
                     </DrawerButton>
                   )}
                   {/* Add Reinstall in Monarch button for Steam games in library */}

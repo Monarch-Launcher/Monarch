@@ -268,11 +268,23 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
 
 #[tauri::command]
 pub async fn manual_add_game(game: MonarchGame) -> Result<(), String> {
-    info!("User adding game manually: {:?}", game);
+    info!("User adding game binary: {:?}", game);
 
     if let Err(e) = monarch_library::games_library::add_game(&game) {
         error!("monarch_games::commands::manual_add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
-        return Err(format!("Failed to add new game: {}", game.name))
+        return Err(format!("Failed to add game: {}", game.name))
+    }
+
+    return Ok(())
+}
+
+#[tauri::command]
+pub async fn manual_remove_game(game: MonarchGame) -> Result<(), String> {
+    info!("User removing game binary: {:?}", game);
+
+    if let Err(e) = monarch_library::games_library::remove_game(&game) {
+        error!("monarch_games::commands::manual_remove_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        return Err(format!("Failed to remove game: {} from library!", game.name))
     }
 
     return Ok(())
