@@ -15,7 +15,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::sync::Arc;
 use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::{AppHandle, Manager};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 /*
  * Currently the write_to_pty() breaks if we remove the inner Arc<AsyncMutex<...>> 

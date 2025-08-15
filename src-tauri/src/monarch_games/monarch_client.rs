@@ -9,6 +9,7 @@ use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use std::collections::HashMap;
+use std::fmt::format;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
@@ -46,7 +47,13 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             "Launching game with executable path: {}",
             game.executable_path
         );
-        game.executable_path = game.executable_path.replace(" ", "\\ ");
+        
+        // Reformat the launch command to work on the platform
+        if cfg!(target_os = "windows") {
+            game.executable_path = format!(r#"Start-Process "{}""#, game.executable_path);
+        } else {
+            game.executable_path = game.executable_path.replace(" ", "\\ ");
+        }
 
         // Run with compatibility layer
         if !game.compatibility.is_empty() {
@@ -131,7 +138,7 @@ pub async fn download_game(
         &_ => bail!("monarch_client::download_game() Invalid platform!"),
     };
 
-    games_library::add_game(new_game).with_context(|| "monarch_client::download_game() -> ")?;
+    games_library::add_game(&new_game).with_context(|| "monarch_client::download_game() -> ")?;
 
     Ok(get_library()) // Return new library
 }
@@ -158,7 +165,7 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
                         // Replace games with the updated list of library games
                         monarch_games = MONARCH_STATE.get_library_games();
                     }
-                    return write_monarch_games(monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")
+                    return write_monarch_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")
                 }
             }
             bail!("monarch_client::update_game() | Err: Game: {platform_id} uninstalled, not removed from monarch_games.json, due to not found!")
@@ -225,7 +232,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
         games = MONARCH_STATE.get_library_games();
     }
 
-    if let Err(e) = games_library::write_games(games.clone()) {
+    if let Err(e) = games_library::write_games(&games) {
         error!("monarch_client::refresh_library() -> {e}");
     }
     games

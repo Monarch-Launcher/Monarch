@@ -9,13 +9,13 @@ import { useLibrary } from '@global/contexts/libraryProvider';
 import { FaFolderOpen, FaFolderPlus, FiRefreshCcw } from '@global/icons';
 import type { MonarchGame } from '@global/types';
 import { useDisclosure } from '@mantine/hooks';
-import {  } from '@tauri-apps/api';
+import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
 import styled, { css } from 'styled-components';
 
+import AddGameModal from './addGameManually/modal';
 import Modal from './createCollection/modal';
 import Collection from './showCollection/collection';
-import * as dialog from "@tauri-apps/plugin-dialog"
 
 const LibraryContainer = styled.div`
   width: 100%;
@@ -88,6 +88,11 @@ const Library = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [dialogError, setDialogError] = React.useState(false);
   const [opened, { open, close }] = useDisclosure(false);
+  const [addGameOpened, { open: openAddGame, close: closeAddGame }] =
+    useDisclosure(false);
+  const [selectedFilePath, setSelectedFilePath] = React.useState<
+    string | undefined
+  >();
   const { library, loading, error, refreshLibrary, results } = useLibrary();
   const { collections } = useCollections();
 
@@ -95,19 +100,30 @@ const Library = () => {
     try {
       setDialogError(false);
 
-      // @ts-ignore
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const path = await dialog.open({
+      const selected = await dialog.open({
         multiple: false,
-        title: 'Choose a game folder',
-        directory: true,
+        title: 'Choose a game executable',
+        directory: false,
+        filters: [
+          {
+            name: 'Executables',
+            extensions: ['exe', 'app', 'sh', 'bin', 'run', 'x86_64'],
+          },
+          {
+            name: 'All Files',
+            extensions: ['*'],
+          },
+        ],
       });
-      // TODO: Invoke function that adds folder
-      // await invoke('add_folder', { path });
+
+      if (selected) {
+        setSelectedFilePath(selected as string);
+        openAddGame();
+      }
     } catch (err) {
       setDialogError(true);
     }
-  }, []);
+  }, [openAddGame]);
 
   const handleSearchTermChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,7 +186,7 @@ const Library = () => {
               type="button"
               variant="primary"
               onClick={handleOpenDialog}
-              title="Add game folder"
+              title="Add game executable"
               fullWidth
             >
               <FaFolderOpen />
@@ -178,6 +194,12 @@ const Library = () => {
             </StackedButton>
           </SidebarButtonGroup>
           <Modal opened={opened} close={close} library={library} />
+          <AddGameModal
+            opened={addGameOpened}
+            close={closeAddGame}
+            selectedFilePath={selectedFilePath}
+            onGameAdded={refreshLibrary}
+          />
         </Sidebar>
         <LibraryContainer>
           {collections.length !== 0 && (
@@ -209,7 +231,10 @@ const Library = () => {
 
           {!loading && results?.empty && <p>{results.emptyMessage}</p>}
           {error && (
-            <Error description="Couldn't load library" onRetry={refreshLibrary} />
+            <Error
+              description="Couldn't load library"
+              onRetry={refreshLibrary}
+            />
           )}
           {dialogError && (
             <Error
