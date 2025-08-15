@@ -6,10 +6,12 @@ use rand::seq::SliceRandom;
 use serde_json::value::Value;
 use tauri::AppHandle;
 use tracing::{error, info};
+use std::path::PathBuf;
 
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
+use crate::monarch_utils::monarch_fs;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -267,8 +269,22 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
 }
 
 #[tauri::command]
-pub async fn manual_add_game(game: MonarchGame) -> Result<(), String> {
+pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
     info!("User adding game binary: {:?}", game);
+
+    if monarch_fs::is_in_cache_dir(&PathBuf::from(&(game.thumbnail_path))) {
+        info!("Found thumbnail in cache, copying to library");
+
+        match monarch_fs::copy_cache_to_library(&PathBuf::from(&(game.thumbnail_path))) {
+            Ok(path) => {
+                info!("Copied thumbnail to library: {}", path.display());
+                game.thumbnail_path = path.to_str().unwrap().to_string();
+            }
+            Err(e) => {
+                error!("monarch_games::commands::manual_add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+            }
+        }
+    }
 
     if let Err(e) = monarch_library::games_library::add_game(&game) {
         error!("monarch_games::commands::manual_add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
