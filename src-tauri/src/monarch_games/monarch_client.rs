@@ -9,6 +9,7 @@ use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use std::collections::HashMap;
+use std::fmt::format;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
@@ -46,7 +47,13 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             "Launching game with executable path: {}",
             game.executable_path
         );
-        game.executable_path = game.executable_path.replace(" ", "\\ ");
+        
+        // Reformat the launch command to work on the platform
+        if cfg!(target_os = "windows") {
+            game.executable_path = format!(r#"Start-Process "{}""#, game.executable_path);
+        } else {
+            game.executable_path = game.executable_path.replace(" ", "\\ ");
+        }
 
         // Run with compatibility layer
         if !game.compatibility.is_empty() {
