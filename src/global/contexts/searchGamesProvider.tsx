@@ -6,6 +6,7 @@ import type { MonarchGame, Result } from '../types';
 type SearchGamesContextType = {
   searchedGames: MonarchGame[];
   searchGames: (searchString: string, useMonarchCom: boolean) => Promise<void>;
+  clearSearchResults: () => void;
   error: boolean;
   loading: boolean;
   results: Result | undefined;
@@ -14,6 +15,7 @@ type SearchGamesContextType = {
 const initialState: SearchGamesContextType = {
   searchedGames: [],
   searchGames: async () => { },
+  clearSearchResults: () => { },
   error: false,
   loading: false,
   results: undefined,
@@ -54,15 +56,22 @@ const SearchGamesProvider = ({ children }: Props) => {
     }
   }, []);
 
+  const clearSearchResults = React.useCallback(() => {
+    setSearchedGames([]);
+    setResults(undefined);
+    setError(false);
+  }, []);
+
   const value = React.useMemo<SearchGamesContextType>(() => {
     return {
       searchedGames,
       searchGames,
+      clearSearchResults,
       error,
       loading,
       results,
     };
-  }, [searchedGames, searchGames, error, loading, results]);
+  }, [searchedGames, searchGames, clearSearchResults, error, loading, results]);
 
   return (
     <SearchGamesContext.Provider value={value}>

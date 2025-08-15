@@ -499,6 +499,7 @@ type GameCardProps = {
   storePage: string;
   isLibrary?: boolean;
   cardWidth?: string;
+  hideDownload?: boolean;
 };
 
 const GameCard = ({
@@ -512,6 +513,7 @@ const GameCard = ({
   storePage,
   isLibrary = false,
   cardWidth = '15rem',
+  hideDownload = false,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
@@ -885,17 +887,19 @@ const GameCard = ({
               </svg>
             </IconOnlyButton>
           ) : (
-            <StyledButton
-              className="launch-btn"
-              variant="primary"
-              type="button"
-              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.stopPropagation();
-                handleDownload();
-              }}
-            >
-              <HiDownload size={24} />
-            </StyledButton>
+            !hideDownload && (
+              <StyledButton
+                className="launch-btn"
+                variant="primary"
+                type="button"
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  handleDownload();
+                }}
+              >
+                <HiDownload size={24} />
+              </StyledButton>
+            )
           )}
         </HoverButtonWrapper>
       </CardContainer>
