@@ -1,7 +1,8 @@
 import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import type { MonarchGame, ProtonVersion } from '@global/types';
+import { useProtonVersions } from '@global/contexts/protonVersionsProvider';
+import type { MonarchGame } from '@global/types';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import React, { useEffect, useRef, useState } from 'react';
@@ -697,26 +698,12 @@ const GameCard = ({
   const [customExecutablePath, setCustomExecutablePath] =
     React.useState<string>(gameData.executable_path || '');
 
-  // Compatibility layer options state
-  const [protonOptions, setProtonOptions] = React.useState<ProtonVersion[]>([]);
-  const [protonLoading, setProtonLoading] = React.useState(false);
-  const [protonError, setProtonError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const fetchProtonVersions = async () => {
-      setProtonLoading(true);
-      setProtonError(null);
-      try {
-        const result = await invoke<ProtonVersion[]>('proton_versions');
-        setProtonOptions(Array.isArray(result) ? result : []);
-      } catch (err: any) {
-        setProtonError('Failed to load Proton versions');
-      } finally {
-        setProtonLoading(false);
-      }
-    };
-    fetchProtonVersions();
-  }, []);
+  // Use shared proton versions context
+  const {
+    protonVersions: protonOptions,
+    isLoading: protonLoading,
+    error: protonError,
+  } = useProtonVersions();
 
   // Build compatibility options from backend and static options
   const compatibilityOptions = React.useMemo(() => {
