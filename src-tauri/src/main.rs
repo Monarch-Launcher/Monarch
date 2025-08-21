@@ -52,9 +52,6 @@ fn init() {
 }
 
 fn main() {
-    // Fix path env
-    let _ = fix_path_env::fix();
-
     // Run some initial checks and setup
     init();
 
