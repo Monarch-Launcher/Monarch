@@ -324,7 +324,7 @@ pub fn zoom_window(window: WebviewWindow, scale_factor: f64) {
         #[cfg(target_os = "macos")]
         unsafe {
             use objc::msg_send;
-            let () = msg_send![webview.inner(), setPageZoom: scale_factor];
+            let _ = msg_send![webview.inner(), setPageZoom: scale_factor];
         }
     });
 }
