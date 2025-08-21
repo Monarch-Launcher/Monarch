@@ -20,7 +20,7 @@ use monarch_library::commands::{
 use monarch_utils::commands::{
     async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, delete_password,
     delete_secret, get_settings, open_logs, open_terminal, revert_settings, set_password,
-    set_secret, set_settings,
+    set_secret, set_settings, zoom_window,
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
@@ -30,6 +30,10 @@ use tracing::{error, info};
 
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::quicklaunch::{init_quicklaunch, quicklaunch_is_enabled};
+
+#[cfg(target_os = "macos")]
+#[macro_use]
+extern crate objc;
 
 fn init() {
     if let Err(e) = monarch_settings::init() {
@@ -95,6 +99,7 @@ fn main() {
             proton_versions,
             manual_add_game,
             manual_remove_game,
+            zoom_window,
         ])
         .setup(|app| {
             #[cfg(desktop)]
