@@ -1,6 +1,6 @@
 use core::result::Result;
 use std::{path::PathBuf, process::Command};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager, WebviewWindow, Window};
 use tracing::error;
 
 use super::housekeeping::clear_all_cache;
@@ -302,4 +302,28 @@ pub async fn async_write_to_pty(data: &str) -> Result<(), ()> {
 /// backend.
 pub fn clear_cached_images() {
     clear_all_cache();
+}
+
+#[tauri::command]
+/// Code found at https://github.com/phcode-dev/phoenix-desktop/pull/162/files
+/// for implementing zoom.
+pub fn zoom_window(window: WebviewWindow, scale_factor: f64) {
+    let _ = window.with_webview(move |webview| {
+        #[cfg(target_os = "linux")]
+        {
+            use webkit2gtk::WebViewExt;
+            webview.inner().set_zoom_level(scale_factor);
+        }
+
+        #[cfg(windows)]
+        unsafe {
+            // see https://docs.rs/webview2-com/0.19.1/webview2_com/Microsoft/Web/WebView2/Win32/struct.ICoreWebView2Controller.html
+            webview.controller().SetZoomFactor(scale_factor).unwrap();
+        }
+
+        #[cfg(target_os = "macos")]
+        unsafe {
+            let () = msg_send![webview.inner(), setPageZoom: scale_factor];
+        }
+    });
 }
