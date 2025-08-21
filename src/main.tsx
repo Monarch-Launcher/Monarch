@@ -1,9 +1,9 @@
 import './styles.css';
 
+import { initZoomControls } from '@global/zoomControls';
+import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
-import { initZoomControls } from '@global/zoomControls';
 
 import App from './App';
 

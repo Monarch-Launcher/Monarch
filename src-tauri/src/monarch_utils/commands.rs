@@ -1,6 +1,6 @@
 use core::result::Result;
 use std::{path::PathBuf, process::Command};
-use tauri::{AppHandle, Manager, WebviewWindow, Window};
+use tauri::{AppHandle, WebviewWindow};
 use tracing::error;
 
 use super::housekeeping::clear_all_cache;

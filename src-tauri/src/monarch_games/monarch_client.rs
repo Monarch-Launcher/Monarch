@@ -9,7 +9,6 @@ use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use std::collections::HashMap;
-use std::fmt::format;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
