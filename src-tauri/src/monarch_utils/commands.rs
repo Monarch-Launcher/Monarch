@@ -14,6 +14,8 @@ use super::monarch_terminal::{
     close_terminal_window, create_terminal_window, read_from_pty, write_to_pty,
 };
 
+
+
 #[cfg(target_os = "windows")]
 #[tauri::command]
 /// Use OS default option to open log directory
@@ -323,8 +325,12 @@ pub fn zoom_window(window: WebviewWindow, scale_factor: f64) {
 
         #[cfg(target_os = "macos")]
         unsafe {
+            /*
+            TODO: Troubleshoot likely memory issues causing application crash.
             use objc::msg_send;
-            let _ = msg_send![webview.inner(), setPageZoom: scale_factor];
+            let inner = webview.inner();
+            let _: () = msg_send![class!(inner), setPageZoom: scale_factor];
+            */
         }
     });
 }

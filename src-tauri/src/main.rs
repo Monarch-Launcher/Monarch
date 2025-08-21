@@ -31,6 +31,10 @@ use tracing::{error, info};
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::quicklaunch::{init_quicklaunch, quicklaunch_is_enabled};
 
+#[cfg(target_os = "macos")]
+#[macro_use]
+extern crate objc;
+
 fn init() {
     if let Err(e) = monarch_settings::init() {
         // Crash program if this fails
