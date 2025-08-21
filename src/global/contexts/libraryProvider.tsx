@@ -6,6 +6,8 @@ import type { MonarchGame, Result } from '../types';
 type LibraryContextType = {
   library: MonarchGame[];
   refreshLibrary: () => Promise<void>;
+  addGameToLibrary: (game: MonarchGame) => void;
+  removeGameFromLibrary: (gameId: string) => void;
   error: boolean;
   loading: boolean;
   results: Result | undefined;
@@ -14,6 +16,8 @@ type LibraryContextType = {
 const initialState: LibraryContextType = {
   library: [],
   refreshLibrary: async () => { },
+  addGameToLibrary: () => { },
+  removeGameFromLibrary: () => { },
   error: false,
   loading: false,
   results: undefined,
@@ -50,6 +54,14 @@ const LibraryProvider = ({ children }: Props) => {
     }
   }, []);
 
+  const addGameToLibrary = React.useCallback((game: MonarchGame) => {
+    setLibrary((prevLibrary) => [...prevLibrary, game]);
+  }, []);
+
+  const removeGameFromLibrary = React.useCallback((gameId: string) => {
+    setLibrary((prevLibrary) => prevLibrary.filter((game) => game.id !== gameId));
+  }, []);
+
   const getLibrary = React.useCallback(async () => {
     try {
       setError(false);
@@ -71,11 +83,13 @@ const LibraryProvider = ({ children }: Props) => {
     return {
       library,
       refreshLibrary,
+      addGameToLibrary,
+      removeGameFromLibrary,
       error,
       loading,
       results,
     };
-  }, [library, refreshLibrary, error, loading, results]);
+  }, [library, refreshLibrary, addGameToLibrary, removeGameFromLibrary, error, loading, results]);
 
   return (
     <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>

@@ -1,6 +1,6 @@
 use core::result::Result;
 use std::{path::PathBuf, process::Command};
-use tauri::AppHandle;
+use tauri::{AppHandle, WebviewWindow};
 use tracing::error;
 
 use super::housekeeping::clear_all_cache;
@@ -13,6 +13,8 @@ use super::monarch_settings::{
 use super::monarch_terminal::{
     close_terminal_window, create_terminal_window, read_from_pty, write_to_pty,
 };
+
+
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
@@ -302,4 +304,33 @@ pub async fn async_write_to_pty(data: &str) -> Result<(), ()> {
 /// backend.
 pub fn clear_cached_images() {
     clear_all_cache();
+}
+
+#[tauri::command]
+/// Code found at https://github.com/phcode-dev/phoenix-desktop/pull/162/files
+/// for implementing zoom.
+pub fn zoom_window(window: WebviewWindow, scale_factor: f64) {
+    let _ = window.with_webview(move |webview| {
+        #[cfg(target_os = "linux")]
+        {
+            use webkit2gtk::WebViewExt;
+            webview.inner().set_zoom_level(scale_factor);
+        }
+
+        #[cfg(windows)]
+        unsafe {
+            // see https://docs.rs/webview2-com/0.19.1/webview2_com/Microsoft/Web/WebView2/Win32/struct.ICoreWebView2Controller.html
+            webview.controller().SetZoomFactor(scale_factor).unwrap();
+        }
+
+        #[cfg(target_os = "macos")]
+        unsafe {
+            /*
+            TODO: Troubleshoot likely memory issues causing application crash.
+            use objc::msg_send;
+            let inner = webview.inner();
+            let _: () = msg_send![class!(inner), setPageZoom: scale_factor];
+            */
+        }
+    });
 }

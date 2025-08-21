@@ -200,3 +200,19 @@ fn generate_image_filename(name: &str) -> String {
     filename.push_str(".jpg");
     filename
 }
+
+pub fn is_in_cache_dir(path: &Path) -> bool {
+    let cache_path: PathBuf = get_resources_cache();
+    path.starts_with(cache_path)
+}
+
+/// Copies image from cache to resources
+/// Returns path to new image in resources directory
+pub fn copy_cache_to_library(cache_path: &Path) -> Result<PathBuf> {
+    let resources_path: PathBuf = get_resources_library();
+    let filename = cache_path.file_name().with_context(|| format!("monarch_fs::copy_cache_to_resources() Failed to get filename of path: {} | Err: ", cache_path.display()))?;
+    let destination_path = resources_path.join(&filename);
+    fs::copy(cache_path, &destination_path)
+        .with_context(|| format!("monarch_fs::copy_cache_to_resources() Something went wrong trying to copy image from cache to resources: {} | Err: {}", cache_path.display(), destination_path.display()))?;
+    Ok(destination_path)
+}

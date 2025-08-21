@@ -1,6 +1,6 @@
 [package]
 name = "Monarch"
-version = "0.1.0"
+version = "0.1.1"
 description = "A FOSS game launcher/manager."
 authors = ["an0nymoos3", "Dre-Van-den-Hooff"]
 license = "GPL-3.0-or-later"
@@ -42,6 +42,12 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
 futures = { version = "0.3", default-features = false, features = ["executor"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2.0.1" # if tauri build fails, make sure to match this version to what we have in tauri
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = { version = "0.2.7", features = ["exception"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52.0"

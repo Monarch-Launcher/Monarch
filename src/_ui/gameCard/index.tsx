@@ -1,7 +1,8 @@
 import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
-import type { MonarchGame, ProtonVersion } from '@global/types';
+import { useProtonVersions } from '@global/contexts/protonVersionsProvider';
+import type { MonarchGame } from '@global/types';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import React, { useEffect, useRef, useState } from 'react';
@@ -499,6 +500,7 @@ type GameCardProps = {
   storePage: string;
   isLibrary?: boolean;
   cardWidth?: string;
+  hideDownload?: boolean;
 };
 
 const GameCard = ({
@@ -512,12 +514,13 @@ const GameCard = ({
   storePage,
   isLibrary = false,
   cardWidth = '15rem',
+  hideDownload = false,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const optionsRef = React.useRef<HTMLButtonElement | null>(null);
-  const { library, refreshLibrary } = useLibrary();
+  const { library, refreshLibrary, removeGameFromLibrary } = useLibrary();
   const [gameData, setGameData] = React.useState(() => {
     const found = library.find((g) => g.id === id);
     return found
@@ -615,6 +618,45 @@ const GameCard = ({
     }
   }, [name, platformId, platform, refreshLibrary]);
 
+  const handleRemoveManualGame = React.useCallback(async () => {
+    try {
+      // Remove game from frontend library immediately for instant feedback
+      removeGameFromLibrary(id);
+
+      const game: MonarchGame = {
+        id,
+        platform_id: platformId,
+        executable_path: executablePath,
+        name,
+        platform,
+        thumbnail_path: thumbnailPath,
+        store_page: storePage,
+        compatibility: '',
+        launch_args: '',
+      };
+
+      await invoke('manual_remove_game', {
+        game,
+      });
+      await refreshLibrary();
+    } catch (err) {
+      await dialog.message(`${err}`, {
+        title: 'Error',
+        kind: 'error',
+      });
+    }
+  }, [
+    id,
+    platformId,
+    executablePath,
+    name,
+    platform,
+    thumbnailPath,
+    storePage,
+    refreshLibrary,
+    removeGameFromLibrary,
+  ]);
+
   const hasGame = React.useMemo<boolean>(() => {
     return !!library.find((game) => game.id === id);
   }, [id, library]);
@@ -656,26 +698,12 @@ const GameCard = ({
   const [customExecutablePath, setCustomExecutablePath] =
     React.useState<string>(gameData.executable_path || '');
 
-  // Compatibility layer options state
-  const [protonOptions, setProtonOptions] = React.useState<ProtonVersion[]>([]);
-  const [protonLoading, setProtonLoading] = React.useState(false);
-  const [protonError, setProtonError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const fetchProtonVersions = async () => {
-      setProtonLoading(true);
-      setProtonError(null);
-      try {
-        const result = await invoke<ProtonVersion[]>('proton_versions');
-        setProtonOptions(Array.isArray(result) ? result : []);
-      } catch (err: any) {
-        setProtonError('Failed to load Proton versions');
-      } finally {
-        setProtonLoading(false);
-      }
-    };
-    fetchProtonVersions();
-  }, []);
+  // Use shared proton versions context
+  const {
+    protonVersions: protonOptions,
+    isLoading: protonLoading,
+    error: protonError,
+  } = useProtonVersions();
 
   // Build compatibility options from backend and static options
   const compatibilityOptions = React.useMemo(() => {
@@ -782,8 +810,12 @@ const GameCard = ({
         title: 'Select Executable File',
         filters: [
           {
-            name: 'Executable Files',
-            extensions: ['exe', 'app', 'sh', 'bin', ''],
+            name: 'Executables',
+            extensions: ['exe', 'app', 'sh', 'bin', 'run', 'x86_64'],
+          },
+          {
+            name: 'All Files',
+            extensions: ['*'],
           },
         ],
       });
@@ -842,17 +874,19 @@ const GameCard = ({
               </svg>
             </IconOnlyButton>
           ) : (
-            <StyledButton
-              className="launch-btn"
-              variant="primary"
-              type="button"
-              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.stopPropagation();
-                handleDownload();
-              }}
-            >
-              <HiDownload size={24} />
-            </StyledButton>
+            !hideDownload && (
+              <StyledButton
+                className="launch-btn"
+                variant="primary"
+                type="button"
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  handleDownload();
+                }}
+              >
+                <HiDownload size={24} />
+              </StyledButton>
+            )
           )}
         </HoverButtonWrapper>
       </CardContainer>
@@ -901,11 +935,15 @@ const GameCard = ({
                     <DropdownItem
                       onMouseDown={async (e) => {
                         e.stopPropagation();
-                        await handleUninstallGame();
+                        if (platform === 'monarch-binary') {
+                          await handleRemoveManualGame();
+                        } else {
+                          await handleUninstallGame();
+                        }
                         setOptionsOpen(false);
                       }}
                     >
-                      Uninstall
+                      {platform === 'monarch-binary' ? 'Remove' : 'Uninstall'}
                     </DropdownItem>
                     <DropdownItem
                       onMouseDown={(e) => {
@@ -990,9 +1028,9 @@ const GameCard = ({
                     <DrawerButton
                       variant="danger"
                       type="button"
-                      onClick={handleUninstallGame}
+                      onClick={platform === 'monarch-binary' ? handleRemoveManualGame : handleUninstallGame}
                     >
-                      Uninstall
+                      {platform === 'monarch-binary' ? 'Remove' : 'Uninstall'}
                     </DrawerButton>
                   )}
                   {/* Add Reinstall in Monarch button for Steam games in library */}

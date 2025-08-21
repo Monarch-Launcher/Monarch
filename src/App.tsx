@@ -1,5 +1,6 @@
 import CollectionsProvider from '@global/contexts/collectionsProvider';
 import LibraryProvider from '@global/contexts/libraryProvider';
+import { ProtonVersionsProvider } from '@global/contexts/protonVersionsProvider';
 import SearchGamesProvider from '@global/contexts/searchGamesProvider';
 import SettingsProvider from '@global/contexts/settingsProvider';
 import Routes from '@global/routes';
@@ -14,12 +15,14 @@ const App = () => {
       <ThemeProvider theme={theme}>
         <SettingsProvider>
           <LibraryProvider>
-            <CollectionsProvider>
-              <SearchGamesProvider>
-                <GlobalStyles />
-                <Routes />
-              </SearchGamesProvider>
-            </CollectionsProvider>
+            <ProtonVersionsProvider>
+              <CollectionsProvider>
+                <SearchGamesProvider>
+                  <GlobalStyles />
+                  <Routes />
+                </SearchGamesProvider>
+              </CollectionsProvider>
+            </ProtonVersionsProvider>
           </LibraryProvider>
         </SettingsProvider>
       </ThemeProvider>
