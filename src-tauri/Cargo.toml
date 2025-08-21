@@ -43,6 +43,9 @@ tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
 futures = { version = "0.3", default-features = false, features = ["executor"] }
 
+# For proper env vars in MacOS and Linux
+fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
+
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = "2.0.1" # if tauri build fails, make sure to match this version to what we have in tauri
 
