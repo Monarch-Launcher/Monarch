@@ -334,6 +334,8 @@ pub fn install_umu() -> Result<(), String> {
     }
 
     #[cfg(not(target_os = "linux"))]
-    warn!("Attempted to download umu-launcher under something other than Linux!");
-    return Err(format!("Can only use umu-launcher under Linux!"))
+    {
+        warn!("Attempted to download umu-launcher under something other than Linux!");
+        return Err(format!("Can only use umu-launcher under Linux!"))
+    }
 }
