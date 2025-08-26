@@ -81,7 +81,8 @@ pub fn get_proton_versions(libraryfolders_vdf: &Path) -> Result<Vec<ProtonVersio
     let folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf)
         .with_context(|| "monarch_vdf::get_proton_versions() -> ")?;
 
-    let mut proton_versions: Vec<ProtonVersion> = Vec::new();
+    let mut proton_versions: Vec<ProtonVersion> = vec![ProtonVersion{name: "Proton-GE-Latest".to_string(), path: "GE-Proton".to_string()},
+                                                       ProtonVersion{name: "UMU-Proton".to_string(), path: "UMU-Proton".to_string()}];
 
     for (_, folder) in folders.0 {
         let path = PathBuf::from(folder.path).join("steamapps").join("common");

@@ -305,3 +305,35 @@ pub async fn manual_remove_game(game: MonarchGame) -> Result<(), String> {
 
     return Ok(())
 }
+
+#[tauri::command]
+pub fn umu_is_installed() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        use super::linux::umu;
+        return umu::umu_is_installed()
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    false
+}
+
+#[tauri::command]
+pub fn install_umu() -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        use super::linux::umu;
+        info!("Downloading umu-launcher...");
+
+        if let Err(e) = umu::install_umu() {
+            error!("monarch_games::commands::install_umu() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+            return Err(format!("Failed to download umu-launcher!"))
+        }
+
+        return Ok(())
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    warn!("Attempted to download umu-launcher under something other than Linux!");
+    return Err(format!("Can only use umu-launcher under Linux!"))
+}

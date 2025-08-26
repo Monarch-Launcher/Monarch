@@ -12,7 +12,7 @@ use futures::executor;
 use monarch_games::commands::{
     download_game, get_home_recomendations, get_library, launch_game, move_game_to_monarch,
     open_store, proton_versions, refresh_library, remove_game, search_games, update_game,
-    update_game_properties, manual_add_game, manual_remove_game
+    update_game_properties, manual_add_game, manual_remove_game, umu_is_installed, install_umu,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
@@ -100,6 +100,8 @@ fn main() {
             manual_add_game,
             manual_remove_game,
             zoom_window,
+            umu_is_installed,
+            install_umu,
         ])
         .setup(|app| {
             #[cfg(desktop)]

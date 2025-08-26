@@ -69,6 +69,7 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
 
         // Order launch args and command in proper order
         let full_command: String = if game.launch_args.find("%command%").is_some() {
+            warn!("Using Steam %command% style launch arguments!");
             game.launch_args.replace("%command%", &launch_command)
         } else {
             format!("{} {}", launch_command, game.launch_args)
@@ -273,31 +274,21 @@ async fn execute_compatibility_game(handle: &AppHandle, game: &mut MonarchGame) 
     info!("Compatibility layer set: {}", game.compatibility);
     game.compatibility = game.compatibility.replace(" ", "\\ ");
 
-    let compat_client_install_dir = linux::steam::get_default_location()
-        .with_context(|| "monarch_client::launch_game() -> ")?;
-    let compatdata_dir = compat_client_install_dir.join("steamapps/compatdata");
+    let env_vars: HashMap<&str, &str> = HashMap::from([("PROTON_PATH", game.compatibility.as_str())]);
 
-    let compat_client_install_dir_str = compat_client_install_dir.to_str().unwrap_or("");
-    let compatdata_dir_str = compatdata_dir.to_str().unwrap_or("");
-    let env_vars: HashMap<&str, &str> = HashMap::from([
-        (
-            "STEAM_COMPAT_CLIENT_INSTALL_PATH",
-            compat_client_install_dir_str,
-        ),
-        ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str),
-    ]);
-
-    let launch_command: String = format!("{} run {}", game.compatibility, game.executable_path);
+    let umu: PathBuf = linux::umu::get_umu_exe();
+    let launch_command: String = format!(r#"{} "{}""#, umu.display(), game.executable_path);
 
     // Order launch args and command in proper order
     info!("Launch args: {}", game.launch_args);
     let full_command: String = if game.launch_args.find("%command%").is_some() {
+        warn!("Using Steam %command% style launch arguments!");
         game.launch_args.replace("%command%", &launch_command)
     } else {
         format!("{} {}", launch_command, game.launch_args)
     };
 
-    run_in_terminal(handle, &full_command, Some(env_vars))
+    run_in_terminal(handle, &full_command, Some(&env_vars))
         .await
         .with_context(|| "monarch_client::launch_game() -> ")
 }
