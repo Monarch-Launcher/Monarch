@@ -8,7 +8,6 @@ use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
@@ -61,7 +60,10 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             }
 
             #[cfg(target_os = "linux")]
-            return execute_compatibility_game(handle, &mut game).await;
+            {
+                use super::linux;
+                return linux::umu::umu_run(handle, &mut game).await;
+            };
         }
 
         // Run without compatibility layer
@@ -265,30 +267,4 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     }
 
     monarch_games
-}
-
-#[cfg(target_os = "linux")]
-async fn execute_compatibility_game(handle: &AppHandle, game: &mut MonarchGame) -> Result<()> {
-    use super::linux;
-
-    info!("Compatibility layer set: {}", game.compatibility);
-    game.compatibility = game.compatibility.replace(" ", "\\ ");
-
-    let env_vars: HashMap<&str, &str> = HashMap::from([("PROTON_PATH", game.compatibility.as_str())]);
-
-    let umu: PathBuf = linux::umu::get_umu_exe();
-    let launch_command: String = format!(r#"{} "{}""#, umu.display(), game.executable_path);
-
-    // Order launch args and command in proper order
-    info!("Launch args: {}", game.launch_args);
-    let full_command: String = if game.launch_args.find("%command%").is_some() {
-        warn!("Using Steam %command% style launch arguments!");
-        game.launch_args.replace("%command%", &launch_command)
-    } else {
-        format!("{} {}", launch_command, game.launch_args)
-    };
-
-    run_in_terminal(handle, &full_command, Some(&env_vars))
-        .await
-        .with_context(|| "monarch_client::launch_game() -> ")
 }

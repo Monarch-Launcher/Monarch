@@ -1,30 +1,32 @@
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
-use std::path::PathBuf;
+use tauri::AppHandle;
+use std::{collections::HashMap, path::PathBuf};
 use reqwest;
-use tracing::info;
+use tracing::{info, warn};
 use tar::Archive;
 
-use crate::monarch_utils::monarch_fs::get_monarch_home;
+use crate::{monarch_games::monarchgame::MonarchGame, monarch_utils::{monarch_fs::get_monarch_home, monarch_terminal::run_in_terminal}};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize)]
 struct Release {
     tag_name: String,
     assets: Vec<Asset>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize)]
 struct Asset {
     name: String,
     browser_download_url: String,
 }
 
-/// Returns path where Monarch stores its copy of the umu-launcher binary.
+/// Returns path to directory where Monarch stores its copy of the umu-launcher binary.
 fn get_umu_dir() -> PathBuf {
     let path = get_monarch_home();
     path.join("umu")
 }
 
+/// Returns path to umu-launcher binary.
 pub fn get_umu_exe() -> PathBuf {
     get_umu_dir().join("umu-run")
 }
@@ -46,7 +48,7 @@ pub fn install_umu() -> Result<()> {
 
     info!("Getting umu-launcher releases...");
     let umu_release_url: &str =
-        "https://api.github.com/repos/Open-Wine-Components/umu-launcher/releases";
+        "https://api.github.com/repos/Open-Wine-Components/umu-launcher/releases/latest";
 
     let client = reqwest::blocking::Client::new();
     let release_response = client
@@ -57,12 +59,11 @@ pub fn install_umu() -> Result<()> {
     let release_text: String = release_response.text()
         .with_context(|| "linux::umu::install_umu() Failed to get response text from umu-launcher release page! | Err: ")?;
 
-    let release_data: Vec<Release> = serde_json::from_str(&release_text).with_context(|| "linux::umu::install_umu() Failed to parse response from umu-launcher release page! | Err: ")?;
+    let release_data: Release = serde_json::from_str(&release_text).with_context(|| "linux::umu::install_umu() Failed to parse response from umu-launcher release page! | Err: ")?;
 
-    info!("Using release: {}", release_data[0].tag_name);
+    info!("Using release: {}", release_data.tag_name);
 
-    let asset = release_data[0]
-        .clone()
+    let asset = release_data
         .assets
         .into_iter()
         .find(|a| a.name.contains("zipapp") && a.name.ends_with(".tar"))
@@ -88,4 +89,30 @@ pub fn install_umu() -> Result<()> {
     std::fs::remove_file(&dest_path).with_context(|| format!("linux::umu::install_umu() Failed to remove: {} | Err: ", dest_path.display()))?;
 
     Ok(())
+}
+
+/// Executes the game using umu-launcher to run in proton.
+pub async fn umu_run(handle: &AppHandle, game: &mut MonarchGame) -> Result<()> {
+    info!("Compatibility layer set: {}", game.compatibility);
+    game.compatibility = game.compatibility.replace(" ", "\\ ");
+
+    let env_vars: HashMap<&str, &str> = HashMap::from([("PROTON_PATH", game.compatibility.as_str())]);
+
+    let umu: PathBuf = get_umu_exe();
+    let launch_command: String = format!("{} {}", umu.display(), game.executable_path);
+
+    // Order launch args and command in proper order
+    info!("Launch args: {}", game.launch_args);
+    let full_command: String = if game.launch_args.find("%command%").is_some() {
+        warn!("Using Steam %command% style launch arguments!");
+        game.launch_args.replace("%command%", &launch_command)
+    } else {
+        format!("{} {}", launch_command, game.launch_args)
+    };
+
+    info!("Env vars: {:?}", env_vars);
+    info!("Launch command: {}", &full_command);
+    run_in_terminal(handle, &full_command, Some(&env_vars))
+        .await
+        .with_context(|| "monarch_client::launch_game() -> ")
 }
