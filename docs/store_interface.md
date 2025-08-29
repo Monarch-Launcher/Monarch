@@ -9,8 +9,8 @@ The store interface is a trait that is implemented for each store. It contains t
 
 ```rust
 pub trait StoreInterface {
-    fn search_game(&self, name: &str) -> Result<Vec<dyn GameType>>;
-    fn download_game(&self, name: &str, platform_id: &str) -> Result<Vec<dyn GameType>>;
+    fn search_game(&self, name: &str) -> Result<Vec<Box<dyn GameType>>>;
+    fn download_game(&self, name: &str, platform_id: &str) -> Result<Vec<Box<dyn GameType>>>;
     fn uninstall_game(&self, platform_id: &str) -> Result<()>;
     fn update_game(&self, game: &MonarchGame) -> Result<()>;
 }
