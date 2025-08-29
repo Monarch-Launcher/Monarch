@@ -12,7 +12,7 @@ use futures::executor;
 use monarch_games::commands::{
     download_game, get_home_recomendations, get_library, launch_game, move_game_to_monarch,
     open_store, proton_versions, refresh_library, remove_game, search_games, update_game,
-    update_game_properties, manual_add_game, manual_remove_game, umu_is_installed, install_umu,
+    update_game_properties, manual_add_game, manual_remove_game, umu_is_installed, install_umu, get_executables
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
@@ -45,7 +45,9 @@ fn init() {
 
     // Set initial monarch state
     unsafe {
-        MONARCH_STATE.set_library_games(&crate::monarch_games::monarch_client::get_library());
+        if let Err(e) = MONARCH_STATE.set_library_games(&crate::monarch_games::monarch_client::get_library()) {
+            panic!("init() Failed to set library games in state! | Err: {e}")
+        }
     }
 
     housekeeping::start(); // Starts housekeeping loop
@@ -102,6 +104,7 @@ fn main() {
             zoom_window,
             umu_is_installed,
             install_umu,
+            get_executables,
         ])
         .setup(|app| {
             #[cfg(desktop)]

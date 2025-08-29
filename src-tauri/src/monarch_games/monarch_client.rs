@@ -162,7 +162,7 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
                 if game.platform == platform && game.platform_id == platform_id {
                     monarch_games.remove(i);
                     unsafe {
-                        MONARCH_STATE.set_library_games(&monarch_games);
+                        MONARCH_STATE.set_library_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")?;
 
                         // Replace games with the updated list of library games
                         monarch_games = MONARCH_STATE.get_library_games();
@@ -228,15 +228,14 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     games.append(&mut steam_games);
 
     unsafe {
-        MONARCH_STATE.set_library_games(&games);
+        if let Err(e) = MONARCH_STATE.set_library_games(&games) {
+            error!("monarch_client::refresh_library() -> {}", e.chain().map(|e| e.to_string()).collect::<String>())
+        }
 
         // Replace games with the updated list of library games
         games = MONARCH_STATE.get_library_games();
     }
 
-    if let Err(e) = games_library::write_games(&games) {
-        error!("monarch_client::refresh_library() -> {e}");
-    }
     games
 }
 

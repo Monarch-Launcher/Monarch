@@ -9,6 +9,7 @@ import { useLibrary } from '@global/contexts/libraryProvider';
 import { FaFolderOpen, FaFolderPlus, FiRefreshCcw } from '@global/icons';
 import type { MonarchGame } from '@global/types';
 import { useDisclosure } from '@mantine/hooks';
+import { invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
 import { flushSync } from 'react-dom';
@@ -17,7 +18,6 @@ import styled, { css } from 'styled-components';
 import AddGameModal from './addGameManually/modal';
 import Modal from './createCollection/modal';
 import Collection from './showCollection/collection';
-import { invoke } from '@tauri-apps/api/core';
 
 const LibraryContainer = styled.div`
   width: 100%;
@@ -143,6 +143,7 @@ const Library = () => {
       }
     };
     checkUmu();
+    // eslint-disable-next-line consistent-return
     return () => {
       cancelled = true;
     };
@@ -269,7 +270,7 @@ const Library = () => {
                     flushSync(() => setUmuInstalling(true));
                     // Force a paint before starting installation (more reliable on WebKitGTK)
                     await new Promise<void>((resolve) =>
-                      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+                      { requestAnimationFrame(() => requestAnimationFrame(() => resolve())) },
                     );
                     await invoke('install_umu');
                     setShowUmuNotice(false);

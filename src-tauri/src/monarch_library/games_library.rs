@@ -3,6 +3,7 @@ use serde_json::{json, value::Value};
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
+use tracing::error;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_fs::{
@@ -93,7 +94,9 @@ pub fn add_game(game: &MonarchGame) -> Result<()> {
         games = MONARCH_STATE.get_library_games();
         games.push(game.clone());
 
-        MONARCH_STATE.set_library_games(&games);
+        if let Err(e) = MONARCH_STATE.set_library_games(&games) {
+            error!("games_library::add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        }
     }
 
     write_monarchgame(game)
@@ -112,7 +115,9 @@ pub fn remove_game(game: &MonarchGame) -> Result<()> {
             }
         }
 
-        MONARCH_STATE.set_library_games(&games);
+        if let Err(e) = MONARCH_STATE.set_library_games(&games) {
+            error!("games_library::remove_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        }
     }
 
     let mut monarch_games = get_monarchgames().with_context(|| "games_library::remove_game() -> ")?;
@@ -148,5 +153,5 @@ pub fn update_game_properties(game: &MonarchGame) -> Result<()> {
             .update_game(&game)
             .with_context(|| "games_library::update_game_properties() -> ")?;
     }
-    write_games(&games)
+    Ok(())
 }

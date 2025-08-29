@@ -295,6 +295,46 @@ pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
+    if game.install_dir.is_empty() {
+        #[cfg(target_os = "linux")]
+        use super::linux::steam;
+
+        #[cfg(target_os = "windows")]
+        use super::windows::steam;
+
+        #[cfg(target_os = "macos")]
+        use super::macos::steam;
+
+        // Get the installation folder of game from libraryfolders.vdf
+        match steam::get_default_libraryfolders_location() {
+            Ok(path) => {
+                use crate::monarch_utils::monarch_vdf;
+
+                if let Err(e) = monarch_vdf::set_install_dir(&mut game, &path) {
+                    error!("monarch_games::commands::get_executables() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                    return Err(format!("Set the correct installation directory for: {}", game.name))
+                }
+
+            }
+            Err(e) => {
+                error!("monarch_games::commands::get_executables() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                return Err(format!("Failed to get executables for game: {}", game.name))
+            }
+        }
+    }
+    
+    // Search for executable files in the installation directory
+    match monarch_fs::get_executables(&PathBuf::from(&game.install_dir)) {
+        Ok(exes) => Ok(exes),
+        Err(e) =>{
+            error!("monarch_games::commands::get_executables() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+            Err(format!("Failed to get executables for game: {}", game.name))
+        } 
+    }
+}
+
+#[tauri::command]
 pub async fn manual_remove_game(game: MonarchGame) -> Result<(), String> {
     info!("User removing game binary: {:?}", game);
 

@@ -2,13 +2,16 @@
     This file is for parsing Valve's .vdf (Valve Data Format) format.
     It is used for reading content related to steam such as the users installed library, library locations in the filesystem, etc.
 */
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use keyvalues_serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{error, info};
+use tracing::{error, info, warn};
+
+use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[derive(Debug, Serialize, Deserialize)]
 
@@ -32,7 +35,7 @@ impl LibraryFolders {
         // Read the file contents
         let contents = fs::read_to_string(path).with_context(|| {
             format!(
-                "monarch_vdf::parse_library_file() Failed to read content of: {} | Err: ",
+                "monarch_vdf::LibraryFolder::read() Failed to read content of: {} | Err: ",
                 path.display()
             )
         })?;
@@ -77,6 +80,7 @@ pub fn parse_library_file(path: &Path) -> Result<Vec<String>> {
 }
 
 /// Possibly slow implementation for getting Proton versions installed on system.
+/// Works fast enough during testing.
 pub fn get_proton_versions(libraryfolders_vdf: &Path) -> Result<Vec<ProtonVersion>> {
     let folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf)
         .with_context(|| "monarch_vdf::get_proton_versions() -> ")?;
@@ -147,4 +151,58 @@ fn get_games_from_manifest_files(path: &Path) -> Result<Vec<String>> {
 
     info!("Found IDs: {:?}", games);
     Ok(games)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AppState {
+    appid: String,
+    installdir: String,
+}
+
+impl AppState {
+    pub fn read(path: &Path) -> Result<Self> {
+        info!("Reading: {}", path.display());
+
+        // Read the file contents
+        let contents = fs::read_to_string(path).with_context(|| {
+            format!(
+                "monarch_vdf::AppState::read() Failed to read content of: {} | Err: ",
+                path.display()
+            )
+        })?;
+
+        // Parse JSON into the struct
+        keyvalues_serde::from_str::<AppState>(&contents).with_context(|| "monarch_vdf::AppState::read() Failed to parse .vdf content into AppState struct. | Err: ")
+    }
+}
+
+/// Sets the installation directory of a given Steam game
+pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Result<()> {
+    let library_folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf).with_context(|| "monarch_vdf::AppState::read() -> ")?;
+
+    for (_, libraryfolder) in library_folders.0 {
+        if libraryfolder.apps.contains_key(&game.platform_id) {
+            let manifest_file = format!("appmanifest_{}.acf", game.platform_id);
+            let path = PathBuf::from(libraryfolder.path).join("steamapps").join(manifest_file);
+
+            if !path.exists() {
+                bail!("monarch_vdf::set_install_dir() Failed to find manifest file for game: {} (appid: {})", game.name, game.platform_id);
+            } 
+
+            let app_state: AppState = AppState::read(&path).with_context(|| "monarch_vdf::AppState::read() -> ")?;
+            game.install_dir = PathBuf::from(path.parent().unwrap()).join("common").join(app_state.installdir).to_str().unwrap().to_string();
+
+            unsafe {
+                if let Err(e) = MONARCH_STATE.update_game(&game) {
+                    error!("monarch_vdf::set_install_dir() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                    warn!("Failed to update game in state: {}", game.name);
+                }
+            }
+
+            return Ok(());
+        }
+    }
+    
+    error!("No install dir found for game: {} (appid: {})", game.name, game.platform_id);
+    bail!("monarch_vdf::set_install_dir() No install dir found! | Err: No matching manifest file found.")
 }

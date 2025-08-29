@@ -150,6 +150,34 @@ pub fn create_dir(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Returns all found executables in a given directory
+pub fn get_executables(path: &Path) -> Result<Vec<PathBuf>> {
+    let mut executables: Vec<PathBuf> = Vec::new();
+    let executable_extensions: [&'static str; 6] = ["exe", "app", "sh", "bin", "run", "x86_64"];
+
+    visit_dir(&path, &mut executables, &executable_extensions).unwrap();
+
+    // Recursively visits all directories and subdirectories to find executables
+    fn visit_dir(path: &Path, executables: &mut Vec<PathBuf>, executable_extensions: &[&str]) -> Result<()> {
+        for entry in fs::read_dir(path).with_context(|| format!("monarch_fs::get_executables() Something went wrong trying to read directory: {dir} | Err: ", dir = path.display()))? {
+            let entry = entry.with_context(|| format!("monarch_fs::get_executables() Something went wrong trying to read directory entry: {dir} | Err: ", dir = path.display()))?;
+            let inner_path = entry.path();
+
+            if inner_path.is_file() {
+                if executable_extensions.contains(&inner_path.extension().unwrap_or("".as_ref()).to_str().unwrap_or("")) {
+                    executables.push(inner_path.clone());
+                }
+            }
+            if inner_path.is_dir() {
+                visit_dir(&inner_path, executables, executable_extensions)?;
+            }
+        }
+        Ok(())
+    }
+
+    Ok(executables)
+}
+
 /*
 ---------- Functions related to storing in resources dir ----------
 */
