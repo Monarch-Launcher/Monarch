@@ -23,7 +23,7 @@ These are some of the features we want to include in Monarch and their developme
 | View store pages         | 🟢 Done       |
 | Launch games             | 🟡 Steam only |
 | Manage Steam games       | 🟡 Limited    |
-| Manage Epic games        | 🔴 Planned    |
+| Manage Epic games        | 🟡 Developing |
 | Game collections/folders | 🟢 Done       |
 | Quicklaunch              | 🟢 Prototype  |
 | Find/buy new games       | 🟡 Developing |
