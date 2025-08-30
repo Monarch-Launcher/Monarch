@@ -25,6 +25,7 @@ const LibraryContainer = styled.div`
   overflow-y: auto;
   border-radius: 0.5rem;
   margin: 1rem 0;
+  padding: 0 1rem; /* add horizontal gutters */
 `;
 
 const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
@@ -71,8 +72,8 @@ const UmuNoticeBar = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem 1rem;
-  margin: 0 0 1rem 0;
+  padding: 0.75rem 1.5rem 0.75rem 1rem;
+  margin: 0 1rem 1rem 1rem;
   border-radius: 0.5rem;
   background: rgba(255, 193, 7, 0.1);
   border: 1px solid rgba(255, 193, 7, 0.35);
