@@ -1,4 +1,5 @@
 import Button from '@_ui/button';
+import { NoticeBar, NoticeText } from '@_ui/noticeBar';
 import Error from '@_ui/error';
 import GameCard from '@_ui/gameCard';
 import Page from '@_ui/page';
@@ -67,22 +68,7 @@ const Sidebar = styled.div`
   gap: 1.5rem;
 `;
 
-const UmuNoticeBar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1.5rem 0.75rem 1rem;
-  margin: 0 1rem 1rem 1rem;
-  border-radius: 0.5rem;
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.35);
-`;
-
-const UmuNoticeText = styled.p`
-  margin: 0;
-  font-size: 0.95rem;
-`;
+// NoticeBar and NoticeText are now provided by `@_ui/noticeBar`
 
 const StackedButton = styled(Button)`
   height: 3.5rem;
@@ -257,10 +243,10 @@ const Library = () => {
         </Sidebar>
         <LibraryContainer>
           {showUmuNotice && !umuChecking && (
-            <UmuNoticeBar>
-              <UmuNoticeText>
+            <NoticeBar>
+              <NoticeText>
                 UMU Launcher is not installed. Some features may require it.
-              </UmuNoticeText>
+              </NoticeText>
               <Button
                 type="button"
                 variant="primary"
@@ -286,7 +272,7 @@ const Library = () => {
               >
                 {umuInstalling ? 'Downloading...' : 'Download umu-launcher'}
               </Button>
-            </UmuNoticeBar>
+            </NoticeBar>
           )}
           {collections.length !== 0 && (
             <>

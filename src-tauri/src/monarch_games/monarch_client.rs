@@ -77,7 +77,7 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             format!("{} {}", launch_command, game.launch_args)
         };
 
-        return run_in_terminal(handle, &full_command, None)
+        return run_in_terminal(handle, &full_command, None, None)
             .await
             .with_context(|| "monarch_client::launch_game() -> ");
     }
@@ -122,11 +122,11 @@ pub async fn download_game(
     let new_game: MonarchGame = match platform {
         "steam" => {
             // Check if steamcmd is installed
-            if !steam_client::is_installed() {
+            if !steam_client::steamcmd_is_installed() {
                 warn!("monarch_client::download_game() SteamCMD not found!");
                 info!("Attempting to download and install SteamCMD...");
 
-                steam_client::download_and_install(handle)
+                steam_client::install_steamcmd(handle)
                     .await
                     .with_context(|| "monarch_client::download_game() -> ")?;
             }

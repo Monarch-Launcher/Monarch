@@ -112,7 +112,7 @@ pub async fn umu_run(handle: &AppHandle, game: &mut MonarchGame) -> Result<()> {
 
     info!("Env vars: {:?}", env_vars);
     info!("Launch command: {}", &full_command);
-    run_in_terminal(handle, &full_command, Some(&env_vars))
+    run_in_terminal(handle, &full_command, Some(&env_vars), None)
         .await
         .with_context(|| "monarch_client::launch_game() -> ")
 }

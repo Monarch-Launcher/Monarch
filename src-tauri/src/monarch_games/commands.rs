@@ -380,3 +380,19 @@ pub fn install_umu() -> Result<(), String> {
         return Err(format!("Can only use umu-launcher under Linux!"))
     }
 }
+
+#[tauri::command]
+pub fn steamcmd_is_installed() -> bool {
+    use super::steam_client;
+    steam_client::steamcmd_is_installed()
+}
+
+#[tauri::command]
+pub async fn install_steamcmd(handle: AppHandle) -> Result<(), String> {
+    use super::steam_client;
+    if let Err(e) = steam_client::install_steamcmd(&handle).await {
+        error!("monarch_games::commands::install_steamcmd() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        return Err(String::from("Failed to download SteamCMD!"))
+    }
+    Ok(())
+}
