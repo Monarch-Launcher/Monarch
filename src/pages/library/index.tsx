@@ -9,8 +9,10 @@ import { useLibrary } from '@global/contexts/libraryProvider';
 import { FaFolderOpen, FaFolderPlus, FiRefreshCcw } from '@global/icons';
 import type { MonarchGame } from '@global/types';
 import { useDisclosure } from '@mantine/hooks';
+import { invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
+import { flushSync } from 'react-dom';
 import styled, { css } from 'styled-components';
 
 import AddGameModal from './addGameManually/modal';
@@ -23,6 +25,7 @@ const LibraryContainer = styled.div`
   overflow-y: auto;
   border-radius: 0.5rem;
   margin: 1rem 0;
+  padding: 0 1rem; /* add horizontal gutters */
 `;
 
 const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
@@ -64,6 +67,23 @@ const Sidebar = styled.div`
   gap: 1.5rem;
 `;
 
+const UmuNoticeBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem 0.75rem 1rem;
+  margin: 0 1rem 1rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.35);
+`;
+
+const UmuNoticeText = styled.p`
+  margin: 0;
+  font-size: 0.95rem;
+`;
+
 const StackedButton = styled(Button)`
   height: 3.5rem;
   font-size: 1rem;
@@ -95,6 +115,40 @@ const Library = () => {
   >();
   const { library, loading, error, refreshLibrary, results } = useLibrary();
   const { collections } = useCollections();
+
+  // umu-launcher notification state (Linux only)
+  const [showUmuNotice, setShowUmuNotice] = React.useState(false);
+  const [umuChecking, setUmuChecking] = React.useState(true);
+  const [umuInstalling, setUmuInstalling] = React.useState(false);
+
+  React.useEffect(() => {
+    // Only run under Linux
+    const isLinux = navigator.userAgent.toLowerCase().includes('linux');
+    if (!isLinux) {
+      setUmuChecking(false);
+      return;
+    }
+
+    let cancelled = false;
+    const checkUmu = async () => {
+      try {
+        const installed = await invoke<boolean>('umu_is_installed');
+        if (!cancelled) {
+          setShowUmuNotice(!installed);
+        }
+      } catch (err) {
+        // On error, be non-intrusive: hide the notice and optionally log
+        if (!cancelled) setShowUmuNotice(false);
+      } finally {
+        if (!cancelled) setUmuChecking(false);
+      }
+    };
+    checkUmu();
+    // eslint-disable-next-line consistent-return
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleOpenDialog = React.useCallback(async () => {
     try {
@@ -202,6 +256,38 @@ const Library = () => {
           />
         </Sidebar>
         <LibraryContainer>
+          {showUmuNotice && !umuChecking && (
+            <UmuNoticeBar>
+              <UmuNoticeText>
+                UMU Launcher is not installed. Some features may require it.
+              </UmuNoticeText>
+              <Button
+                type="button"
+                variant="primary"
+                loading={umuInstalling}
+                onClick={async () => {
+                  try {
+                    // Flush state synchronously so the label updates immediately
+                    flushSync(() => setUmuInstalling(true));
+                    // Force a paint before starting installation (more reliable on WebKitGTK)
+                    await new Promise<void>((resolve) =>
+                      { requestAnimationFrame(() => requestAnimationFrame(() => resolve())) },
+                    );
+                    await invoke('install_umu');
+                    setShowUmuNotice(false);
+                  } catch (err) {
+                    await dialog.message(`Failed to install umu-launcher: ${err}`, {
+                      title: 'Error',
+                    });
+                  } finally {
+                    setUmuInstalling(false);
+                  }
+                }}
+              >
+                {umuInstalling ? 'Downloading...' : 'Download umu-launcher'}
+              </Button>
+            </UmuNoticeBar>
+          )}
           {collections.length !== 0 && (
             <>
               {collections.map((collection) => (

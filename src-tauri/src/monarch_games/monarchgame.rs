@@ -16,6 +16,9 @@ pub struct MonarchGame {
     pub launch_args: String,
     pub compatibility: String,
     pub store_page: String,
+
+    #[serde(default)]
+    pub install_dir: String,
 }
 
 impl MonarchGame {
@@ -38,6 +41,7 @@ impl MonarchGame {
             launch_args: String::new(),
             compatibility: String::new(),
             store_page: store_page.to_string(),
+            install_dir: String::new(),
         }
     }
 
@@ -81,6 +85,7 @@ impl MonarchGame {
             launch_args: "".to_string(),
             compatibility: "".to_string(),
             store_page: other.store_page.to_string(),
+            install_dir: "".to_string(),
         }
     }
 }
