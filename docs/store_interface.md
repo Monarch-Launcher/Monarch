@@ -9,8 +9,8 @@ The store interface is a trait that is implemented for each store. It contains t
 
 ```rust
 pub trait StoreInterface {
-    fn search_game(&self, name: &str) -> Result<Vec<Box<dyn GameType>>>;
-    fn download_game(&self, name: &str, platform_id: &str) -> Result<Vec<Box<dyn GameType>>>;
+    fn search_games(&self, name: &str) -> Result<Vec<Box<dyn GameType>>>;
+    fn install_game(&self, name: &str, platform_id: &str) -> Result<Vec<Box<dyn GameType>>>;
     fn uninstall_game(&self, platform_id: &str) -> Result<()>;
     fn update_game(&self, game: &MonarchGame) -> Result<()>;
 }
@@ -22,10 +22,10 @@ about games. Instead the following methods need to be implememted:
 ```rust
 pub trait GameType {
     fn get_name(&self) -> String;
-    fn get_platform(&self) -> String;
+    fn get_platform(&self) -> Box<dyn StoreInterface>;
     fn get_platform_id(&self) -> String;
     fn get_description(&self) -> String;
-    fn get_price(&self) -> String;
+    fn get_price(&self) -> f64;
 }
 ```
 As well as the From/Into Rust trait between the stores `GameType` and `MonarchGame`.
