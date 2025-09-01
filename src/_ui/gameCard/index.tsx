@@ -304,7 +304,7 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
   container: {
     position: 'relative',
     width: '100%',
-    marginTop: '4px',
+    marginTop: '0px',
     fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
     fontSize: '1rem',
     fontWeight: 500,
@@ -320,6 +320,13 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     width: '100%',
     textAlign: 'left' as React.CSSProperties['textAlign'],
     outline: 'none',
+    whiteSpace: 'nowrap' as React.CSSProperties['whiteSpace'],
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    boxSizing: 'border-box' as React.CSSProperties['boxSizing'],
+    height: 40,
+    display: 'flex',
+    alignItems: 'center',
   },
   list: {
     position: 'absolute' as React.CSSProperties['position'],
@@ -393,8 +400,9 @@ function CustomDropdown({ options, value, onChange }: CustomDropdownProps) {
         ref.current &&
         e.target instanceof Node &&
         !ref.current.contains(e.target)
-      )
+      ) {
         setOpen(false);
+      }
     }
     if (open) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -633,6 +641,7 @@ const GameCard = ({
         store_page: storePage,
         compatibility: '',
         launch_args: '',
+        install_dir: '',
       };
 
       await invoke('manual_remove_game', {
@@ -692,11 +701,33 @@ const GameCard = ({
   const [launchCommands, setLaunchCommands] = React.useState<string>(
     gameData.launch_args || '',
   );
+
   const [compatibilityLayer, setCompatibilityLayer] = React.useState<string>(
     gameData.compatibility || '',
   );
-  const [customExecutablePath, setCustomExecutablePath] =
-    React.useState<string>(gameData.executable_path || '');
+  const [customExecutablePath, setCustomExecutablePath] = React.useState<string>(
+    gameData.executable_path || '',
+  );
+  const [availableExecutables, setAvailableExecutables] = React.useState<string[]>([]);
+  const [loadingExecutables, setLoadingExecutables] = React.useState(false);
+  // Fetch available executables when properties modal opens
+  React.useEffect(() => {
+    const fetchExecutables = async () => {
+      if (!propertiesOpen) return;
+      setLoadingExecutables(true);
+      try {
+        const exes = await invoke<string[]>('get_executables', { game: gameData });
+        setAvailableExecutables(exes || []);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch executables:', err);
+        setAvailableExecutables([]);
+      } finally {
+        setLoadingExecutables(false);
+      }
+    };
+    fetchExecutables();
+  }, [propertiesOpen, gameData]);
 
   // Use shared proton versions context
   const {
@@ -714,6 +745,29 @@ const GameCard = ({
     }));
     return [staticOptions[0], ...protonMapped];
   }, [protonOptions]);
+
+  // Build executable options from detected executables
+  const executableOptions = React.useMemo(() => {
+    const seen = new Set<string>(['']);
+    const base: { value: string; label: string }[] = [
+      { value: '', label: '(None)' },
+    ];
+    const withCurrent =
+      customExecutablePath && !seen.has(customExecutablePath)
+        ? [...base, { value: customExecutablePath, label: customExecutablePath }]
+        : base;
+    if (customExecutablePath) seen.add(customExecutablePath);
+    return availableExecutables.reduce<{ value: string; label: string }[]>(
+      (acc, p) => {
+        if (p && !seen.has(p)) {
+          seen.add(p);
+          acc.push({ value: p, label: p });
+        }
+        return acc;
+      },
+      withCurrent,
+    );
+  }, [availableExecutables, customExecutablePath]);
 
   // Update game properties in backend when fields change
   React.useEffect(() => {
@@ -1080,7 +1134,7 @@ const GameCard = ({
             color: '#fff',
           }}
         >
-          <label style={{ color: '#fff', fontWeight: 600 }}>
+          <label htmlFor="launch-commands" style={{ color: '#fff', fontWeight: 600 }}>
             Launch Commands
             <input
               type="text"
@@ -1100,34 +1154,42 @@ const GameCard = ({
                 fontSize: '1rem',
                 fontWeight: 500,
               }}
+              id="launch-commands"
             />
           </label>
-          <label style={{ color: '#fff', fontWeight: 600 }}>
+          <label htmlFor="executable-path" style={{ color: '#fff', fontWeight: 600 }}>
             Executable Path
-            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-              <input
-                type="text"
-                value={customExecutablePath}
-                onChange={(e) => setCustomExecutablePath(e.target.value)}
-                placeholder="Path to executable file"
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) auto',
+                columnGap: 16,
+                marginTop: '6px',
+                alignItems: 'center',
+              }}
+            >
+              <div
                 style={{
-                  flex: 1,
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #333',
-                  background: '#222',
-                  color: '#fff',
-                  fontFamily:
-                    'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
-                  fontSize: '1rem',
-                  fontWeight: 500,
+                  position: 'relative',
+                  minWidth: 0,
                 }}
-              />
+              >
+                <CustomDropdown
+                  options={executableOptions}
+                  value={
+                    executableOptions.find((o) => o.value === customExecutablePath)?.value || ''
+                  }
+                  onChange={async (v) => {
+                    setCustomExecutablePath(v);
+                    await handleSetExecutablePath(v);
+                  }}
+                />
+              </div>
               <button
                 type="button"
                 onClick={handleFilePicker}
                 style={{
-                  padding: '8px 12px',
+                  padding: '0 12px',
                   borderRadius: '4px',
                   border: '1px solid #FA5002',
                   background: '#FA5002',
@@ -1136,6 +1198,12 @@ const GameCard = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
+                  alignSelf: 'center',
+                  whiteSpace: 'nowrap',
+                  marginLeft: 4,
+                  height: 40,
+                  boxSizing: 'border-box',
+
                   fontFamily:
                     'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
                   fontSize: '1rem',
@@ -1147,9 +1215,17 @@ const GameCard = ({
                 Browse
               </button>
             </div>
+            <div style={{ marginTop: 6 }}>
+              {loadingExecutables && (
+                <span style={{ color: '#aaa' }}>Loading executables...</span>
+              )}
+              {!loadingExecutables && executableOptions.length === 0 && (
+                <span style={{ color: '#aaa' }}>No executables found</span>
+              )}
+            </div>
           </label>
-          <label style={{ color: '#fff', fontWeight: 600 }}>
-            Compatibility Layer
+          <div style={{ color: '#fff', fontWeight: 600 }}>
+            <span>Compatibility Layer</span>
             <CustomDropdown
               options={compatibilityOptions}
               value={compatibilityLayer}
@@ -1163,7 +1239,7 @@ const GameCard = ({
             {protonError && (
               <span style={{ color: 'red', marginLeft: 8 }}>{protonError}</span>
             )}
-          </label>
+          </div>
         </div>
       </Modal>
     </CardWrapper>

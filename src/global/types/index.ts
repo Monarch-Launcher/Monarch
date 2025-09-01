@@ -8,6 +8,7 @@ export type MonarchGame = {
   store_page: string;
   compatibility: string;
   launch_args: string;
+  install_dir: string;
 };
 
 export type Result = {

@@ -1,5 +1,5 @@
-use crate::monarch_games::monarchgame::MonarchGame;
-use anyhow::{bail, Result};
+use crate::{monarch_games::monarchgame::MonarchGame, monarch_library::games_library::write_games};
+use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
 
 /// Global state of monarch backend (excluding settings for now)
@@ -21,10 +21,11 @@ impl MonarchState {
 
     /// For setting known library games.
     /// Should probably only be run when refreshing library.
-    pub fn set_library_games(&mut self, games: &[MonarchGame]) {
+    pub fn set_library_games(&mut self, games: &[MonarchGame]) -> Result<()> {
         if self.library_games.is_empty() {
             self.library_games = games.to_vec();
-            return;
+            write_games(&self.library_games).with_context(|| "monarch_state::set_library_games() -> ")?;
+            return Ok(());
         }
 
         // Remove games that are no longer in library
@@ -52,6 +53,8 @@ impl MonarchState {
         }
 
         self.library_games = new_games;
+        write_games(&self.library_games).with_context(|| "monarch_state::set_library_games() -> ")?;
+        Ok(())
     }
 
     /// Update a game.
@@ -61,6 +64,7 @@ impl MonarchState {
         for (i, self_game) in self.library_games.iter_mut().enumerate() {
             if self_game.id == game.id {
                 self.library_games[i] = game.clone();
+                write_games(&self.library_games).with_context(|| "monarch_state::update_game() -> ")?;
                 return Ok(());
             }
         }

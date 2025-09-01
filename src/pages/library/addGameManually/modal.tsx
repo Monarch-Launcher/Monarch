@@ -271,6 +271,7 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
       store_page: '',
       compatibility: '',
       launch_args: '',
+      install_dir: '',
     };
 
     // Add game to frontend library immediately for instant feedback

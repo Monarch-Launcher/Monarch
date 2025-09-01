@@ -8,7 +8,6 @@ use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
@@ -61,7 +60,10 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             }
 
             #[cfg(target_os = "linux")]
-            return execute_compatibility_game(handle, &mut game).await;
+            {
+                use super::linux;
+                return linux::umu::umu_run(handle, &mut game).await;
+            };
         }
 
         // Run without compatibility layer
@@ -69,6 +71,7 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
 
         // Order launch args and command in proper order
         let full_command: String = if game.launch_args.find("%command%").is_some() {
+            warn!("Using Steam %command% style launch arguments!");
             game.launch_args.replace("%command%", &launch_command)
         } else {
             format!("{} {}", launch_command, game.launch_args)
@@ -159,7 +162,7 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
                 if game.platform == platform && game.platform_id == platform_id {
                     monarch_games.remove(i);
                     unsafe {
-                        MONARCH_STATE.set_library_games(&monarch_games);
+                        MONARCH_STATE.set_library_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")?;
 
                         // Replace games with the updated list of library games
                         monarch_games = MONARCH_STATE.get_library_games();
@@ -225,15 +228,14 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     games.append(&mut steam_games);
 
     unsafe {
-        MONARCH_STATE.set_library_games(&games);
+        if let Err(e) = MONARCH_STATE.set_library_games(&games) {
+            error!("monarch_client::refresh_library() -> {}", e.chain().map(|e| e.to_string()).collect::<String>())
+        }
 
         // Replace games with the updated list of library games
         games = MONARCH_STATE.get_library_games();
     }
 
-    if let Err(e) = games_library::write_games(&games) {
-        error!("monarch_client::refresh_library() -> {e}");
-    }
     games
 }
 
@@ -264,40 +266,4 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     }
 
     monarch_games
-}
-
-#[cfg(target_os = "linux")]
-async fn execute_compatibility_game(handle: &AppHandle, game: &mut MonarchGame) -> Result<()> {
-    use super::linux;
-
-    info!("Compatibility layer set: {}", game.compatibility);
-    game.compatibility = game.compatibility.replace(" ", "\\ ");
-
-    let compat_client_install_dir = linux::steam::get_default_location()
-        .with_context(|| "monarch_client::launch_game() -> ")?;
-    let compatdata_dir = compat_client_install_dir.join("steamapps/compatdata");
-
-    let compat_client_install_dir_str = compat_client_install_dir.to_str().unwrap_or("");
-    let compatdata_dir_str = compatdata_dir.to_str().unwrap_or("");
-    let env_vars: HashMap<&str, &str> = HashMap::from([
-        (
-            "STEAM_COMPAT_CLIENT_INSTALL_PATH",
-            compat_client_install_dir_str,
-        ),
-        ("STEAM_COMPAT_DATA_PATH", compatdata_dir_str),
-    ]);
-
-    let launch_command: String = format!("{} run {}", game.compatibility, game.executable_path);
-
-    // Order launch args and command in proper order
-    info!("Launch args: {}", game.launch_args);
-    let full_command: String = if game.launch_args.find("%command%").is_some() {
-        game.launch_args.replace("%command%", &launch_command)
-    } else {
-        format!("{} {}", launch_command, game.launch_args)
-    };
-
-    run_in_terminal(handle, &full_command, Some(env_vars))
-        .await
-        .with_context(|| "monarch_client::launch_game() -> ")
 }

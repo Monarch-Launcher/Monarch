@@ -34,7 +34,7 @@ static APPSTATE: Lazy<Arc<AsyncMutex<Option<AppState>>>> = Lazy::new(|| Arc::new
 pub async fn run_in_terminal(
     handle: &AppHandle,
     command: &str,
-    env_vars: Option<HashMap<&str, &str>>,
+    env_vars: Option<&HashMap<&str, &str>>,
 ) -> Result<()> {
     info!("Starting Monarch terminal...");
 
