@@ -26,6 +26,7 @@ pub trait GameType {
     fn get_platform_id(&self) -> String;
     fn get_description(&self) -> String;
     fn get_price(&self) -> f64;
+    fn launch(&self) -> Result<()>;
 }
 ```
 As well as the From/Into Rust trait between the stores `GameType` and `MonarchGame`.

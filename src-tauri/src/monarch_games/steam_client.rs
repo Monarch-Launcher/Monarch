@@ -7,6 +7,8 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tokio::task;
 use tracing::{error, info, warn};
+use super::stores::StoreType;
+use super::games::GameType;
 
 use super::monarchgame::{MonarchGame, MonarchWebGame};
 use crate::monarch_utils::monarch_credentials::get_password;
@@ -29,6 +31,32 @@ use super::linux::steam;
 *
 * Basically just some fancy OS specific behaviour gets abstracted away for easier readabilty.
 */
+
+pub struct SteamClient {}
+
+impl SteamClient {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl StoreType for SteamClient {
+    fn search_games(&self, name: &str) -> Result<Vec<Box<dyn GameType>>> {
+        unimplemented!()
+    }
+
+    fn install_game(&self, name: &str, platform_id: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn uninstall_game(&self, platform_id: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn update_game(&self, game: &MonarchGame) -> Result<()> {
+        unimplemented!()
+    }
+}
 
 /// Returns if SteamCMD is installed on system or not.
 pub fn is_installed() -> bool {

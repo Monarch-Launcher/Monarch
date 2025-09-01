@@ -11,6 +11,36 @@ use anyhow::{bail, Context, Result};
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
+use super::stores::StoreType;
+use super::games::GameType;
+
+pub struct MonarchClient {
+
+}
+
+impl MonarchClient {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl StoreType for MonarchClient {
+    fn search_games(&self, name: &str) -> Result<Vec<Box<dyn GameType>>> {
+        unimplemented!()
+    }
+
+    fn install_game(&self, name: &str, platform_id: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn uninstall_game(&self, platform_id: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn update_game(&self, game: &MonarchGame) -> Result<()> {
+        unimplemented!()
+    }
+}
 
 /// Generates the default path where Monarch wants to store games.
 pub fn generate_default_folder() -> Result<PathBuf> {

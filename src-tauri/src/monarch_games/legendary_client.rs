@@ -7,8 +7,8 @@ use super::stores::StoreType;
 pub struct LegendaryClient {}
 
 impl LegendaryClient {
-    pub fn new() -> LegendaryClient {
-        LegendaryClient {}
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
