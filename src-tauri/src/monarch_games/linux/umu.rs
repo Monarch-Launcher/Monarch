@@ -37,7 +37,7 @@ pub fn umu_is_installed() -> bool {
     if !umu_path.exists() {
         return false
     }
-    umu_path.join("umu-run").exists()
+    get_umu_exe().exists()
 }
 
 /// Installs the umu-launcher by downloading the binary to $MONARCH_HOME/umu/umu-run
