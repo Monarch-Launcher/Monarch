@@ -1,7 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::error;
+use anyhow::Result;
 
+use super::games::GameType;
+use super::stores::StoreType;
+use crate::monarch_games::legendary_client::LegendaryClient;
+use crate::monarch_games::monarch_client::MonarchClient;
+use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::path_exists;
 
@@ -89,6 +95,51 @@ impl MonarchGame {
         }
     }
 }
+
+impl GameType for MonarchGame {
+    fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn get_platform(&self) -> Box<dyn StoreType> {
+        match self.platform.as_str() {
+            "monarch" => {
+                Box::new(MonarchClient::new())
+            }
+            "steam" => {
+                Box::new(SteamClient::new())
+            }
+            "epic" => {
+                Box::new(LegendaryClient::new())
+            }
+            _ => {
+                todo!()
+            }
+        }
+    }
+
+    fn get_platform_id(&self) -> String {
+        self.platform_id.clone()
+    }
+
+    fn get_description(&self) -> String {
+        unimplemented!()
+    }
+
+    fn get_price(&self) -> f64 {
+        0.0
+    }
+
+    fn launch(&self) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn into_monarchgame(&self) -> MonarchGame {
+        self.clone()
+    }
+}
+
+
 
 impl PartialEq for MonarchGame {
     fn eq(&self, other: &Self) -> bool {

@@ -25,8 +25,27 @@ impl MonarchClient {
 }
 
 impl StoreType for MonarchClient {
-    fn search_games(&self, name: &str) -> Result<Vec<Box<dyn GameType>>> {
-        unimplemented!()
+    fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
+        let search_term: String = format!(
+            "https://monarch-launcher.com/api/games?search={}",
+            name
+        );
+        let response = reqwest::blocking::get(search_term).unwrap();
+        let resp_content = response.text().unwrap();
+        let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
+
+        let mut monarch_games: Vec<Box<dyn GameType>> = Vec::new();
+        for game in web_games {
+            let thumbnail_path = String::from(
+                generate_cache_image_path(&game.name.clone())
+                    .to_str()
+                    .unwrap(),
+            );
+            let mut new_monarchgame = MonarchGame::from(&game);
+            new_monarchgame.thumbnail_path = thumbnail_path;
+            monarch_games.push(Box::new(new_monarchgame));
+        }
+        monarch_games
     }
 
     fn install_game(&self, name: &str, platform_id: &str) -> Result<()> {
@@ -37,7 +56,7 @@ impl StoreType for MonarchClient {
         unimplemented!()
     }
 
-    fn update_game(&self, game: &MonarchGame) -> Result<()> {
+    fn update_game(&self, platform_id: &str) -> Result<()> {
         unimplemented!()
     }
 }
@@ -267,33 +286,4 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     }
 
     games
-}
-
-/// Search for the name of a game and return the results.
-/// TODO: Add support for things like filters in the future.
-/// TODO: Remove unwraps after testing
-pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
-    let search_term: String = format!(
-        "https://monarch-launcher.com/api/games?search={}",
-        search_term
-    );
-    let response = reqwest::get(search_term).await.unwrap();
-    let resp_content = response.text().await.unwrap();
-
-    let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
-
-    let mut monarch_games: Vec<MonarchGame> = Vec::new();
-    for game in web_games {
-        let thumbnail_path = String::from(
-            generate_cache_image_path(&game.name.clone())
-                .to_str()
-                .unwrap(),
-        );
-        let mut new_monarchgame = MonarchGame::from(&game);
-        new_monarchgame.thumbnail_path = thumbnail_path;
-        new_monarchgame.download_thumbnail(game.cover_url).await; // Do not await, this allows image to download concurrently as other monarchgames are parsed
-        monarch_games.push(new_monarchgame);
-    }
-
-    monarch_games
 }

@@ -41,7 +41,7 @@ impl SteamClient {
 }
 
 impl StoreType for SteamClient {
-    fn search_games(&self, name: &str) -> Result<Vec<Box<dyn GameType>>> {
+    fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
         unimplemented!()
     }
 
@@ -53,7 +53,7 @@ impl StoreType for SteamClient {
         unimplemented!()
     }
 
-    fn update_game(&self, game: &MonarchGame) -> Result<()> {
+    fn update_game(&self, platform_id: &str) -> Result<()> {
         unimplemented!()
     }
 }

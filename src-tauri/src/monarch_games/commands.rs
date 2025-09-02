@@ -1,5 +1,5 @@
 use super::monarchgame::MonarchGame;
-use super::{monarch_client, steam_client};
+use super::monarch_client;
 use anyhow::Result;
 use rand::rng;
 use rand::seq::SliceRandom;
@@ -8,6 +8,9 @@ use tauri::AppHandle;
 use tracing::{error, info};
 use std::path::PathBuf;
 
+use super::monarch_client::MonarchClient;
+use super::steam_client::SteamClient;
+use super::stores::StoreType;
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
@@ -67,11 +70,16 @@ pub async fn get_home_recomendations() -> Result<Value, String> {
 #[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
 pub async fn search_games(name: String, useMonarch: bool) -> Vec<MonarchGame> {
-    if useMonarch {
-        monarch_client::find_games(&name).await
+    let client: Box<dyn StoreType> = if useMonarch {
+        Box::new(MonarchClient::new())
     } else {
-        steam_client::find_game(&name).await
-    }
+        Box::new(SteamClient::new())
+    };
+
+    client.search_games(&name)
+          .into_iter()
+          .map(|g| g.into_monarchgame())
+          .collect::<Vec<MonarchGame>>()
 }
 
 #[tauri::command]
