@@ -6,4 +6,6 @@ pub trait StoreType {
     fn install_game(&self, name: &str, platform_id: &str) -> Result<()>;
     fn uninstall_game(&self, platform_id: &str) -> Result<()>;
     fn update_game(&self, platform_id: &str) -> Result<()>;
+    fn game_is_installed(&self, platform_id: &str) -> bool;
+    fn platform_enabled(&self) -> bool;
 }

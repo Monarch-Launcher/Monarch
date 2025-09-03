@@ -56,6 +56,14 @@ impl StoreType for SteamClient {
     fn update_game(&self, platform_id: &str) -> Result<()> {
         unimplemented!()
     }
+
+    fn game_is_installed(&self, platform_id: &str) -> bool {
+        unimplemented!()
+    }
+
+    fn platform_enabled(&self) -> bool {
+        unimplemented!()
+    }
 }
 
 /// Returns if SteamCMD is installed on system or not.

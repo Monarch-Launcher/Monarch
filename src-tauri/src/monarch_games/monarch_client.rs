@@ -49,15 +49,28 @@ impl StoreType for MonarchClient {
     }
 
     fn install_game(&self, name: &str, platform_id: &str) -> Result<()> {
-        unimplemented!()
+        error!("monarch_client::install_game() Not implemented!");
+        Ok(())
     }
 
     fn uninstall_game(&self, platform_id: &str) -> Result<()> {
-        unimplemented!()
+        error!("monarch_client::uninstall_game() Not implemented!");
+        Ok(())
     }
 
     fn update_game(&self, platform_id: &str) -> Result<()> {
-        unimplemented!()
+        error!("monarch_client::update_game() Not implemented!");
+        Ok(())
+    }
+
+    fn game_is_installed(&self, platform_id: &str) -> bool {
+        error!("monarch_client::game_is_installed() Not implemented!");
+        false
+    }
+
+    fn platform_enabled(&self) -> bool {
+        error!("monarch_client::platform_enabled() Not implemented!");
+        false
     }
 }
 
