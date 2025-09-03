@@ -242,6 +242,8 @@ const SettingsPage = () => {
   const [gameFolderFeedback, setGameFolderFeedback] = React.useState<string>('');
   const [steamcmdInstalled, setSteamcmdInstalled] = React.useState<boolean | null>(null);
   const [steamcmdInstalling, setSteamcmdInstalling] = React.useState<boolean>(false);
+  const [cacheLoading, setCacheLoading] = React.useState<boolean>(false);
+  const [cacheSize, setCacheSize] = React.useState<string | null>(null);
 
   const onSubmit = React.useCallback(
     async (values: FormValues) => {
@@ -349,11 +351,51 @@ const SettingsPage = () => {
     }
   }, []);
 
+  const formatBytes = React.useCallback((bytes: number) => {
+    if (!Number.isFinite(bytes) || bytes < 0) return 'Unavailable';
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const value = bytes / Math.pow(k, i);
+    return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
+  }, []);
+
+  const fetchCacheSize = React.useCallback(async () => {
+    try {
+      setCacheLoading(true);
+      const size: number = await invoke('get_cache_size');
+      setCacheSize(formatBytes(size));
+    } catch (_e) {
+      setCacheSize(null);
+    } finally {
+      setCacheLoading(false);
+    }
+  }, [formatBytes]);
+
+  const handleClearCache = React.useCallback(async () => {
+    try {
+      setCacheLoading(true);
+      await invoke('clear_cached_images');
+      await fetchCacheSize();
+    } catch (_e) {
+      // ignore, fetch will set Unavailable if needed
+    } finally {
+      setCacheLoading(false);
+    }
+  }, [fetchCacheSize]);
+
   React.useEffect(() => {
     if (activeTab === 'steam') {
       checkSteamcmd();
     }
   }, [activeTab, checkSteamcmd]);
+
+  React.useEffect(() => {
+    if (activeTab === 'monarch') {
+      fetchCacheSize();
+    }
+  }, [activeTab, fetchCacheSize]);
 
   const handleInstallSteamcmd = React.useCallback(async () => {
     try {
@@ -450,9 +492,23 @@ const SettingsPage = () => {
                     </FormContainer>
                   </form>
                 </div>
+                <div style={{ marginTop: '2rem' }}>
+                  <SectionTitle>Storage and Cache</SectionTitle>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                    <p
+                      style={{ color: '#fff', margin: 0, fontSize: '1rem', fontWeight: 400 }}
+                    >
+                      Cached images: {cacheLoading ? 'Calculating…' : cacheSize ?? 'Unavailable'}
+                    </p>
+                    <AnimatedButton type="button" variant="primary" onClick={handleClearCache} disabled={cacheLoading}>
+                      Clear cache
+                    </AnimatedButton>
+                  </div>
+                </div>
               </Card>
             )}
 
+            {/* Storage and Cache Section */}
             {activeTab === 'steam' && steamcmdInstalled === false && (
               <NoticeBar>
                 <NoticeText>

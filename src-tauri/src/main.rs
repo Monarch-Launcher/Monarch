@@ -20,7 +20,7 @@ use monarch_library::commands::{
 use monarch_utils::commands::{
     async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, delete_password,
     delete_secret, get_settings, open_logs, open_terminal, revert_settings, set_password,
-    set_secret, set_settings, zoom_window,
+    set_secret, set_settings, zoom_window, get_cache_size
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
@@ -105,6 +105,7 @@ fn main() {
             umu_is_installed,
             install_umu,
             get_executables,
+            get_cache_size,
         ])
         .setup(|app| {
             #[cfg(desktop)]

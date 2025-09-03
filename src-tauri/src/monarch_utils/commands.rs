@@ -3,6 +3,8 @@ use std::{path::PathBuf, process::Command};
 use tauri::{AppHandle, WebviewWindow};
 use tracing::error;
 
+use crate::monarch_utils::monarch_fs;
+
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
@@ -334,3 +336,16 @@ pub fn zoom_window(window: WebviewWindow, scale_factor: f64) {
         }
     });
 }
+
+#[tauri::command]
+pub fn get_cache_size() -> Result<u64, String> {
+    let cache_dir = monarch_fs::get_resources_cache();
+    match fs_extra::dir::get_size(&cache_dir) {
+        Ok(size) => Ok(size as u64),
+        Err(e) => {
+            error!("monarch_utils::commands::get_cache_size() Failed to read size of: {} | Err: {}", cache_dir.display(), e);
+            Err(String::from("Failed to read size of cache directory."))
+        }
+    }
+}
+
