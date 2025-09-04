@@ -23,7 +23,7 @@ use crate::monarch_utils::monarch_winreg::is_installed;
 */
 
 /// Installs SteamCMD for user in .monarch
-pub fn install_steamcmd(handle: &AppHandle) -> Result<()> {
+pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
     let steamcmd_path: PathBuf = get_steamcmd_dir();
 
     // Verify that steamcmd path has to be created
@@ -122,7 +122,7 @@ pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()>
     path.push("steamcmd.exe");
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    run_in_terminal(handle, &format!("{} {}", path.display(), args_string), None)
+    run_in_terminal(handle, &format!("{} {}", path.display(), args_string), None, None)
         .await
         .with_context(|| "windows::steam::steamcmd_command() -> ")?;
 

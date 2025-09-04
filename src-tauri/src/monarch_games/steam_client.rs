@@ -9,10 +9,9 @@ use tokio::task;
 use tracing::{error, info, warn};
 
 use super::monarchgame::{MonarchGame, MonarchWebGame};
-use crate::monarch_games::linux::steam::steamcmd_command;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
-    generate_cache_image_path, generate_library_image_path, get_monarch_home, path_exists,
+    generate_cache_image_path, generate_library_image_path, get_monarch_home,
 };
 use crate::monarch_utils::monarch_settings::{get_settings_state, LauncherSettings};
 
@@ -39,7 +38,7 @@ pub fn steamcmd_is_installed() -> bool {
 
 /// Downloads and installs SteamCMD on users computer.
 pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
-    steam::install_steamcmd()
+    steam::install_steamcmd(handle)
         .await
         .with_context(|| "steam_client::install_steamcmd() -> ")?;
 
@@ -67,7 +66,7 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
         std::os::unix::fs::symlink(&steamservice_src, &steamservice_dest).with_context(|| format!("steam_client::install_steamcmd() Failed to symlink: {} -> {} | Err: ", steamservice_src.display(), steamservice_dest.display()))?;
     }
 
-    steamcmd_command(handle, vec!["-globaluser"]).await.with_context(|| "steam_client::install_steamcmd() -> ")?;
+    steam::steamcmd_command(handle, vec!["-globaluser"]).await.with_context(|| "steam_client::install_steamcmd() -> ")?;
 
     Ok(())
 }
