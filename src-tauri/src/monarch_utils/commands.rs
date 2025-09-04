@@ -16,44 +16,6 @@ use super::monarch_terminal::{
     close_terminal_window, create_terminal_window, read_from_pty, write_to_pty,
 };
 
-
-
-#[cfg(target_os = "windows")]
-#[tauri::command]
-/// Use OS default option to open log directory
-pub async fn open_logs() -> Result<(), String> {
-    let path: PathBuf = get_log_dir();
-    if let Err(e) = Command::new("PowerShell").arg("start").arg(path).spawn() {
-        error!("monarch_utils::commands::open_logs() Error opening logs! | Err: {e}");
-        return Err(String::from("Error opening logs!"));
-    }
-    Ok(())
-}
-
-#[cfg(target_os = "macos")]
-#[tauri::command]
-/// Use OS default option to open log directory
-pub async fn open_logs() -> Result<(), String> {
-    let path: PathBuf = get_log_dir();
-    if let Err(e) = Command::new("open").arg(path).spawn() {
-        error!("monarch_utils::commands::open_logs() Error opening logs! | Err: {e}");
-        return Err(String::from("Error opening logs!"));
-    }
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-#[tauri::command]
-/// Use OS default option to open log directory
-pub async fn open_logs() -> Result<(), String> {
-    let path: PathBuf = get_log_dir();
-    if let Err(e) = Command::new("xdg-open").arg(path).spawn() {
-        error!("monarch_utils::commands::open_logs() Error opening logs! | Err: {e}");
-        return Err(String::from("Error opening logs!"));
-    }
-    Ok(())
-}
-
 /*
 *   Settings related commands
 *
@@ -62,6 +24,11 @@ pub async fn open_logs() -> Result<(), String> {
 *   Settings are wrapped in Result<> type to also tell frontend the success or failure of the command.
 *   tauri::commands don't return the actual error message. Instead they write an easier error to understand for the user.
 */
+
+#[tauri::command]
+pub fn get_log_path() -> PathBuf {
+    get_log_dir()
+}
 
 #[tauri::command]
 /// Returns settings read from settings.toml
@@ -343,9 +310,12 @@ pub fn get_cache_size() -> Result<u64, String> {
     match fs_extra::dir::get_size(&cache_dir) {
         Ok(size) => Ok(size as u64),
         Err(e) => {
-            error!("monarch_utils::commands::get_cache_size() Failed to read size of: {} | Err: {}", cache_dir.display(), e);
+            error!(
+                "monarch_utils::commands::get_cache_size() Failed to read size of: {} | Err: {}",
+                cache_dir.display(),
+                e
+            );
             Err(String::from("Failed to read size of cache directory."))
         }
     }
 }
-

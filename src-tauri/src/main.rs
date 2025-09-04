@@ -10,17 +10,18 @@ use std::process::exit;
 
 use futures::executor;
 use monarch_games::commands::{
-    download_game, get_home_recomendations, get_library, launch_game, move_game_to_monarch,
-    open_store, proton_versions, refresh_library, remove_game, search_games, update_game,
-    update_game_properties, manual_add_game, manual_remove_game, umu_is_installed, install_umu, get_executables
+    download_game, get_executables, get_home_recomendations, get_library, install_umu, launch_game,
+    manual_add_game, manual_remove_game, move_game_to_monarch, open_store, proton_versions,
+    refresh_library, remove_game, search_games, umu_is_installed, update_game,
+    update_game_properties,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
 };
 use monarch_utils::commands::{
     async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, delete_password,
-    delete_secret, get_settings, open_logs, open_terminal, revert_settings, set_password,
-    set_secret, set_settings, zoom_window, get_cache_size
+    delete_secret, get_cache_size, get_log_path, get_settings, open_terminal, revert_settings,
+    set_password, set_secret, set_settings, zoom_window,
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
 use monarch_utils::monarch_logger::init_logger;
@@ -45,7 +46,9 @@ fn init() {
 
     // Set initial monarch state
     unsafe {
-        if let Err(e) = MONARCH_STATE.set_library_games(&crate::monarch_games::monarch_client::get_library()) {
+        if let Err(e) =
+            MONARCH_STATE.set_library_games(&crate::monarch_games::monarch_client::get_library())
+        {
             panic!("init() Failed to set library games in state! | Err: {e}")
         }
     }
@@ -66,6 +69,7 @@ fn main() {
 
     // Build Monarch Tauri app
     let monarch = tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -81,7 +85,6 @@ fn main() {
             update_collection,
             delete_collection,
             get_collections,
-            open_logs,
             get_settings,
             set_settings,
             revert_settings,
@@ -106,6 +109,7 @@ fn main() {
             install_umu,
             get_executables,
             get_cache_size,
+            get_log_path,
         ])
         .setup(|app| {
             #[cfg(desktop)]

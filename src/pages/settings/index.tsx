@@ -6,10 +6,12 @@ import { useSettings } from '@global/contexts/settingsProvider';
 import { Settings } from '@global/types';
 import { Input, Switch } from '@mantine/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
+import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { FaFolderOpen, FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
 import styled from 'styled-components';
+import { openPath } from '@tauri-apps/plugin-opener';
 
 const SectionTitle = styled.h3`
   color: ${({ theme }) => theme.colors.primary};
@@ -385,6 +387,18 @@ const SettingsPage = () => {
     }
   }, [fetchCacheSize]);
 
+  const handleOpenLogs = React.useCallback(async () => {
+    try {
+      const logPath: string = await invoke('get_log_path');
+      if (logPath) {
+        console.log(logPath)
+        await openPath(logPath);
+      }
+    } catch (e) {
+      console.error('Failed to open logs:', e);
+    }
+  }, []);
+
   React.useEffect(() => {
     if (activeTab === 'steam') {
       checkSteamcmd();
@@ -502,6 +516,14 @@ const SettingsPage = () => {
                     </p>
                     <AnimatedButton type="button" variant="primary" onClick={handleClearCache} disabled={cacheLoading}>
                       Clear cache
+                    </AnimatedButton>
+                  </div>
+                </div>
+                <div style={{ marginTop: '2rem' }}>
+                  <SectionTitle>Logs</SectionTitle>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <AnimatedButton type="button" variant="primary" onClick={handleOpenLogs}>
+                      Open logs
                     </AnimatedButton>
                   </div>
                 </div>
