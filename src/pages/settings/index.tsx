@@ -6,7 +6,6 @@ import { useSettings } from '@global/contexts/settingsProvider';
 import { Settings } from '@global/types';
 import { Input, Switch } from '@mantine/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
-import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { FaFolderOpen, FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
