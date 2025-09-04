@@ -10,7 +10,6 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { FaFolderOpen, FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
 import styled from 'styled-components';
-import { openPath } from '@tauri-apps/plugin-opener';
 
 const SectionTitle = styled.h3`
   color: ${({ theme }) => theme.colors.primary};
@@ -388,11 +387,7 @@ const SettingsPage = () => {
 
   const handleOpenLogs = React.useCallback(async () => {
     try {
-      const logPath: string = await invoke('get_log_path');
-      if (logPath) {
-        console.log(logPath)
-        await openPath(logPath);
-      }
+      await invoke('open_logs');
     } catch (e) {
       console.error('Failed to open logs:', e);
     }

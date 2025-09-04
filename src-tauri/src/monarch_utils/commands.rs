@@ -1,7 +1,8 @@
 use core::result::Result;
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 use tauri::{AppHandle, WebviewWindow};
 use tracing::error;
+use tauri_plugin_opener::OpenerExt;
 
 use crate::monarch_utils::monarch_fs;
 
@@ -26,8 +27,21 @@ use super::monarch_terminal::{
 */
 
 #[tauri::command]
-pub fn get_log_path() -> PathBuf {
-    get_log_dir()
+pub fn open_logs(handle: AppHandle) -> Result<(), String> {
+    let log_path: PathBuf = get_log_dir();
+    match log_path.to_str() {
+        Some(path) => {
+            if let Err(e) = handle.opener().open_path(path, None::<&str>) {
+                error!("monarch_utils::commands::open_logs() Failed to open: {} | Err: {}", path, e);
+                return Err(String::from("Failed to open logs in file manager."))
+            }
+        }
+        None => {
+            error!("monarch_utils::commands::open_logs() {} returned None when running .to_str()", log_path.display());
+            return Err(String::from("Failed to get log path."))
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
