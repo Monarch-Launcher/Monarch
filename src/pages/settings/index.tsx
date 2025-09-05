@@ -104,7 +104,7 @@ const Card = styled.div`
 
 // NoticeBar and NoticeText are imported from '@_ui/noticeBar'
 
-const AnimatedButton = styled(StyledButton)<{ $danger?: boolean }>`
+const AnimatedButton = styled(StyledButton) <{ $danger?: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -525,159 +525,163 @@ const SettingsPage = () => {
             )}
 
             {/* Storage and Cache Section */}
-            {activeTab === 'steam' && steamcmdInstalled === false && (
-              <NoticeBar>
-                <NoticeText>
-                  SteamCMD is not installed. Some features may require it.
-                </NoticeText>
-                <AnimatedButton
-                  type="button"
-                  variant="primary"
-                  onClick={handleInstallSteamcmd}
-                  disabled={steamcmdInstalling}
-                >
-                  {steamcmdInstalling ? 'Downloading...' : 'Download SteamCMD'}
-                </AnimatedButton>
-              </NoticeBar>
-            )}
+            {
+              activeTab === 'steam' && steamcmdInstalled === false && (
+                <NoticeBar>
+                  <NoticeText>
+                    SteamCMD is not installed. Some features may require it.
+                  </NoticeText>
+                  <AnimatedButton
+                    type="button"
+                    variant="primary"
+                    onClick={handleInstallSteamcmd}
+                    disabled={steamcmdInstalling}
+                  >
+                    {steamcmdInstalling ? 'Downloading...' : 'Download SteamCMD'}
+                  </AnimatedButton>
+                </NoticeBar>
+              )
+            }
 
-            {activeTab === 'steam' && (
-              <Card>
-                <SectionTitle>Steam</SectionTitle>
-                <AnimatedSwitch
-                  checked={settings.steam.manage}
-                  onChange={toggleSteam}
-                  size="md"
-                  label="Allow Monarch to manage Steam games"
-                  labelPosition="left"
-                />
-                {/* Info paragraph about Steam login */}
-                <p
-                  style={{
-                    color: '#fff',
-                    margin: '1rem 0 0.5rem 0',
-                    fontSize: '1.05rem',
-                    fontWeight: 400,
-                  }}
-                >
-                  We recommend only filling in username to begin with,
-                  as you&apos;ll then be prompted by SteamCMD to enter a password on the first run.
-                  After that SteamCMD should remember you.
-                </p>
-                <a
-                  href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#fa5002', textDecoration: 'underline', fontWeight: 600 }}
-                >
-                  How Monarch handles user authentication
-                </a>
-                <form onSubmit={handleSubmit(onSubmit)}>
-                  <FormContainer>
-                    <Input
-                      placeholder="Steam username"
-                      variant="filled"
-                      icon={<FaUser />}
-                      radius="md"
-                      {...register('username')}
-                    />
-                    <Input
-                      placeholder="Steam password"
-                      variant="filled"
-                      type="password"
-                      icon={<FaLock />}
-                      radius="md"
-                      {...register('password')}
-                    />
-                    <ButtonContainer>
-                      <AnimatedButton type="submit" variant="primary">
-                        <FaSave /> Save
-                      </AnimatedButton>
-                    </ButtonContainer>
-                    <ButtonContainer>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          width: '100%',
-                        }}
-                      >
-                        <span style={{ color: '#fff', fontWeight: 500 }}>
-                          Steam login: {settings.steam.username ? settings.steam.username : 'no login'}
-                        </span>
-                        <AnimatedButton
-                          type="button"
-                          variant="primary"
-                          onClick={handleDelete}
-                          $danger
-                        >
-                          <FaTrash /> Delete user
+            {
+              activeTab === 'steam' && (
+                <Card>
+                  <SectionTitle>Steam</SectionTitle>
+                  <AnimatedSwitch
+                    checked={settings.steam.manage}
+                    onChange={toggleSteam}
+                    size="md"
+                    label="Allow Monarch to manage Steam games"
+                    labelPosition="left"
+                  />
+                  {/* Info paragraph about Steam login */}
+                  <p
+                    style={{
+                      color: '#fff',
+                      margin: '1rem 0 0.5rem 0',
+                      fontSize: '1.05rem',
+                      fontWeight: 400,
+                    }}
+                  >
+                    We recommend only filling in username to begin with,
+                    as you&apos;ll then be prompted by SteamCMD to enter a password on the first run.
+                    After that SteamCMD should remember you.
+                  </p>
+                  <a
+                    href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#fa5002', textDecoration: 'underline', fontWeight: 600 }}
+                  >
+                    How Monarch handles user authentication
+                  </a>
+                  <form onSubmit={handleSubmit(onSubmit)}>
+                    <FormContainer>
+                      <Input
+                        placeholder="Steam username"
+                        variant="filled"
+                        icon={<FaUser />}
+                        radius="md"
+                        {...register('username')}
+                      />
+                      <Input
+                        placeholder="Steam password"
+                        variant="filled"
+                        type="password"
+                        icon={<FaLock />}
+                        radius="md"
+                        {...register('password')}
+                      />
+                      <ButtonContainer>
+                        <AnimatedButton type="submit" variant="primary">
+                          <FaSave /> Save
                         </AnimatedButton>
-                      </div>
-                    </ButtonContainer>
-                    <Feedback>{feedback}</Feedback>
-                  </FormContainer>
-                </form>
-                <form onSubmit={handleSubmit(onSubmitSecret)}>
-                  <FormContainer>
-                    {/* Instructional text and tutorial link for shared secret */}
-                    <div style={{ color: '#fff', marginBottom: '0.5rem', fontWeight: 500 }}>
-                      Insert your Steam shared secret, if using a 3rd party 2FA. (Advanced) <br />
-                      <a
-                        href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#fa5002', textDecoration: 'underline', fontWeight: 600 }}
-                      >
-                        How to set up your Steam shared secret (guide)
-                      </a>
-                    </div>
-                    <Input
-                      placeholder="Steam shared secret"
-                      variant="filled"
-                      type="password"
-                      icon={<FaLock />}
-                      radius="md"
-                      {...register('secret')}
-                    />
-                    <ButtonContainer>
-                      <AnimatedButton type="submit" variant="primary">
-                        <FaSave /> Save
-                      </AnimatedButton>
-                    </ButtonContainer>
-                    <ButtonContainer>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          width: '100%',
-                        }}
-                      >
-                        <span style={{ color: '#fff', fontWeight: 500 }}>
-                          {settings.steam.twofa ? 'Secret set' : 'Secret not set'}
-                        </span>
-                        <AnimatedButton
-                          type="button"
-                          variant="primary"
-                          onClick={handleDeleteSecret}
-                          $danger
+                      </ButtonContainer>
+                      <ButtonContainer>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            width: '100%',
+                          }}
                         >
-                          <FaTrash /> Delete secret
-                        </AnimatedButton>
+                          <span style={{ color: '#fff', fontWeight: 500 }}>
+                            Steam login: {settings.steam.username ? settings.steam.username : 'no login'}
+                          </span>
+                          <AnimatedButton
+                            type="button"
+                            variant="primary"
+                            onClick={handleDelete}
+                            $danger
+                          >
+                            <FaTrash /> Delete user
+                          </AnimatedButton>
+                        </div>
+                      </ButtonContainer>
+                      <Feedback>{feedback}</Feedback>
+                    </FormContainer>
+                  </form>
+                  <form onSubmit={handleSubmit(onSubmitSecret)}>
+                    <FormContainer>
+                      {/* Instructional text and tutorial link for shared secret */}
+                      <div style={{ color: '#fff', marginBottom: '0.5rem', fontWeight: 500 }}>
+                        Insert your Steam shared secret, if using a 3rd party 2FA. (Advanced) <br />
+                        <a
+                          href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: '#fa5002', textDecoration: 'underline', fontWeight: 600 }}
+                        >
+                          How to set up your Steam shared secret (guide)
+                        </a>
                       </div>
-                    </ButtonContainer>
-                    <Feedback>{secretFeedback}</Feedback>
-                  </FormContainer>
-                </form>
-                <Feedback>{deleteFeedback}</Feedback>
-              </Card>
-            )}
-          </ContentArea>
-        </SettingsWrapper>
-      </CenteredContainer>
-    </Page>
+                      <Input
+                        placeholder="Steam shared secret"
+                        variant="filled"
+                        type="password"
+                        icon={<FaLock />}
+                        radius="md"
+                        {...register('secret')}
+                      />
+                      <ButtonContainer>
+                        <AnimatedButton type="submit" variant="primary">
+                          <FaSave /> Save
+                        </AnimatedButton>
+                      </ButtonContainer>
+                      <ButtonContainer>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            width: '100%',
+                          }}
+                        >
+                          <span style={{ color: '#fff', fontWeight: 500 }}>
+                            {settings.steam.twofa ? 'Secret set' : 'Secret not set'}
+                          </span>
+                          <AnimatedButton
+                            type="button"
+                            variant="primary"
+                            onClick={handleDeleteSecret}
+                            $danger
+                          >
+                            <FaTrash /> Delete secret
+                          </AnimatedButton>
+                        </div>
+                      </ButtonContainer>
+                      <Feedback>{secretFeedback}</Feedback>
+                    </FormContainer>
+                  </form>
+                  <Feedback>{deleteFeedback}</Feedback>
+                </Card>
+              )
+            }
+          </ContentArea >
+        </SettingsWrapper >
+      </CenteredContainer >
+    </Page >
   );
 };
 
