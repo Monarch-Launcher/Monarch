@@ -24,11 +24,12 @@ const CardWrapper = styled.div`
   margin: 0.5rem;
 `;
 
-const CardContainer = styled.div`
+const CardContainer = styled.div<{ $isFallback?: boolean }>`
   position: relative;
   width: 100%;
   height: 20rem;
-  background-color: ${({ theme }) => theme.colors.secondary};
+  background-color: ${({ theme, $isFallback }) =>
+    $isFallback ? 'transparent' : theme.colors.secondary};
   border-radius: 0.5rem;
   overflow: hidden; /* Ensure the image doesn't overflow the card */
   color: #fff;
@@ -509,6 +510,8 @@ type GameCardProps = {
   isLibrary?: boolean;
   cardWidth?: string;
   hideDownload?: boolean;
+  // When this value changes, the component should retry loading the thumbnail
+  reloadKey?: number;
 };
 
 const GameCard = ({
@@ -523,6 +526,7 @@ const GameCard = ({
   isLibrary = false,
   cardWidth = '15rem',
   hideDownload = false,
+  reloadKey,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
@@ -554,12 +558,24 @@ const GameCard = ({
     return convertFileSrc(thumbnailPath);
   }, [thumbnailPath]);
 
-  const handleImageError = React.useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-      e.currentTarget.src = fallback;
-    },
-    [],
-  );
+  // Keep a local src that we can reset to imageSrc when we want to retry loading
+  const [currentSrc, setCurrentSrc] = React.useState<string>(imageSrc);
+
+  // Update local src whenever the underlying thumbnailPath-derived src changes
+  React.useEffect(() => {
+    setCurrentSrc(imageSrc);
+  }, [imageSrc]);
+
+  const handleImageError = React.useCallback(() => {
+    setCurrentSrc(fallback);
+  }, []);
+
+  // When asked to reload (download finished), try the original src again
+  React.useEffect(() => {
+    if (reloadKey !== undefined) {
+      setCurrentSrc(imageSrc);
+    }
+  }, [reloadKey, imageSrc]);
 
   const drawerStyles = React.useMemo<React.CSSProperties>(() => {
     return {
@@ -889,6 +905,7 @@ const GameCard = ({
   return (
     <CardWrapper style={{ width: cardWidth }}>
       <CardContainer
+        $isFallback={currentSrc === fallback}
         onClick={(e) => {
           // Only open drawer if not clicking the launch button
           if (
@@ -901,8 +918,9 @@ const GameCard = ({
         style={{ cursor: 'pointer' }}
       >
         <Thumbnail
-          alt="game-thumbnail"
-          src={imageSrc}
+          key={reloadKey}
+          alt=""
+          src={currentSrc}
           onError={handleImageError}
         />
         <HoverButtonWrapper>
@@ -1027,27 +1045,31 @@ const GameCard = ({
               {/* Remove DrawerCloseButton (the × close button) */}
               {/* Blurry background image */}
               <DrawerBackground
-                alt="game-thumbnail-bg"
+                alt=""
                 src={imageSrc}
                 onError={handleImageError}
               />
-              {/* Dark overlay over the blurred background */}
-              <DrawerBackgroundOverlay />
+              {/* Dark overlay over the blurred background (skip if using fallback) */}
+              {imageSrc !== fallback && <DrawerBackgroundOverlay />}
               {/* Drawer content on top */}
               <div style={{ position: 'relative', zIndex: 3 }}>
-                <Thumbnail
-                  alt="game-thumbnail"
-                  src={imageSrc}
-                  onError={handleImageError}
-                  style={{
-                    position: 'static',
-                    width: '65%',
-                    height: 'auto',
-                    borderRadius: '0.5rem',
-                    marginTop: '1rem',
-                    marginBottom: '1rem',
-                  }}
-                />
+                {imageSrc !== fallback && (
+                  <Thumbnail
+                    alt=""
+                    src={imageSrc}
+                    onError={handleImageError}
+                    style={{
+                      position: 'static',
+                      width: '65%',
+                      maxWidth: '900px',
+                      height: 'auto',
+                      margin: '1rem auto 0 auto',
+                      display: 'block',
+                      borderRadius: '0.5rem',
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+                    }}
+                  />
+                )}
                 <DrawerTitle>{name}</DrawerTitle>
                 <p style={{ color: '#aaa', marginBottom: '1rem' }}>
                   Platform: {platform}

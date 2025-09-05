@@ -81,6 +81,16 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 }
 
 #[tauri::command]
+/// Tell backend to download cover/thumbnail for game.
+pub async fn download_thumbnail(game: MonarchGame) -> Result<(), String> {
+    if let Err(e) = game.download_thumbnail().await {
+        error!("monarch_games::commands::download_thumbnail() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        return Err(String::from("Failed to download thumbnail"));
+    }
+    Ok(())
+}
+
+#[tauri::command]
 /// Launch a game
 pub async fn launch_game(handle: AppHandle, mut game: MonarchGame) -> Result<(), String> {
     info!("Launching game: {}", game.name);

@@ -40,7 +40,8 @@ dependencies = [
  "zip",
 ]
 
-[[package]] name = "addr2line"
+[[package]]
+name = "addr2line"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a30b2e23b9e17a9f90641c7ab1549cd9b44f296d3ccbf309d2863cfe398a0cb"

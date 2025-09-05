@@ -261,7 +261,6 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
         );
         let mut new_monarchgame = MonarchGame::from(&game);
         new_monarchgame.thumbnail_path = thumbnail_path;
-        new_monarchgame.download_thumbnail(game.cover_url).await; // Do not await, this allows image to download concurrently as other monarchgames are parsed
         monarch_games.push(new_monarchgame);
     }
 

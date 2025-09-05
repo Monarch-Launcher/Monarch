@@ -101,6 +101,8 @@ const Library = () => {
   >();
   const { library, loading, error, refreshLibrary, results } = useLibrary();
   const { collections } = useCollections();
+  // Per-game reload keys to trigger thumbnail reloads without changing URLs
+  const [reloadKeys, setReloadKeys] = React.useState<Record<string, number>>({});
 
   // umu-launcher notification state (Linux only)
   const [showUmuNotice, setShowUmuNotice] = React.useState(false);
@@ -190,6 +192,43 @@ const Library = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [library, searchTerm, collections]);
 
+  // Reset reload keys when starting a library load
+  React.useEffect(() => {
+    if (loading) {
+      setReloadKeys({});
+    }
+  }, [loading]);
+
+  // After library updates, download thumbnails and trigger per-game image reload on success
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!library || library.length === 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    library.forEach((game) => {
+      (async () => {
+        try {
+          await invoke('download_thumbnail', { game });
+          if (cancelled) return;
+          setReloadKeys((prev) => ({
+            ...prev,
+            [game.id]: (prev[game.id] || 0) + 1,
+          }));
+        } catch (e) {
+          // ignore individual failures; no reload key bump
+        }
+      })();
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [library]);
+
   return (
     <Page>
       <LibraryLayout>
@@ -256,9 +295,11 @@ const Library = () => {
                     // Flush state synchronously so the label updates immediately
                     flushSync(() => setUmuInstalling(true));
                     // Force a paint before starting installation (more reliable on WebKitGTK)
-                    await new Promise<void>((resolve) =>
-                      { requestAnimationFrame(() => requestAnimationFrame(() => resolve())) },
-                    );
+                    await new Promise<void>((resolve) => {
+                      requestAnimationFrame(() =>
+                        requestAnimationFrame(() => resolve()),
+                      );
+                    });
                     await invoke('install_umu');
                     setShowUmuNotice(false);
                   } catch (err) {
@@ -296,6 +337,7 @@ const Library = () => {
                   thumbnailPath={game.thumbnail_path}
                   storePage={game.store_page}
                   isLibrary
+                  reloadKey={reloadKeys[game.id]}
                 />
               ))
             )}
