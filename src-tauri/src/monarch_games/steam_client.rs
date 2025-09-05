@@ -295,7 +295,6 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
 
         let mut monarch_game = MonarchGame::from(&game_info);
         monarch_game.thumbnail_path = thumbnail_path;
-        monarch_game.download_thumbnail(game_info.cover_url).await;
         return Ok(monarch_game);
     }
 
@@ -382,7 +381,7 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
     } else {
         String::from(generate_library_image_path(&name).to_str().unwrap())
     };
-    let monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
-    monarch_game.download_thumbnail(cover_url).await;
+    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
+    monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
 }

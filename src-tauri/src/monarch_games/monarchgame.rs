@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::error;
@@ -13,6 +14,7 @@ pub struct MonarchGame {
     pub platform_id: String,
     pub executable_path: String,
     pub thumbnail_path: String,
+    pub thumbnail_url: String,
     pub launch_args: String,
     pub compatibility: String,
     pub store_page: String,
@@ -38,6 +40,7 @@ impl MonarchGame {
             platform_id: platform_id.to_string(),
             executable_path: exec_path.to_string(),
             thumbnail_path: thumbnail_path.to_string(),
+            thumbnail_url: String::new(),
             launch_args: String::new(),
             compatibility: String::new(),
             store_page: store_page.to_string(),
@@ -46,31 +49,15 @@ impl MonarchGame {
     }
 
     /// Download thumbnail for MonarchGame
-    pub async fn download_thumbnail(&self, url: String) {
-        // TODO: Rewrite this function to query monarch-laucher.com
-        // for images from igdb.com api.
-
+    pub async fn download_thumbnail(&self) -> Result<()> {
         let path: PathBuf = PathBuf::from(&self.thumbnail_path);
 
         if path_exists(&path) {
-            return;
+            return Ok(());
         }
 
-        /*
-        * This is the previous solution that is faster to show the user the results
-        * however it requires some sort of event to tell the frontend to refresh the
-        * images.
-        tokio::task::spawn(async move {
-            if let Err(e) = download_image(&owned_url, &path).await {
-                error!("monarchgame::download_thumbnail() -> {e}");
-            }
-        });
-        */
-        // Temporary solution for better image handling, which makes the
-        // parsing of games slower.
-        if let Err(e) = download_image(&url, &path).await {
-            error!("monarchgame::download_thumbnail() -> {e}");
-        }
+        download_image(&self.thumbnail_url, &path).await.with_context(|| "monarchgame::download_thumbnail() -> ")?;
+        Ok(())
     }
 
     /// Convert MonarchWebGame to MonarchGame
@@ -82,6 +69,7 @@ impl MonarchGame {
             platform_id: other.platform_id.to_string(),
             executable_path: "".to_string(),
             thumbnail_path: "".to_string(),
+            thumbnail_url: other.cover_url.to_string(),
             launch_args: "".to_string(),
             compatibility: "".to_string(),
             store_page: other.store_page.to_string(),
