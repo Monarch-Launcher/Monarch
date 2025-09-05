@@ -110,6 +110,7 @@ fn main() {
             get_executables,
             get_cache_size,
             open_logs,
+            download_thumbnail,
         ])
         .setup(|app| {
             #[cfg(desktop)]
