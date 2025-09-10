@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tracing::error;
 
 use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::path_exists;
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MonarchGame {
@@ -58,6 +58,17 @@ impl MonarchGame {
 
         download_image(&self.thumbnail_url, &path).await.with_context(|| "monarchgame::download_thumbnail() -> ")?;
         Ok(())
+    }
+
+    /// Randomly generates a Monarch ID
+    pub fn manually_generate_id(&mut self) {
+        let mut id: String = format!("MONARCH-{}", rand::random::<u32>());
+        unsafe {
+            while MONARCH_STATE.binary_game_id_collision(&id) {
+                id = format!("MONARCH-{}", rand::random::<u32>());
+            }
+        }
+        self.id = id;
     }
 
     /// Convert MonarchWebGame to MonarchGame

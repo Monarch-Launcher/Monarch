@@ -282,6 +282,8 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
 pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
     info!("User adding game binary: {:?}", game);
 
+    game.manually_generate_id();
+
     if monarch_fs::is_in_cache_dir(&PathBuf::from(&(game.thumbnail_path))) {
         info!("Found thumbnail in cache, copying to library");
 
