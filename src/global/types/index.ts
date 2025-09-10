@@ -5,9 +5,11 @@ export type MonarchGame = {
   name: string;
   platform: string;
   thumbnail_path: string;
+  thumbnail_url: string;
   store_page: string;
   compatibility: string;
   launch_args: string;
+  install_dir: string;
 };
 
 export type Result = {

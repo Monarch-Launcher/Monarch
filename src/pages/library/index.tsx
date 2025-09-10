@@ -1,4 +1,5 @@
 import Button from '@_ui/button';
+import { NoticeBar, NoticeText } from '@_ui/noticeBar';
 import Error from '@_ui/error';
 import GameCard from '@_ui/gameCard';
 import Page from '@_ui/page';
@@ -9,8 +10,10 @@ import { useLibrary } from '@global/contexts/libraryProvider';
 import { FaFolderOpen, FaFolderPlus, FiRefreshCcw } from '@global/icons';
 import type { MonarchGame } from '@global/types';
 import { useDisclosure } from '@mantine/hooks';
+import { invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
+import { flushSync } from 'react-dom';
 import styled, { css } from 'styled-components';
 
 import AddGameModal from './addGameManually/modal';
@@ -23,6 +26,7 @@ const LibraryContainer = styled.div`
   overflow-y: auto;
   border-radius: 0.5rem;
   margin: 1rem 0;
+  padding: 0 1rem; /* add horizontal gutters */
 `;
 
 const StyledRefreshIcon = styled(FiRefreshCcw)<{ $loading: boolean }>`
@@ -64,6 +68,8 @@ const Sidebar = styled.div`
   gap: 1.5rem;
 `;
 
+// NoticeBar and NoticeText are now provided by `@_ui/noticeBar`
+
 const StackedButton = styled(Button)`
   height: 3.5rem;
   font-size: 1rem;
@@ -95,6 +101,42 @@ const Library = () => {
   >();
   const { library, loading, error, refreshLibrary, results } = useLibrary();
   const { collections } = useCollections();
+  // Per-game reload keys to trigger thumbnail reloads without changing URLs
+  const [reloadKeys, setReloadKeys] = React.useState<Record<string, number>>({});
+
+  // umu-launcher notification state (Linux only)
+  const [showUmuNotice, setShowUmuNotice] = React.useState(false);
+  const [umuChecking, setUmuChecking] = React.useState(true);
+  const [umuInstalling, setUmuInstalling] = React.useState(false);
+
+  React.useEffect(() => {
+    // Only run under Linux
+    const isLinux = navigator.userAgent.toLowerCase().includes('linux');
+    if (!isLinux) {
+      setUmuChecking(false);
+      return;
+    }
+
+    let cancelled = false;
+    const checkUmu = async () => {
+      try {
+        const installed = await invoke<boolean>('umu_is_installed');
+        if (!cancelled) {
+          setShowUmuNotice(!installed);
+        }
+      } catch (err) {
+        // On error, be non-intrusive: hide the notice and optionally log
+        if (!cancelled) setShowUmuNotice(false);
+      } finally {
+        if (!cancelled) setUmuChecking(false);
+      }
+    };
+    checkUmu();
+    // eslint-disable-next-line consistent-return
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleOpenDialog = React.useCallback(async () => {
     try {
@@ -150,6 +192,43 @@ const Library = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [library, searchTerm, collections]);
 
+  // Reset reload keys when starting a library load
+  React.useEffect(() => {
+    if (loading) {
+      setReloadKeys({});
+    }
+  }, [loading]);
+
+  // After library updates, download thumbnails and trigger per-game image reload on success
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!library || library.length === 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    library.forEach((game) => {
+      (async () => {
+        try {
+          await invoke('download_thumbnail', { game });
+          if (cancelled) return;
+          setReloadKeys((prev) => ({
+            ...prev,
+            [game.id]: (prev[game.id] || 0) + 1,
+          }));
+        } catch (e) {
+          // ignore individual failures; no reload key bump
+        }
+      })();
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [library]);
+
   return (
     <Page>
       <LibraryLayout>
@@ -202,6 +281,40 @@ const Library = () => {
           />
         </Sidebar>
         <LibraryContainer>
+          {showUmuNotice && !umuChecking && (
+            <NoticeBar>
+              <NoticeText>
+                UMU Launcher is not installed. Some features may require it.
+              </NoticeText>
+              <Button
+                type="button"
+                variant="primary"
+                loading={umuInstalling}
+                onClick={async () => {
+                  try {
+                    // Flush state synchronously so the label updates immediately
+                    flushSync(() => setUmuInstalling(true));
+                    // Force a paint before starting installation (more reliable on WebKitGTK)
+                    await new Promise<void>((resolve) => {
+                      requestAnimationFrame(() =>
+                        requestAnimationFrame(() => resolve()),
+                      );
+                    });
+                    await invoke('install_umu');
+                    setShowUmuNotice(false);
+                  } catch (err) {
+                    await dialog.message(`Failed to install umu-launcher: ${err}`, {
+                      title: 'Error',
+                    });
+                  } finally {
+                    setUmuInstalling(false);
+                  }
+                }}
+              >
+                {umuInstalling ? 'Downloading...' : 'Download umu-launcher'}
+              </Button>
+            </NoticeBar>
+          )}
           {collections.length !== 0 && (
             <>
               {collections.map((collection) => (
@@ -222,8 +335,10 @@ const Library = () => {
                   name={game.name}
                   platformId={game.platform_id}
                   thumbnailPath={game.thumbnail_path}
+                  thumbnailUrl={game.thumbnail_url || ''}
                   storePage={game.store_page}
                   isLibrary
+                  reloadKey={reloadKeys[game.id]}
                 />
               ))
             )}

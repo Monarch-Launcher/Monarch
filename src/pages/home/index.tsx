@@ -54,6 +54,7 @@ const Home = () => {
             name={game.name}
             platform={game.platform}
             thumbnailPath={game.thumbnail_path || fallback}
+            thumbnailUrl={game.thumbnail_url || ''}
             storePage={game.store_page}
             cardWidth="24rem"
           />

@@ -1,11 +1,15 @@
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
+use crate::monarch_utils::monarch_fs::get_monarch_home;
 use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::{
     monarch_fs::{create_dir, get_unix_home, path_exists},
     monarch_vdf,
 };
 use anyhow::{Context, Result};
+use flate2::read::GzDecoder;
+use tar::Archive;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 use tauri::AppHandle;
@@ -18,27 +22,36 @@ use tracing::{error, info};
 */
 
 /// Installs SteamCMD for user in .monarch
-pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
+pub async fn install_steamcmd() -> Result<()> {
+    let tar_dest: PathBuf = get_monarch_home().join("steamcmd.tar.gz");
     let dest_path: PathBuf = get_steamcmd_dir();
 
     if !path_exists(&dest_path) {
         create_dir(&dest_path).with_context(|| "linux::steam::install_steamcmd() -> ")?;
     }
 
-    let download_arg: &str = r#"curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -"#;
+    // Download SteamCMD
+    let steamcmd_url: &str = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz";
+    info!("Downloading: {}", steamcmd_url);
 
-    let installation_script = format!(
-        r#"cd {};
-{};
-sleep 3;
-exit;"#,
-        dest_path.display(),
-        &download_arg
-    ); // Sleep for 2 seconds to allow user to see what is happening.
+    let response = reqwest::get(steamcmd_url).await.with_context(|| "linux::steam::install_steamcmd() Failed to get response while downloading SteamCMD | Err: ")?;
+    let content = response.bytes().await.with_context(|| "linux::steam::install_steamcmd() Failed to get response bytes while downloading SteamCMD | Err: ")?;
 
-    run_in_terminal(handle, &installation_script, None)
-        .await
-        .with_context(|| "linux::steam::install_steamcmd() -> ")?;
+    info!("Writing: {}", tar_dest.display());
+    let mut file = std::fs::File::create(&tar_dest).with_context(|| "linux::steam::install_steamcmd() Failed to create empty steamcmd file. | Err: ")?;
+    file.write_all(&content).with_context(|| "linux::steam::install_steamcmd() Failed to copy response to file. | Err: ")?;
+    
+    // "Unzip" SteamCMD
+    info!("Unpacking: {}", tar_dest.display());
+    let tar_file = std::fs::File::open(&tar_dest).with_context(|| format!("linux::steam::install_steamcmd() Failed to open {} | Err: ", tar_dest.display()))?;
+    let tar = GzDecoder::new(tar_file);
+    let mut archive = Archive::new(tar);
+    archive.unpack(&dest_path).with_context(|| format!("linux::steam::install_steamcmd() Failed to unpack {} | Err: ", dest_path.display()))?;
+
+    // Remove tar file
+    info!("Removing: {}", tar_dest.display());
+    std::fs::remove_file(&tar_dest).with_context(|| format!("linux::steam::install_steamcmd() Failed to remove {} | Err: ", tar_dest.display()))?;
+
     Ok(())
 }
 
@@ -46,14 +59,14 @@ exit;"#,
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
 pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()> {
-    let mut path: PathBuf = get_steamcmd_dir();
-    path.push("steamcmd.sh");
+    let work_dir: PathBuf = get_steamcmd_dir();
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
     run_in_terminal(
         handle,
-        &format!("{} {}; sleep 3;", path.display(), args_string),
+        &format!("./steamcmd.sh {}; sleep 3;", args_string),
         None,
+        Some(&work_dir)
     )
     .await
     .with_context(|| "linux::steam::steamcmd_command() -> ")?;
