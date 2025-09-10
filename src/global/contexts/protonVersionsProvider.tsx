@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
 import type { ProtonVersion } from '@global/types';
+import { invoke } from '@tauri-apps/api/core';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 interface ProtonVersionsContextType {

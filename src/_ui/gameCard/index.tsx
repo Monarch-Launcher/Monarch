@@ -506,6 +506,7 @@ type GameCardProps = {
   name: string;
   platform: string;
   thumbnailPath: string;
+  thumbnailUrl: string;
   storePage: string;
   isLibrary?: boolean;
   cardWidth?: string;
@@ -522,6 +523,7 @@ const GameCard = ({
   name,
   platform,
   thumbnailPath,
+  thumbnailUrl,
   storePage,
   isLibrary = false,
   cardWidth = '15rem',
@@ -654,6 +656,7 @@ const GameCard = ({
         name,
         platform,
         thumbnail_path: thumbnailPath,
+        thumbnail_url: '',
         store_page: storePage,
         compatibility: '',
         launch_args: '',
