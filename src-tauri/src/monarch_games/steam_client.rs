@@ -13,7 +13,7 @@ use super::games::GameType;
 use super::monarchgame::{MonarchGame, MonarchWebGame};
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
-    generate_cache_image_path, generate_library_image_path, get_monarch_home, path_exists,
+    generate_cache_image_path, generate_library_image_path, get_monarch_home,
 };
 use crate::monarch_utils::monarch_settings::{get_settings_state, LauncherSettings};
 
@@ -67,16 +67,73 @@ impl StoreType for SteamClient {
 }
 
 /// Returns if SteamCMD is installed on system or not.
-pub fn is_installed() -> bool {
+pub fn steamcmd_is_installed() -> bool {
     let path: PathBuf = get_steamcmd_dir();
-    path_exists(&path)
+    path.exists()
 }
 
 /// Downloads and installs SteamCMD on users computer.
-pub async fn download_and_install(handle: &AppHandle) -> Result<()> {
-    steam::install_steamcmd(handle)
+pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
+    steam::install_steamcmd()
         .await
-        .with_context(|| "steam_client::download_and_install() -> ")
+        .with_context(|| "steam_client::install_steamcmd() -> ")?;
+
+    // Perform initial run of SteamCMD to create necessary files
+    steam::steamcmd_command(handle, vec!["+quit"])
+        .await
+        .with_context(|| "steam_client::install_steamcmd() -> ")?;
+
+    // Symlink files needed for SteamCMD globaluser
+    #[cfg(target_os = "linux")]
+    {
+        use crate::monarch_games::linux::steam;
+
+        let src_path: PathBuf = steam::get_default_location()
+            .with_context(|| "steam_client::install_steamcmd() -> ")?;
+        let dest_path: PathBuf = get_steamcmd_dir();
+
+        let reaper_src: PathBuf = src_path.join("ubuntu12_32").join("reaper");
+        let wrapper_src: PathBuf = src_path.join("ubuntu12_32").join("steam-launch-wrapper");
+        let steamservice_src: PathBuf = src_path.join("ubuntu12_32").join("steamservice.so");
+
+        let reaper_dest: PathBuf = dest_path.join("linux32").join("reaper");
+        let wrapper_dest: PathBuf = dest_path.join("linux32").join("steam-launch-wrapper");
+        let steamservice_dest: PathBuf = dest_path.join("linux32").join("steamservice.so");
+
+        std::os::unix::fs::symlink(&reaper_src, &reaper_dest).with_context(|| {
+            format!(
+                "steam_client::install_steamcmd() Failed to symlink: {} -> {} | Err: ",
+                reaper_src.display(),
+                reaper_dest.display()
+            )
+        })?;
+        std::os::unix::fs::symlink(&wrapper_src, &wrapper_dest).with_context(|| {
+            format!(
+                "steam_client::install_steamcmd() Failed to symlink: {} -> {} | Err: ",
+                wrapper_src.display(),
+                wrapper_dest.display()
+            )
+        })?;
+        std::os::unix::fs::symlink(&steamservice_src, &steamservice_dest).with_context(|| {
+            format!(
+                "steam_client::install_steamcmd() Failed to symlink: {} -> {} | Err: ",
+                steamservice_src.display(),
+                steamservice_dest.display()
+            )
+        })?;
+    }
+
+    // Initial login to cache user credentials
+    let settings = get_settings_state();
+    let steam_settings = settings.steam;
+    let login_arg = get_steamcmd_login(&steam_settings)
+        .with_context(|| "steam_client::install_steamcmd() -> ")?;
+
+    steam::steamcmd_command(handle, vec![&login_arg, "-globaluser", "+quit"])
+        .await
+        .with_context(|| "steam_client::install_steamcmd() -> ")?;
+
+    Ok(())
 }
 
 /// Returns games installed by Steam Client.
@@ -101,7 +158,8 @@ pub fn uninstall_client_game(id: &str) -> Result<()> {
 pub async fn launch_cmd_game(handle: &AppHandle, game: &MonarchGame) -> Result<()> {
     let settings = get_settings_state();
     let steam_settings = settings.steam;
-    let login_arg = get_steamcmd_login(&steam_settings)?;
+    let login_arg = get_steamcmd_login(&steam_settings)
+        .with_context(|| "steam_client::launch_cmd_game() -> ")?;
 
     let args: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
@@ -109,7 +167,6 @@ pub async fn launch_cmd_game(handle: &AppHandle, game: &MonarchGame) -> Result<(
         "+app_launch",
         &game.platform_id,
         &game.launch_args,
-        "+quit",
     ];
 
     steam::steamcmd_command(handle, args)
@@ -331,7 +388,6 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
 
         let mut monarch_game = MonarchGame::from(&game_info);
         monarch_game.thumbnail_path = thumbnail_path;
-        monarch_game.download_thumbnail(game_info.cover_url).await;
         return Ok(monarch_game);
     }
 
@@ -418,7 +474,7 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
     } else {
         String::from(generate_library_image_path(&name).to_str().unwrap())
     };
-    let monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
-    monarch_game.download_thumbnail(cover_url).await;
+    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
+    monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
 }

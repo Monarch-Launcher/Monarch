@@ -16,6 +16,7 @@ use std::sync::Arc;
 use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::{AppHandle, Manager};
 use tracing::{error, info};
+use std::path::Path;
 
 /*
  * Currently the write_to_pty() breaks if we remove the inner Arc<AsyncMutex<...>> 
@@ -35,6 +36,7 @@ pub async fn run_in_terminal(
     handle: &AppHandle,
     command: &str,
     env_vars: Option<&HashMap<&str, &str>>,
+    cwd: Option<&Path>,
 ) -> Result<()> {
     info!("Starting Monarch terminal...");
 
@@ -69,6 +71,10 @@ pub async fn run_in_terminal(
             }
         }
 
+        if let Some(c) = cwd {
+            cmd.cwd(c);
+        }
+
         //info!("Running command: powershell.exe {term_command}");
         info!("Running command...");
         cmd
@@ -84,6 +90,10 @@ pub async fn run_in_terminal(
             for (k, v) in vars {
                 cmd.env(k, v);
             }
+        }
+
+        if let Some(c) = cwd {
+            cmd.cwd(c);
         }
 
         //info!("Running command: {shell} -c {term_command}");

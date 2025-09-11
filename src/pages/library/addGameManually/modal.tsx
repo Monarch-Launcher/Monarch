@@ -12,6 +12,7 @@ import { Switch } from '@mantine/core';
 import { invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
+import { useCallback, useState } from 'react';
 import styled from 'styled-components';
 
 const ModalHeaderContainer = styled.div`
@@ -200,12 +201,14 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
     results,
     clearSearchResults,
   } = useSearchGames();
-  const [gameName, setGameName] = React.useState('');
-  const [thumbnailPath, setThumbnailPath] = React.useState('');
-  const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
-  const [showSearchView, setShowSearchView] = React.useState(false);
-  const [searchString, setSearchString] = React.useState('');
-  const [searchOnMonarch, setSearchOnMonarch] = React.useState(true);
+  const [gameName, setGameName] = useState('');
+  const [thumbnailPath, setThumbnailPath] = useState('');
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [showSearchView, setShowSearchView] = useState(false);
+  const [searchString, setSearchString] = useState('');
+  const [searchOnMonarch, setSearchOnMonarch] = useState(true);
+  const [reloadKeys, setReloadKeys] = useState<Record<string, number>>({});
 
   const handleGameNameChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,6 +271,7 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
       name: gameName,
       platform: 'monarch-binary',
       thumbnail_path: thumbnailPath,
+      thumbnail_url: thumbnailUrl,
       store_page: '',
       compatibility: '',
       launch_args: '',
@@ -296,6 +300,7 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
     gameName,
     selectedFilePath,
     thumbnailPath,
+    thumbnailUrl,
     onGameAdded,
     addGameToLibrary,
     clearSearchResults,
@@ -334,10 +339,12 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
     [],
   );
 
-  const handleSearchSubmit = React.useCallback(async () => {
+  const handleSearchSubmit = useCallback(async () => {
     if (!searchString) {
       return;
     }
+    // Reset reload keys when starting a new search
+    setReloadKeys({});
     await searchGames(searchString, searchOnMonarch);
   }, [searchGames, searchString, searchOnMonarch]);
 
@@ -345,10 +352,36 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
     // Pre-fill the form with selected game data
     setGameName(game.name);
     setThumbnailPath(game.thumbnail_path || '');
+    setThumbnailUrl(game.thumbnail_url || '');
     setShowSearchView(false);
   }, []);
 
-  const modalHeader = React.useMemo<JSX.Element>(() => {
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!searchedGames || searchedGames.length === 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    searchedGames.forEach((game) => {
+      (async () => {
+        try {
+          await invoke('download_thumbnail', { game });
+          if (cancelled) return;
+          setReloadKeys((prev) => ({ ...prev, [game.id]: (prev[game.id] || 0) + 1 }));
+        } catch (e) {
+          // ignore individual failures; no reload key bump
+        }
+      })();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [searchedGames]);
+
+    const modalHeader = React.useMemo<JSX.Element>(() => {
     return (
       <ModalHeaderContainer>
         <ModalHeaderButtons>
@@ -435,8 +468,10 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
                       name={game.name}
                       platformId={game.platform_id}
                       thumbnailPath={game.thumbnail_path}
+                      thumbnailUrl={game.thumbnail_url}
                       storePage={game.store_page}
                       hideDownload
+                      reloadKey={reloadKeys[game.id]}
                     />
                   </div>
                 ))

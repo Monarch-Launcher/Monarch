@@ -23,7 +23,7 @@ use crate::monarch_utils::monarch_winreg::is_installed;
 */
 
 /// Installs SteamCMD for user in .monarch
-pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
+pub async fn install_steamcmd() -> Result<()> {
     let steamcmd_path: PathBuf = get_steamcmd_dir();
 
     // Verify that steamcmd path has to be created
@@ -89,27 +89,6 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
                 .with_context(|| format!("Failed to write file: {}", outpath.display()))?;
         }
     }
-    /*
-    // Unzip and copy steamcmd to correct directory
-    let unzip_args = vec![
-        "-Command",
-        "\"Expand-Archive",
-        "-LiteralPath",
-        steamcmd_zip.to_str().unwrap(),
-        "-DestinationPath",
-        steamcmd_folder.to_str().unwrap(),
-        "\"",
-        "; sleep 10"
-    ];
-    let unzip_args_string: String = unzip_args
-        .iter()
-        .map(|arg| format!("{arg} "))
-        .collect::<String>();
-
-    run_in_terminal(handle, &unzip_args_string)
-        .await
-        .with_context(|| "windows::steam::install_steamcmd() -> ")?;
-    */
 
     Ok(())
 }
@@ -122,9 +101,14 @@ pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()>
     path.push("steamcmd.exe");
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    run_in_terminal(handle, &format!("{} {}", path.display(), args_string), None)
-        .await
-        .with_context(|| "windows::steam::steamcmd_command() -> ")?;
+    run_in_terminal(
+        handle,
+        &format!("{} {}", path.display(), args_string),
+        None,
+        None,
+    )
+    .await
+    .with_context(|| "windows::steam::steamcmd_command() -> ")?;
 
     Ok(())
 }

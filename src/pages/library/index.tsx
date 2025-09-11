@@ -1,4 +1,5 @@
 import Button from '@_ui/button';
+import { NoticeBar, NoticeText } from '@_ui/noticeBar';
 import Error from '@_ui/error';
 import GameCard from '@_ui/gameCard';
 import Page from '@_ui/page';
@@ -67,22 +68,7 @@ const Sidebar = styled.div`
   gap: 1.5rem;
 `;
 
-const UmuNoticeBar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1.5rem 0.75rem 1rem;
-  margin: 0 1rem 1rem 1rem;
-  border-radius: 0.5rem;
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.35);
-`;
-
-const UmuNoticeText = styled.p`
-  margin: 0;
-  font-size: 0.95rem;
-`;
+// NoticeBar and NoticeText are now provided by `@_ui/noticeBar`
 
 const StackedButton = styled(Button)`
   height: 3.5rem;
@@ -115,6 +101,8 @@ const Library = () => {
   >();
   const { library, loading, error, refreshLibrary, results } = useLibrary();
   const { collections } = useCollections();
+  // Per-game reload keys to trigger thumbnail reloads without changing URLs
+  const [reloadKeys, setReloadKeys] = React.useState<Record<string, number>>({});
 
   // umu-launcher notification state (Linux only)
   const [showUmuNotice, setShowUmuNotice] = React.useState(false);
@@ -204,6 +192,43 @@ const Library = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [library, searchTerm, collections]);
 
+  // Reset reload keys when starting a library load
+  React.useEffect(() => {
+    if (loading) {
+      setReloadKeys({});
+    }
+  }, [loading]);
+
+  // After library updates, download thumbnails and trigger per-game image reload on success
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!library || library.length === 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    library.forEach((game) => {
+      (async () => {
+        try {
+          await invoke('download_thumbnail', { game });
+          if (cancelled) return;
+          setReloadKeys((prev) => ({
+            ...prev,
+            [game.id]: (prev[game.id] || 0) + 1,
+          }));
+        } catch (e) {
+          // ignore individual failures; no reload key bump
+        }
+      })();
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [library]);
+
   return (
     <Page>
       <LibraryLayout>
@@ -257,10 +282,10 @@ const Library = () => {
         </Sidebar>
         <LibraryContainer>
           {showUmuNotice && !umuChecking && (
-            <UmuNoticeBar>
-              <UmuNoticeText>
+            <NoticeBar>
+              <NoticeText>
                 UMU Launcher is not installed. Some features may require it.
-              </UmuNoticeText>
+              </NoticeText>
               <Button
                 type="button"
                 variant="primary"
@@ -270,9 +295,11 @@ const Library = () => {
                     // Flush state synchronously so the label updates immediately
                     flushSync(() => setUmuInstalling(true));
                     // Force a paint before starting installation (more reliable on WebKitGTK)
-                    await new Promise<void>((resolve) =>
-                      { requestAnimationFrame(() => requestAnimationFrame(() => resolve())) },
-                    );
+                    await new Promise<void>((resolve) => {
+                      requestAnimationFrame(() =>
+                        requestAnimationFrame(() => resolve()),
+                      );
+                    });
                     await invoke('install_umu');
                     setShowUmuNotice(false);
                   } catch (err) {
@@ -286,7 +313,7 @@ const Library = () => {
               >
                 {umuInstalling ? 'Downloading...' : 'Download umu-launcher'}
               </Button>
-            </UmuNoticeBar>
+            </NoticeBar>
           )}
           {collections.length !== 0 && (
             <>
@@ -308,8 +335,10 @@ const Library = () => {
                   name={game.name}
                   platformId={game.platform_id}
                   thumbnailPath={game.thumbnail_path}
+                  thumbnailUrl={game.thumbnail_url || ''}
                   storePage={game.store_page}
                   isLibrary
+                  reloadKey={reloadKeys[game.id]}
                 />
               ))
             )}

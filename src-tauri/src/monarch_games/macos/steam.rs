@@ -1,15 +1,15 @@
 use crate::monarch_games::monarchgame::MonarchGame;
 use anyhow::{bail, Result};
+use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::error;
-use std::path::PathBuf;
 
 /*
 * This file is currently only here to allow for MacOS compilation.
 * Proper MacOS support is planned in the future.
 */
 
-pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
+pub async fn install_steamcmd() -> Result<()> {
     error!("monarch_games::macos::install_steamcmd() MacOS not currently supported!");
     bail!("monarch_games::macos::install_steamcmd() MacOS not currently supported!");
 }
@@ -45,3 +45,4 @@ pub fn get_default_libraryfolders_location() -> Result<PathBuf> {
     error!("monarch_games::macos::get_libraryfolders_location() MacOS not currently supported!");
     bail!("monarch_games::macos::get_libraryfolders_location() MacOS not currently supported!");
 }
+

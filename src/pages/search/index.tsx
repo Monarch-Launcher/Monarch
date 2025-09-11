@@ -5,6 +5,7 @@ import SearchBar from '@_ui/searchBar';
 import Spinner from '@_ui/spinner';
 import { useSearchGames } from '@global/contexts/searchGamesProvider';
 import { Switch } from '@mantine/core';
+import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 import styled from 'styled-components';
 
@@ -58,13 +59,12 @@ const SearchRow = styled.div`
     flex-direction: column;
     align-items: stretch;
     gap: 1.5rem; // Adds space between all flex items
-
-    ${MonarchSwitch}
   }
 `;
 
 const Search = () => {
   const [searchString, setSearchString] = React.useState('');
+  const [reloadKeys, setReloadKeys] = React.useState<Record<string, number>>({});
   const [searchOnMonarch, setSearchOnMonarch] = React.useState(true);
   const { searchedGames, loading, error, searchGames, results } =
     useSearchGames();
@@ -84,18 +84,35 @@ const Search = () => {
   );
 
   const handleClick = React.useCallback(async () => {
-    // TODO: Come back and check if checkbox has changed to allow search
-    // of the same searchstring then, but otherwise stop if the search term
-    // is the same.
-    // Previous if-statement:
-    // if (!searchString || searchString === results?.searchString) {
-
-    // Return early if searchString is empty
-    if (!searchString) {
-      return;
-    }
+    // Reset per-game reload keys for a fresh search
+    setReloadKeys({});
     await searchGames(searchString, searchOnMonarch);
   }, [searchGames, searchString, searchOnMonarch]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!searchedGames || searchedGames.length === 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    searchedGames.forEach((game) => {
+      (async () => {
+        try {
+          await invoke('download_thumbnail', { game });
+          if (cancelled) return;
+          setReloadKeys((prev) => ({ ...prev, [game.id]: (prev[game.id] || 0) + 1 }));
+        } catch (e) {
+          // ignore individual failures; no reload key bump
+        }
+      })();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [searchedGames]);
 
   return (
     <Page>
@@ -128,7 +145,9 @@ const Search = () => {
               name={game.name}
               platformId={game.platform_id}
               thumbnailPath={game.thumbnail_path}
+              thumbnailUrl={game.thumbnail_url || ''}
               storePage={game.store_page}
+              reloadKey={reloadKeys[game.id]}
             />
           ))
         )}

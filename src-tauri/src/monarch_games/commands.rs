@@ -89,6 +89,16 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 }
 
 #[tauri::command]
+/// Tell backend to download cover/thumbnail for game.
+pub async fn download_thumbnail(game: MonarchGame) -> Result<(), String> {
+    if let Err(e) = game.download_thumbnail().await {
+        error!("monarch_games::commands::download_thumbnail() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        return Err(String::from("Failed to download thumbnail"));
+    }
+    Ok(())
+}
+
+#[tauri::command]
 /// Launch a game
 pub async fn launch_game(handle: AppHandle, mut game: MonarchGame) -> Result<(), String> {
     info!("Launching game: {}", game.name);
@@ -280,6 +290,8 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
 pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
     info!("User adding game binary: {:?}", game);
 
+    game.manually_generate_id();
+
     if monarch_fs::is_in_cache_dir(&PathBuf::from(&(game.thumbnail_path))) {
         info!("Found thumbnail in cache, copying to library");
 
@@ -387,4 +399,20 @@ pub fn install_umu() -> Result<(), String> {
         warn!("Attempted to download umu-launcher under something other than Linux!");
         return Err(format!("Can only use umu-launcher under Linux!"))
     }
+}
+
+#[tauri::command]
+pub fn steamcmd_is_installed() -> bool {
+    use super::steam_client;
+    steam_client::steamcmd_is_installed()
+}
+
+#[tauri::command]
+pub async fn install_steamcmd(handle: AppHandle) -> Result<(), String> {
+    use super::steam_client;
+    if let Err(e) = steam_client::install_steamcmd(&handle).await {
+        error!("monarch_games::commands::install_steamcmd() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        return Err(String::from("Failed to download SteamCMD!"))
+    }
+    Ok(())
 }
