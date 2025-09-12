@@ -393,6 +393,31 @@ const SettingsPage = () => {
     }
   }, []);
 
+  const handleResetToDefaultSettings = React.useCallback(async () => {
+    try {
+      const defaultSettings = await invoke<Settings>('default_settings');
+      // Update the settings context with the default values
+      updateSettings(defaultSettings);
+      // Refresh any dependent data
+      if (activeTab === 'monarch') {
+        fetchCacheSize();
+      } else if (activeTab === 'steam') {
+        checkSteamcmd();
+      }
+    } catch (e) {
+      console.error('Failed to reset settings');
+      // If the error contains settings data, use it to update the UI
+      if (e && typeof e === 'object' && 'settings' in e) {
+        updateSettings(e.settings as Settings);
+        if (activeTab === 'monarch') {
+          fetchCacheSize();
+        } else if (activeTab === 'steam') {
+          checkSteamcmd();
+        }
+      }
+    }
+  }, [updateSettings, activeTab, fetchCacheSize, checkSteamcmd]);
+
   React.useEffect(() => {
     if (activeTab === 'steam') {
       checkSteamcmd();
@@ -518,6 +543,20 @@ const SettingsPage = () => {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                     <AnimatedButton type="button" variant="primary" onClick={handleOpenLogs}>
                       Open logs
+                    </AnimatedButton>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '2rem' }}>
+                  <SectionTitle>Danger Zone</SectionTitle>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <AnimatedButton 
+                      type="button" 
+                      variant="primary" 
+                      onClick={handleResetToDefaultSettings}
+                      $danger
+                    >
+                      Reset to Default Settings
                     </AnimatedButton>
                   </div>
                 </div>
