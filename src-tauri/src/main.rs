@@ -20,7 +20,7 @@ use monarch_library::commands::{
 };
 use monarch_utils::commands::{
     async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, delete_password,
-    delete_secret, get_cache_size, get_settings, open_logs, open_terminal, revert_settings,
+    delete_secret, get_cache_size, get_settings, open_logs, open_terminal, default_settings,
     set_password, set_secret, set_settings, zoom_window,
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
@@ -87,7 +87,7 @@ fn main() {
             get_collections,
             get_settings,
             set_settings,
-            revert_settings,
+            default_settings,
             clear_cached_images,
             set_password,
             delete_password,

@@ -74,20 +74,14 @@ pub fn set_settings(settings: Settings) -> Result<Settings, String> {
 /// Write default settings to settings.toml
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
-pub fn revert_settings() -> Result<Settings, String> {
-    match set_default_settings() {
-        Ok(ret_settings) => {
-            set_settings_state(ret_settings.clone());
-            Ok(ret_settings)
-        }
-        Err(e) => {
-            error!(
-                "monarch_utils::commands::revert_settings() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from("Failed to reset to default settings!"))
-        }
+pub fn default_settings() -> Result<Settings, Settings> {
+    if let Err(e) = set_default_settings() {
+        error!(
+            "monarch_utils::commands::default_settings() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
     }
+    Ok(get_settings_state())
 }
 
 /*
