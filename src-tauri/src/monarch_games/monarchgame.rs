@@ -1,8 +1,7 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::error;
-use anyhow::Result;
 
 use super::games::GameType;
 use super::stores::StoreType;
@@ -131,7 +130,15 @@ impl GameType for MonarchGame {
     }
 
     fn launch(&self) -> Result<()> {
-        unimplemented!()
+        match self.get_platform() {
+            SteamClient => {
+                Ok(())
+            }
+            _ => {
+                error!("monarchgames::MonarchGame::launch() Failed to launch game! | Err: No platform implementation!");
+                bail!("No platform implementation!")
+            }
+        }        
     }
 
     fn into_monarchgame(&self) -> MonarchGame {
