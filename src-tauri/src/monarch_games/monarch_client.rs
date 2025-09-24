@@ -1,10 +1,11 @@
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_games::monarchgame::MonarchWebGame;
+use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebGame};
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_terminal::run_in_terminal;
+use crate::monarch_utils::monarch_vdf;
 use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
@@ -45,7 +46,7 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             "Launching game with executable path: {}",
             game.executable_path
         );
-        
+
         // Reformat the launch command to work on the platform
         if cfg!(target_os = "windows") {
             game.executable_path = format!(r#"Start-Process "{}""#, game.executable_path);
@@ -229,7 +230,10 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
     unsafe {
         if let Err(e) = MONARCH_STATE.set_library_games(&games) {
-            error!("monarch_client::refresh_library() -> {}", e.chain().map(|e| e.to_string()).collect::<String>())
+            error!(
+                "monarch_client::refresh_library() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            )
         }
 
         // Replace games with the updated list of library games
@@ -265,4 +269,33 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     }
 
     monarch_games
+}
+
+pub fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
+    let mut platform = game.platform.as_str();
+    if platform == "steamcmd" {
+        platform = "steam";
+    }
+
+    match platform {
+        "steam" => {
+            #[cfg(target_os = "windows")]
+            use super::windows::steam;
+
+            #[cfg(target_os = "macos")]
+            use super::macos::steam;
+
+            #[cfg(target_os = "linux")]
+            use super::linux::steam;
+
+            match steam::get_default_libraryfolders_location() {
+                Ok(p) => return monarch_vdf::get_game_properties_from_manifest(game, &p).into(),
+                Err(e) => {
+                    error!("monarch_client::get_game_properties() Failed to get path to Steams libraryfolders.vdf! | Err: {}", e);
+                    return MonarchGameProperties::default();
+                }
+            }
+        }
+        _ => MonarchGameProperties::default(),
+    }
 }
