@@ -1,7 +1,7 @@
 import Button from '@_ui/button';
-import { NoticeBar, NoticeText } from '@_ui/noticeBar';
 import Error from '@_ui/error';
 import GameCard from '@_ui/gameCard';
+import { NoticeBar, NoticeText } from '@_ui/noticeBar';
 import Page from '@_ui/page';
 import SearchBar from '@_ui/searchBar';
 import Spinner from '@_ui/spinner';
