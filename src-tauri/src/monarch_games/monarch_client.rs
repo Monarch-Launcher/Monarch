@@ -72,6 +72,10 @@ impl StoreType for MonarchClient {
         error!("monarch_client::platform_enabled() Not implemented!");
         false
     }
+
+    fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        unimplemented!()
+    }
 }
 
 /// Generates the default path where Monarch wants to store games.

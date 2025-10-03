@@ -64,6 +64,24 @@ impl StoreType for SteamClient {
     fn platform_enabled(&self) -> bool {
         unimplemented!()
     }
+
+    fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        match game.platform.as_str() {
+            "steam" => launch_client_game(game),
+            "steamcmd" => { 
+                let handle_clone: AppHandle = handle.clone();
+                let game_clone: MonarchGame = game.clone();
+                tokio::spawn(async move  { 
+                    if let Err(e) = launch_cmd_game(&handle_clone, &game_clone).await {
+                        error!("steam_client::SteamClient::launch_game() -> {}",
+                            e.chain().map(|e| e.to_string()).collect::<String>());
+                    }
+                });
+                Ok(())
+            },
+            _ => bail!("Neither Steam client nor SteamCMD was detected as game platform!")
+        }
+    }
 }
 
 /// Returns if SteamCMD is installed on system or not.

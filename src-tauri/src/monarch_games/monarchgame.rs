@@ -1,5 +1,6 @@
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
+use tauri::AppHandle;
 use std::path::PathBuf;
 use tracing::error;
 
@@ -129,16 +130,8 @@ impl GameType for MonarchGame {
         0.0
     }
 
-    fn launch(&self) -> Result<()> {
-        match self.get_platform() {
-            SteamClient => {
-                Ok(())
-            }
-            _ => {
-                error!("monarchgames::MonarchGame::launch() Failed to launch game! | Err: No platform implementation!");
-                bail!("No platform implementation!")
-            }
-        }        
+    fn launch(&self, handle: &AppHandle) -> Result<()> {
+        self.get_platform().launch_game(handle, &self.into_monarchgame())       
     }
 
     fn into_monarchgame(&self) -> MonarchGame {
