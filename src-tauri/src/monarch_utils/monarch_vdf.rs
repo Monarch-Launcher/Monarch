@@ -264,8 +264,8 @@ impl Into<MonarchGameProperties> for SteamGameProperties {
             install_dir: self.installdir,
             size_on_disk: self.SizeOnDisk,
             last_played: self.LastPlayed,
-            time_played: "Error".to_string(),
-            description: "Error".to_string(),
+            time_played: "WIP".to_string(),
+            description: "WIP".to_string(),
         }
     }
 }

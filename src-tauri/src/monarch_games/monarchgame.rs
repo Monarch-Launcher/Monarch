@@ -142,8 +142,8 @@ impl Default for MonarchGameProperties {
             install_dir: "Error".to_string(),
             size_on_disk: "Error".to_string(),
             last_played: "Error".to_string(),
-            time_played: "Error".to_string(),
-            description: "Error".to_string(),
+            time_played: "WIP".to_string(),
+            description: "WIP".to_string(),
         }
     }
 }
