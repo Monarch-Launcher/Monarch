@@ -1,3 +1,5 @@
+use super::games::GameType;
+use super::stores::StoreType;
 use anyhow::{bail, Context, Result};
 use reqwest;
 use scraper::{Html, Selector};
@@ -7,8 +9,6 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tokio::task;
 use tracing::{error, info, warn};
-use super::stores::StoreType;
-use super::games::GameType;
 
 use super::monarchgame::{MonarchGame, MonarchWebGame};
 use crate::monarch_utils::monarch_credentials::get_password;
@@ -45,19 +45,19 @@ impl StoreType for SteamClient {
         unimplemented!()
     }
 
-    fn install_game(&self, name: &str, platform_id: &str) -> Result<()> {
+    fn install_game(&self, handle: &AppHandle, name: &str, platform_id: &str) -> Result<()> {
         unimplemented!()
     }
 
-    fn uninstall_game(&self, platform_id: &str) -> Result<()> {
+    fn uninstall_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
         unimplemented!()
     }
 
-    fn update_game(&self, platform_id: &str) -> Result<()> {
+    fn update_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
         unimplemented!()
     }
 
-    fn game_is_installed(&self, platform_id: &str) -> bool {
+    fn game_is_installed(&self, handle: &AppHandle, platform_id: &str) -> bool {
         unimplemented!()
     }
 
@@ -68,18 +68,20 @@ impl StoreType for SteamClient {
     fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
         match game.platform.as_str() {
             "steam" => launch_client_game(game),
-            "steamcmd" => { 
+            "steamcmd" => {
                 let handle_clone: AppHandle = handle.clone();
                 let game_clone: MonarchGame = game.clone();
-                tokio::spawn(async move  { 
+                tokio::spawn(async move {
                     if let Err(e) = launch_cmd_game(&handle_clone, &game_clone).await {
-                        error!("steam_client::SteamClient::launch_game() -> {}",
-                            e.chain().map(|e| e.to_string()).collect::<String>());
+                        error!(
+                            "steam_client::SteamClient::launch_game() -> {}",
+                            e.chain().map(|e| e.to_string()).collect::<String>()
+                        );
                     }
                 });
                 Ok(())
-            },
-            _ => bail!("Neither Steam client nor SteamCMD was detected as game platform!")
+            }
+            _ => bail!("Neither Steam client nor SteamCMD was detected as game platform!"),
         }
     }
 }
@@ -492,7 +494,8 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
     } else {
         String::from(generate_library_image_path(&name).to_str().unwrap())
     };
-    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
+    let mut monarch_game =
+        MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
     monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
 }

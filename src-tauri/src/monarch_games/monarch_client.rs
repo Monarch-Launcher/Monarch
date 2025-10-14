@@ -1,3 +1,5 @@
+use super::games::GameType;
+use super::stores::StoreType;
 use super::{monarchgame::MonarchGame, steam_client};
 use crate::monarch_games::monarchgame::MonarchWebGame;
 use crate::monarch_library::games_library::write_monarch_games;
@@ -11,12 +13,8 @@ use anyhow::{bail, Context, Result};
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
-use super::stores::StoreType;
-use super::games::GameType;
 
-pub struct MonarchClient {
-
-}
+pub struct MonarchClient {}
 
 impl MonarchClient {
     pub fn new() -> Self {
@@ -26,10 +24,7 @@ impl MonarchClient {
 
 impl StoreType for MonarchClient {
     fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
-        let search_term: String = format!(
-            "https://monarch-launcher.com/api/games?search={}",
-            name
-        );
+        let search_term: String = format!("https://monarch-launcher.com/api/games?search={}", name);
         let response = reqwest::blocking::get(search_term).unwrap();
         let resp_content = response.text().unwrap();
         let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
@@ -48,22 +43,22 @@ impl StoreType for MonarchClient {
         monarch_games
     }
 
-    fn install_game(&self, name: &str, platform_id: &str) -> Result<()> {
+    fn install_game(&self, handle: &AppHandle, name: &str, platform_id: &str) -> Result<()> {
         error!("monarch_client::install_game() Not implemented!");
         Ok(())
     }
 
-    fn uninstall_game(&self, platform_id: &str) -> Result<()> {
+    fn uninstall_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
         error!("monarch_client::uninstall_game() Not implemented!");
         Ok(())
     }
 
-    fn update_game(&self, platform_id: &str) -> Result<()> {
+    fn update_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
         error!("monarch_client::update_game() Not implemented!");
         Ok(())
     }
 
-    fn game_is_installed(&self, platform_id: &str) -> bool {
+    fn game_is_installed(&self, handle: &AppHandle, platform_id: &str) -> bool {
         error!("monarch_client::game_is_installed() Not implemented!");
         false
     }
@@ -111,7 +106,7 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             "Launching game with executable path: {}",
             game.executable_path
         );
-        
+
         // Reformat the launch command to work on the platform
         if cfg!(target_os = "windows") {
             game.executable_path = format!(r#"Start-Process "{}""#, game.executable_path);
@@ -295,7 +290,10 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
     unsafe {
         if let Err(e) = MONARCH_STATE.set_library_games(&games) {
-            error!("monarch_client::refresh_library() -> {}", e.chain().map(|e| e.to_string()).collect::<String>())
+            error!(
+                "monarch_client::refresh_library() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            )
         }
 
         // Replace games with the updated list of library games
