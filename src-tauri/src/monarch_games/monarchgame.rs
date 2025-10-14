@@ -56,7 +56,9 @@ impl MonarchGame {
             return Ok(());
         }
 
-        download_image(&self.thumbnail_url, &path).await.with_context(|| "monarchgame::download_thumbnail() -> ")?;
+        download_image(&self.thumbnail_url, &path)
+            .await
+            .with_context(|| "monarchgame::download_thumbnail() -> ")?;
         Ok(())
     }
 
@@ -119,4 +121,29 @@ pub struct MonarchWebGame {
     pub platform: String,
     pub platform_id: String,
     pub store_page: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MonarchGameProperties {
+    pub name: String,
+    pub platform: String,
+    pub install_dir: String,
+    pub size_on_disk: String,
+    pub last_played: String,
+    pub time_played: String,
+    pub description: String,
+}
+
+impl Default for MonarchGameProperties {
+    fn default() -> Self {
+        Self {
+            name: "Error".to_string(),
+            platform: "Error".to_string(),
+            install_dir: "Error".to_string(),
+            size_on_disk: "Error".to_string(),
+            last_played: "Error".to_string(),
+            time_played: "WIP".to_string(),
+            description: "WIP".to_string(),
+        }
+    }
 }

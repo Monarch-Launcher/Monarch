@@ -53,3 +53,13 @@ export type ProtonVersion = {
   name: string;
   path: string;
 };
+
+export type MonarchGameProperties = {
+  name: string;
+  platform: string;
+  install_dir: string;
+  size_on_disk: string;
+  last_played: string;
+  time_played: string;
+  description: string;
+};

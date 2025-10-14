@@ -10,17 +10,18 @@ use std::process::exit;
 
 use futures::executor;
 use monarch_games::commands::{
-    download_game, download_thumbnail, get_executables, get_home_recomendations, get_library,
-    install_steamcmd, install_umu, launch_game, manual_add_game, manual_remove_game,
-    move_game_to_monarch, open_store, proton_versions, refresh_library, remove_game, search_games,
-    steamcmd_is_installed, umu_is_installed, update_game, update_game_properties,
+    download_game, download_thumbnail, get_executables, get_game_properties,
+    get_home_recomendations, get_library, install_steamcmd, install_umu, launch_game,
+    manual_add_game, manual_remove_game, move_game_to_monarch, open_store, proton_versions,
+    refresh_library, remove_game, search_games, steamcmd_is_installed, umu_is_installed,
+    update_game, update_game_properties,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
 };
 use monarch_utils::commands::{
-    async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, delete_password,
-    delete_secret, get_cache_size, get_settings, open_logs, open_terminal, default_settings,
+    async_read_from_pty, async_write_to_pty, clear_cached_images, close_terminal, default_settings,
+    delete_password, delete_secret, get_cache_size, get_settings, open_logs, open_terminal,
     set_password, set_secret, set_settings, zoom_window,
 };
 use monarch_utils::monarch_fs::verify_monarch_folders;
@@ -113,6 +114,7 @@ fn main() {
             get_cache_size,
             open_logs,
             download_thumbnail,
+            get_game_properties,
         ])
         .setup(|app| {
             #[cfg(desktop)]

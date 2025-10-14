@@ -2,7 +2,7 @@ import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
 import { useProtonVersions } from '@global/contexts/protonVersionsProvider';
-import type { MonarchGame } from '@global/types';
+import type { MonarchGame, MonarchGameProperties } from '@global/types';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import React, { useEffect, useRef, useState } from 'react';
@@ -15,6 +15,37 @@ import { SiEpicgames } from 'react-icons/si';
 import styled, { keyframes } from 'styled-components';
 
 import Modal from '../modal';
+
+// Utility function to format Unix timestamp to human-readable date and time
+const formatLastPlayed = (timestamp: string): string => {
+  if (!timestamp) return 'Never';
+
+  const date = new Date(parseInt(timestamp, 10) * 1000);
+  if (Number.isNaN(date.getTime())) return 'Invalid date';
+
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).replace(',', '');
+};
+
+// Utility function to format bytes to human-readable size (KB, MB, GB)
+const formatSize = (bytes: string | number): string => {
+  if (!bytes) return 'N/A';
+
+  const numBytes = typeof bytes === 'string' ? parseFloat(bytes) : bytes;
+  if (Number.isNaN(numBytes) || numBytes === 0) return '0 B';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(numBytes) / Math.log(k));
+
+  return `${parseFloat((numBytes / (k ** i)).toFixed(2))} ${sizes[i]}`;
+};
 
 const CardWrapper = styled.div`
   display: flex;
@@ -183,12 +214,15 @@ const Drawer = styled.div`
   display: flex;
   flex-direction: column;
   animation: ${slideIn} 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  padding-left: 1rem;
+  padding: 0 1rem;
 `;
 
 const DrawerTitle = styled.h2`
   color: #fff;
-  margin-bottom: 1rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 2.2rem;
+  font-weight: 600;
+  line-height: 1.2;
 `;
 
 const DrawerButtonRow = styled.div`
@@ -531,6 +565,7 @@ const GameCard = ({
   reloadKey,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [gameProperties, setGameProperties] = React.useState<MonarchGameProperties | null>(null);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const optionsRef = React.useRef<HTMLButtonElement | null>(null);
@@ -548,9 +583,35 @@ const GameCard = ({
     if (found) setGameData({ ...found });
   }, [library, id]);
 
-  const toggleDrawer = React.useCallback(() => {
-    setDrawerOpen((prev) => !prev);
-  }, []);
+  const toggleDrawer = React.useCallback(async () => {
+    const willOpen = !drawerOpen;
+    setDrawerOpen(willOpen);
+
+    if (willOpen && !gameProperties) {
+      try {
+        const game: MonarchGame = {
+          id,
+          platform_id: platformId,
+          executable_path: executablePath,
+          name,
+          platform,
+          thumbnail_path: thumbnailPath,
+          thumbnail_url: thumbnailUrl,
+          store_page: storePage,
+          compatibility: gameData.compatibility,
+          launch_args: gameData.launch_args,
+          install_dir: '', // This will be populated by the backend
+        };
+
+        const properties = await invoke<MonarchGameProperties>('get_game_properties', { game });
+        setGameProperties(properties);
+      } catch (error) {
+        // TODO: Add proper error handling (e.g., toast notification)
+        console.error('Failed to fetch game properties:', error);
+      }
+    }
+  // eslint-disable-next-line max-len
+  }, [drawerOpen, executablePath, gameData.compatibility, gameData.launch_args, gameProperties, id, name, platform, platformId, storePage, thumbnailPath, thumbnailUrl]);
 
   const imageSrc = React.useMemo<string>(() => {
     if (!thumbnailPath || thumbnailPath === 'temp') {
@@ -1055,7 +1116,12 @@ const GameCard = ({
               {/* Dark overlay over the blurred background (skip if using fallback) */}
               {imageSrc !== fallback && <DrawerBackgroundOverlay />}
               {/* Drawer content on top */}
-              <div style={{ position: 'relative', zIndex: 3 }}>
+              <div style={{
+                position: 'relative',
+                zIndex: 3,
+                padding: '1.5rem 1.5rem 0', // Added top padding for more space above title
+              }}
+              >
                 {imageSrc !== fallback && (
                   <Thumbnail
                     alt=""
@@ -1063,8 +1129,8 @@ const GameCard = ({
                     onError={handleImageError}
                     style={{
                       position: 'static',
-                      width: '65%',
-                      maxWidth: '900px',
+                      width: '45%',
+                      maxWidth: '600px',
                       height: 'auto',
                       margin: '1rem auto 0 auto',
                       display: 'block',
@@ -1073,10 +1139,75 @@ const GameCard = ({
                     }}
                   />
                 )}
-                <DrawerTitle>{name}</DrawerTitle>
-                <p style={{ color: '#aaa', marginBottom: '1rem' }}>
-                  Platform: {platform}
-                </p>
+                <DrawerTitle style={{ marginTop: '2rem' }}>{name}</DrawerTitle>
+                {gameProperties?.platform && (
+                  <p style={{
+                    color: '#fff',
+                    margin: '0 0 1rem 0',
+                    fontSize: '1.4rem',
+                    fontWeight: 500,
+                  }}
+                  >
+                    {gameProperties.platform}
+                  </p>
+                )}
+
+                {/* Game Properties Section */}
+                {gameProperties && (
+                  <div style={{
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    marginBottom: '1.5rem',
+                    color: '#e0e0e0',
+                  }}
+                  >
+                    <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#fff' }}>Game Information</h3>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1.5fr 1fr',
+                      gap: '0.8rem',
+                      marginBottom: '0.8rem',
+                      alignItems: 'start',
+                    }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Size on Disk</div>
+                        <div>{formatSize(gameProperties.size_on_disk)}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Last Played</div>
+                        <div>{formatLastPlayed(gameProperties.last_played)}</div>
+                      </div>
+                      <div style={{ marginLeft: '1rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Time Played</div>
+                        <div>{gameProperties.time_played || '0 hours'}</div>
+                      </div>
+                      <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Folder Location</div>
+                        <div style={{
+                          wordBreak: 'break-all',
+                          backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          marginTop: '0.25rem',
+                          fontFamily: 'monospace',
+                          fontSize: '0.9rem',
+                        }}
+                        >
+                          {gameProperties.install_dir || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                    {gameProperties.description && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.5rem' }}>Description</div>
+                        <div style={{ lineHeight: 1.5 }}>{gameProperties.description}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <DrawerButtonRow>
                   <DrawerButton
                     variant="primary"

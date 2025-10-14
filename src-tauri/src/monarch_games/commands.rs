@@ -4,14 +4,15 @@ use anyhow::Result;
 use rand::rng;
 use rand::seq::SliceRandom;
 use serde_json::value::Value;
+use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info};
-use std::path::PathBuf;
 
+use crate::monarch_games::monarchgame::MonarchGameProperties;
 use crate::monarch_library::{self, games_library};
+use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
-use crate::monarch_utils::monarch_fs;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -84,7 +85,10 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 /// Tell backend to download cover/thumbnail for game.
 pub async fn download_thumbnail(game: MonarchGame) -> Result<(), String> {
     if let Err(e) = game.download_thumbnail().await {
-        error!("monarch_games::commands::download_thumbnail() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        error!(
+            "monarch_games::commands::download_thumbnail() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
         return Err(String::from("Failed to download thumbnail"));
     }
     Ok(())
@@ -293,17 +297,23 @@ pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
                 game.thumbnail_path = path.to_str().unwrap().to_string();
             }
             Err(e) => {
-                error!("monarch_games::commands::manual_add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                error!(
+                    "monarch_games::commands::manual_add_game() -> {}",
+                    e.chain().map(|e| e.to_string()).collect::<String>()
+                );
             }
         }
     }
 
     if let Err(e) = monarch_library::games_library::add_game(&game) {
-        error!("monarch_games::commands::manual_add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
-        return Err(format!("Failed to add game: {}", game.name))
+        error!(
+            "monarch_games::commands::manual_add_game() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(format!("Failed to add game: {}", game.name));
     }
 
-    return Ok(())
+    return Ok(());
 }
 
 #[tauri::command]
@@ -324,26 +334,42 @@ pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
                 use crate::monarch_utils::monarch_vdf;
 
                 if let Err(e) = monarch_vdf::set_install_dir(&mut game, &path) {
-                    error!("monarch_games::commands::get_executables() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
-                    return Err(format!("Set the correct installation directory for: {}", game.name))
+                    error!(
+                        "monarch_games::commands::get_executables() -> {}",
+                        e.chain().map(|e| e.to_string()).collect::<String>()
+                    );
+                    return Err(format!(
+                        "Set the correct installation directory for: {}",
+                        game.name
+                    ));
                 }
-
             }
             Err(e) => {
-                error!("monarch_games::commands::get_executables() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
-                return Err(format!("Failed to get executables for game: {}", game.name))
+                error!(
+                    "monarch_games::commands::get_executables() -> {}",
+                    e.chain().map(|e| e.to_string()).collect::<String>()
+                );
+                return Err(format!("Failed to get executables for game: {}", game.name));
             }
         }
     }
-    
+
     // Search for executable files in the installation directory
     match monarch_fs::get_executables(&PathBuf::from(&game.install_dir)) {
         Ok(exes) => Ok(exes),
-        Err(e) =>{
-            error!("monarch_games::commands::get_executables() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        Err(e) => {
+            error!(
+                "monarch_games::commands::get_executables() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
             Err(format!("Failed to get executables for game: {}", game.name))
-        } 
+        }
     }
+}
+
+#[tauri::command]
+pub fn get_game_properties(game: MonarchGame) -> MonarchGameProperties {
+    monarch_client::get_game_properties(&game)
 }
 
 #[tauri::command]
@@ -351,11 +377,17 @@ pub async fn manual_remove_game(game: MonarchGame) -> Result<(), String> {
     info!("User removing game binary: {:?}", game);
 
     if let Err(e) = monarch_library::games_library::remove_game(&game) {
-        error!("monarch_games::commands::manual_remove_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
-        return Err(format!("Failed to remove game: {} from library!", game.name))
+        error!(
+            "monarch_games::commands::manual_remove_game() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(format!(
+            "Failed to remove game: {} from library!",
+            game.name
+        ));
     }
 
-    return Ok(())
+    return Ok(());
 }
 
 #[tauri::command]
@@ -363,7 +395,7 @@ pub fn umu_is_installed() -> bool {
     #[cfg(target_os = "linux")]
     {
         use super::linux::umu;
-        return umu::umu_is_installed()
+        return umu::umu_is_installed();
     }
 
     #[cfg(not(target_os = "linux"))]
@@ -378,18 +410,21 @@ pub fn install_umu() -> Result<(), String> {
         info!("Downloading umu-launcher...");
 
         if let Err(e) = umu::install_umu() {
-            error!("monarch_games::commands::install_umu() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
-            return Err(format!("Failed to download umu-launcher!"))
+            error!(
+                "monarch_games::commands::install_umu() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            return Err(format!("Failed to download umu-launcher!"));
         }
 
-        return Ok(())
+        return Ok(());
     }
 
     #[cfg(not(target_os = "linux"))]
     {
         use tracing::warn;
         warn!("Attempted to download umu-launcher under something other than Linux!");
-        return Err(format!("Can only use umu-launcher under Linux!"))
+        return Err(format!("Can only use umu-launcher under Linux!"));
     }
 }
 
@@ -403,8 +438,11 @@ pub fn steamcmd_is_installed() -> bool {
 pub async fn install_steamcmd(handle: AppHandle) -> Result<(), String> {
     use super::steam_client;
     if let Err(e) = steam_client::install_steamcmd(&handle).await {
-        error!("monarch_games::commands::install_steamcmd() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
-        return Err(String::from("Failed to download SteamCMD!"))
+        error!(
+            "monarch_games::commands::install_steamcmd() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to download SteamCMD!"));
     }
     Ok(())
 }
