@@ -80,7 +80,7 @@ const Thumbnail = styled.img<{ $isInfo?: boolean }>`
   z-index: 0; /* Place it below the text and buttons */
 `;
 
-const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
+const StyledButton = styled(Button) <{ $isInfo?: boolean }>`
   background-color: ${({ $isInfo, theme }) =>
     $isInfo ? 'grey' : theme.colors.primary};
   border-color: ${({ $isInfo, theme }) =>
@@ -97,11 +97,11 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
   &:hover,
   &:focus {
     background-color: ${({ $isInfo, theme }) =>
-      $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBackground};
+    $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBackground};
     border-color: ${({ $isInfo, theme }) =>
-      $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBorder};
+    $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBorder};
     color: ${({ $isInfo, theme }) =>
-      $isInfo ? 'white' : theme.colors.button.primary.hoverText};
+    $isInfo ? 'white' : theme.colors.button.primary.hoverText};
   }
 `;
 
@@ -610,7 +610,7 @@ const GameCard = ({
         console.error('Failed to fetch game properties:', error);
       }
     }
-  // eslint-disable-next-line max-len
+    // eslint-disable-next-line max-len
   }, [drawerOpen, executablePath, gameData.compatibility, gameData.launch_args, gameProperties, id, name, platform, platformId, storePage, thumbnailPath, thumbnailUrl]);
 
   const imageSrc = React.useMemo<string>(() => {
