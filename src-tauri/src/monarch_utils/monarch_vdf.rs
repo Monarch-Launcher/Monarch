@@ -266,6 +266,8 @@ impl Into<MonarchGameProperties> for SteamGameProperties {
             last_played: self.LastPlayed,
             time_played: "WIP".to_string(),
             description: "WIP".to_string(),
+            protondb_rating: "N/A".to_string(),
+            protondb_url: "".to_string(),
         }
     }
 }

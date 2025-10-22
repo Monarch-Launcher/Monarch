@@ -368,8 +368,8 @@ pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
 }
 
 #[tauri::command]
-pub fn get_game_properties(game: MonarchGame) -> MonarchGameProperties {
-    monarch_client::get_game_properties(&game)
+pub async fn get_game_properties(game: MonarchGame) -> MonarchGameProperties {
+    monarch_client::get_game_properties(&game).await
 }
 
 #[tauri::command]

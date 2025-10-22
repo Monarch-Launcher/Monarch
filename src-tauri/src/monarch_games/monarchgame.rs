@@ -132,6 +132,9 @@ pub struct MonarchGameProperties {
     pub last_played: String,
     pub time_played: String,
     pub description: String,
+
+    pub protondb_rating: String,
+    pub protondb_url: String,
 }
 
 impl Default for MonarchGameProperties {
@@ -144,6 +147,8 @@ impl Default for MonarchGameProperties {
             last_played: "Error".to_string(),
             time_played: "WIP".to_string(),
             description: "WIP".to_string(),
+            protondb_rating: "N/A".to_string(),
+            protondb_url: "".to_string(),
         }
     }
 }
