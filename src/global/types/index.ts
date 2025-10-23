@@ -62,4 +62,6 @@ export type MonarchGameProperties = {
   last_played: string;
   time_played: string;
   description: string;
+  protondb_rating: string;
+  protondb_url: string;
 };

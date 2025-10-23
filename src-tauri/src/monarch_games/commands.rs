@@ -208,7 +208,7 @@ pub async fn move_game_to_monarch(
 #[tauri::command]
 /// Open "Purchase window" for a game
 pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
-    let window: MiniWindow = MiniWindow::new("store", &url, 1280.0, 720.0);
+    let window: MiniWindow = MiniWindow::new("monarch_window", &url, 1280.0, 720.0);
     if let Err(e) = window.build_window(&handle).await {
         error!(
             "monarch_games::commands::open_store() -> {}",
@@ -368,8 +368,8 @@ pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
 }
 
 #[tauri::command]
-pub fn get_game_properties(game: MonarchGame) -> MonarchGameProperties {
-    monarch_client::get_game_properties(&game)
+pub async fn get_game_properties(game: MonarchGame) -> MonarchGameProperties {
+    monarch_client::get_game_properties(&game).await
 }
 
 #[tauri::command]
