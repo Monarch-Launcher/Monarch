@@ -293,13 +293,16 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
                     let mut props: MonarchGameProperties =
                         monarch_vdf::get_game_properties_from_manifest(game, &p).into();
 
-                    match steam_client::get_protondb_rating(&game.platform_id).await {
-                        Ok((rating, url)) => {
-                            props.protondb_rating = rating;
-                            props.protondb_url = url;
-                        }
-                        Err(e) => {
-                            error!("monarch_client::get_game_properties() Failed to get ProtonDB rating! | Err: {}", e);
+                    #[cfg(target_os = "linux")]
+                    {
+                        match steam_client::get_protondb_rating(&game.platform_id).await {
+                            Ok((rating, url)) => {
+                                props.protondb_rating = rating;
+                                props.protondb_url = url;
+                            }
+                            Err(e) => {
+                                error!("monarch_client::get_game_properties() Failed to get ProtonDB rating! | Err: {}", e);
+                            }
                         }
                     }
 
