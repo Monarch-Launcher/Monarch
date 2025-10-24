@@ -10,6 +10,7 @@ use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
@@ -22,12 +23,33 @@ impl MonarchClient {
     }
 }
 
+#[async_trait]
 impl StoreType for MonarchClient {
-    fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
+    async fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
         let search_term: String = format!("https://monarch-launcher.com/api/games?search={}", name);
-        let response = reqwest::blocking::get(search_term).unwrap();
-        let resp_content = response.text().unwrap();
-        let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
+        let response = match reqwest::get(search_term).await {
+            Ok(resp) => resp,
+            Err(e) => {
+                error!("monarch_client::search_games() reqwest::get() failed! | Err: {}", e);
+                return Vec::new();
+            }
+        };
+
+        let resp_content = match response.text().await {
+            Ok(content) => content,
+            Err(e) => {
+                error!("monarch_client::search_games() response.text() failed! | Err: {}", e);
+                return Vec::new();
+            }
+        };
+
+        let web_games: Vec<MonarchWebGame> = match serde_json::from_str(&resp_content) {
+            Ok(games) => games,
+            Err(e) => {
+                error!("monarch_client::search_games() serde_json::from_str() failed! | Err: {}", e);
+                return Vec::new();
+            }
+        };
 
         let mut monarch_games: Vec<Box<dyn GameType>> = Vec::new();
         for game in web_games {
@@ -43,19 +65,19 @@ impl StoreType for MonarchClient {
         monarch_games
     }
 
-    fn install_game(&self, handle: &AppHandle, name: &str, platform_id: &str) -> Result<()> {
+    async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
         error!("monarch_client::install_game() Not implemented!");
-        Ok(())
+        bail!("monarch_client::install_game() currently not supported!")
     }
 
-    fn uninstall_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
+    async fn uninstall_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
         error!("monarch_client::uninstall_game() Not implemented!");
-        Ok(())
+        bail!("monarch_client::uninstall_game() currently not supported!")
     }
 
-    fn update_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
+    async fn update_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
         error!("monarch_client::update_game() Not implemented!");
-        Ok(())
+        bail!("monarch_client::update_game() currently not supported!")
     }
 
     fn game_is_installed(&self, handle: &AppHandle, platform_id: &str) -> bool {
@@ -68,8 +90,8 @@ impl StoreType for MonarchClient {
         false
     }
 
-    fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-        unimplemented!()
+    async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        game.launch(handle).await
     }
 }
 

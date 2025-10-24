@@ -1,12 +1,13 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
 use std::path::PathBuf;
-use tracing::error;
+use tauri::AppHandle;
+use async_trait::async_trait;
 
 use super::games::GameType;
 use super::stores::StoreType;
 use crate::monarch_games::legendary_client::LegendaryClient;
+use crate::monarch_games::linux::umu::umu_run;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::download_image;
@@ -63,7 +64,9 @@ impl MonarchGame {
             return Ok(());
         }
 
-        download_image(&self.thumbnail_url, &path).await.with_context(|| "monarchgame::download_thumbnail() -> ")?;
+        download_image(&self.thumbnail_url, &path)
+            .await
+            .with_context(|| "monarchgame::download_thumbnail() -> ")?;
         Ok(())
     }
 
@@ -96,6 +99,7 @@ impl MonarchGame {
     }
 }
 
+#[async_trait]
 impl GameType for MonarchGame {
     fn get_name(&self) -> String {
         self.name.clone()
@@ -103,17 +107,11 @@ impl GameType for MonarchGame {
 
     fn get_platform(&self) -> Box<dyn StoreType> {
         match self.platform.as_str() {
-            "monarch" => {
-                Box::new(MonarchClient::new())
-            }
-            "steam" => {
-                Box::new(SteamClient::new())
-            }
-            "epic" => {
-                Box::new(LegendaryClient::new())
-            }
+            "monarch" => Box::new(MonarchClient::new()),
+            "steam" => Box::new(SteamClient::new()),
+            "epic" => Box::new(LegendaryClient::new()),
             _ => {
-                todo!()
+                panic!("Invalid platform!")
             }
         }
     }
@@ -130,16 +128,21 @@ impl GameType for MonarchGame {
         0.0
     }
 
-    fn launch(&self, handle: &AppHandle) -> Result<()> {
-        self.get_platform().launch_game(handle, &self.into_monarchgame())       
+    async fn launch(&self, handle: &AppHandle) -> Result<()> {
+        if !self.executable_path.is_empty() {
+            return umu_run(handle, &self).await.with_context(|| "monarchgame::launch() -> ")
+        }
+
+        self.get_platform()
+            .launch_game(handle, &self.into_monarchgame())
+            .await
+            .with_context(|| "monarchgame::launch() -> ")
     }
 
     fn into_monarchgame(&self) -> MonarchGame {
         self.clone()
     }
 }
-
-
 
 impl PartialEq for MonarchGame {
     fn eq(&self, other: &Self) -> bool {

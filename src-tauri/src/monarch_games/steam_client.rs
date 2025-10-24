@@ -1,6 +1,7 @@
 use super::games::GameType;
 use super::stores::StoreType;
 use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
 use reqwest;
 use scraper::{Html, Selector};
 use serde_json::Value;
@@ -11,6 +12,7 @@ use tokio::task;
 use tracing::{error, info, warn};
 
 use super::monarchgame::{MonarchGame, MonarchWebGame};
+use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
@@ -40,21 +42,43 @@ impl SteamClient {
     }
 }
 
+#[async_trait]
 impl StoreType for SteamClient {
-    fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
-        unimplemented!()
+    async fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
+        find_game(name)
+            .await
+            .into_iter()
+            .map(|g| Box::new(g) as Box<dyn GameType>)
+            .collect::<Vec<Box<dyn GameType>>>()
     }
 
-    fn install_game(&self, handle: &AppHandle, name: &str, platform_id: &str) -> Result<()> {
-        unimplemented!()
+    async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        let game: MonarchGame = download_game(handle, &game.name, &game.platform_id)
+            .await
+            .with_context(|| "steam_client::install_game() -> ")?;
+        games_library::add_game(&game).with_context(|| "steam_client::install_game() -> ")
     }
 
-    fn uninstall_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
-        unimplemented!()
+    async fn uninstall_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        match game.platform.as_str() {
+            "steam" => uninstall_client_game(&game.platform_id)
+                .with_context(|| "steam_client::uninstall_game() -> "),
+            "steamcmd" => uninstall_game(handle, &game.platform_id)
+                .await
+                .with_context(|| "steam_client::uninstall_game() -> "),
+            _ => {
+                bail!(
+                    "Invalid platform! Expected 'steam' or 'steamcmd', instead got: {}!",
+                    game.platform
+                )
+            }
+        }
     }
 
-    fn update_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
-        unimplemented!()
+    async fn update_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        update_game(handle, &game.platform_id)
+            .await
+            .with_context(|| "steam_client::update_game() -> ")
     }
 
     fn game_is_installed(&self, handle: &AppHandle, platform_id: &str) -> bool {
@@ -65,7 +89,7 @@ impl StoreType for SteamClient {
         unimplemented!()
     }
 
-    fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+    async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
         match game.platform.as_str() {
             "steam" => launch_client_game(game),
             "steamcmd" => {

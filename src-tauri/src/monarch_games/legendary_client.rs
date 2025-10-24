@@ -1,9 +1,11 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use tauri::AppHandle;
 use tracing::error;
 
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebGame};
 use crate::monarch_utils::monarch_fs::generate_cache_image_path;
+use crate::monarch_utils::monarch_settings::{get_settings_state, Settings};
 use crate::monarch_utils::monarch_terminal::run_in_terminal;
 
 use super::games::GameType;
@@ -33,8 +35,9 @@ impl LegendaryClient {
     }
 }
 
+#[async_trait]
 impl StoreType for LegendaryClient {
-    fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
+    async fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
         let search_term: String = format!(
             "https://monarch-launcher.com/api/games?search={}?platform=legendary",
             name,
@@ -57,18 +60,18 @@ impl StoreType for LegendaryClient {
         monarch_games
     }
 
-    fn install_game(&self, handle: &AppHandle, name: &str, platform_id: &str) -> Result<()> {
-        let command: String = format!("{} install {}", self.cli_path, platform_id);
+    async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        let command: String = format!("{} install {}", self.cli_path, &game.platform_id);
         self.run_legendary_cmd(handle.clone(), command)
     }
 
-    fn uninstall_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
-        let command: String = format!("{} uninstall {}", self.cli_path, platform_id);
+    async fn uninstall_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        let command: String = format!("{} uninstall {}", self.cli_path, &game.platform_id);
         self.run_legendary_cmd(handle.clone(), command)
     }
 
-    fn update_game(&self, handle: &AppHandle, platform_id: &str) -> Result<()> {
-        let command: String = format!("{} update {}", self.cli_path, platform_id);
+    async fn update_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        let command: String = format!("{} update {}", self.cli_path, &game.platform_id);
         self.run_legendary_cmd(handle.clone(), command)
     }
 
@@ -77,10 +80,10 @@ impl StoreType for LegendaryClient {
     }
 
     fn platform_enabled(&self) -> bool {
-        unimplemented!()
+        get_settings_state().epic.manage
     }
 
-    fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+    async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
         let command: String = format!("{} launch {}", self.cli_path, game.platform_id);
         self.run_legendary_cmd(handle.clone(), command)
     }
