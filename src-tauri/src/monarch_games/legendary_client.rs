@@ -5,7 +5,7 @@ use tracing::error;
 
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebGame};
 use crate::monarch_utils::monarch_fs::generate_cache_image_path;
-use crate::monarch_utils::monarch_settings::{get_settings_state, Settings};
+use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::monarch_utils::monarch_terminal::run_in_terminal;
 
 use super::games::GameType;
