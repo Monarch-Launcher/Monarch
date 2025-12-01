@@ -33,10 +33,16 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
     }
 
     let mut game: MonarchGame;
-    unsafe {
-        game = MONARCH_STATE
-            .get_game(&frontend_game.id)
-            .with_context(|| "monarch_client::launch_game() -> ")?;
+    match MONARCH_STATE.read() {
+        Ok(state) => {
+            game = state 
+                .get_game(&frontend_game.id)
+                .with_context(|| "monarch_client::launch_game() -> ")?;
+        }
+        Err(e) => {
+            error!("monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}", e);
+            bail!("Failed to lock on MONARCH_STATE")
+        }
     }
 
     // Check if game should be launched with exectutable, such as
@@ -162,11 +168,17 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
             for (i, game) in monarch_games.clone().iter().enumerate() {
                 if game.platform == platform && game.platform_id == platform_id {
                     monarch_games.remove(i);
-                    unsafe {
-                        MONARCH_STATE.set_library_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")?;
 
-                        // Replace games with the updated list of library games
-                        monarch_games = MONARCH_STATE.get_library_games();
+                    match MONARCH_STATE.write() {
+                        Ok(mut state) => {
+                            state.set_library_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")?;
+
+                            // Replace games with the updated list of library games
+                            monarch_games = state.get_library_games();
+                        }
+                        Err(e) => {
+                            error!("monarch_client::uninstall_game() Failed to lock on MONARCH_STATE | Err: {}", e);
+                        }
                     }
                     return write_monarch_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")
                 }
@@ -228,16 +240,21 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
     games.append(&mut steam_games);
 
-    unsafe {
-        if let Err(e) = MONARCH_STATE.set_library_games(&games) {
-            error!(
-                "monarch_client::refresh_library() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            )
-        }
+    match MONARCH_STATE.write() {
+        Ok(mut state) => {
+            if let Err(e) = state.set_library_games(&games) {
+                error!(
+                    "monarch_client::refresh_library() -> {}",
+                    e.chain().map(|e| e.to_string()).collect::<String>()
+                )
+            }
 
-        // Replace games with the updated list of library games
-        games = MONARCH_STATE.get_library_games();
+            // Replace games with the updated list of library games
+            games = state.get_library_games();
+        }
+        Err(e) => {
+            error!("monarch_client::refresh_library() Failed to lock on MONARCH_STATE | Err: {}", e);
+        }
     }
 
     games

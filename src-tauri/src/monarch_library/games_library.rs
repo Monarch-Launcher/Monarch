@@ -90,33 +90,41 @@ pub fn get_monarchgames() -> Result<Vec<MonarchGame>> {
 /// Backend functionality for adding a new game that's been installed.
 pub fn add_game(game: &MonarchGame) -> Result<()> {
     let mut games: Vec<MonarchGame>;
-    unsafe {
-        games = MONARCH_STATE.get_library_games();
-        games.push(game.clone());
-
-        if let Err(e) = MONARCH_STATE.set_library_games(&games) {
-            error!("games_library::add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+    match MONARCH_STATE.write() {
+        Ok(mut state) => {
+            games = state.get_library_games();
+            games.push(game.clone());
+            if let Err(e) = state.set_library_games(&games) {
+                error!("games_library::add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+            }
+        }
+        Err(e) => {
+            error!("games_library::add_game() Failed to lock on MONARCH_STATE | Err: {}", e)
         }
     }
-
     write_monarchgame(game)
 }
 
 /// Backend functionality for removing a game from library.json 
 pub fn remove_game(game: &MonarchGame) -> Result<()> {
     let mut games: Vec<MonarchGame>;
-    unsafe {
-        games = MONARCH_STATE.get_library_games();
+    match MONARCH_STATE.write() {
+        Ok(mut state) => {
+            games = state.get_library_games();
 
-        for (i, g) in games.iter_mut().enumerate() {
-            if g.id == game.id {
-                games.remove(i);
-                break;
+            for (i, g) in games.iter_mut().enumerate() {
+                if g.id == game.id {
+                    games.remove(i);
+                    break;
+                }
+            }
+
+            if let Err(e) = state.set_library_games(&games) {
+                error!("games_library::remove_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
             }
         }
-
-        if let Err(e) = MONARCH_STATE.set_library_games(&games) {
-            error!("games_library::remove_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+        Err(e) => {
+            error!("games_library::remove_game() Failed to lock on MONARCH_STATE | Err: {}", e)
         }
     }
 
@@ -127,6 +135,7 @@ pub fn remove_game(game: &MonarchGame) -> Result<()> {
             break;
         }
     }
+
     write_monarch_games(&monarch_games)
 }
 
@@ -148,10 +157,15 @@ pub fn update_game_properties(game: &MonarchGame) -> Result<()> {
         }
     }
 
-    unsafe {
-        MONARCH_STATE
-            .update_game(&game)
-            .with_context(|| "games_library::update_game_properties() -> ")?;
+    match MONARCH_STATE.write() {
+        Ok(mut state) => {
+            state
+                .update_game(&game)
+                .with_context(|| "games_library::update_game_properties() -> ")?;
+        }
+        Err(e) => {
+            error!("games_library::update_game_properties() Failed to lock on MONARCH_STATE | Err: {}", e)
+        }
     }
     Ok(())
 }

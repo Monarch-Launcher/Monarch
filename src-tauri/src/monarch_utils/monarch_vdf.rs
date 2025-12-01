@@ -209,13 +209,19 @@ pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Res
                 .unwrap()
                 .to_string();
 
-            unsafe {
-                if let Err(e) = MONARCH_STATE.update_game(&game) {
-                    error!(
-                        "monarch_vdf::set_install_dir() -> {}",
-                        e.chain().map(|e| e.to_string()).collect::<String>()
-                    );
-                    warn!("Failed to update game in state: {}", game.name);
+            match MONARCH_STATE.write() {
+                Ok(mut state) => {
+                    if let Err(e) = state.update_game(&game) {
+                        error!(
+                            "monarch_vdf::set_install_dir() -> {}",
+                            e.chain().map(|e| e.to_string()).collect::<String>()
+                        );
+                        warn!("Failed to update game in state: {}", game.name);
+                    }
+                }
+                Err(e) => {
+                    error!("monarch_vdf::set_install_dir() Failed to get lock on MONARCH_STATE | Err: {}", e);
+
                 }
             }
 
