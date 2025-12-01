@@ -35,13 +35,19 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
     let mut game: MonarchGame;
     match MONARCH_STATE.read() {
         Ok(state) => {
-            game = state 
+            game = state
                 .get_game(&frontend_game.id)
                 .with_context(|| "monarch_client::launch_game() -> ")?;
         }
         Err(e) => {
-            error!("monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}", e);
-            bail!("Failed to lock on MONARCH_STATE")
+            error!(
+                "monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}",
+                e
+            );
+            bail!(
+                "monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}",
+                e
+            )
         }
     }
 
@@ -253,7 +259,10 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
             games = state.get_library_games();
         }
         Err(e) => {
-            error!("monarch_client::refresh_library() Failed to lock on MONARCH_STATE | Err: {}", e);
+            error!(
+                "monarch_client::refresh_library() Failed to lock on MONARCH_STATE | Err: {}",
+                e
+            );
         }
     }
 

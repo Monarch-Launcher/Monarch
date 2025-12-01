@@ -221,7 +221,10 @@ pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Res
                 }
                 Err(e) => {
                     error!("monarch_vdf::set_install_dir() Failed to get lock on MONARCH_STATE | Err: {}", e);
-
+                    bail!(
+                        "monarch_vdf::set_install_dir() Failed to lock on MONARCH_STATE | Err: {}",
+                        e
+                    )
                 }
             }
 
