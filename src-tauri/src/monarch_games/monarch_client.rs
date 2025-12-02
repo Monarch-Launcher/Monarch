@@ -311,7 +311,7 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
 
                         unsafe {
                             if let Some(g) = MONARCH_STATE.get_game(&game.id) {
-                                properties.description = g.description;
+                                props.description = g.description;
                             }
                         }
                         properties = props;
