@@ -13,6 +13,15 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
 
+#[cfg(target_os = "windows")]
+use super::windows::steam;
+
+#[cfg(target_os = "macos")]
+use super::macos::steam;
+
+#[cfg(target_os = "linux")]
+use super::linux::steam;
+
 /// Generates the default path where Monarch wants to store games.
 pub fn generate_default_folder() -> Result<PathBuf> {
     let path: PathBuf = if cfg!(windows) {
@@ -277,43 +286,74 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
         platform = "steam";
     }
 
-    match platform {
-        "steam" => {
-            #[cfg(target_os = "windows")]
-            use super::windows::steam;
+    let mut properties: MonarchGameProperties = MonarchGameProperties::default();
 
-            #[cfg(target_os = "macos")]
-            use super::macos::steam;
-
-            #[cfg(target_os = "linux")]
-            use super::linux::steam;
-
-            match steam::get_default_libraryfolders_location() {
-                Ok(p) => {
-                    let mut props: MonarchGameProperties =
-                        monarch_vdf::get_game_properties_from_manifest(game, &p).into();
-
-                    #[cfg(target_os = "linux")]
-                    {
-                        match steam_client::get_protondb_rating(&game.platform_id).await {
-                            Ok((rating, url)) => {
-                                props.protondb_rating = rating;
-                                props.protondb_url = url;
-                            }
-                            Err(e) => {
-                                error!("monarch_client::get_game_properties() Failed to get ProtonDB rating! | Err: {}", e);
+    if game.is_installed() {
+        match platform {
+            "steam" => {
+                match steam::get_default_libraryfolders_location() {
+                    Ok(p) => {
+                        let mut props: MonarchGameProperties =
+                            monarch_vdf::get_game_properties_from_manifest(game, &p).into();
+                            
+                        #[cfg(target_os = "linux")]
+                        {
+                            match steam_client::get_protondb_rating(&game.platform_id).await {
+                                Ok((rating, url)) => {
+                                    props.protondb_rating = rating;
+                                    props.protondb_url = url;
+                                }
+                                Err(e) => {
+                                    error!("monarch_client::get_game_properties() Failed to get ProtonDB rating! | Err: {}", e);
+                                }
                             }
                         }
-                    }
 
-                    return props;
+                        unsafe {
+                            if let Some(g) = MONARCH_STATE.get_game(&game.id) {
+                                properties.description = g.description;
+                            }
+                        }
+                        properties = props;
+                    }
+                    Err(e) => {
+                        error!("monarch_client::get_game_properties() Failed to get path to Steams libraryfolders.vdf! | Err: {}", e);
+                        return MonarchGameProperties::default();
+                    }
                 }
-                Err(e) => {
-                    error!("monarch_client::get_game_properties() Failed to get path to Steams libraryfolders.vdf! | Err: {}", e);
-                    return MonarchGameProperties::default();
+            }
+            _ => {},
+        }
+    } else {
+        let search_term: String = format!(
+            "https://monarch-launcher.com/api/games?name={}",
+            game.name
+        );
+        let response = reqwest::get(search_term).await.unwrap();
+        let resp_content = response.text().await.unwrap();
+        let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
+
+        if !web_games.is_empty() {
+            let web_game: &MonarchWebGame = &web_games[0];
+            properties.platform = web_game.platform.to_string();
+            properties.description = web_game.summary.to_string();
+            
+            #[cfg(target_os = "linux")]
+            {
+                if web_game.platform == "steam" {
+                    match steam_client::get_protondb_rating(&web_game.platform_id).await {
+                        Ok((rating, url)) => {
+                            properties.protondb_rating = rating;
+                            properties.protondb_url = url;
+                        }
+                        Err(e) => {
+                            error!("monarch_client::get_game_properties() Failed to get ProtonDB rating! | Err: {}", e);
+                        }
+                    }
                 }
             }
         }
-        _ => MonarchGameProperties::default(),
     }
+
+    properties
 }

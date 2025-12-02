@@ -18,6 +18,7 @@ pub struct MonarchGame {
     pub launch_args: String,
     pub compatibility: String,
     pub store_page: String,
+    pub description: String,
 
     #[serde(default)]
     pub install_dir: String,
@@ -45,6 +46,7 @@ impl MonarchGame {
             compatibility: String::new(),
             store_page: store_page.to_string(),
             install_dir: String::new(),
+            description: String::new(),
         }
     }
 
@@ -73,6 +75,10 @@ impl MonarchGame {
         self.id = id;
     }
 
+    pub fn is_installed(&self) -> bool {
+        unsafe { MONARCH_STATE.get_game(&self.id).is_some() }
+    }
+
     /// Convert MonarchWebGame to MonarchGame
     pub fn from(other: &MonarchWebGame) -> Self {
         Self {
@@ -87,6 +93,7 @@ impl MonarchGame {
             compatibility: "".to_string(),
             store_page: other.store_page.to_string(),
             install_dir: "".to_string(),
+            description: other.summary.to_string(),
         }
     }
 }
@@ -146,7 +153,7 @@ impl Default for MonarchGameProperties {
             size_on_disk: "Error".to_string(),
             last_played: "Error".to_string(),
             time_played: "WIP".to_string(),
-            description: "WIP".to_string(),
+            description: "Error".to_string(),
             protondb_rating: "N/A".to_string(),
             protondb_url: "".to_string(),
         }
