@@ -749,6 +749,7 @@ const GameCard = ({
         compatibility: '',
         launch_args: '',
         install_dir: '',
+        description: '',
       };
 
       await invoke('manual_remove_game', {
@@ -1227,177 +1228,183 @@ const GameCard = ({
                     Store
                   </DrawerStoreButton>
                 </DrawerButtonRow>
-                {gameProperties?.platform && (
-                  <p style={{
-                    color: '#fff',
-                    margin: '0 0 1rem 0',
-                    fontSize: '1.4rem',
-                    fontWeight: 500,
-                  }}
-                  >
-                    {gameProperties.platform}
-                  </p>
-                )}
+                {
+                  gameProperties?.platform && (
+                    <p style={{
+                      color: '#fff',
+                      margin: '0 0 1rem 0',
+                      fontSize: '1.4rem',
+                      fontWeight: 500,
+                    }}
+                    >
+                      {gameProperties.platform}
+                    </p>
+                  )
+                }
 
-                {loadingProperties && (
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    padding: '3rem',
-                    color: '#aaa',
-                    fontSize: '1.1rem',
-                    gap: '0.75rem',
-                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                    borderRadius: '8px',
-                    marginBottom: '1.5rem',
-                  }}>
-                    <Spinner size={24} />
-                    <span>Loading game details...</span>
-                  </div>
-                )}
+                {
+                  loadingProperties && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      padding: '3rem',
+                      color: '#aaa',
+                      fontSize: '1.1rem',
+                      gap: '0.75rem',
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                      borderRadius: '8px',
+                      marginBottom: '1.5rem',
+                    }}>
+                      <Spinner size={24} />
+                      <span>Loading game details...</span>
+                    </div>
+                  )
+                }
 
                 {/* Game Properties Section */}
-                {gameProperties && (
-                  <div style={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                    borderRadius: '8px',
-                    padding: '1rem',
-                    marginBottom: '1.5rem',
-                    color: '#e0e0e0',
-                  }}
-                  >
-                    <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#fff' }}>Game Information</h3>
-                    {hasGame && (
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1.5fr 1fr',
-                        gap: '0.8rem',
-                        marginBottom: '0.8rem',
-                        alignItems: 'start',
-                      }}
-                      >
-                        <div>
-                          <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Size on Disk</div>
-                          <div>{formatSize(gameProperties.size_on_disk)}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Last Played</div>
-                          <div>{formatLastPlayed(gameProperties.last_played)}</div>
-                        </div>
-                        <div style={{ marginLeft: '1rem' }}>
-                          <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Time Played</div>
-                          <div>{gameProperties.time_played || '0 hours'}</div>
-                        </div>
-                        <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-                          <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Folder Location</div>
-                          <div style={{
-                            wordBreak: 'break-all',
-                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                            padding: '0.5rem',
-                            borderRadius: '4px',
-                            marginTop: '0.25rem',
-                            fontFamily: 'monospace',
-                            fontSize: '0.9rem',
-                          }}
-                          >
-                            {gameProperties.install_dir || 'N/A'}
+                {
+                  gameProperties && (
+                    <div style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      marginBottom: '1.5rem',
+                      color: '#e0e0e0',
+                    }}
+                    >
+                      <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#fff' }}>Game Information</h3>
+                      {hasGame && (
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1.5fr 1fr',
+                          gap: '0.8rem',
+                          marginBottom: '0.8rem',
+                          alignItems: 'start',
+                        }}
+                        >
+                          <div>
+                            <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Size on Disk</div>
+                            <div>{formatSize(gameProperties.size_on_disk)}</div>
                           </div>
-                        </div>
-                      </div>
-                    )}
-                    {navigator.userAgent.toLowerCase().includes('linux') && gameProperties.protondb_rating && (
-                      <div style={{ marginTop: '0.8rem', marginBottom: '0.8rem' }}>
-                        <div style={{ fontSize: '0.85rem', color: '#aaa' }}>ProtonDB Rating</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <div
-                            style={{
-                              display: 'inline-block',
-                              padding: '0.25rem 0.5rem',
+                          <div>
+                            <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Last Played</div>
+                            <div>{formatLastPlayed(gameProperties.last_played)}</div>
+                          </div>
+                          <div style={{ marginLeft: '1rem' }}>
+                            <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Time Played</div>
+                            <div>{gameProperties.time_played || '0 hours'}</div>
+                          </div>
+                          <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+                            <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Folder Location</div>
+                            <div style={{
+                              wordBreak: 'break-all',
+                              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                              padding: '0.5rem',
                               borderRadius: '4px',
-                              fontWeight: 600,
-                              textTransform: 'capitalize',
-                              backgroundColor: (() => {
-                                const rating = gameProperties.protondb_rating.toLowerCase();
-                                if (rating.includes('borked')) return 'rgba(220, 53, 69, 0.2)';
-                                if (rating.includes('platinum')) return 'rgba(229, 228, 226, 0.2)';
-                                if (rating.includes('gold')) return 'rgba(255, 215, 0, 0.2)';
-                                if (rating.includes('silver')) return 'rgba(192, 192, 192, 0.2)';
-                                if (rating.includes('bronze')) return 'rgba(205, 127, 50, 0.2)';
-                                return 'rgba(0, 0, 0, 0.2)';
-                              })(),
-                              color: (() => {
-                                const rating = gameProperties.protondb_rating.toLowerCase();
-                                if (rating.includes('borked')) return '#DC3545';
-                                if (rating.includes('platinum')) return '#E5E4E2';
-                                if (rating.includes('gold')) return '#FFD700';
-                                if (rating.includes('silver')) return '#C0C0C0';
-                                if (rating.includes('bronze')) return '#CD7F32';
-                                return '#e0e0e0';
-                              })(),
+                              marginTop: '0.25rem',
+                              fontFamily: 'monospace',
+                              fontSize: '0.9rem',
                             }}
-                          >
-                            {gameProperties.protondb_rating}
-                          </div>
-                          {gameProperties.protondb_url && (
-                            <div style={{ position: 'relative', display: 'inline-block' }}>
-                              <button
-                                aria-label="Open ProtonDB page"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await invoke('open_store', { url: gameProperties.protondb_url });
-                                  } catch (err) {
-                                    // Fallback to window.open if the command fails
-                                    window.open(gameProperties.protondb_url, '_blank', 'noopener,noreferrer');
-                                  }
-                                }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: '#6c757d',
-                                  cursor: 'pointer',
-                                  padding: '0.25rem',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  borderRadius: '4px',
-                                  transition: 'background-color 0.2s',
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.backgroundColor = 'rgba(108, 117, 125, 0.1)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.backgroundColor = 'transparent';
-                                }}
-                                title="Open ProtonDB page"
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                  <path
-                                    d="M10 6H6C4.89543 6 4 6.89543 4 8V18C4 19.1046 4.89543 20 6 20H16C17.1046 20 18 19.1046 18 18V14M14 4H20M20 4V10M20 4L10 14"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              </button>
+                            >
+                              {gameProperties.install_dir || 'N/A'}
                             </div>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {gameProperties.description && (
-                      <div style={{ marginTop: '1rem' }}>
-                        <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.5rem' }}>Description</div>
-                        <div style={{ lineHeight: 1.5 }}>{gameProperties.description}</div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Drawer>
-          </DrawerOverlay>,
+                      )}
+                      {navigator.userAgent.toLowerCase().includes('linux') && gameProperties.protondb_rating && (
+                        <div style={{ marginTop: '0.8rem', marginBottom: '0.8rem' }}>
+                          <div style={{ fontSize: '0.85rem', color: '#aaa' }}>ProtonDB Rating</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div
+                              style={{
+                                display: 'inline-block',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '4px',
+                                fontWeight: 600,
+                                textTransform: 'capitalize',
+                                backgroundColor: (() => {
+                                  const rating = gameProperties.protondb_rating.toLowerCase();
+                                  if (rating.includes('borked')) return 'rgba(220, 53, 69, 0.2)';
+                                  if (rating.includes('platinum')) return 'rgba(229, 228, 226, 0.2)';
+                                  if (rating.includes('gold')) return 'rgba(255, 215, 0, 0.2)';
+                                  if (rating.includes('silver')) return 'rgba(192, 192, 192, 0.2)';
+                                  if (rating.includes('bronze')) return 'rgba(205, 127, 50, 0.2)';
+                                  return 'rgba(0, 0, 0, 0.2)';
+                                })(),
+                                color: (() => {
+                                  const rating = gameProperties.protondb_rating.toLowerCase();
+                                  if (rating.includes('borked')) return '#DC3545';
+                                  if (rating.includes('platinum')) return '#E5E4E2';
+                                  if (rating.includes('gold')) return '#FFD700';
+                                  if (rating.includes('silver')) return '#C0C0C0';
+                                  if (rating.includes('bronze')) return '#CD7F32';
+                                  return '#e0e0e0';
+                                })(),
+                              }}
+                            >
+                              {gameProperties.protondb_rating}
+                            </div>
+                            {gameProperties.protondb_url && (
+                              <div style={{ position: 'relative', display: 'inline-block' }}>
+                                <button
+                                  aria-label="Open ProtonDB page"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await invoke('open_store', { url: gameProperties.protondb_url });
+                                    } catch (err) {
+                                      // Fallback to window.open if the command fails
+                                      window.open(gameProperties.protondb_url, '_blank', 'noopener,noreferrer');
+                                    }
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#6c757d',
+                                    cursor: 'pointer',
+                                    padding: '0.25rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '4px',
+                                    transition: 'background-color 0.2s',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'rgba(108, 117, 125, 0.1)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
+                                  title="Open ProtonDB page"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                      d="M10 6H6C4.89543 6 4 6.89543 4 8V18C4 19.1046 4.89543 20 6 20H16C17.1046 20 18 19.1046 18 18V14M14 4H20M20 4V10M20 4L10 14"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {gameProperties.description && (
+                        <div style={{ marginTop: '1rem' }}>
+                          <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.5rem' }}>Description</div>
+                          <div style={{ lineHeight: 1.5 }}>{gameProperties.description}</div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+              </div >
+            </Drawer >
+          </DrawerOverlay >,
           document.body,
         )}
       {/* Properties Modal */}
@@ -1527,7 +1534,7 @@ const GameCard = ({
           </div>
         </div>
       </Modal>
-    </CardWrapper>
+    </CardWrapper >
   );
 };
 
