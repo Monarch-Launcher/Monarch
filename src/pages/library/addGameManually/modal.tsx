@@ -346,7 +346,11 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
     }
     // Reset reload keys when starting a new search
     setReloadKeys({});
-    await searchGames(searchString, searchOnMonarch);
+    await searchGames(searchString, {
+      monarch: searchOnMonarch,
+      steam: !searchOnMonarch,
+      epic: false,
+    });
   }, [searchGames, searchString, searchOnMonarch]);
 
   const handleGameSelect = React.useCallback((game: MonarchGame) => {

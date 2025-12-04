@@ -149,7 +149,7 @@ const MeatballsButton = styled.button`
 
 const DropdownMenu = styled.div`
   position: absolute;
-  background: rgba(34, 34, 34, 0.8);
+  background: ${({ theme }) => theme.colors.surfaceElevated};
   border: 1px solid ${({ theme }) => theme.colors.primary};
   border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -159,7 +159,7 @@ const DropdownMenu = styled.div`
   display: flex;
   flex-direction: column;
   pointer-events: auto;
-  color: #fff;
+  color: ${({ theme }) => theme.colors.white};
   white-space: normal;
   word-break: break-word;
 `;
@@ -352,14 +352,14 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
     fontSize: '1rem',
     fontWeight: 500,
-    color: '#fff',
+    color: '#FFFFFF',
   },
   selected: {
-    background: '#222',
-    color: '#fff',
+    background: '#1C1C24',
+    color: '#FFFFFF',
     padding: '8px',
     borderRadius: '4px',
-    border: '1px solid #333',
+    border: '1px solid #3A3A48',
     cursor: 'pointer',
     width: '100%',
     textAlign: 'left' as React.CSSProperties['textAlign'],
@@ -377,8 +377,8 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     top: '100%',
     left: 0,
     right: 0,
-    background: '#222',
-    border: '1px solid #333',
+    background: '#1C1C24',
+    border: '1px solid #3A3A48',
     borderRadius: '4px',
     zIndex: 1000,
     marginTop: '2px',
@@ -389,8 +389,8 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
   option: {
     padding: '8px',
     cursor: 'pointer',
-    color: '#fff',
-    background: '#222',
+    color: '#FFFFFF',
+    background: '#1C1C24',
     fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
     fontSize: '1rem',
     fontWeight: 500,
@@ -398,8 +398,8 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     textAlign: 'left' as React.CSSProperties['textAlign'],
   },
   optionActive: {
-    background: '#333',
-    color: '#fff',
+    background: '#28283A',
+    color: '#FFFFFF',
   },
 };
 
@@ -1438,9 +1438,9 @@ const GameCard = ({
                 marginTop: '4px',
                 padding: '8px',
                 borderRadius: '4px',
-                border: '1px solid #333',
-                background: '#222',
-                color: '#fff',
+                border: '1px solid #3A3A48',
+                background: '#1C1C24',
+                color: '#FFFFFF',
                 fontFamily:
                   'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
                 fontSize: '1rem',

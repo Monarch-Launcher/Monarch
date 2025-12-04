@@ -242,7 +242,7 @@ const Library = () => {
           <SidebarButtonGroup>
             <StackedButton
               type="button"
-              variant="primary"
+              variant="secondary"
               onClick={refreshLibrary}
               title={loading ? 'Loading...' : 'Refresh'}
               loading={loading}
@@ -253,7 +253,7 @@ const Library = () => {
             </StackedButton>
             <StackedButton
               type="button"
-              variant="primary"
+              variant="secondary"
               onClick={open}
               title="Add new collection"
               fullWidth
@@ -263,7 +263,7 @@ const Library = () => {
             </StackedButton>
             <StackedButton
               type="button"
-              variant="primary"
+              variant="secondary"
               onClick={handleOpenDialog}
               title="Add game executable"
               fullWidth
