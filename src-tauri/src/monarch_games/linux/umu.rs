@@ -1,12 +1,15 @@
 use anyhow::{bail, Context, Result};
-use serde::Deserialize;
-use tauri::AppHandle;
-use std::{collections::HashMap, path::PathBuf};
 use reqwest;
-use tracing::{info, warn};
+use serde::Deserialize;
+use std::{collections::HashMap, path::PathBuf};
 use tar::Archive;
+use tauri::AppHandle;
+use tracing::{info, warn};
 
-use crate::{monarch_games::monarchgame::MonarchGame, monarch_utils::{monarch_fs::get_monarch_home, monarch_terminal::run_in_terminal}};
+use crate::{
+    monarch_games::monarchgame::MonarchGame,
+    monarch_utils::{monarch_fs::get_monarch_home, monarch_terminal::run_in_terminal},
+};
 
 #[derive(Debug, Deserialize)]
 struct Release {
@@ -35,7 +38,7 @@ pub fn get_umu_exe() -> PathBuf {
 pub fn umu_is_installed() -> bool {
     let umu_path = get_umu_dir();
     if !umu_path.exists() {
-        return false
+        return false;
     }
     get_umu_exe().exists()
 }
@@ -54,12 +57,14 @@ pub fn install_umu() -> Result<()> {
     let release_response = client
         .get(umu_release_url)
         .header("User-Agent", "Monarch/1.0")
-        .send()?; 
+        .send()?;
 
     let release_text: String = release_response.text()
         .with_context(|| "linux::umu::install_umu() Failed to get response text from umu-launcher release page! | Err: ")?;
 
-    let release_data: Release = serde_json::from_str(&release_text).with_context(|| "linux::umu::install_umu() Failed to parse response from umu-launcher release page! | Err: ")?;
+    let release_data: Release = serde_json::from_str(&release_text).with_context(|| {
+        "linux::umu::install_umu() Failed to parse response from umu-launcher release page! | Err: "
+    })?;
 
     info!("Using release: {}", release_data.tag_name);
 
@@ -72,21 +77,48 @@ pub fn install_umu() -> Result<()> {
 
     info!("Downloading asset: {}...", asset.name);
 
-    let mut download_response = reqwest::blocking::get(&asset.browser_download_url).with_context(|| format!("linux::umu::install_umu() Failed to get response from {} | Err: ", &asset.browser_download_url))?;
+    let mut download_response =
+        reqwest::blocking::get(&asset.browser_download_url).with_context(|| {
+            format!(
+                "linux::umu::install_umu() Failed to get response from {} | Err: ",
+                &asset.browser_download_url
+            )
+        })?;
     let dest_path: PathBuf = get_monarch_home().join(asset.name);
-    let mut dest = std::fs::File::create(&dest_path).with_context(|| format!("linux::umu::install_umu() Failed to create: {} | Err: ", get_umu_dir().display()))?;
+    let mut dest = std::fs::File::create(&dest_path).with_context(|| {
+        format!(
+            "linux::umu::install_umu() Failed to create: {} | Err: ",
+            get_umu_dir().display()
+        )
+    })?;
 
     info!("Writing umu-launcher to: {}...", dest_path.display());
-    std::io::copy(&mut download_response, &mut dest).with_context(|| "linux::umu::install_umu() Failed to copy response to file! | Err: ")?;
+    std::io::copy(&mut download_response, &mut dest)
+        .with_context(|| "linux::umu::install_umu() Failed to copy response to file! | Err: ")?;
 
     info!("Unpacking: {}...", dest_path.display());
-    let mut archive = Archive::new(std::fs::File::open(&dest_path).with_context(|| format!("linux::umu::install_umu() Failed to open {} | Err: ", dest_path.display()))?);
-    archive.unpack(get_monarch_home()).with_context(|| format!("linux::umu::install_umu() Failed to unpack {}! | Err: ", dest_path.display()))?;
+    let mut archive = Archive::new(std::fs::File::open(&dest_path).with_context(|| {
+        format!(
+            "linux::umu::install_umu() Failed to open {} | Err: ",
+            dest_path.display()
+        )
+    })?);
+    archive.unpack(get_monarch_home()).with_context(|| {
+        format!(
+            "linux::umu::install_umu() Failed to unpack {}! | Err: ",
+            dest_path.display()
+        )
+    })?;
 
     info!("Finished downloading umu-launcher.");
 
     info!("Removing: {}...", dest_path.display());
-    std::fs::remove_file(&dest_path).with_context(|| format!("linux::umu::install_umu() Failed to remove: {} | Err: ", dest_path.display()))?;
+    std::fs::remove_file(&dest_path).with_context(|| {
+        format!(
+            "linux::umu::install_umu() Failed to remove: {} | Err: ",
+            dest_path.display()
+        )
+    })?;
 
     Ok(())
 }
@@ -96,14 +128,15 @@ pub async fn umu_run(handle: &AppHandle, game: &MonarchGame) -> Result<()> {
     info!("Compatibility layer set: {}", game.compatibility);
     let compatibility = game.compatibility.replace(" ", "\\ ");
 
-    let env_vars: HashMap<&str, &str> = HashMap::from([("PROTON_PATH", compatibility.as_str())]);
+    let env_vars: HashMap<&str, &str> =
+        HashMap::from([("PROTON_PATH", game.compatibility.as_str())]);
 
     let umu: PathBuf = get_umu_exe();
     let launch_command: String = format!("{} '{}'", umu.display(), game.executable_path);
 
     // Order launch args and command in proper order
     info!("Launch args: {}", game.launch_args);
-    let full_command: String = if game.launch_args.find("%command%").is_some() {
+    let full_command: String = if game.launch_args.contains("%command%") {
         warn!("Using Steam %command% style launch arguments!");
         game.launch_args.replace("%command%", &launch_command)
     } else {

@@ -1,11 +1,14 @@
 use super::games::GameType;
 use super::stores::StoreType;
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_games::monarchgame::MonarchWebGame;
+use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebGame};
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
+use crate::monarch_utils::monarch_terminal::run_in_terminal;
+use crate::monarch_utils::monarch_vdf;
+use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -28,7 +31,10 @@ impl StoreType for MonarchClient {
         let response = match reqwest::get(search_term).await {
             Ok(resp) => resp,
             Err(e) => {
-                error!("monarch_client::search_games() reqwest::get() failed! | Err: {}", e);
+                error!(
+                    "monarch_client::search_games() reqwest::get() failed! | Err: {}",
+                    e
+                );
                 return Vec::new();
             }
         };
@@ -36,7 +42,10 @@ impl StoreType for MonarchClient {
         let resp_content = match response.text().await {
             Ok(content) => content,
             Err(e) => {
-                error!("monarch_client::search_games() response.text() failed! | Err: {}", e);
+                error!(
+                    "monarch_client::search_games() response.text() failed! | Err: {}",
+                    e
+                );
                 return Vec::new();
             }
         };
@@ -44,7 +53,10 @@ impl StoreType for MonarchClient {
         let web_games: Vec<MonarchWebGame> = match serde_json::from_str(&resp_content) {
             Ok(games) => games,
             Err(e) => {
-                error!("monarch_client::search_games() serde_json::from_str() failed! | Err: {}", e);
+                error!(
+                    "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
+                    e
+                );
                 return Vec::new();
             }
         };
@@ -93,6 +105,15 @@ impl StoreType for MonarchClient {
     }
 }
 
+#[cfg(target_os = "windows")]
+use super::windows::steam;
+
+#[cfg(target_os = "macos")]
+use super::macos::steam;
+
+#[cfg(target_os = "linux")]
+use super::linux::steam;
+
 /// Generates the default path where Monarch wants to store games.
 pub fn generate_default_folder() -> Result<PathBuf> {
     let path: PathBuf = if cfg!(windows) {
@@ -104,6 +125,94 @@ pub fn generate_default_folder() -> Result<PathBuf> {
     };
 
     Ok(path.join("MonarchGames"))
+}
+
+/// Launches a game
+pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Result<()> {
+    if let Err(e) = hide_quicklaunch(handle) {
+        warn!("monarch_client::launch_game() Error while hiding quicklaunch. Possibly already hidden. | Err: {e}");
+    }
+
+    let mut game: MonarchGame;
+    match MONARCH_STATE.read() {
+        Ok(state) => {
+            game = state
+                .get_game(&frontend_game.id)
+                .with_context(|| "monarch_client::launch_game() -> ")?;
+        }
+        Err(e) => {
+            error!(
+                "monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}",
+                e
+            );
+            bail!(
+                "monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}",
+                e
+            )
+        }
+    }
+
+    // Check if game should be launched with exectutable, such as
+    // the game binary or Proton executable
+    if !game.executable_path.is_empty() {
+        info!(
+            "Launching game with executable path: {}",
+            game.executable_path
+        );
+
+        // Reformat the launch command to work on the platform
+        if cfg!(target_os = "windows") {
+            game.executable_path = format!(r#"Start-Process "{}""#, game.executable_path);
+        } else {
+            game.executable_path = game.executable_path.replace(" ", "\\ ");
+        }
+
+        // Run with compatibility layer
+        if !game.compatibility.is_empty() {
+            if cfg!(not(target_os = "linux")) {
+                bail!("monarch_client::launch_game() User tried launching a game using compatibility layer on OS other than Linux! | Err: Cannot use compatibility layer under anything other than Linux!")
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                use super::linux;
+                return linux::umu::umu_run(handle, &mut game).await;
+            };
+        }
+
+        // Run without compatibility layer
+        let launch_command: String = format!("{}", game.executable_path);
+
+        // Order launch args and command in proper order
+        let full_command: String = if game.launch_args.find("%command%").is_some() {
+            warn!("Using Steam %command% style launch arguments!");
+            game.launch_args.replace("%command%", &launch_command)
+        } else {
+            format!("{} {}", launch_command, game.launch_args)
+        };
+
+        return run_in_terminal(handle, &full_command, None, None)
+            .await
+            .with_context(|| "monarch_client::launch_game() -> ");
+    }
+
+    // Otherwise launch via platform
+    match game.platform.as_str() {
+        "steam" => {
+            info!("Launching game via steam client: {}", game.platform_id);
+            steam_client::launch_client_game(&game)
+                .with_context(|| "monarch_client::launch_game() -> ")
+        }
+        "steamcmd" => {
+            info!("Launching game via steamcmd: {}", game.platform_id);
+            steam_client::launch_cmd_game(handle, &game)
+                .await
+                .with_context(|| "monarch_client::launch_game() -> ")
+        }
+        &_ => {
+            bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {} | Err: Invalid platform!", game.platform)
+        }
+    }
 }
 
 /// Downloads a game into default folder
@@ -166,11 +275,17 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
             for (i, game) in monarch_games.clone().iter().enumerate() {
                 if game.platform == platform && game.platform_id == platform_id {
                     monarch_games.remove(i);
-                    unsafe {
-                        MONARCH_STATE.set_library_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")?;
 
-                        // Replace games with the updated list of library games
-                        monarch_games = MONARCH_STATE.get_library_games();
+                    match MONARCH_STATE.write() {
+                        Ok(mut state) => {
+                            state.set_library_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")?;
+
+                            // Replace games with the updated list of library games
+                            monarch_games = state.get_library_games();
+                        }
+                        Err(e) => {
+                            error!("monarch_client::uninstall_game() Failed to lock on MONARCH_STATE | Err: {}", e);
+                        }
                     }
                     return write_monarch_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")
                 }
@@ -232,17 +347,126 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
     games.append(&mut steam_games);
 
-    unsafe {
-        if let Err(e) = MONARCH_STATE.set_library_games(&games) {
-            error!(
-                "monarch_client::refresh_library() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            )
-        }
+    match MONARCH_STATE.write() {
+        Ok(mut state) => {
+            if let Err(e) = state.set_library_games(&games) {
+                error!(
+                    "monarch_client::refresh_library() -> {}",
+                    e.chain().map(|e| e.to_string()).collect::<String>()
+                )
+            }
 
-        // Replace games with the updated list of library games
-        games = MONARCH_STATE.get_library_games();
+            // Replace games with the updated list of library games
+            games = state.get_library_games();
+        }
+        Err(e) => {
+            error!(
+                "monarch_client::refresh_library() Failed to lock on MONARCH_STATE | Err: {}",
+                e
+            );
+        }
     }
 
     games
+}
+
+/// Search for the name of a game and return the results.
+/// TODO: Add support for things like filters in the future.
+/// TODO: Remove unwraps after testing
+pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
+    let search_term: String = format!(
+        "https://monarch-launcher.com/api/games?search={}",
+        search_term
+    );
+    let response = reqwest::get(search_term).await.unwrap();
+    let resp_content = response.text().await.unwrap();
+
+    let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
+
+    let mut monarch_games: Vec<MonarchGame> = Vec::new();
+    for game in web_games {
+        let thumbnail_path = String::from(
+            generate_cache_image_path(&game.name.clone())
+                .to_str()
+                .unwrap(),
+        );
+        let mut new_monarchgame = MonarchGame::from(&game);
+        new_monarchgame.thumbnail_path = thumbnail_path;
+        monarch_games.push(new_monarchgame);
+    }
+
+    monarch_games
+}
+
+pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
+    let mut platform = game.platform.as_str();
+    if platform == "steamcmd" {
+        platform = "steam";
+    }
+
+    let mut properties: MonarchGameProperties = MonarchGameProperties::default();
+
+    if game.is_installed() {
+        if platform == "steam" {
+            match steam::get_default_libraryfolders_location() {
+                Ok(p) => {
+                    let mut props: MonarchGameProperties =
+                        monarch_vdf::get_game_properties_from_manifest(game, &p).into();
+
+                    #[cfg(target_os = "linux")]
+                    {
+                        match steam_client::get_protondb_rating(&game.platform_id).await {
+                            Ok((rating, url)) => {
+                                props.protondb_rating = rating;
+                                props.protondb_url = url;
+                            }
+                            Err(e) => {
+                                error!("monarch_client::get_game_properties() Failed to get ProtonDB rating! | Err: {}", e);
+                            }
+                        }
+                    }
+
+                    if let Ok(state) = MONARCH_STATE.read() {
+                        if let Some(g) = state.get_game(&game.id) {
+                            props.description = g.description;
+                        }
+                    }
+                    properties = props;
+                }
+                Err(e) => {
+                    error!("monarch_client::get_game_properties() Failed to get path to Steams libraryfolders.vdf! | Err: {}", e);
+                    return MonarchGameProperties::default();
+                }
+            }
+        }
+    } else {
+        let search_term: String =
+            format!("https://monarch-launcher.com/api/games?name={}", game.name);
+        let response = reqwest::get(search_term).await.unwrap();
+        let resp_content = response.text().await.unwrap();
+        let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
+
+        if !web_games.is_empty() {
+            let web_game: &MonarchWebGame = &web_games[0];
+            properties.platform = web_game.platform.to_string();
+            properties.description = web_game.summary.to_string();
+
+            #[cfg(target_os = "linux")]
+            {
+                if web_game.platform == "steam" {
+                    match steam_client::get_protondb_rating(&web_game.platform_id).await {
+                        Ok((rating, url)) => {
+                            properties.protondb_rating = rating;
+                            properties.protondb_url = url;
+                        }
+                        Err(e) => {
+                            error!("monarch_client::get_game_properties() Failed to get ProtonDB rating! | Err: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    properties
 }

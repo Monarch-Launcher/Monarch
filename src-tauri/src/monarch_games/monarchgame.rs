@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::AppHandle;
-use async_trait::async_trait;
+use tracing::error;
 
 use super::games::GameType;
 use super::stores::StoreType;
@@ -26,6 +27,7 @@ pub struct MonarchGame {
     pub launch_args: String,
     pub compatibility: String,
     pub store_page: String,
+    pub description: String,
 
     #[serde(default)]
     pub install_dir: String,
@@ -53,6 +55,7 @@ impl MonarchGame {
             compatibility: String::new(),
             store_page: store_page.to_string(),
             install_dir: String::new(),
+            description: String::new(),
         }
     }
 
@@ -73,12 +76,27 @@ impl MonarchGame {
     /// Randomly generates a Monarch ID
     pub fn manually_generate_id(&mut self) {
         let mut id: String = format!("MONARCH-{}", rand::random::<u32>());
-        unsafe {
-            while MONARCH_STATE.binary_game_id_collision(&id) {
-                id = format!("MONARCH-{}", rand::random::<u32>());
+        match MONARCH_STATE.read() {
+            Ok(state) => {
+                while state.binary_game_id_collision(&id) {
+                    id = format!("MONARCH-{}", rand::random::<u32>());
+                }
+                self.id = id;
+            }
+            Err(e) => {
+                error!(
+                    "monarchgame::download_thumbnail() Failed to lock on MONARCH_STATE | Err: {}",
+                    e
+                )
             }
         }
-        self.id = id;
+    }
+
+    pub fn is_installed(&self) -> bool {
+        if let Ok(state) = MONARCH_STATE.read() {
+            return state.get_game(&self.id).is_some();
+        }
+        false
     }
 
     /// Convert MonarchWebGame to MonarchGame
@@ -95,6 +113,7 @@ impl MonarchGame {
             compatibility: "".to_string(),
             store_page: other.store_page.to_string(),
             install_dir: "".to_string(),
+            description: other.summary.to_string(),
         }
     }
 }
@@ -130,7 +149,9 @@ impl GameType for MonarchGame {
 
     async fn launch(&self, handle: &AppHandle) -> Result<()> {
         if !self.executable_path.is_empty() {
-            return umu_run(handle, &self).await.with_context(|| "monarchgame::launch() -> ")
+            return umu_run(handle, &self)
+                .await
+                .with_context(|| "monarchgame::launch() -> ");
         }
 
         self.get_platform()
@@ -174,4 +195,34 @@ pub struct MonarchWebGame {
     pub platform: String,
     pub platform_id: String,
     pub store_page: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MonarchGameProperties {
+    pub name: String,
+    pub platform: String,
+    pub install_dir: String,
+    pub size_on_disk: String,
+    pub last_played: String,
+    pub time_played: String,
+    pub description: String,
+
+    pub protondb_rating: String,
+    pub protondb_url: String,
+}
+
+impl Default for MonarchGameProperties {
+    fn default() -> Self {
+        Self {
+            name: "Error".to_string(),
+            platform: "Error".to_string(),
+            install_dir: "Error".to_string(),
+            size_on_disk: "Error".to_string(),
+            last_played: "Error".to_string(),
+            time_played: "WIP".to_string(),
+            description: "Error".to_string(),
+            protondb_rating: "N/A".to_string(),
+            protondb_url: "".to_string(),
+        }
+    }
 }

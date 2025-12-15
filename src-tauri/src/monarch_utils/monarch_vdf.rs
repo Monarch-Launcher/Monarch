@@ -10,7 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{error, info, warn};
 
-use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties};
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -85,8 +85,16 @@ pub fn get_proton_versions(libraryfolders_vdf: &Path) -> Result<Vec<ProtonVersio
     let folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf)
         .with_context(|| "monarch_vdf::get_proton_versions() -> ")?;
 
-    let mut proton_versions: Vec<ProtonVersion> = vec![ProtonVersion{name: "Proton-GE-Latest".to_string(), path: "GE-Proton".to_string()},
-                                                       ProtonVersion{name: "UMU-Proton".to_string(), path: "UMU-Proton".to_string()}];
+    let mut proton_versions: Vec<ProtonVersion> = vec![
+        ProtonVersion {
+            name: "Proton-GE-Latest".to_string(),
+            path: "GE-Proton".to_string(),
+        },
+        ProtonVersion {
+            name: "UMU-Proton".to_string(),
+            path: "UMU-Proton".to_string(),
+        },
+    ];
 
     for (_, folder) in folders.0 {
         let path = PathBuf::from(folder.path).join("steamapps").join("common");
@@ -178,31 +186,162 @@ impl AppState {
 
 /// Sets the installation directory of a given Steam game
 pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Result<()> {
-    let library_folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf).with_context(|| "monarch_vdf::AppState::read() -> ")?;
+    let library_folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf)
+        .with_context(|| "monarch_vdf::AppState::read() -> ")?;
 
     for (_, libraryfolder) in library_folders.0 {
         if libraryfolder.apps.contains_key(&game.platform_id) {
             let manifest_file = format!("appmanifest_{}.acf", game.platform_id);
-            let path = PathBuf::from(libraryfolder.path).join("steamapps").join(manifest_file);
+            let path = PathBuf::from(libraryfolder.path)
+                .join("steamapps")
+                .join(manifest_file);
 
             if !path.exists() {
                 bail!("monarch_vdf::set_install_dir() Failed to find manifest file for game: {} (appid: {})", game.name, game.platform_id);
-            } 
+            }
 
-            let app_state: AppState = AppState::read(&path).with_context(|| "monarch_vdf::AppState::read() -> ")?;
-            game.install_dir = PathBuf::from(path.parent().unwrap()).join("common").join(app_state.installdir).to_str().unwrap().to_string();
+            let app_state: AppState =
+                AppState::read(&path).with_context(|| "monarch_vdf::AppState::read() -> ")?;
+            game.install_dir = PathBuf::from(path.parent().unwrap())
+                .join("common")
+                .join(app_state.installdir)
+                .to_str()
+                .unwrap()
+                .to_string();
 
-            unsafe {
-                if let Err(e) = MONARCH_STATE.update_game(&game) {
-                    error!("monarch_vdf::set_install_dir() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
-                    warn!("Failed to update game in state: {}", game.name);
+            match MONARCH_STATE.write() {
+                Ok(mut state) => {
+                    if let Err(e) = state.update_game(&game) {
+                        error!(
+                            "monarch_vdf::set_install_dir() -> {}",
+                            e.chain().map(|e| e.to_string()).collect::<String>()
+                        );
+                        warn!("Failed to update game in state: {}", game.name);
+                    }
+                }
+                Err(e) => {
+                    error!("monarch_vdf::set_install_dir() Failed to get lock on MONARCH_STATE | Err: {}", e);
+                    bail!(
+                        "monarch_vdf::set_install_dir() Failed to lock on MONARCH_STATE | Err: {}",
+                        e
+                    )
                 }
             }
 
             return Ok(());
         }
     }
-    
-    error!("No install dir found for game: {} (appid: {})", game.name, game.platform_id);
+
+    error!(
+        "No install dir found for game: {} (appid: {})",
+        game.name, game.platform_id
+    );
     bail!("monarch_vdf::set_install_dir() No install dir found! | Err: No matching manifest file found.")
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SteamGameProperties {
+    name: String,
+    appid: String,
+    installdir: String,
+    LastPlayed: String,
+    SizeOnDisk: String,
+}
+
+impl SteamGameProperties {
+    pub fn read(path: &Path) -> Result<Self> {
+        info!("Reading: {}", path.display());
+
+        // Read the file contents
+        let contents = fs::read_to_string(path).with_context(|| {
+            format!(
+                "monarch_vdf::AppState::read() Failed to read content of: {} | Err: ",
+                path.display()
+            )
+        })?;
+
+        // Parse JSON into the struct
+        keyvalues_serde::from_str::<SteamGameProperties>(&contents).with_context(|| "monarch_vdf::AppState::read() Failed to parse .vdf content into AppState struct. | Err: ")
+    }
+}
+
+impl Into<MonarchGameProperties> for SteamGameProperties {
+    fn into(self) -> MonarchGameProperties {
+        MonarchGameProperties {
+            name: self.name,
+            platform: "Steam".to_string(),
+            install_dir: self.installdir,
+            size_on_disk: self.SizeOnDisk,
+            last_played: self.LastPlayed,
+            time_played: "WIP".to_string(),
+            description: "WIP".to_string(),
+            protondb_rating: "N/A".to_string(),
+            protondb_url: "".to_string(),
+        }
+    }
+}
+
+pub fn get_game_properties_from_manifest(
+    game: &MonarchGame,
+    libraryfolders_vdf: &Path,
+) -> SteamGameProperties {
+    let mut properties: SteamGameProperties = SteamGameProperties {
+        name: "Error".to_string(),
+        appid: "Error".to_string(),
+        installdir: "Error".to_string(),
+        LastPlayed: "Error".to_string(),
+        SizeOnDisk: "Error".to_string(),
+    };
+
+    let library_folders: LibraryFolders = match LibraryFolders::read(libraryfolders_vdf) {
+        Ok(l) => l,
+        Err(e) => {
+            error!(
+                "monarch_vdf::get_game_properties_from_manifest() Failed to read: {} | Err: {}",
+                libraryfolders_vdf.display(),
+                e
+            );
+            return properties;
+        }
+    };
+
+    for (_, libraryfolder) in library_folders.0 {
+        if libraryfolder.apps.contains_key(&game.platform_id) {
+            let manifest_file = format!("appmanifest_{}.acf", game.platform_id);
+            let path = PathBuf::from(libraryfolder.path)
+                .join("steamapps")
+                .join(manifest_file);
+
+            if !path.exists() {
+                error!("monarch_vdf::get_game_properties_from_manifest() Failed to find manifest file for game: {} (appid: {})", game.name, game.platform_id);
+                return properties;
+            }
+
+            let manifest_props: SteamGameProperties = match SteamGameProperties::read(&path) {
+                Ok(s) => s,
+                Err(e) => {
+                    error!("monarch_vdf::get_game_properties_from_manifest() Failed to read: {}, | Err: {}", path.display(), e);
+                    return properties;
+                }
+            };
+
+            let abs_install_dir = PathBuf::from(path.parent().unwrap())
+                .join("common")
+                .join(&manifest_props.installdir)
+                .to_str()
+                .unwrap()
+                .to_string();
+
+            properties = manifest_props;
+            properties.installdir = abs_install_dir;
+
+            return properties;
+        }
+    }
+
+    error!(
+        "monarch_vdf::get_game_properties_from_manifest() No properties found for game: {} (appid: {})",
+        game.name, game.platform_id
+    );
+    properties
 }

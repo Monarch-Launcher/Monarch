@@ -1,7 +1,7 @@
 import Button from '@_ui/button';
-import { NoticeBar, NoticeText } from '@_ui/noticeBar';
 import Error from '@_ui/error';
 import GameCard from '@_ui/gameCard';
+import { NoticeBar, NoticeText } from '@_ui/noticeBar';
 import Page from '@_ui/page';
 import SearchBar from '@_ui/searchBar';
 import Spinner from '@_ui/spinner';
@@ -242,7 +242,7 @@ const Library = () => {
           <SidebarButtonGroup>
             <StackedButton
               type="button"
-              variant="primary"
+              variant="secondary"
               onClick={refreshLibrary}
               title={loading ? 'Loading...' : 'Refresh'}
               loading={loading}
@@ -253,7 +253,7 @@ const Library = () => {
             </StackedButton>
             <StackedButton
               type="button"
-              variant="primary"
+              variant="secondary"
               onClick={open}
               title="Add new collection"
               fullWidth
@@ -263,7 +263,7 @@ const Library = () => {
             </StackedButton>
             <StackedButton
               type="button"
-              variant="primary"
+              variant="secondary"
               onClick={handleOpenDialog}
               title="Add game executable"
               fullWidth

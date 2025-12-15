@@ -4,6 +4,7 @@ use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use reqwest;
 use scraper::{Html, Selector};
+use serde::Deserialize;
 use serde_json::Value;
 use simple_steam_totp::generate;
 use std::path::PathBuf;
@@ -522,4 +523,30 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
         MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
     monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
+}
+
+#[derive(Deserialize)]
+struct ProtonDbResults {
+    #[serde(rename = "bestReportedTier")]
+    best_reported_tier: String,
+
+    confidence: String,
+    score: f32,
+    tier: String,
+    total: i32,
+
+    #[serde(rename = "trendingTier")]
+    trending_tier: String,
+}
+
+/// Queries ProtonDB for game proton support rating
+pub async fn get_protondb_rating(steam_appid: &str) -> Result<(String, String)> {
+    let target: String =
+        format!("https://www.protondb.com/api/v1/reports/summaries/{steam_appid}.json");
+    let response = reqwest::get(&target).await?;
+    let repsonse_text: String = response.text().await?;
+
+    let proton_rating: ProtonDbResults = serde_json::from_str(&repsonse_text)?;
+
+    Ok((proton_rating.tier, format!("https://www.protondb.com/app/{steam_appid}")))
 }

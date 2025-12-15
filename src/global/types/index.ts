@@ -10,6 +10,7 @@ export type MonarchGame = {
   compatibility: string;
   launch_args: string;
   install_dir: string;
+  description: string;
 };
 
 export type Result = {
@@ -52,4 +53,16 @@ export type Settings = {
 export type ProtonVersion = {
   name: string;
   path: string;
+};
+
+export type MonarchGameProperties = {
+  name: string;
+  platform: string;
+  install_dir: string;
+  size_on_disk: string;
+  last_played: string;
+  time_played: string;
+  description: string;
+  protondb_rating: string;
+  protondb_url: string;
 };

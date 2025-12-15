@@ -5,7 +5,10 @@ import type { MonarchGame, Result } from '../types';
 
 type SearchGamesContextType = {
   searchedGames: MonarchGame[];
-  searchGames: (searchString: string, useMonarchCom: boolean) => Promise<void>;
+  searchGames: (
+    searchString: string,
+    sources: { monarch: boolean; steam: boolean; epic: boolean }
+  ) => Promise<void>;
   clearSearchResults: () => void;
   error: boolean;
   loading: boolean;
@@ -14,8 +17,8 @@ type SearchGamesContextType = {
 
 const initialState: SearchGamesContextType = {
   searchedGames: [],
-  searchGames: async () => { },
-  clearSearchResults: () => { },
+  searchGames: async () => {},
+  clearSearchResults: () => {},
   error: false,
   loading: false,
   results: undefined,
@@ -35,14 +38,36 @@ const SearchGamesProvider = ({ children }: Props) => {
   const [loading, setLoading] = React.useState(false);
   const [results, setResults] = React.useState<Result>();
 
-  const searchGames = React.useCallback(async (searchString: string, useMonarchCom: boolean) => {
-    try {
-      setLoading(true);
-      setError(false);
-      const result: MonarchGame[] = await invoke('search_games', {
-        name: searchString,
-        useMonarch: useMonarchCom,
-      });
+  const searchGames = React.useCallback(
+    async (
+      searchString: string,
+      sources: { monarch: boolean; steam: boolean; epic: boolean },
+    ) => {
+      try {
+        setLoading(true);
+        setError(false);
+
+        const promises: Promise<MonarchGame[]>[] = [];
+
+      if (sources.monarch) {
+        promises.push(invoke('search_games', {
+          name: searchString,
+          useMonarch: true,
+        }));
+      }
+
+      if (sources.steam) {
+        promises.push(invoke('search_games', {
+          name: searchString,
+          useMonarch: false,
+        }));
+      }
+
+      // Epic is currently not supported by the backend, so we don't invoke anything for it yet.
+
+      const resultsArray = await Promise.all(promises);
+      const result = resultsArray.flat();
+
       setResults({
         empty: result.length === 0,
         emptyMessage: `Couldn't find any games for "${searchString}".`,

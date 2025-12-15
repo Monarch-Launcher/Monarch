@@ -2,19 +2,50 @@ import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
 import { useProtonVersions } from '@global/contexts/protonVersionsProvider';
-import type { MonarchGame } from '@global/types';
+import type { MonarchGame, MonarchGameProperties } from '@global/types';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { BsThreeDotsVertical } from 'react-icons/bs';
-import { FaFolderOpen, FaSteam } from 'react-icons/fa';
+import { FaFolderOpen, FaSpinner, FaSteam } from 'react-icons/fa';
 import { HiDownload } from 'react-icons/hi';
 import { PiButterflyBold } from 'react-icons/pi';
 import { SiEpicgames } from 'react-icons/si';
 import styled, { keyframes } from 'styled-components';
 
 import Modal from '../modal';
+
+// Utility function to format Unix timestamp to human-readable date and time
+const formatLastPlayed = (timestamp: string): string => {
+  if (!timestamp) return 'Never';
+
+  const date = new Date(parseInt(timestamp, 10) * 1000);
+  if (Number.isNaN(date.getTime())) return 'Invalid date';
+
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).replace(',', '');
+};
+
+// Utility function to format bytes to human-readable size (KB, MB, GB)
+const formatSize = (bytes: string | number): string => {
+  if (!bytes) return 'N/A';
+
+  const numBytes = typeof bytes === 'string' ? parseFloat(bytes) : bytes;
+  if (Number.isNaN(numBytes) || numBytes === 0) return '0 B';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(numBytes) / Math.log(k));
+
+  return `${parseFloat((numBytes / (k ** i)).toFixed(2))} ${sizes[i]}`;
+};
 
 const CardWrapper = styled.div`
   display: flex;
@@ -49,7 +80,7 @@ const Thumbnail = styled.img<{ $isInfo?: boolean }>`
   z-index: 0; /* Place it below the text and buttons */
 `;
 
-const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
+const StyledButton = styled(Button) <{ $isInfo?: boolean }>`
   background-color: ${({ $isInfo, theme }) =>
     $isInfo ? 'grey' : theme.colors.primary};
   border-color: ${({ $isInfo, theme }) =>
@@ -66,11 +97,11 @@ const StyledButton = styled(Button)<{ $isInfo?: boolean }>`
   &:hover,
   &:focus {
     background-color: ${({ $isInfo, theme }) =>
-      $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBackground};
+    $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBackground};
     border-color: ${({ $isInfo, theme }) =>
-      $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBorder};
+    $isInfo ? 'darkgrey' : theme.colors.button.primary.hoverBorder};
     color: ${({ $isInfo, theme }) =>
-      $isInfo ? 'white' : theme.colors.button.primary.hoverText};
+    $isInfo ? 'white' : theme.colors.button.primary.hoverText};
   }
 `;
 
@@ -118,7 +149,7 @@ const MeatballsButton = styled.button`
 
 const DropdownMenu = styled.div`
   position: absolute;
-  background: rgba(34, 34, 34, 0.8);
+  background: ${({ theme }) => theme.colors.surfaceElevated};
   border: 1px solid ${({ theme }) => theme.colors.primary};
   border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -128,7 +159,7 @@ const DropdownMenu = styled.div`
   display: flex;
   flex-direction: column;
   pointer-events: auto;
-  color: #fff;
+  color: ${({ theme }) => theme.colors.white};
   white-space: normal;
   word-break: break-word;
 `;
@@ -172,6 +203,15 @@ const slideIn = keyframes`
   }
 `;
 
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
+
+const Spinner = styled(FaSpinner)`
+  animation: ${spin} 1s linear infinite;
+`;
+
 const Drawer = styled.div`
   position: relative;
   width: 900px;
@@ -183,18 +223,21 @@ const Drawer = styled.div`
   display: flex;
   flex-direction: column;
   animation: ${slideIn} 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  padding-left: 1rem;
 `;
 
 const DrawerTitle = styled.h2`
   color: #fff;
-  margin-bottom: 1rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 2.2rem;
+  font-weight: 600;
+  line-height: 1.2;
 `;
 
 const DrawerButtonRow = styled.div`
   display: flex;
   gap: 1rem;
-  margin-top: 2rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
 `;
 
 const StoreIconButton = styled(Button)`
@@ -309,14 +352,14 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
     fontSize: '1rem',
     fontWeight: 500,
-    color: '#fff',
+    color: '#FFFFFF',
   },
   selected: {
-    background: '#222',
-    color: '#fff',
+    background: '#1C1C24',
+    color: '#FFFFFF',
     padding: '8px',
     borderRadius: '4px',
-    border: '1px solid #333',
+    border: '1px solid #3A3A48',
     cursor: 'pointer',
     width: '100%',
     textAlign: 'left' as React.CSSProperties['textAlign'],
@@ -334,8 +377,8 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     top: '100%',
     left: 0,
     right: 0,
-    background: '#222',
-    border: '1px solid #333',
+    background: '#1C1C24',
+    border: '1px solid #3A3A48',
     borderRadius: '4px',
     zIndex: 1000,
     marginTop: '2px',
@@ -346,8 +389,8 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
   option: {
     padding: '8px',
     cursor: 'pointer',
-    color: '#fff',
-    background: '#222',
+    color: '#FFFFFF',
+    background: '#1C1C24',
     fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
     fontSize: '1rem',
     fontWeight: 500,
@@ -355,8 +398,8 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     textAlign: 'left' as React.CSSProperties['textAlign'],
   },
   optionActive: {
-    background: '#333',
-    color: '#fff',
+    background: '#28283A',
+    color: '#FFFFFF',
   },
 };
 
@@ -531,6 +574,7 @@ const GameCard = ({
   reloadKey,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [gameProperties, setGameProperties] = React.useState<MonarchGameProperties | null>(null);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const optionsRef = React.useRef<HTMLButtonElement | null>(null);
@@ -548,9 +592,53 @@ const GameCard = ({
     if (found) setGameData({ ...found });
   }, [library, id]);
 
-  const toggleDrawer = React.useCallback(() => {
-    setDrawerOpen((prev) => !prev);
-  }, []);
+  const [loadingProperties, setLoadingProperties] = React.useState(false);
+
+  const toggleDrawer = React.useCallback(async () => {
+    const willOpen = !drawerOpen;
+    setDrawerOpen(willOpen);
+
+    if (willOpen && !gameProperties) {
+      setLoadingProperties(true);
+      try {
+        const game: MonarchGame = {
+          id,
+          platform_id: platformId,
+          executable_path: executablePath,
+          name,
+          platform,
+          thumbnail_path: thumbnailPath,
+          thumbnail_url: thumbnailUrl,
+          store_page: storePage,
+          compatibility: gameData.compatibility,
+          launch_args: gameData.launch_args,
+          install_dir: '', // This will be populated by the backend
+          description: '',
+        };
+
+        const properties = await invoke<MonarchGameProperties>('get_game_properties', { game });
+        setGameProperties(properties);
+      } catch (error) {
+        // TODO: Add proper error handling (e.g., toast notification)
+        console.error('Failed to fetch game properties:', error);
+      } finally {
+        setLoadingProperties(false);
+      }
+    }
+  }, [
+    drawerOpen,
+    executablePath,
+    gameData.compatibility,
+    gameData.launch_args,
+    gameProperties,
+    id,
+    name,
+    platform,
+    platformId,
+    storePage,
+    thumbnailPath,
+    thumbnailUrl,
+  ]);
 
   const imageSrc = React.useMemo<string>(() => {
     if (!thumbnailPath || thumbnailPath === 'temp') {
@@ -661,6 +749,7 @@ const GameCard = ({
         compatibility: '',
         launch_args: '',
         install_dir: '',
+        description: '',
       };
 
       await invoke('manual_remove_game', {
@@ -1055,7 +1144,14 @@ const GameCard = ({
               {/* Dark overlay over the blurred background (skip if using fallback) */}
               {imageSrc !== fallback && <DrawerBackgroundOverlay />}
               {/* Drawer content on top */}
-              <div style={{ position: 'relative', zIndex: 3 }}>
+              <div style={{
+                position: 'relative',
+                zIndex: 3,
+                padding: '1.5rem 2rem 1.5rem',
+                overflowY: 'auto',
+                height: '100%',
+              }}
+              >
                 {imageSrc !== fallback && (
                   <Thumbnail
                     alt=""
@@ -1063,8 +1159,8 @@ const GameCard = ({
                     onError={handleImageError}
                     style={{
                       position: 'static',
-                      width: '65%',
-                      maxWidth: '900px',
+                      width: '45%',
+                      maxWidth: '600px',
                       height: 'auto',
                       margin: '1rem auto 0 auto',
                       display: 'block',
@@ -1073,10 +1169,7 @@ const GameCard = ({
                     }}
                   />
                 )}
-                <DrawerTitle>{name}</DrawerTitle>
-                <p style={{ color: '#aaa', marginBottom: '1rem' }}>
-                  Platform: {platform}
-                </p>
+                <DrawerTitle style={{ marginTop: '2rem' }}>{name}</DrawerTitle>
                 <DrawerButtonRow>
                   <DrawerButton
                     variant="primary"
@@ -1135,9 +1228,183 @@ const GameCard = ({
                     Store
                   </DrawerStoreButton>
                 </DrawerButtonRow>
-              </div>
-            </Drawer>
-          </DrawerOverlay>,
+                {
+                  gameProperties?.platform && (
+                    <p style={{
+                      color: '#fff',
+                      margin: '0 0 1rem 0',
+                      fontSize: '1.4rem',
+                      fontWeight: 500,
+                    }}
+                    >
+                      {gameProperties.platform}
+                    </p>
+                  )
+                }
+
+                {
+                  loadingProperties && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      padding: '3rem',
+                      color: '#aaa',
+                      fontSize: '1.1rem',
+                      gap: '0.75rem',
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                      borderRadius: '8px',
+                      marginBottom: '1.5rem',
+                    }}>
+                      <Spinner size={24} />
+                      <span>Loading game details...</span>
+                    </div>
+                  )
+                }
+
+                {/* Game Properties Section */}
+                {
+                  gameProperties && (
+                    <div style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      marginBottom: '1.5rem',
+                      color: '#e0e0e0',
+                    }}
+                    >
+                      <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#fff' }}>Game Information</h3>
+                      {hasGame && (
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1.5fr 1fr',
+                          gap: '0.8rem',
+                          marginBottom: '0.8rem',
+                          alignItems: 'start',
+                        }}
+                        >
+                          <div>
+                            <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Size on Disk</div>
+                            <div>{formatSize(gameProperties.size_on_disk)}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Last Played</div>
+                            <div>{formatLastPlayed(gameProperties.last_played)}</div>
+                          </div>
+                          <div style={{ marginLeft: '1rem' }}>
+                            <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Time Played</div>
+                            <div>{gameProperties.time_played || '0 hours'}</div>
+                          </div>
+                          <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+                            <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Folder Location</div>
+                            <div style={{
+                              wordBreak: 'break-all',
+                              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                              padding: '0.5rem',
+                              borderRadius: '4px',
+                              marginTop: '0.25rem',
+                              fontFamily: 'monospace',
+                              fontSize: '0.9rem',
+                            }}
+                            >
+                              {gameProperties.install_dir || 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {navigator.userAgent.toLowerCase().includes('linux') && gameProperties.protondb_rating && (
+                        <div style={{ marginTop: '0.8rem', marginBottom: '0.8rem' }}>
+                          <div style={{ fontSize: '0.85rem', color: '#aaa' }}>ProtonDB Rating</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div
+                              style={{
+                                display: 'inline-block',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '4px',
+                                fontWeight: 600,
+                                textTransform: 'capitalize',
+                                backgroundColor: (() => {
+                                  const rating = gameProperties.protondb_rating.toLowerCase();
+                                  if (rating.includes('borked')) return 'rgba(220, 53, 69, 0.2)';
+                                  if (rating.includes('platinum')) return 'rgba(229, 228, 226, 0.2)';
+                                  if (rating.includes('gold')) return 'rgba(255, 215, 0, 0.2)';
+                                  if (rating.includes('silver')) return 'rgba(192, 192, 192, 0.2)';
+                                  if (rating.includes('bronze')) return 'rgba(205, 127, 50, 0.2)';
+                                  return 'rgba(0, 0, 0, 0.2)';
+                                })(),
+                                color: (() => {
+                                  const rating = gameProperties.protondb_rating.toLowerCase();
+                                  if (rating.includes('borked')) return '#DC3545';
+                                  if (rating.includes('platinum')) return '#E5E4E2';
+                                  if (rating.includes('gold')) return '#FFD700';
+                                  if (rating.includes('silver')) return '#C0C0C0';
+                                  if (rating.includes('bronze')) return '#CD7F32';
+                                  return '#e0e0e0';
+                                })(),
+                              }}
+                            >
+                              {gameProperties.protondb_rating}
+                            </div>
+                            {gameProperties.protondb_url && (
+                              <div style={{ position: 'relative', display: 'inline-block' }}>
+                                <button
+                                  aria-label="Open ProtonDB page"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await invoke('open_store', { url: gameProperties.protondb_url });
+                                    } catch (err) {
+                                      // Fallback to window.open if the command fails
+                                      window.open(gameProperties.protondb_url, '_blank', 'noopener,noreferrer');
+                                    }
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#6c757d',
+                                    cursor: 'pointer',
+                                    padding: '0.25rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '4px',
+                                    transition: 'background-color 0.2s',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'rgba(108, 117, 125, 0.1)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
+                                  title="Open ProtonDB page"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                      d="M10 6H6C4.89543 6 4 6.89543 4 8V18C4 19.1046 4.89543 20 6 20H16C17.1046 20 18 19.1046 18 18V14M14 4H20M20 4V10M20 4L10 14"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {gameProperties.description && (
+                        <div style={{ marginTop: '1rem' }}>
+                          <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.5rem' }}>Description</div>
+                          <div style={{ lineHeight: 1.5 }}>{gameProperties.description}</div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+              </div >
+            </Drawer >
+          </DrawerOverlay >,
           document.body,
         )}
       {/* Properties Modal */}
@@ -1171,9 +1438,9 @@ const GameCard = ({
                 marginTop: '4px',
                 padding: '8px',
                 borderRadius: '4px',
-                border: '1px solid #333',
-                background: '#222',
-                color: '#fff',
+                border: '1px solid #3A3A48',
+                background: '#1C1C24',
+                color: '#FFFFFF',
                 fontFamily:
                   'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
                 fontSize: '1rem',
@@ -1267,7 +1534,7 @@ const GameCard = ({
           </div>
         </div>
       </Modal>
-    </CardWrapper>
+    </CardWrapper >
   );
 };
 

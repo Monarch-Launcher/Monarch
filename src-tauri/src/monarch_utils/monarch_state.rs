@@ -1,10 +1,10 @@
 use crate::{monarch_games::monarchgame::MonarchGame, monarch_library::games_library::write_games};
 use anyhow::{bail, Context, Result};
-use once_cell::sync::Lazy;
+use std::sync::{RwLock, LazyLock};
 
 /// Global state of monarch backend (excluding settings for now)
 /// TODO: Change to some Atomic structure in the future to avoid using shared refrences to mut static
-pub static mut MONARCH_STATE: Lazy<MonarchState> = Lazy::<MonarchState>::new(MonarchState::default);
+pub static MONARCH_STATE: LazyLock<RwLock<MonarchState>> = LazyLock::new(|| RwLock::new(MonarchState::default()));
 
 /// A struct for storing some sort of global state that
 /// the backend can access to recieve relevant info.

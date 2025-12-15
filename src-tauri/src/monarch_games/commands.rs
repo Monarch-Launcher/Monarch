@@ -12,6 +12,7 @@ use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
 use super::stores::StoreType;
 use crate::monarch_games::games::GameType;
+use crate::monarch_games::monarchgame::MonarchGameProperties;
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
@@ -218,7 +219,7 @@ pub async fn move_game_to_monarch(
 #[tauri::command]
 /// Open "Purchase window" for a game
 pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
-    let window: MiniWindow = MiniWindow::new("store", &url, 1280.0, 720.0);
+    let window: MiniWindow = MiniWindow::new("monarch_window", &url, 1280.0, 720.0);
     if let Err(e) = window.build_window(&handle).await {
         error!(
             "monarch_games::commands::open_store() -> {}",
@@ -375,6 +376,11 @@ pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
             Err(format!("Failed to get executables for game: {}", game.name))
         }
     }
+}
+
+#[tauri::command]
+pub async fn get_game_properties(game: MonarchGame) -> MonarchGameProperties {
+    monarch_client::get_game_properties(&game).await
 }
 
 #[tauri::command]
