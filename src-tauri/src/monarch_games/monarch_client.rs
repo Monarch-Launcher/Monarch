@@ -2,6 +2,7 @@ use super::games::GameType;
 use super::stores::StoreType;
 use super::{monarchgame::MonarchGame, steam_client};
 use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebGame};
+use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
@@ -26,7 +27,7 @@ impl MonarchClient {
 
 #[async_trait]
 impl StoreType for MonarchClient {
-    async fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
+    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn GameType>> {
         let search_term: String = format!("https://monarch-launcher.com/api/games?search={}", name);
         let response = match reqwest::get(search_term).await {
             Ok(resp) => resp,

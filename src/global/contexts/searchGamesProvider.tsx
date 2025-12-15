@@ -1,13 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 
-import type { MonarchGame, Result } from '../types';
+import type { MonarchGame, Result, SearchFilter } from '../types';
 
 type SearchGamesContextType = {
   searchedGames: MonarchGame[];
   searchGames: (
     searchString: string,
-    sources: { monarch: boolean; steam: boolean; epic: boolean }
+    filter: SearchFilter
   ) => Promise<void>;
   clearSearchResults: () => void;
   error: boolean;
@@ -41,7 +41,7 @@ const SearchGamesProvider = ({ children }: Props) => {
   const searchGames = React.useCallback(
     async (
       searchString: string,
-      sources: { monarch: boolean; steam: boolean; epic: boolean },
+      filter: SearchFilter,
     ) => {
       try {
         setLoading(true);
@@ -49,21 +49,10 @@ const SearchGamesProvider = ({ children }: Props) => {
 
         const promises: Promise<MonarchGame[]>[] = [];
 
-      if (sources.monarch) {
-        promises.push(invoke('search_games', {
-          name: searchString,
-          useMonarch: true,
-        }));
-      }
-
-      if (sources.steam) {
-        promises.push(invoke('search_games', {
-          name: searchString,
-          useMonarch: false,
-        }));
-      }
-
-      // Epic is currently not supported by the backend, so we don't invoke anything for it yet.
+      promises.push(invoke('search_games', {
+        name: searchString,
+        filter,
+      }));
 
       const resultsArray = await Promise.all(promises);
       const result = resultsArray.flat();

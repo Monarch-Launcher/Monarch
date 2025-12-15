@@ -13,6 +13,7 @@ use tokio::task;
 use tracing::{error, info, warn};
 
 use super::monarchgame::{MonarchGame, MonarchWebGame};
+use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
@@ -45,7 +46,7 @@ impl SteamClient {
 
 #[async_trait]
 impl StoreType for SteamClient {
-    async fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
+    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn GameType>> {
         find_game(name)
             .await
             .into_iter()
@@ -548,5 +549,8 @@ pub async fn get_protondb_rating(steam_appid: &str) -> Result<(String, String)> 
 
     let proton_rating: ProtonDbResults = serde_json::from_str(&repsonse_text)?;
 
-    Ok((proton_rating.tier, format!("https://www.protondb.com/app/{steam_appid}")))
+    Ok((
+        proton_rating.tier,
+        format!("https://www.protondb.com/app/{steam_appid}"),
+    ))
 }

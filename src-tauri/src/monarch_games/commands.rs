@@ -10,8 +10,9 @@ use tracing::{error, info};
 
 use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
-use super::stores::StoreType;
+use super::stores::{SearchFilter, StoreType};
 use crate::monarch_games::games::GameType;
+use crate::monarch_games::legendary_client::LegendaryClient;
 use crate::monarch_games::monarchgame::MonarchGameProperties;
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;
@@ -71,19 +72,44 @@ pub async fn get_home_recomendations() -> Result<Value, String> {
 
 #[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
-pub async fn search_games(name: String, useMonarch: bool) -> Vec<MonarchGame> {
-    let client: Box<dyn StoreType> = if useMonarch {
-        Box::new(MonarchClient::new())
-    } else {
-        Box::new(SteamClient::new())
-    };
+pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchGame> {
+    if filter.monarch {
+        let client = MonarchClient::new();
+        return client
+            .search_games(&name, &filter)
+            .await
+            .into_iter()
+            .map(|g| g.into_monarchgame())
+            .collect();
+    }
 
-    client
-        .search_games(&name)
-        .await
-        .into_iter()
-        .map(|g| g.into_monarchgame())
-        .collect::<Vec<MonarchGame>>()
+    let mut games: Vec<MonarchGame> = Vec::new();
+
+    if filter.steam_powered {
+        let client = SteamClient::new();
+        games.append(
+            &mut client
+                .search_games(&name, &filter)
+                .await
+                .into_iter()
+                .map(|g| g.into_monarchgame())
+                .collect(),
+        );
+    }
+
+    if filter.egs {
+        let client = LegendaryClient::new();
+        games.append(
+            &mut client
+                .search_games(&name, &filter)
+                .await
+                .into_iter()
+                .map(|g| g.into_monarchgame())
+                .collect(),
+        );
+    }
+
+    games
 }
 
 #[tauri::command]

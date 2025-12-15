@@ -1,20 +1,22 @@
+import Button from '@_ui/button';
 import Error from '@_ui/error';
 import GameCard from '@_ui/gameCard';
+import Modal from '@_ui/modal';
 import Page from '@_ui/page';
 import Spinner from '@_ui/spinner';
 import { useSearchGames } from '@global/contexts/searchGamesProvider';
-import Button from '@_ui/button';
-import Modal from '@_ui/modal';
+import { SearchFilter } from '@global/types';
 import {
   Checkbox,
   Divider,
   Group,
   Stack,
+  Switch,
 } from '@mantine/core';
 import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
-import { FaFilter } from 'react-icons/fa';
 import { AiOutlineSearch } from 'react-icons/ai';
+import { FaFilter } from 'react-icons/fa';
 import styled from 'styled-components';
 
 const SearchContainer = styled.div`
@@ -166,19 +168,40 @@ const StyledCheckbox = styled(Checkbox)`
   }
 `;
 
+const MonarchSwitch = styled(Switch)`
+  input:checked + .mantine-Switch-track {
+    background-color: ${({ theme }) => theme.colors.primary};
+    border-color: ${({ theme }) => theme.colors.primary};
+  }
+
+  .mantine-Switch-track {
+    background-color: ${({ theme }) => theme.colors.secondary};
+    border-color: ${({ theme }) => theme.colors.secondary};
+  }
+
+  .mantine-Switch-label {
+    color: ${({ theme }) => theme.colors.white};
+    font-family: 'IBM Plex Mono', Inter, Avenir, Helvetica, Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
 const Search = () => {
   const [searchString, setSearchString] = React.useState('');
   const [reloadKeys, setReloadKeys] = React.useState<Record<string, number>>({});
-  const [searchSources, setSearchSources] = React.useState({
-    monarch: true,
-    steam: false,
-    epic: false,
-  });
-  const [storeFilters, setStoreFilters] = React.useState({
+  const [searchFilter, setSearchFilter] = React.useState<SearchFilter>({
     steam: true,
     epic: true,
     gog: true,
     itch: true,
+    monarch: true,
+    steam_powered: false,
+    egs: false,
   });
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
@@ -192,33 +215,27 @@ const Search = () => {
     [],
   );
 
-  const handleSourceChange = (source: keyof typeof searchSources) => {
-    setSearchSources((prev) => ({ ...prev, [source]: !prev[source] }));
-  };
+  const handleFilterChange = (key: keyof SearchFilter) => {
+    setSearchFilter((prev) => {
+      const newState = { ...prev, [key]: !prev[key] };
 
-  const handleStoreFilterChange = (store: keyof typeof storeFilters) => {
-    setStoreFilters((prev) => ({ ...prev, [store]: !prev[store] }));
+      // Exclusive logic for search sources
+      if (key === 'monarch' && newState.monarch) {
+        newState.steam_powered = false;
+        newState.egs = false;
+      } else if ((key === 'steam_powered' || key === 'egs') && newState[key]) {
+        newState.monarch = false;
+      }
+
+      return newState;
+    });
   };
 
   const handleClick = React.useCallback(async () => {
     // Reset per-game reload keys for a fresh search
     setReloadKeys({});
-    await searchGames(searchString, searchSources);
-  }, [searchGames, searchString, searchSources]);
-
-  const filteredGames = React.useMemo(() => {
-    return searchedGames.filter((game) => {
-      let { platform } = game;
-      if (platform === 'steamcmd') platform = 'steam';
-
-      if (platform === 'steam' && !storeFilters.steam) return false;
-      if (platform === 'epic' && !storeFilters.epic) return false;
-      if (platform === 'gog' && !storeFilters.gog) return false;
-      if (platform === 'itch' && !storeFilters.itch) return false;
-
-      return true;
-    });
-  }, [searchedGames, storeFilters]);
+    await searchGames(searchString, searchFilter);
+  }, [searchGames, searchString, searchFilter]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -288,23 +305,23 @@ const Search = () => {
           <Group>
             <StyledCheckbox
               label="Steam"
-              checked={storeFilters.steam}
-              onChange={() => handleStoreFilterChange('steam')}
+              checked={searchFilter.steam}
+              onChange={() => handleFilterChange('steam')}
             />
             <StyledCheckbox
               label="Epic"
-              checked={storeFilters.epic}
-              onChange={() => handleStoreFilterChange('epic')}
+              checked={searchFilter.epic}
+              onChange={() => handleFilterChange('epic')}
             />
             <StyledCheckbox
               label="GOG"
-              checked={storeFilters.gog}
-              onChange={() => handleStoreFilterChange('gog')}
+              checked={searchFilter.gog}
+              onChange={() => handleFilterChange('gog')}
             />
             <StyledCheckbox
               label="Itch"
-              checked={storeFilters.itch}
-              onChange={() => handleStoreFilterChange('itch')}
+              checked={searchFilter.itch}
+              onChange={() => handleFilterChange('itch')}
             />
           </Group>
 
@@ -312,20 +329,20 @@ const Search = () => {
 
           <SectionTitle>Search Sources</SectionTitle>
           <Stack spacing="xs">
-            <StyledCheckbox
+            <MonarchSwitch
               label="monarch-launcher.com"
-              checked={searchSources.monarch}
-              onChange={() => handleSourceChange('monarch')}
+              checked={searchFilter.monarch}
+              onChange={() => handleFilterChange('monarch')}
             />
-            <StyledCheckbox
+            <MonarchSwitch
               label="steampowered.com"
-              checked={searchSources.steam}
-              onChange={() => handleSourceChange('steam')}
+              checked={searchFilter.steam_powered}
+              onChange={() => handleFilterChange('steam_powered')}
             />
-            <StyledCheckbox
+            <MonarchSwitch
               label="epicgames.com"
-              checked={searchSources.epic}
-              onChange={() => handleSourceChange('epic')}
+              checked={searchFilter.egs}
+              onChange={() => handleFilterChange('egs')}
             />
           </Stack>
           <Group position="right" mt="md">
@@ -343,7 +360,7 @@ const Search = () => {
         {loading ? (
           <Spinner />
         ) : (
-          filteredGames.map((game) => (
+          searchedGames.map((game) => (
             <GameCard
               key={game.id}
               id={game.id}

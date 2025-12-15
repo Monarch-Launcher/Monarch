@@ -4,6 +4,7 @@ use tauri::AppHandle;
 use tracing::error;
 
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebGame};
+use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::generate_cache_image_path;
 use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::monarch_utils::monarch_terminal::run_in_terminal;
@@ -37,7 +38,7 @@ impl LegendaryClient {
 
 #[async_trait]
 impl StoreType for LegendaryClient {
-    async fn search_games(&self, name: &str) -> Vec<Box<dyn GameType>> {
+    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn GameType>> {
         let search_term: String = format!(
             "https://monarch-launcher.com/api/games?search={}?platform=legendary",
             name,

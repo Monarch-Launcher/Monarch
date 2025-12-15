@@ -66,3 +66,16 @@ export type MonarchGameProperties = {
   protondb_rating: string;
   protondb_url: string;
 };
+
+export type SearchFilter = {
+  // Stores
+  steam: boolean;
+  epic: boolean;
+  gog: boolean;
+  itch: boolean;
+
+  // Search sources
+  monarch: boolean;
+  steam_powered: boolean;
+  egs: boolean;
+};

@@ -1,11 +1,11 @@
 use super::stores::StoreType;
-use anyhow::Result;
-use tauri::AppHandle;
 use crate::monarch_games::monarchgame::MonarchGame;
+use anyhow::Result;
 use async_trait::async_trait;
+use tauri::AppHandle;
 
 #[async_trait]
-pub trait GameType {
+pub trait GameType: Send + Sync {
     fn get_name(&self) -> String;
     fn get_platform(&self) -> Box<dyn StoreType>;
     fn get_platform_id(&self) -> String;
