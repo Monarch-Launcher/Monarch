@@ -25,5 +25,13 @@ const StyledModal = styled(Modal)`
 export default (props: ModalProps) => {
   const { children } = props;
 
-  return <StyledModal {...props}>{children}</StyledModal>;
+  return (
+    <StyledModal
+      {...props}
+      // @ts-ignore
+      portalProps={{ target: document.body }}
+    >
+      {children}
+    </StyledModal>
+  );
 };

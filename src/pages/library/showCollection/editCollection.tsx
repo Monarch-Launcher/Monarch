@@ -227,7 +227,7 @@ const EditCollectionForm = ({
         opened={opened}
         onClose={close}
         title={modalHeader}
-        zIndex={400}
+        zIndex={20001}
         centered
         withCloseButton={false}
         size="50vw"

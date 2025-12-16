@@ -11,10 +11,10 @@ use std::process::exit;
 use futures::executor;
 use monarch_games::commands::{
     download_game, download_thumbnail, get_executables, get_game_properties,
-    get_home_recomendations, get_library, install_steamcmd, install_umu, launch_game,
-    manual_add_game, manual_remove_game, move_game_to_monarch, open_store, proton_versions,
-    refresh_library, remove_game, search_games, steamcmd_is_installed, umu_is_installed,
-    update_game, update_game_properties,
+    get_home_recomendations, get_library, install_legendary, install_steamcmd, install_umu,
+    launch_game, legendary_is_installed, manual_add_game, manual_remove_game, move_game_to_monarch,
+    open_store, proton_versions, refresh_library, remove_game, search_games, steamcmd_is_installed,
+    umu_is_installed, update_game, update_game_properties,
 };
 use monarch_library::commands::{
     create_collection, delete_collection, get_collections, update_collection,
@@ -48,7 +48,9 @@ fn init() {
     // Set initial monarch state
     match MONARCH_STATE.write() {
         Ok(mut state) => {
-            if let Err(e) = state.set_library_games(&crate::monarch_games::monarch_client::get_library()) {
+            if let Err(e) =
+                state.set_library_games(&crate::monarch_games::monarch_client::get_library())
+            {
                 panic!("init() Failed to set library games in state! | Err: {}", e)
             }
         }
@@ -119,6 +121,8 @@ fn main() {
             open_logs,
             download_thumbnail,
             get_game_properties,
+            legendary_is_installed,
+            install_legendary,
         ])
         .setup(|app| {
             #[cfg(desktop)]

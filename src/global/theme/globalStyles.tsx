@@ -10,6 +10,9 @@ const MainGlobalStyles = createGlobalStyle`
     line-height:1.5;
     color: #252F3F;
   }
+  *, *:before, *:after {
+    box-sizing: inherit;
+  }
   body {
     position: relative;
     height: 100%;

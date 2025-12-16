@@ -12,7 +12,7 @@ use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
 use crate::monarch_games::games::GameType;
-use crate::monarch_games::legendary_client::LegendaryClient;
+use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::MonarchGameProperties;
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;
@@ -271,6 +271,7 @@ pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
 #[tauri::command]
 /// Updates the properties of a game in the library.
 pub async fn update_game_properties(game: MonarchGame) -> Result<(), String> {
+    info!("Updating properties for: {}", game.name);
     match games_library::update_game_properties(&game) {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -480,6 +481,23 @@ pub async fn install_steamcmd(handle: AppHandle) -> Result<(), String> {
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
         return Err(String::from("Failed to download SteamCMD!"));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn legendary_is_installed() -> bool {
+    legendary_client::legendary_is_installed()
+}
+
+#[tauri::command]
+pub fn install_legendary() -> Result<(), String> {
+    if let Err(e) = legendary_client::install_legendary() {
+        error!(
+            "monarch_games::commands::install_legendary() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to download Legendary!"));
     }
     Ok(())
 }

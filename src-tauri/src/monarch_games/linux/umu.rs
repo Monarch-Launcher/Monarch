@@ -126,10 +126,19 @@ pub fn install_umu() -> Result<()> {
 /// Executes the game using umu-launcher to run in proton.
 pub async fn umu_run(handle: &AppHandle, game: &MonarchGame) -> Result<()> {
     info!("Compatibility layer set: {}", game.compatibility);
-    let compatibility = game.compatibility.replace(" ", "\\ ");
 
-    let env_vars: HashMap<&str, &str> =
-        HashMap::from([("PROTON_PATH", game.compatibility.as_str())]);
+    let platform_arg = match game.platform.as_str() {
+        "epic" => "egs",
+        _ => "none",
+    };
+
+    let gameid_arg = format!("umu-{}", game.platform_id);
+
+    let env_vars: HashMap<&str, &str> = HashMap::from([
+        ("PROTON_PATH", game.compatibility.as_str()),
+        ("GAMEID", &gameid_arg),
+        ("STORE", &platform_arg),
+    ]);
 
     let umu: PathBuf = get_umu_exe();
     let launch_command: String = format!("{} '{}'", umu.display(), game.executable_path);

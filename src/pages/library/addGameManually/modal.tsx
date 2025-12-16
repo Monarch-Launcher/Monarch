@@ -350,6 +350,10 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
       monarch: searchOnMonarch,
       steam: !searchOnMonarch,
       epic: false,
+      gog: false,
+      itch: false,
+      steam_powered: false,
+      egs: false,
     });
   }, [searchGames, searchString, searchOnMonarch]);
 

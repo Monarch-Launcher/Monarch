@@ -27,7 +27,7 @@ impl MonarchClient {
 
 #[async_trait]
 impl StoreType for MonarchClient {
-    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn GameType>> {
+    async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn GameType>> {
         let search_term: String = format!("https://monarch-launcher.com/api/games?search={}", name);
         let response = match reqwest::get(search_term).await {
             Ok(resp) => resp,

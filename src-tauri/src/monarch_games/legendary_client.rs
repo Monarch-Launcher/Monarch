@@ -12,6 +12,15 @@ use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use super::games::GameType;
 use super::stores::StoreType;
 
+#[cfg(target_os = "linux")]
+use super::linux::legendary;
+
+#[cfg(target_os = "macos")]
+use super::macos::legendary;
+
+#[cfg(target_os = "windows")]
+use super::windows::legendary;
+
 pub struct LegendaryClient {
     cli_path: String,
 }
@@ -88,4 +97,12 @@ impl StoreType for LegendaryClient {
         let command: String = format!("{} launch {}", self.cli_path, game.platform_id);
         self.run_legendary_cmd(handle.clone(), command)
     }
+}
+
+pub fn legendary_is_installed() -> bool {
+    legendary::legendary_is_installed()
+}
+
+pub fn install_legendary() -> Result<()> {
+    legendary::install_legendary()
 }

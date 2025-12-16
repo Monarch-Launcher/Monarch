@@ -364,11 +364,10 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     width: '100%',
     textAlign: 'left' as React.CSSProperties['textAlign'],
     outline: 'none',
-    whiteSpace: 'nowrap' as React.CSSProperties['whiteSpace'],
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+    whiteSpace: 'normal' as React.CSSProperties['whiteSpace'],
+    wordBreak: 'break-all',
     boxSizing: 'border-box' as React.CSSProperties['boxSizing'],
-    height: 40,
+    minHeight: 40,
     display: 'flex',
     alignItems: 'center',
   },
@@ -380,7 +379,7 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     background: '#1C1C24',
     border: '1px solid #3A3A48',
     borderRadius: '4px',
-    zIndex: 1000,
+    zIndex: 20002,
     marginTop: '2px',
     boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
     maxHeight: '180px',
@@ -396,6 +395,8 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     fontWeight: 500,
     border: 'none',
     textAlign: 'left' as React.CSSProperties['textAlign'],
+    whiteSpace: 'normal' as React.CSSProperties['whiteSpace'],
+    wordBreak: 'break-all',
   },
   optionActive: {
     background: '#28283A',
@@ -541,6 +542,30 @@ function CustomDropdown({ options, value, onChange }: CustomDropdownProps) {
     </div>
   );
 }
+
+const StyledActionButton = styled.button`
+  padding: 0 12px;
+  border-radius: 4px;
+  border: 1px solid #FA5002;
+  background: #FA5002;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  height: 40px;
+  width: 120px;
+  box-sizing: border-box;
+  font-family: 'IBM Plex Mono', Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+
+  &:hover {
+    opacity: 0.9;
+  }
+`;
 
 type GameCardProps = {
   id: string;
@@ -877,26 +902,6 @@ const GameCard = ({
     );
   }, [availableExecutables, customExecutablePath]);
 
-  // Update game properties in backend when fields change
-  React.useEffect(() => {
-    if (!propertiesOpen) return;
-    const updatedGame = {
-      ...gameData,
-      launch_args: launchCommands,
-      compatibility: compatibilityLayer,
-      executable_path: customExecutablePath,
-    };
-    invoke('update_game_properties', { game: updatedGame });
-    // Optionally, refresh the library after update
-    // refreshLibrary();
-  }, [
-    launchCommands,
-    compatibilityLayer,
-    customExecutablePath,
-    propertiesOpen,
-    gameData,
-  ]);
-
   React.useEffect(() => {
     if (!optionsOpen) return;
     const handleClick = (e: MouseEvent) => {
@@ -955,14 +960,30 @@ const GameCard = ({
 
   // Handler for setting executable path
   const handleSetExecutablePath = React.useCallback(
-    async (newPath: string) => {
-      setGameData((prev) => ({ ...prev, executable_path: newPath }));
-      await invoke('update_game_properties', {
-        game: { ...gameData, executable_path: newPath },
-      });
+    (newPath: string) => {
+      setCustomExecutablePath(newPath);
     },
-    [gameData],
+    [],
   );
+
+  const handleSave = React.useCallback(async () => {
+    const updatedGame = {
+      ...gameData,
+      launch_args: launchCommands,
+      compatibility: compatibilityLayer,
+      executable_path: customExecutablePath,
+    };
+    try {
+      await invoke('update_game_properties', { game: updatedGame });
+      setGameData(updatedGame);
+      setPropertiesOpen(false);
+    } catch (err) {
+      await dialog.message(`Failed to save properties: ${err}`, {
+        title: 'Error',
+        kind: 'error',
+      });
+    }
+  }, [gameData, launchCommands, compatibilityLayer, customExecutablePath]);
 
   // Handler for file picker
   const handleFilePicker = React.useCallback(async () => {
@@ -1402,9 +1423,9 @@ const GameCard = ({
                     </div>
                   )
                 }
-              </div >
-            </Drawer >
-          </DrawerOverlay >,
+              </div>
+            </Drawer>
+          </DrawerOverlay>,
           document.body,
         )}
       {/* Properties Modal */}
@@ -1471,41 +1492,23 @@ const GameCard = ({
                   value={
                     executableOptions.find((o) => o.value === customExecutablePath)?.value || ''
                   }
-                  onChange={async (v) => {
-                    setCustomExecutablePath(v);
-                    await handleSetExecutablePath(v);
+                  onChange={(v) => {
+                    handleSetExecutablePath(v);
                   }}
                 />
               </div>
-              <button
+              <StyledActionButton
                 type="button"
                 onClick={handleFilePicker}
                 style={{
-                  padding: '0 12px',
-                  borderRadius: '4px',
-                  border: '1px solid #FA5002',
-                  background: '#FA5002',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  alignSelf: 'center',
-                  whiteSpace: 'nowrap',
                   marginLeft: 4,
-                  height: 40,
-                  boxSizing: 'border-box',
-
-                  fontFamily:
-                    'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
-                  fontSize: '1rem',
-                  fontWeight: 500,
+                  alignSelf: 'center',
                 }}
                 title="Browse for executable file"
               >
                 <FaFolderOpen size={16} />
                 Browse
-              </button>
+              </StyledActionButton>
             </div>
             <div style={{ marginTop: 6 }}>
               {loadingExecutables && (
@@ -1532,9 +1535,17 @@ const GameCard = ({
               <span style={{ color: 'red', marginLeft: 8 }}>{protonError}</span>
             )}
           </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <StyledActionButton
+              type="button"
+              onClick={handleSave}
+            >
+              Save
+            </StyledActionButton>
+          </div>
         </div>
       </Modal>
-    </CardWrapper >
+    </CardWrapper>
   );
 };
 

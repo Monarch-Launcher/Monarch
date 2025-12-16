@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -128,9 +128,10 @@ impl GameType for MonarchGame {
         match self.platform.as_str() {
             "monarch" => Box::new(MonarchClient::new()),
             "steam" => Box::new(SteamClient::new()),
+            "steamcmd" => Box::new(SteamClient::new()),
             "epic" => Box::new(LegendaryClient::new()),
             _ => {
-                panic!("Invalid platform!")
+                panic!("Invalid platform: {}", self.platform)
             }
         }
     }
@@ -148,14 +149,38 @@ impl GameType for MonarchGame {
     }
 
     async fn launch(&self, handle: &AppHandle) -> Result<()> {
-        if !self.executable_path.is_empty() {
-            return umu_run(handle, &self)
-                .await
-                .with_context(|| "monarchgame::launch() -> ");
+        let game: MonarchGame = match MONARCH_STATE.read() {
+            Ok(state) => match state.get_game(&self.id) {
+                Some(game) => game,
+                None => {
+                    bail!("monarchgame::launch() -> Game not found");
+                }
+            },
+            Err(e) => {
+                bail!(
+                    "monarchgame::launch() Failed to lock on MONARCH_STATE | Err: {}",
+                    e
+                );
+            }
+        };
+
+        #[cfg(target_os = "linux")]
+        {
+            if !game.executable_path.is_empty() {
+                return umu_run(handle, &game)
+                    .await
+                    .with_context(|| "monarchgame::launch() -> ");
+            }
+
+            if game.compatibility.contains("UMU") {
+                return umu_run(handle, &game)
+                    .await
+                    .with_context(|| "monarchgame::launch() -> ");
+            }
         }
 
-        self.get_platform()
-            .launch_game(handle, &self.into_monarchgame())
+        game.get_platform()
+            .launch_game(handle, &game)
             .await
             .with_context(|| "monarchgame::launch() -> ")
     }

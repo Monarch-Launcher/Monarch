@@ -95,17 +95,23 @@ pub fn add_game(game: &MonarchGame) -> Result<()> {
             games = state.get_library_games();
             games.push(game.clone());
             if let Err(e) = state.set_library_games(&games) {
-                error!("games_library::add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                error!(
+                    "games_library::add_game() -> {}",
+                    e.chain().map(|e| e.to_string()).collect::<String>()
+                );
             }
         }
         Err(e) => {
-            error!("games_library::add_game() Failed to lock on MONARCH_STATE | Err: {}", e)
+            error!(
+                "games_library::add_game() Failed to lock on MONARCH_STATE | Err: {}",
+                e
+            )
         }
     }
     write_monarchgame(game)
 }
 
-/// Backend functionality for removing a game from library.json 
+/// Backend functionality for removing a game from library.json
 pub fn remove_game(game: &MonarchGame) -> Result<()> {
     let mut games: Vec<MonarchGame>;
     match MONARCH_STATE.write() {
@@ -120,15 +126,22 @@ pub fn remove_game(game: &MonarchGame) -> Result<()> {
             }
 
             if let Err(e) = state.set_library_games(&games) {
-                error!("games_library::remove_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                error!(
+                    "games_library::remove_game() -> {}",
+                    e.chain().map(|e| e.to_string()).collect::<String>()
+                );
             }
         }
         Err(e) => {
-            error!("games_library::remove_game() Failed to lock on MONARCH_STATE | Err: {}", e)
+            error!(
+                "games_library::remove_game() Failed to lock on MONARCH_STATE | Err: {}",
+                e
+            )
         }
     }
 
-    let mut monarch_games = get_monarchgames().with_context(|| "games_library::remove_game() -> ")?;
+    let mut monarch_games =
+        get_monarchgames().with_context(|| "games_library::remove_game() -> ")?;
     for (i, g) in monarch_games.iter_mut().enumerate() {
         if g.id == game.id {
             monarch_games.remove(i);
@@ -141,22 +154,6 @@ pub fn remove_game(game: &MonarchGame) -> Result<()> {
 
 /// Updates the properties of a game in the library.
 pub fn update_game_properties(game: &MonarchGame) -> Result<()> {
-    let games_json: Value =
-        get_games().with_context(|| "games_library::update_game_properties() -> ")?;
-
-    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| {
-        "games_library::update_game_properties() Failed to parse json to Vec<MonarchGame>! | Err: "
-    })?;
-
-    for library_game in games.iter_mut() {
-        if library_game.id == game.id {
-            library_game.compatibility = game.compatibility.to_string();
-            library_game.launch_args = game.launch_args.to_string();
-            library_game.executable_path = game.executable_path.to_string();
-            break;
-        }
-    }
-
     match MONARCH_STATE.write() {
         Ok(mut state) => {
             state
@@ -164,7 +161,10 @@ pub fn update_game_properties(game: &MonarchGame) -> Result<()> {
                 .with_context(|| "games_library::update_game_properties() -> ")?;
         }
         Err(e) => {
-            error!("games_library::update_game_properties() Failed to lock on MONARCH_STATE | Err: {}", e)
+            error!(
+                "games_library::update_game_properties() Failed to lock on MONARCH_STATE | Err: {}",
+                e
+            )
         }
     }
     Ok(())
