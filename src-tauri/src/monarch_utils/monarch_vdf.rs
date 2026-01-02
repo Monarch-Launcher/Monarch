@@ -270,6 +270,7 @@ impl Into<MonarchGameProperties> for SteamGameProperties {
         MonarchGameProperties {
             name: self.name,
             platform: "Steam".to_string(),
+            platform_id: self.appid,
             install_dir: self.installdir,
             size_on_disk: self.SizeOnDisk,
             last_played: self.LastPlayed,

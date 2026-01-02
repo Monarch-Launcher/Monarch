@@ -79,3 +79,20 @@ export type SearchFilter = {
   steam_powered: boolean;
   egs: boolean;
 };
+
+export type MonarchWebApiPlatform = {
+  name: string;
+  platform_id: string;
+  store_page: string;
+};
+
+export type MonarchWebApiGame = {
+  name: string;
+  id: string;
+  igdb_id: number;
+  cover_url: string;
+  artwork_url: string;
+  summary: string;
+  platforms: MonarchWebApiPlatform[];
+  thumbnail_path: string;
+};

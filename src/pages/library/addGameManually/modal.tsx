@@ -7,7 +7,7 @@ import Spinner from '@_ui/spinner';
 import { useLibrary } from '@global/contexts/libraryProvider';
 import { useSearchGames } from '@global/contexts/searchGamesProvider';
 import { AiOutlineSearch, BiArrowBack, FaFolderOpen, MdClose } from '@global/icons';
-import { MonarchGame } from '@global/types';
+import { MonarchGame, MonarchWebApiGame } from '@global/types';
 import { Switch } from '@mantine/core';
 import { invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
@@ -194,7 +194,7 @@ type Props = {
 export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
   const { addGameToLibrary } = useLibrary();
   const {
-    searchedGames,
+    webApiGames,
     loading,
     error: searchError,
     searchGames,
@@ -357,27 +357,27 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
     });
   }, [searchGames, searchString, searchOnMonarch]);
 
-  const handleGameSelect = React.useCallback((game: MonarchGame) => {
+  const handleGameSelect = React.useCallback((game: MonarchWebApiGame) => {
     // Pre-fill the form with selected game data
     setGameName(game.name);
-    setThumbnailPath(game.thumbnail_path || '');
-    setThumbnailUrl(game.thumbnail_url || '');
+    setThumbnailPath('');
+    setThumbnailUrl(game.cover_url || '');
     setShowSearchView(false);
   }, []);
 
   React.useEffect(() => {
     let cancelled = false;
 
-    if (!searchedGames || searchedGames.length === 0) {
+    if (!webApiGames || webApiGames.length === 0) {
       return () => {
         cancelled = true;
       };
     }
 
-    searchedGames.forEach((game) => {
+    webApiGames.forEach((game) => {
       (async () => {
         try {
-          await invoke('download_thumbnail', { game });
+          await invoke('search_page_download_thumbnail', { game });
           if (cancelled) return;
           setReloadKeys((prev) => ({ ...prev, [game.id]: (prev[game.id] || 0) + 1 }));
         } catch (e) {
@@ -388,7 +388,7 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [searchedGames]);
+  }, [webApiGames]);
 
     const modalHeader = React.useMemo<JSX.Element>(() => {
     return (
@@ -457,7 +457,7 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
               {loading ? (
                 <Spinner />
               ) : (
-                searchedGames.map((game) => (
+                webApiGames.map((game) => (
                   <div
                     key={game.id}
                     onClick={() => handleGameSelect(game)}
@@ -472,15 +472,16 @@ export default ({ opened, close, selectedFilePath, onGameAdded }: Props) => {
                   >
                     <GameCard
                       id={game.id}
-                      executablePath={game.executable_path}
-                      platform={game.platform}
+                      executablePath=""
+                      platform={game.platforms[0]?.name || ''}
                       name={game.name}
-                      platformId={game.platform_id}
+                      platformId={game.platforms[0]?.platform_id || ''}
                       thumbnailPath={game.thumbnail_path}
-                      thumbnailUrl={game.thumbnail_url}
-                      storePage={game.store_page}
+                      thumbnailUrl={game.cover_url || ''}
+                      storePage={game.platforms[0]?.store_page || ''}
                       hideDownload
                       reloadKey={reloadKeys[game.id]}
+                      platforms={game.platforms}
                     />
                   </div>
                 ))

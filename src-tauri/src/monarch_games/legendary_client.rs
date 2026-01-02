@@ -3,7 +3,8 @@ use async_trait::async_trait;
 use tauri::AppHandle;
 use tracing::error;
 
-use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebGame};
+use crate::monarch_games::games::SearchResult;
+use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::generate_cache_image_path;
 use crate::monarch_utils::monarch_settings::get_settings_state;
@@ -47,27 +48,59 @@ impl LegendaryClient {
 
 #[async_trait]
 impl StoreType for LegendaryClient {
-    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn GameType>> {
+    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
         let search_term: String = format!(
             "https://monarch-launcher.com/api/games?search={}?platform=legendary",
             name,
         );
-        let response = reqwest::blocking::get(search_term).unwrap();
-        let resp_content = response.text().unwrap();
-        let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
 
-        let mut monarch_games: Vec<Box<dyn GameType>> = Vec::new();
-        for game in web_games {
+        let response = match reqwest::get(search_term).await {
+            Ok(resp) => resp,
+            Err(e) => {
+                error!(
+                    "monarch_client::search_games() reqwest::get() failed! | Err: {}",
+                    e
+                );
+                return Vec::new();
+            }
+        };
+
+        let resp_content = match response.text().await {
+            Ok(content) => content,
+            Err(e) => {
+                error!(
+                    "monarch_client::search_games() response.text() failed! | Err: {}",
+                    e
+                );
+                return Vec::new();
+            }
+        };
+
+        let mut web_games: Vec<Box<MonarchWebApiGame>> =
+            match serde_json::from_str::<Vec<MonarchWebApiGame>>(&resp_content) {
+                Ok(games) => games.into_iter().map(Box::new).collect(),
+                Err(e) => {
+                    error!(
+                        "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
+                        e
+                    );
+                    return Vec::new();
+                }
+            };
+
+        for game in web_games.iter_mut() {
             let thumbnail_path = String::from(
                 generate_cache_image_path(&game.name.clone())
                     .to_str()
                     .unwrap(),
             );
-            let mut new_monarchgame = MonarchGame::from(&game);
-            new_monarchgame.thumbnail_path = thumbnail_path;
-            monarch_games.push(Box::new(new_monarchgame));
+            game.thumbnail_path = thumbnail_path;
         }
-        monarch_games
+
+        web_games
+            .into_iter()
+            .map(|g| g as Box<dyn SearchResult>)
+            .collect()
     }
 
     async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {

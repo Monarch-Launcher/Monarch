@@ -1,4 +1,4 @@
-use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_games::{games::SearchResult, monarchgame::MonarchGame};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use super::games::GameType;
 
 #[async_trait]
 pub trait StoreType: Send + Sync {
-    async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn GameType>>;
+    async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn SearchResult>>;
     async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()>;
     async fn uninstall_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()>;
     async fn update_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()>;

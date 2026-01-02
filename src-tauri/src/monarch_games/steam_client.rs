@@ -12,7 +12,8 @@ use tauri::AppHandle;
 use tokio::task;
 use tracing::{error, info, warn};
 
-use super::monarchgame::{MonarchGame, MonarchWebGame};
+use super::monarchgame::{MonarchGame, MonarchWebApiGame};
+use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_credentials::get_password;
@@ -46,12 +47,12 @@ impl SteamClient {
 
 #[async_trait]
 impl StoreType for SteamClient {
-    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn GameType>> {
+    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
         find_game(name)
             .await
             .into_iter()
-            .map(|g| Box::new(g) as Box<dyn GameType>)
-            .collect::<Vec<Box<dyn GameType>>>()
+            .map(|g| Box::new(MonarchWebApiGame::from_monarchgame(g)) as Box<dyn SearchResult>)
+            .collect::<Vec<Box<dyn SearchResult>>>()
     }
 
     async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
@@ -395,7 +396,7 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.
 async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame> {
     info!("Parsing {id} via monarch-launcher.com.");
-    let mut game_info_opt: Option<MonarchWebGame> = None;
+    let mut game_info_opt: Option<MonarchWebApiGame> = None;
     let target: String =
         format!("https://monarch-launcher.com/api/games?platform=steam&platform_id={id}");
 
@@ -403,7 +404,7 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
     match reqwest::get(&target).await {
         Ok(response) => match response.text().await {
             Ok(body) => {
-                let web_games: Vec<MonarchWebGame> = serde_json::from_str(&body).unwrap();
+                let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&body).unwrap();
                 if web_games.is_empty() {
                     bail!("Nothing returned for game with ID: {id}");
                 }

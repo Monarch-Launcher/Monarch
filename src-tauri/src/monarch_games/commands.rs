@@ -11,9 +11,9 @@ use tracing::{error, info};
 use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
-use crate::monarch_games::games::GameType;
+use crate::monarch_games::games::{GameType, SearchResult};
 use crate::monarch_games::legendary_client::{self, LegendaryClient};
-use crate::monarch_games::monarchgame::MonarchGameProperties;
+use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebApiGame};
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
@@ -72,18 +72,18 @@ pub async fn get_home_recomendations() -> Result<Value, String> {
 
 #[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
-pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchGame> {
+pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebApiGame> {
     if filter.monarch {
         let client = MonarchClient::new();
         return client
             .search_games(&name, &filter)
             .await
             .into_iter()
-            .map(|g| g.into_monarchgame())
+            .map(|g| g.to_search_result())
             .collect();
     }
 
-    let mut games: Vec<MonarchGame> = Vec::new();
+    let mut games: Vec<MonarchWebApiGame> = Vec::new();
 
     if filter.steam_powered {
         let client = SteamClient::new();
@@ -92,7 +92,7 @@ pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchGame
                 .search_games(&name, &filter)
                 .await
                 .into_iter()
-                .map(|g| g.into_monarchgame())
+                .map(|g| g.to_search_result())
                 .collect(),
         );
     }
@@ -104,7 +104,7 @@ pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchGame
                 .search_games(&name, &filter)
                 .await
                 .into_iter()
-                .map(|g| g.into_monarchgame())
+                .map(|g| g.to_search_result())
                 .collect(),
         );
     }
@@ -129,6 +129,11 @@ pub async fn download_thumbnail(game: MonarchGame) -> Result<(), String> {
         return Err(String::from("Failed to download thumbnail"));
     }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn search_page_download_thumbnail(game: MonarchWebApiGame) -> Result<(), String> {
+    download_thumbnail(game.into_monarchgame()).await
 }
 
 #[tauri::command]

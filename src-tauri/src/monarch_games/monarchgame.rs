@@ -7,6 +7,7 @@ use tracing::error;
 
 use super::games::GameType;
 use super::stores::StoreType;
+use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::legendary_client::LegendaryClient;
 use crate::monarch_games::linux::umu::umu_run;
 use crate::monarch_games::monarch_client::MonarchClient;
@@ -100,18 +101,18 @@ impl MonarchGame {
     }
 
     /// Convert MonarchWebGame to MonarchGame
-    pub fn from(other: &MonarchWebGame) -> Self {
+    pub fn from(other: &MonarchWebApiGame) -> Self {
         Self {
             name: other.name.to_string(),
             id: other.id.to_string(),
-            platform: other.platform.to_string(),
-            platform_id: other.platform_id.to_string(),
+            platform: "".to_string(),
+            platform_id: "".to_string(),
             executable_path: "".to_string(),
-            thumbnail_path: "".to_string(),
+            thumbnail_path: other.thumbnail_path.to_string(),
             thumbnail_url: other.cover_url.to_string(),
             launch_args: "".to_string(),
             compatibility: "".to_string(),
-            store_page: other.store_page.to_string(),
+            store_page: "".to_string(),
             install_dir: "".to_string(),
             description: other.summary.to_string(),
         }
@@ -210,22 +211,71 @@ impl Eq for MonarchGame {}
 
 /// Struct representation of games returned from monarch-launcher.com
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MonarchWebGame {
+pub struct MonarchWebApiGame {
     pub name: String,
     pub id: String,
     pub igdb_id: i32,
     pub cover_url: String,
     pub artwork_url: String,
     pub summary: String,
-    pub platform: String,
+    pub platforms: Vec<MonarchWebApiPlatform>,
+
+    #[serde(default)]
+    pub thumbnail_path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MonarchWebApiPlatform {
+    pub name: String,
     pub platform_id: String,
     pub store_page: String,
+}
+
+impl SearchResult for MonarchWebApiGame {
+    fn to_search_result(&self) -> MonarchWebApiGame {
+        return self.clone();
+    }
+
+    fn into_monarchgame(&self) -> MonarchGame {
+        MonarchGame::from(self)
+    }
+}
+
+impl MonarchWebApiGame {
+    pub fn from_monarchgame(monarch_game: MonarchGame) -> Self {
+        let platform: MonarchWebApiPlatform;
+
+        match monarch_game.platform.as_str() {
+            "steam" => {
+                platform = MonarchWebApiPlatform {
+                    name: "steam".to_string(),
+                    platform_id: monarch_game.platform_id,
+                    store_page: monarch_game.store_page,
+                }
+            }
+            _ => {
+                panic!("Unknown platform: {}", monarch_game.platform)
+            }
+        }
+
+        Self {
+            name: monarch_game.name,
+            id: monarch_game.id,
+            igdb_id: -1,
+            cover_url: monarch_game.thumbnail_url,
+            artwork_url: "".to_string(),
+            summary: monarch_game.description,
+            platforms: vec![platform],
+            thumbnail_path: monarch_game.thumbnail_path,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MonarchGameProperties {
     pub name: String,
     pub platform: String,
+    pub platform_id: String,
     pub install_dir: String,
     pub size_on_disk: String,
     pub last_played: String,
@@ -241,6 +291,7 @@ impl Default for MonarchGameProperties {
         Self {
             name: "Error".to_string(),
             platform: "Error".to_string(),
+            platform_id: "Error".to_string(),
             install_dir: "Error".to_string(),
             size_on_disk: "Error".to_string(),
             last_played: "Error".to_string(),

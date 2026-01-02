@@ -1,5 +1,5 @@
 use super::stores::StoreType;
-use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame};
 use anyhow::Result;
 use async_trait::async_trait;
 use tauri::AppHandle;
@@ -12,5 +12,11 @@ pub trait GameType: Send + Sync {
     fn get_description(&self) -> String;
     fn get_price(&self) -> f64;
     async fn launch(&self, handle: &AppHandle) -> Result<()>;
+    fn into_monarchgame(&self) -> MonarchGame;
+}
+
+#[async_trait]
+pub trait SearchResult: Send + Sync {
+    fn to_search_result(&self) -> MonarchWebApiGame;
     fn into_monarchgame(&self) -> MonarchGame;
 }

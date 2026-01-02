@@ -205,7 +205,7 @@ const Search = () => {
   });
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
-  const { searchedGames, loading, error, searchGames, results } =
+  const { webApiGames, loading, error, searchGames, results } =
     useSearchGames();
 
   const handleChange = React.useCallback(
@@ -240,16 +240,16 @@ const Search = () => {
   React.useEffect(() => {
     let cancelled = false;
 
-    if (!searchedGames || searchedGames.length === 0) {
+    if (!webApiGames || webApiGames.length === 0) {
       return () => {
         cancelled = true;
       };
     }
 
-    searchedGames.forEach((game) => {
+    webApiGames.forEach((game) => {
       (async () => {
         try {
-          await invoke('download_thumbnail', { game });
+          await invoke('search_page_download_thumbnail', { game });
           if (cancelled) return;
           setReloadKeys((prev) => ({ ...prev, [game.id]: (prev[game.id] || 0) + 1 }));
         } catch (e) {
@@ -260,7 +260,7 @@ const Search = () => {
     return () => {
       cancelled = true;
     };
-  }, [searchedGames]);
+  }, [webApiGames]);
 
   return (
     <Page>
@@ -360,18 +360,19 @@ const Search = () => {
         {loading ? (
           <Spinner />
         ) : (
-          searchedGames.map((game) => (
+          webApiGames.map((game) => (
             <GameCard
               key={game.id}
               id={game.id}
-              executablePath={game.executable_path}
-              platform={game.platform}
+              executablePath=""
+              platform={game.platforms[0]?.name || ''}
               name={game.name}
-              platformId={game.platform_id}
+              platformId={game.platforms[0]?.platform_id || ''}
               thumbnailPath={game.thumbnail_path}
-              thumbnailUrl={game.thumbnail_url || ''}
-              storePage={game.store_page}
+              thumbnailUrl={game.cover_url || ''}
+              storePage={game.platforms[0]?.store_page || ''}
               reloadKey={reloadKeys[game.id]}
+              platforms={game.platforms}
             />
           ))
         )}

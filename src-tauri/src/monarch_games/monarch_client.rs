@@ -1,7 +1,7 @@
-use super::games::GameType;
+use super::games::{GameType, SearchResult};
 use super::stores::StoreType;
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebGame};
+use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebApiGame};
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
@@ -27,8 +27,8 @@ impl MonarchClient {
 
 #[async_trait]
 impl StoreType for MonarchClient {
-    async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn GameType>> {
-        let search_term: String = format!("https://monarch-launcher.com/api/games?search={}", name);
+    async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
+        let search_term: String = format!("http://localhost:1337/api/games?search={}", name);
         let response = match reqwest::get(search_term).await {
             Ok(resp) => resp,
             Err(e) => {
@@ -51,29 +51,31 @@ impl StoreType for MonarchClient {
             }
         };
 
-        let web_games: Vec<MonarchWebGame> = match serde_json::from_str(&resp_content) {
-            Ok(games) => games,
-            Err(e) => {
-                error!(
-                    "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
-                    e
-                );
-                return Vec::new();
-            }
-        };
+        let mut web_games: Vec<Box<MonarchWebApiGame>> =
+            match serde_json::from_str::<Vec<MonarchWebApiGame>>(&resp_content) {
+                Ok(games) => games.into_iter().map(Box::new).collect(),
+                Err(e) => {
+                    error!(
+                        "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
+                        e
+                    );
+                    return Vec::new();
+                }
+            };
 
-        let mut monarch_games: Vec<Box<dyn GameType>> = Vec::new();
-        for game in web_games {
+        for game in web_games.iter_mut() {
             let thumbnail_path = String::from(
                 generate_cache_image_path(&game.name.clone())
                     .to_str()
                     .unwrap(),
             );
-            let mut new_monarchgame = MonarchGame::from(&game);
-            new_monarchgame.thumbnail_path = thumbnail_path;
-            monarch_games.push(Box::new(new_monarchgame));
+            game.thumbnail_path = thumbnail_path;
         }
-        monarch_games
+
+        web_games
+            .into_iter()
+            .map(|g| g as Box<dyn SearchResult>)
+            .collect()
     }
 
     async fn install_game(&self, _handle: &AppHandle, _game: &MonarchGame) -> Result<()> {
@@ -382,7 +384,7 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     let response = reqwest::get(search_term).await.unwrap();
     let resp_content = response.text().await.unwrap();
 
-    let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
+    let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&resp_content).unwrap();
 
     let mut monarch_games: Vec<MonarchGame> = Vec::new();
     for game in web_games {
@@ -441,21 +443,26 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
             }
         }
     } else {
-        let search_term: String =
-            format!("https://monarch-launcher.com/api/games?name={}", game.name);
+        let search_term: String = format!("http://localhost:1337/api/games?id={}", game.id);
         let response = reqwest::get(search_term).await.unwrap();
         let resp_content = response.text().await.unwrap();
-        let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
+        let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&resp_content).unwrap();
 
         if !web_games.is_empty() {
-            let web_game: &MonarchWebGame = &web_games[0];
-            properties.platform = web_game.platform.to_string();
+            let web_game: &MonarchWebApiGame = &web_games[0];
             properties.description = web_game.summary.to_string();
+
+            for platform in web_game.platforms.iter() {
+                if platform.name == "steam" {
+                    properties.platform = "steam".to_string();
+                    properties.platform_id = platform.platform_id.to_string();
+                }
+            }
 
             #[cfg(target_os = "linux")]
             {
-                if web_game.platform == "steam" {
-                    match steam_client::get_protondb_rating(&web_game.platform_id).await {
+                if properties.platform == "steam" {
+                    match steam_client::get_protondb_rating(&properties.platform_id).await {
                         Ok((rating, url)) => {
                             properties.protondb_rating = rating;
                             properties.protondb_url = url;

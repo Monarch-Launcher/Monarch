@@ -1,10 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 
-import type { MonarchGame, Result, SearchFilter } from '../types';
+import type { MonarchGame, MonarchWebApiGame, Result, SearchFilter } from '../types';
 
 type SearchGamesContextType = {
   searchedGames: MonarchGame[];
+  webApiGames: MonarchWebApiGame[];
   searchGames: (
     searchString: string,
     filter: SearchFilter
@@ -17,6 +18,7 @@ type SearchGamesContextType = {
 
 const initialState: SearchGamesContextType = {
   searchedGames: [],
+  webApiGames: [],
   searchGames: async () => {},
   clearSearchResults: () => {},
   error: false,
@@ -34,6 +36,7 @@ type Props = {
 
 const SearchGamesProvider = ({ children }: Props) => {
   const [searchedGames, setSearchedGames] = React.useState<MonarchGame[]>([]);
+  const [webApiGames, setWebApiGames] = React.useState<MonarchWebApiGame[]>([]);
   const [error, setError] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [results, setResults] = React.useState<Result>();
@@ -47,31 +50,45 @@ const SearchGamesProvider = ({ children }: Props) => {
         setLoading(true);
         setError(false);
 
-        const promises: Promise<MonarchGame[]>[] = [];
+        // Backend now returns MonarchWebApiGame[]
+        const apiGamesResponse = await invoke<MonarchWebApiGame[]>('search_games', {
+          name: searchString,
+          filter,
+        });
 
-      promises.push(invoke('search_games', {
-        name: searchString,
-        filter,
-      }));
+        // Convert MonarchWebApiGame[] to MonarchGame[] for compatibility
+        const convertedGames: MonarchGame[] = apiGamesResponse.map((webGame) => ({
+          id: webGame.id,
+          platform_id: webGame.platforms[0]?.platform_id || '',
+          executable_path: '',
+          name: webGame.name,
+          platform: webGame.platforms[0]?.name || '',
+          thumbnail_path: webGame.thumbnail_path,
+          thumbnail_url: webGame.cover_url,
+          store_page: webGame.platforms[0]?.store_page || '',
+          compatibility: '',
+          launch_args: '',
+          install_dir: '',
+          description: webGame.summary,
+        }));
 
-      const resultsArray = await Promise.all(promises);
-      const result = resultsArray.flat();
-
-      setResults({
-        empty: result.length === 0,
-        emptyMessage: `Couldn't find any games for "${searchString}".`,
-        searchString,
-      });
-      setSearchedGames([...result]);
-    } catch (err) {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        setResults({
+          empty: convertedGames.length === 0,
+          emptyMessage: `Couldn't find any games for "${searchString}".`,
+          searchString,
+        });
+        setSearchedGames([...convertedGames]);
+        setWebApiGames([...apiGamesResponse]);
+      } catch (err) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }, []);
 
   const clearSearchResults = React.useCallback(() => {
     setSearchedGames([]);
+    setWebApiGames([]);
     setResults(undefined);
     setError(false);
   }, []);
@@ -79,13 +96,14 @@ const SearchGamesProvider = ({ children }: Props) => {
   const value = React.useMemo<SearchGamesContextType>(() => {
     return {
       searchedGames,
+      webApiGames,
       searchGames,
       clearSearchResults,
       error,
       loading,
       results,
     };
-  }, [searchedGames, searchGames, clearSearchResults, error, loading, results]);
+  }, [searchedGames, webApiGames, searchGames, clearSearchResults, error, loading, results]);
 
   return (
     <SearchGamesContext.Provider value={value}>
