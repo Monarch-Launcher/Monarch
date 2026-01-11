@@ -6,7 +6,7 @@ use rand::seq::SliceRandom;
 use serde_json::value::Value;
 use std::path::PathBuf;
 use tauri::AppHandle;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
@@ -16,6 +16,7 @@ use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebApiGame};
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
 
@@ -164,14 +165,39 @@ pub async fn download_game(
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
     info!("Installing: {name}");
-    match monarch_client::download_game(&handle, &name, &platform, &platform_id).await {
-        Ok(new_library) => Ok(new_library),
+
+    let game = MonarchGame::new(&name, 0, &platform, &platform_id, "", "", "");
+
+    let result: Result<(), String> = match platform.as_str() {
+        "steam" => {
+            if let Err(e) = SteamClient::new().install_game(&handle, &game).await {
+                return Err(e.to_string());
+            }
+            Ok(())
+        }
+        "epicgames" => {
+            if let Err(e) = LegendaryClient::new().install_game(&handle, &game).await {
+                return Err(e.to_string());
+            }
+            Ok(())
+        }
+        _ => Err(String::from("Unsupported platform")),
+    };
+
+    if let Err(e) = result {
+        return Err(e);
+    }
+
+    match MONARCH_STATE.read() {
+        Ok(state) => {
+            return Ok(state.get_library_games());
+        }
         Err(e) => {
             error!(
-                "monarch_games::commands::download_game() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
+                "monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}",
+                e
             );
-            Err(format!("Something went wrong while downloading: {name}"))
+            return Err(String::from("Failed to get updated library."));
         }
     }
 }

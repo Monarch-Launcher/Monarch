@@ -16,7 +16,8 @@ import {
 import { invoke } from '@tauri-apps/api/core';
 import * as React from 'react';
 import { AiOutlineSearch } from 'react-icons/ai';
-import { FaFilter } from 'react-icons/fa';
+import { FaFilter, FaSteam } from 'react-icons/fa';
+import { SiEpicgames, SiGogdotcom, SiItchdotio } from 'react-icons/si';
 import styled from 'styled-components';
 
 const SearchContainer = styled.div`
@@ -302,24 +303,44 @@ const Search = () => {
       >
         <Stack spacing="md" p="md">
           <SectionTitle>Stores</SectionTitle>
-          <Group>
+          <Group spacing="xl">
             <StyledCheckbox
-              label="Steam"
+              label={(
+                <Group spacing="xs">
+                  <FaSteam size={16} />
+                  <span>Steam</span>
+                </Group>
+              )}
               checked={searchFilter.steam}
               onChange={() => handleFilterChange('steam')}
             />
             <StyledCheckbox
-              label="Epic"
+              label={(
+                <Group spacing="xs">
+                  <SiEpicgames size={16} />
+                  <span>Epic Games</span>
+                </Group>
+              )}
               checked={searchFilter.epic}
               onChange={() => handleFilterChange('epic')}
             />
             <StyledCheckbox
-              label="GOG"
+              label={(
+                <Group spacing="xs">
+                  <SiGogdotcom size={16} />
+                  <span>GOG</span>
+                </Group>
+              )}
               checked={searchFilter.gog}
               onChange={() => handleFilterChange('gog')}
             />
             <StyledCheckbox
-              label="Itch"
+              label={(
+                <Group spacing="xs">
+                  <SiItchdotio size={16} />
+                  <span>Itch</span>
+                </Group>
+              )}
               checked={searchFilter.itch}
               onChange={() => handleFilterChange('itch')}
             />
@@ -340,7 +361,12 @@ const Search = () => {
               onChange={() => handleFilterChange('steam_powered')}
             />
             <MonarchSwitch
-              label="epicgames.com"
+              label={(
+                <Group spacing="xs">
+                  <SiEpicgames size={16} />
+                  <span>epicgames.com</span>
+                </Group>
+              )}
               checked={searchFilter.egs}
               onChange={() => handleFilterChange('egs')}
             />

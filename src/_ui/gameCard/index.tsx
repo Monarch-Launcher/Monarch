@@ -857,6 +857,11 @@ const GameCard = ({
       case 'steam':
         return FaSteam;
       case 'epic':
+      case 'epic games':
+      case 'epic games store':
+      case 'epicgames':
+      case 'epicgames store':
+      case 'legendary':
         return SiEpicgames;
       case 'gog':
         return SiGogdotcom;

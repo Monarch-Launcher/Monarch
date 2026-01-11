@@ -29,7 +29,7 @@ pub struct LegendaryClient {
 impl LegendaryClient {
     pub fn new() -> Self {
         Self {
-            cli_path: String::new(),
+            cli_path: legendary::get_legendary_exe().to_str().unwrap().to_string(),
         }
     }
 
@@ -104,7 +104,7 @@ impl StoreType for LegendaryClient {
     }
 
     async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-        let command: String = format!("{} install {}", self.cli_path, &game.platform_id);
+        let command: String = format!("{} install {}", self.cli_path, &game.name);
         self.run_legendary_cmd(handle.clone(), command)
     }
 
