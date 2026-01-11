@@ -9,12 +9,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import { FaFolderOpen, FaSpinner, FaSteam } from 'react-icons/fa';
-import { HiChevronDown, HiDownload } from 'react-icons/hi';
+import { HiDownload } from 'react-icons/hi';
 import { PiButterflyBold } from 'react-icons/pi';
 import { SiEpicgames, SiGogdotcom, SiItchdotio } from 'react-icons/si';
 import styled, { keyframes } from 'styled-components';
 
 import Modal from '../modal';
+import DownloadModal from './DownloadModal';
 
 // Utility function to format Unix timestamp to human-readable date and time
 const formatLastPlayed = (timestamp: string): string => {
@@ -190,26 +191,9 @@ const DropdownItem = styled.button`
   text-align: left;
   width: 100%;
   cursor: pointer;
-  font-size: 1rem;
   &:hover {
     background: ${({ theme }) => theme.colors.button.primary.hoverBackground};
     color: ${({ theme }) => theme.colors.button.primary.hoverText};
-  }
-`;
-
-const DrawerDropdownMenu = styled(DropdownMenu)`
-  background: rgba(20, 20, 20, 0.85) !important;
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-  width: auto !important;
-  min-width: 180px;
-`;
-
-const DrawerDropdownItem = styled(DropdownItem)`
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    color: #fff !important;
   }
 `;
 
@@ -312,8 +296,6 @@ const DrawerButton = styled(Button)`
   align-items: center !important;
   flex: 0 1 auto !important;
   min-width: 130px !important;
-  max-width: 200px !important;
-
   &:hover,
   &:focus {
     background-color: rgba(255, 255, 255, 0.15) !important;
@@ -321,12 +303,6 @@ const DrawerButton = styled(Button)`
     transform: translateY(-2px);
     color: #fff !important;
   }
-`;
-
-const DownloadDrawerButton = styled(DrawerButton)`
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.4rem !important;
 `;
 
 const IconOnlyButton = styled.button`
@@ -650,19 +626,7 @@ const GameCard = ({
   }, [library, id]);
 
   const [loadingProperties, setLoadingProperties] = React.useState(false);
-  const [downloadDropdownOpen, setDownloadDropdownOpen] = React.useState(false);
-  const downloadButtonRef = React.useRef<HTMLButtonElement | null>(null);
-  const [downloadMenuPosition, setDownloadMenuPosition] = React.useState<{
-    left: number;
-    top: number;
-  }>({ left: 0, top: 0 });
-
-  const [drawerDownloadDropdownOpen, setDrawerDownloadDropdownOpen] = React.useState(false);
-  const drawerDownloadButtonRef = React.useRef<HTMLButtonElement | null>(null);
-  const [drawerDownloadMenuPosition, setDrawerDownloadMenuPosition] = React.useState<{
-    left: number;
-    top: number;
-  }>({ left: 0, top: 0 });
+  const [downloadModalOpen, setDownloadModalOpen] = React.useState(false);
 
   const toggleDrawer = React.useCallback(async () => {
     const willOpen = !drawerOpen;
@@ -754,27 +718,6 @@ const GameCard = ({
       });
     }
   }, []);
-
-  const handleDownloadPlatform = React.useCallback(async (p: string, pId: string) => {
-    try {
-      await invoke('download_game', {
-        name,
-        platformId: pId,
-        platform: p,
-      });
-      await refreshLibrary();
-    } catch (err) {
-      await dialog.message(`${err}`, {
-        title: 'Error',
-        kind: 'error',
-      });
-    }
-  }, [name, refreshLibrary]);
-
-  const handleDownload = React.useCallback(async () => {
-    await handleDownloadPlatform(platform, platformId);
-  }, [handleDownloadPlatform, platform, platformId]);
-
   const handleUpdate = React.useCallback(async () => {
     try {
       await invoke('update_game', {
@@ -1005,64 +948,6 @@ const GameCard = ({
     }
   }, [optionsOpen]);
 
-  React.useLayoutEffect(() => {
-    if (downloadDropdownOpen && downloadButtonRef.current) {
-      const rect = downloadButtonRef.current.getBoundingClientRect();
-      setDownloadMenuPosition({
-        left: rect.left + window.scrollX,
-        top: rect.bottom + window.scrollY + 4,
-      });
-    }
-  }, [downloadDropdownOpen]);
-
-  React.useLayoutEffect(() => {
-    if (drawerDownloadDropdownOpen && drawerDownloadButtonRef.current) {
-      const rect = drawerDownloadButtonRef.current.getBoundingClientRect();
-      setDrawerDownloadMenuPosition({
-        left: rect.left + window.scrollX,
-        top: rect.bottom + window.scrollY + 4,
-      });
-    }
-  }, [drawerDownloadDropdownOpen]);
-
-  React.useEffect(() => {
-    let handleClick: (e: MouseEvent) => void;
-    if (downloadDropdownOpen) {
-      handleClick = (e: MouseEvent) => {
-        if (
-          downloadButtonRef.current &&
-          !downloadButtonRef.current.contains(e.target as Node)
-        ) {
-          setDownloadDropdownOpen(false);
-        }
-      };
-      document.addEventListener('mousedown', handleClick);
-      return () => {
-        document.removeEventListener('mousedown', handleClick);
-      };
-    }
-    return undefined;
-  }, [downloadDropdownOpen]);
-
-  React.useEffect(() => {
-    let handleClick: (e: MouseEvent) => void;
-    if (drawerDownloadDropdownOpen) {
-      handleClick = (e: MouseEvent) => {
-        if (
-          drawerDownloadButtonRef.current &&
-          !drawerDownloadButtonRef.current.contains(e.target as Node)
-        ) {
-          setDrawerDownloadDropdownOpen(false);
-        }
-      };
-      document.addEventListener('mousedown', handleClick);
-      return () => {
-        document.removeEventListener('mousedown', handleClick);
-      };
-    }
-    return undefined;
-  }, [drawerDownloadDropdownOpen]);
-
   // Modular handler for moving a game to Monarch
   const handleMoveGameToMonarch = React.useCallback(async () => {
     try {
@@ -1200,55 +1085,36 @@ const GameCard = ({
             </IconOnlyButton>
           ) : (
             !hideDownload && (
-              <>
-                <div ref={downloadButtonRef as any}>
-                  <StyledButton
-                    className="launch-btn"
-                    variant="primary"
-                    type="button"
-                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      if (allPlatforms.length > 1) {
-                        setDownloadDropdownOpen(true);
-                      } else {
-                        handleDownload();
-                      }
-                    }}
-                  >
-                    <HiDownload size={24} />
-                  </StyledButton>
-                </div>
-                {downloadDropdownOpen &&
-                  ReactDOM.createPortal(
-                    <DropdownMenu
-                      style={{
-                        position: 'absolute',
-                        left: downloadMenuPosition.left,
-                        top: downloadMenuPosition.top,
-                        minWidth: '12rem',
-                        zIndex: 20001,
-                      }}
-                    >
-                      {allPlatforms.map((p) => (
-                        <DropdownItem
-                          key={p.platform_id}
-                          onMouseDown={async (e) => {
-                            e.stopPropagation();
-                            await handleDownloadPlatform(p.name, p.platform_id);
-                            setDownloadDropdownOpen(false);
-                          }}
-                        >
-                          Download for {p.name}
-                        </DropdownItem>
-                      ))}
-                    </DropdownMenu>,
-                    document.body,
-                  )}
-              </>
+              <div>
+                <StyledButton
+                  className="launch-btn"
+                  variant="primary"
+                  type="button"
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                    e.stopPropagation();
+                    setDownloadModalOpen(true);
+                  }}
+                >
+                  <HiDownload size={24} />
+                </StyledButton>
+              </div>
             )
           )}
         </HoverButtonWrapper>
       </CardContainer>
+      <DownloadModal
+        opened={downloadModalOpen}
+        close={() => setDownloadModalOpen(false)}
+        gameName={name}
+        platforms={allPlatforms}
+        defaultPlatform={
+          allPlatforms.length > 0 ? undefined : { name: platform, id: platformId }
+        }
+        onDownloadSuccess={() => {
+          refreshLibrary();
+        }}
+      />
+
       <InfoRow>
         <CenteredInfo>{name}</CenteredInfo>
         <div style={{ marginLeft: 'auto', zIndex: 2, position: 'relative' }}>
@@ -1366,59 +1232,27 @@ const GameCard = ({
                 )}
                 <DrawerTitle style={{ marginTop: '2rem' }}>{name}</DrawerTitle>
                 <DrawerButtonRow>
-                  {!hasGame && allPlatforms.length > 1 ? (
-                    <div ref={drawerDownloadButtonRef as any}>
-                      <DownloadDrawerButton
-                        variant="primary"
-                        type="button"
-                        onClick={() => setDrawerDownloadDropdownOpen(true)}
-                      >
-                        Download
-                        <HiChevronDown size={18} />
-                      </DownloadDrawerButton>
-                    </div>
-                  ) : (
+                  {!hasGame && (
+                    <DrawerButton
+                      variant="primary"
+                      type="button"
+                      onClick={() => setDownloadModalOpen(true)}
+                    >
+                      Download
+                    </DrawerButton>
+                  )}
+                  {hasGame && (
                     <DrawerButton
                       variant="primary"
                       type="button"
                       onClick={() => {
                         const game = library.find((g) => g.id === id);
-                        if (hasGame && game) {
-                          handleLaunch(game);
-                        } else {
-                          handleDownload();
-                        }
+                        if (game) handleLaunch(game);
                       }}
                     >
-                      {hasGame ? 'Launch' : 'Download'}
+                      Launch
                     </DrawerButton>
                   )}
-                  {drawerDownloadDropdownOpen &&
-                    ReactDOM.createPortal(
-                      <DrawerDropdownMenu
-                        style={{
-                          position: 'absolute',
-                          left: drawerDownloadMenuPosition.left,
-                          top: drawerDownloadMenuPosition.top,
-                          minWidth: '12rem',
-                          zIndex: 20001,
-                        }}
-                      >
-                        {allPlatforms.map((p) => (
-                          <DrawerDropdownItem
-                            key={p.platform_id}
-                            onMouseDown={async (e) => {
-                              e.stopPropagation();
-                              await handleDownloadPlatform(p.name, p.platform_id);
-                              setDrawerDownloadDropdownOpen(false);
-                            }}
-                          >
-                            Download for {p.name}
-                          </DrawerDropdownItem>
-                        ))}
-                      </DrawerDropdownMenu>,
-                      document.body,
-                    )}
                   {isLibrary && (
                     <DrawerButton
                       variant="secondary"

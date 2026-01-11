@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use tauri::AppHandle;
@@ -104,17 +106,25 @@ impl StoreType for LegendaryClient {
     }
 
     async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-        let command: String = format!("{} install {}", self.cli_path, &game.name);
+        let game_folder = PathBuf::from(get_settings_state().monarch.game_folder).join(&game.name);
+
+        let command: String = format!(
+            "{} install {} --game-folder {} --platform Linux",
+            self.cli_path,
+            &game.name,
+            game_folder.display(),
+        );
+
         self.run_legendary_cmd(handle.clone(), command)
     }
 
     async fn uninstall_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-        let command: String = format!("{} uninstall {}", self.cli_path, &game.platform_id);
+        let command: String = format!("{} uninstall {}", self.cli_path, &game.name);
         self.run_legendary_cmd(handle.clone(), command)
     }
 
     async fn update_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-        let command: String = format!("{} update {}", self.cli_path, &game.platform_id);
+        let command: String = format!("{} update {}", self.cli_path, &game.name);
         self.run_legendary_cmd(handle.clone(), command)
     }
 
@@ -127,7 +137,7 @@ impl StoreType for LegendaryClient {
     }
 
     async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-        let command: String = format!("{} launch {}", self.cli_path, game.platform_id);
+        let command: String = format!("{} launch {}", self.cli_path, game.name);
         self.run_legendary_cmd(handle.clone(), command)
     }
 }

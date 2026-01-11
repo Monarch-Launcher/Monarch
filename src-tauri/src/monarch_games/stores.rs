@@ -30,3 +30,13 @@ pub struct SearchFilter {
     pub steam_powered: bool,
     pub egs: bool,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DownloadOptions {
+    pub folder: String,
+    pub platform: String,
+    pub game_name: String,
+    pub game_platform: String,
+    pub game_platform_id: String,
+    pub os: String,
+}
