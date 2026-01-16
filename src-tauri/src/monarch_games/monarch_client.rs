@@ -28,7 +28,8 @@ impl MonarchClient {
 #[async_trait]
 impl StoreType for MonarchClient {
     async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
-        let search_term: String = format!("http://localhost:1337/api/games?search={}", name);
+        let monarch_url: &'static str = std::env!("MONARCH_URL");
+        let search_term: String = format!("{monarch_url}/api/games?search={}", name);
         let response = match reqwest::get(search_term).await {
             Ok(resp) => resp,
             Err(e) => {

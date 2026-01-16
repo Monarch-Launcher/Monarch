@@ -51,9 +51,10 @@ impl LegendaryClient {
 #[async_trait]
 impl StoreType for LegendaryClient {
     async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
+        let monarch_url: &'static str = std::env!("MONARCH_URL");
         let search_term: String = format!(
-            "https://monarch-launcher.com/api/games?search={}?platform=legendary",
-            name,
+            "{}/api/games?search={}?platform=legendary",
+            monarch_url, name,
         );
 
         let response = match reqwest::get(search_term).await {
