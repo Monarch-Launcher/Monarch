@@ -2,7 +2,7 @@ use iced::widget::{container, text};
 use iced::Element;
 use iced::Length::Fill;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Message {}
 
 #[derive(Default)]

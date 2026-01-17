@@ -2,3 +2,20 @@ pub mod home;
 pub mod library;
 pub mod search;
 pub mod settings;
+
+#[derive(Clone, Debug)]
+pub enum Message {
+    Home(home::Message),
+    Library(library::Message),
+    Search(search::Message),
+    Settings(settings::Message),
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PageTab {
+    #[default]
+    Home,
+    Library,
+    Search,
+    Settings,
+}
