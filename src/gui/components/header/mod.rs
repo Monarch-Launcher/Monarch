@@ -15,26 +15,43 @@ pub struct Header {}
 impl Header {
     pub fn update(&mut self, _msg: Message) {}
 
-    pub fn view(&self) -> Container<'_, Message> {
+    pub fn view(&self, active_tab: crate::gui::pages::PageTab) -> Container<'_, Message> {
         let button_content = |label| {
             text(label)
                 .width(Length::Fill)
                 .align_x(alignment::Horizontal::Center)
-                .size(18)
+                .size(24)
         };
 
-        let header_button = |label, msg| {
+        let header_button = |label, msg, is_active| {
+            let style = if is_active {
+                crate::gui::styles::header::active_button
+            } else {
+                crate::gui::styles::header::button
+            };
+
             button(button_content(label))
                 .on_press(msg)
                 .width(Length::Fill)
                 .padding(15)
-                .style(crate::gui::styles::header::button)
+                .style(style)
         };
 
-        let home_button = header_button("Home", Message::HomePage);
-        let library_button = header_button("Library", Message::LibraryPage);
-        let search_button = header_button("Search", Message::SearchPage);
-        let settings_button = header_button("Settings", Message::SettingsPage);
+        use crate::gui::pages::PageTab;
+
+        let home_button = header_button("Home", Message::HomePage, active_tab == PageTab::Home);
+        let library_button = header_button(
+            "Library",
+            Message::LibraryPage,
+            active_tab == PageTab::Library,
+        );
+        let search_button =
+            header_button("Search", Message::SearchPage, active_tab == PageTab::Search);
+        let settings_button = header_button(
+            "Settings",
+            Message::SettingsPage,
+            active_tab == PageTab::Settings,
+        );
 
         container(
             row![home_button, library_button, search_button, settings_button,]

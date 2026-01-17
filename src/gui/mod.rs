@@ -39,7 +39,7 @@ impl App {
             App::view,
         )
         .title(|_: &App| "Monarch".to_string())
-        .theme(|_: &App| styles::theme::gaming())
+        .theme(|_: &App| styles::theme::monarch())
         .run()
         .unwrap();
     }
@@ -82,7 +82,9 @@ impl App {
 
         container(
             iced::widget::Column::new()
-                .push(Element::from(self.header.view()).map(AppMessage::HeaderMessage))
+                .push(
+                    Element::from(self.header.view(self.active_tab)).map(AppMessage::HeaderMessage),
+                )
                 .push(content),
         )
         .into()
