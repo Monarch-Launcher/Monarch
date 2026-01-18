@@ -7,6 +7,7 @@ use crate::gui::{
 
 pub mod components;
 pub mod pages;
+pub mod resources;
 pub mod styles;
 
 #[derive(Clone, Debug)]

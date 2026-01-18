@@ -16,7 +16,7 @@ impl Header {
     pub fn _update(&mut self, _msg: Message) {}
 
     pub fn view(&self, active_tab: crate::gui::pages::PageTab) -> Container<'_, Message> {
-        let logo = image("icons/Square71x71Logo.png");
+        let logo = image(crate::gui::resources::LOGO.clone());
 
         let button_content = |label| {
             text(label)
