@@ -1,7 +1,6 @@
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
 use crate::monarch_utils::monarch_fs::get_monarch_home;
-use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::{
     monarch_fs::{create_dir, get_unix_home, path_exists},
     monarch_vdf,
@@ -79,18 +78,19 @@ pub async fn install_steamcmd() -> Result<()> {
 /// Runs specified command via SteamCMD
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
-pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()> {
+pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let work_dir: PathBuf = get_steamcmd_dir();
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    run_in_terminal(
-        handle,
-        &format!("./steamcmd.sh {}; sleep 3;", args_string),
-        None,
-        Some(&work_dir),
-    )
-    .await
-    .with_context(|| "linux::steam::steamcmd_command() -> ")?;
+    /*
+       run_in_terminal(
+           &format!("./steamcmd.sh {}; sleep 3;", args_string),
+           None,
+           Some(&work_dir),
+       )
+       .await
+       .with_context(|| "linux::steam::steamcmd_command() -> ")?;
+    */
 
     //info!("linux::steam::steamcmd_command() Result from steamcmd command {}: {}", format!("\"sh -c {} {}\"", path.display(), args_string), cmd_output);
     Ok(())

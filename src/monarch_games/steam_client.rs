@@ -4,7 +4,6 @@ use scraper::{Html, Selector};
 use serde_json::Value;
 use simple_steam_totp::generate;
 use std::path::PathBuf;
-use tauri::AppHandle;
 use tokio::task;
 use tracing::{error, info, warn};
 
@@ -37,13 +36,13 @@ pub fn steamcmd_is_installed() -> bool {
 }
 
 /// Downloads and installs SteamCMD on users computer.
-pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
+pub async fn install_steamcmd() -> Result<()> {
     steam::install_steamcmd()
         .await
         .with_context(|| "steam_client::install_steamcmd() -> ")?;
 
     // Perform initial run of SteamCMD to create necessary files
-    steam::steamcmd_command(handle, vec!["+quit"])
+    steam::steamcmd_command(vec!["+quit"])
         .await
         .with_context(|| "steam_client::install_steamcmd() -> ")?;
 
@@ -93,7 +92,7 @@ pub async fn install_steamcmd(handle: &AppHandle) -> Result<()> {
     let login_arg = get_steamcmd_login(&steam_settings)
         .with_context(|| "steam_client::install_steamcmd() -> ")?;
 
-    steam::steamcmd_command(handle, vec![&login_arg, "-globaluser", "+quit"])
+    steam::steamcmd_command(vec![&login_arg, "-globaluser", "+quit"])
         .await
         .with_context(|| "steam_client::install_steamcmd() -> ")?;
 
@@ -119,7 +118,7 @@ pub fn uninstall_client_game(id: &str) -> Result<()> {
 }
 
 /// Attemps to launch SteamCMD game.
-pub async fn launch_cmd_game(handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+pub async fn launch_cmd_game(game: &MonarchGame) -> Result<()> {
     let settings = get_settings_state();
     let steam_settings = settings.steam;
     let login_arg = get_steamcmd_login(&steam_settings)
@@ -133,13 +132,13 @@ pub async fn launch_cmd_game(handle: &AppHandle, game: &MonarchGame) -> Result<(
         &game.launch_args,
     ];
 
-    steam::steamcmd_command(handle, args)
+    steam::steamcmd_command(args)
         .await
         .with_context(|| "steam_client::launch_cmd_game() -> ")
 }
 
 /// Download a Steam game via Monarch and SteamCMD.
-pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<MonarchGame> {
+pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
     let settings = get_settings_state();
     let steam_settings = settings.steam;
 
@@ -176,7 +175,7 @@ pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<M
 
     // TODO: Wait for Steamcmd to return
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
-    steam::steamcmd_command(handle, command)
+    steam::steamcmd_command(command)
         .await
         .with_context(|| "steam_client::download_game() -> ")?;
 
@@ -187,7 +186,7 @@ pub async fn download_game(handle: &AppHandle, name: &str, id: &str) -> Result<M
 }
 
 /// Uninstall a Steam game via SteamCMD
-pub async fn uninstall_game(handle: &AppHandle, id: &str) -> Result<()> {
+pub async fn uninstall_game(id: &str) -> Result<()> {
     let steam_settings = get_settings_state().steam;
     if !steam_settings.manage {
         warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
@@ -203,13 +202,13 @@ pub async fn uninstall_game(handle: &AppHandle, id: &str) -> Result<()> {
         "+quit",
     ];
 
-    steam::steamcmd_command(handle, command)
+    steam::steamcmd_command(command)
         .await
         .with_context(|| "steam_client::uninstall_game() -> ")
 }
 
 /// Uninstall a Steam game via SteamCMD
-pub async fn update_game(handle: &AppHandle, id: &str) -> Result<()> {
+pub async fn update_game(id: &str) -> Result<()> {
     let steam_settings = get_settings_state().steam;
     if !steam_settings.manage {
         warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
@@ -225,7 +224,7 @@ pub async fn update_game(handle: &AppHandle, id: &str) -> Result<()> {
         "+quit",
     ];
 
-    steam::steamcmd_command(handle, command)
+    steam::steamcmd_command(command)
         .await
         .with_context(|| "steam_client::update_game() -> ")
 }
@@ -438,7 +437,8 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
     } else {
         String::from(generate_library_image_path(&name).to_str().unwrap())
     };
-    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
+    let mut monarch_game =
+        MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
     monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
 }

@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
-use tauri::{AppHandle, Manager, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tracing::error;
 
 static STANDARD_HEIGHT: f64 = 1080.0; // Standard monitor resultion used as scale
 
+/*
 pub struct MiniWindow {
     name: String,
     url: String,
@@ -130,3 +130,4 @@ fn get_scale(window: &WebviewWindow) -> f64 {
     }
     1.0
 }
+*/

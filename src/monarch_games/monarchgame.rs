@@ -56,7 +56,9 @@ impl MonarchGame {
             return Ok(());
         }
 
-        download_image(&self.thumbnail_url, &path).await.with_context(|| "monarchgame::download_thumbnail() -> ")?;
+        download_image(&self.thumbnail_url, &path)
+            .await
+            .with_context(|| "monarchgame::download_thumbnail() -> ")?;
         Ok(())
     }
 

@@ -1,7 +1,9 @@
 use anyhow::{Context, Result};
+use image::ImageFormat;
+use image::ImageReader;
 use reqwest;
 use reqwest::Response;
-use std::io::Write;
+use std::io::Cursor;
 use std::path::Path;
 
 /*
@@ -26,10 +28,17 @@ async fn save_image_content(response: Response, path: &Path) -> Result<()> {
         .bytes()
         .await
         .with_context(|| "monarch_download::save_image_content() Failed to read bytes! | Err")?;
-    let mut file = std::fs::File::create(path).with_context(|| {
-        "monarch_download::save_image_content() Failed to create new file! | Err: "
-    })?;
-    file.write_all(&bytes)
+
+    let img = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .with_context(|| "monarch_download::save_image_content() Error guessing format! | Err: ")?
+        .decode()
+        .with_context(|| "monarch_download::save_image_content() Error decoding image! | Err: ")?;
+
+    let file = std::fs::File::create(path)
+        .with_context(|| "monarch_download::save_image_content() Error creating file! | Err: ")?;
+
+    img.write_to(file, ImageFormat::Png)
         .with_context(|| "monarch_download::save_image_content() Error writing to file. | Err: ")?;
     Ok(())
 }

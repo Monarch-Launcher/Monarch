@@ -2,10 +2,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![allow(non_snake_case)]
 
-/*
+mod gui;
 mod monarch_games;
 mod monarch_library;
 mod monarch_utils;
+
+use crate::{
+    gui::App,
+    monarch_utils::{
+        housekeeping, monarch_fs::verify_monarch_folders, monarch_logger::init_logger,
+        monarch_settings, monarch_state::MONARCH_STATE,
+    },
+};
 
 #[cfg(target_os = "macos")]
 #[macro_use]
@@ -31,13 +39,9 @@ fn init() {
     housekeeping::start(); // Starts housekeeping loop
 }
 
-*/
-
-use crate::gui::App;
-
-mod gui;
-
 fn main() {
+    init();
+
     let monarch: App = App::new();
     monarch.run();
 }

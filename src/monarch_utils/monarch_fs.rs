@@ -158,7 +158,11 @@ pub fn get_executables(path: &Path) -> Result<Vec<PathBuf>> {
     visit_dir(&path, &mut executables, &executable_extensions).unwrap();
 
     // Recursively visits all directories and subdirectories to find executables
-    fn visit_dir(path: &Path, executables: &mut Vec<PathBuf>, executable_extensions: &[&str]) -> Result<()> {
+    fn visit_dir(
+        path: &Path,
+        executables: &mut Vec<PathBuf>,
+        executable_extensions: &[&str],
+    ) -> Result<()> {
         for entry in fs::read_dir(path).with_context(|| format!("monarch_fs::get_executables() Something went wrong trying to read directory: {dir} | Err: ", dir = path.display()))? {
             let entry = entry.with_context(|| format!("monarch_fs::get_executables() Something went wrong trying to read directory entry: {dir} | Err: ", dir = path.display()))?;
             let inner_path = entry.path();
@@ -225,7 +229,7 @@ fn generate_image_filename(name: &str) -> String {
     let regex = Regex::new(r"[^a-zA-Z0-9_]").unwrap(); // Assume that regex will be created.
 
     filename = regex.replace_all(&filename, "").to_string();
-    filename.push_str(".jpg");
+    filename.push_str(".png");
     filename
 }
 

@@ -1,17 +1,14 @@
 use anyhow::{bail, Context, Result};
-use tauri::{AppHandle, Manager};
 
 use crate::monarch_utils::monarch_settings::get_settings_state;
-use crate::monarch_utils::monarch_windows::MiniWindow;
 use tracing::{error, info};
-
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 /// This function returns if quicklaunch is allowed to run or not.
 pub fn quicklaunch_is_enabled() -> bool {
     get_settings_state().quicklaunch.enabled
 }
 
+/*
 /// Builds a new quicklaunch window.
 /// Starts as hidden unitl user presses quicklaunch shortcut.
 pub async fn init_quicklaunch(handle: &AppHandle) -> Result<()> {
@@ -103,3 +100,4 @@ pub fn hide_quicklaunch(handle: &AppHandle) -> Result<()> {
     error!("monarch_utils::commands::show_quicklaunch() Err: handle.get_window() returned None!");
     bail!("Failed to get quicklaunch window!")
 }
+*/

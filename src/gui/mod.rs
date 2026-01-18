@@ -45,25 +45,39 @@ impl App {
     }
 
     fn update_wrapper(&mut self, message: AppMessage) -> iced::Task<AppMessage> {
-        self.update(message);
-        iced::Task::none()
+        self.update(message)
     }
 }
 
 impl App {
-    fn update(&mut self, message: AppMessage) {
+    fn update(&mut self, message: AppMessage) -> iced::Task<AppMessage> {
         match message {
-            AppMessage::HeaderMessage(msg) => match msg {
-                header::Message::HomePage => self.active_tab = PageTab::Home,
-                header::Message::LibraryPage => self.active_tab = PageTab::Library,
-                header::Message::SearchPage => self.active_tab = PageTab::Search,
-                header::Message::SettingsPage => self.active_tab = PageTab::Settings,
-            },
+            AppMessage::HeaderMessage(msg) => {
+                match msg {
+                    header::Message::HomePage => self.active_tab = PageTab::Home,
+                    header::Message::LibraryPage => self.active_tab = PageTab::Library,
+                    header::Message::SearchPage => self.active_tab = PageTab::Search,
+                    header::Message::SettingsPage => self.active_tab = PageTab::Settings,
+                }
+                iced::Task::none()
+            }
             AppMessage::Page(page_msg) => match page_msg {
-                pages::Message::Home(msg) => self.home_page.update(msg),
-                pages::Message::Library(msg) => self.library_page.update(msg),
-                pages::Message::Search(msg) => self.search_page.update(msg),
-                pages::Message::Settings(msg) => self.settings_page.update(msg),
+                pages::Message::Home(msg) => self
+                    .home_page
+                    .update(msg)
+                    .map(|m| AppMessage::Page(pages::Message::Home(m))),
+                pages::Message::Library(msg) => self
+                    .library_page
+                    .update(msg)
+                    .map(|m| AppMessage::Page(pages::Message::Library(m))),
+                pages::Message::Search(msg) => self
+                    .search_page
+                    .update(msg)
+                    .map(|m| AppMessage::Page(pages::Message::Search(m))),
+                pages::Message::Settings(msg) => self
+                    .settings_page
+                    .update(msg)
+                    .map(|m| AppMessage::Page(pages::Message::Settings(m))),
             },
         }
     }

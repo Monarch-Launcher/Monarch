@@ -4,12 +4,9 @@ use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
-use crate::monarch_utils::monarch_terminal::run_in_terminal;
-use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use std::path::PathBuf;
-use tauri::AppHandle;
 use tracing::{error, info, warn};
 
 /// Generates the default path where Monarch wants to store games.
@@ -26,10 +23,12 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 }
 
 /// Launches a game
-pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Result<()> {
-    if let Err(e) = hide_quicklaunch(handle) {
-        warn!("monarch_client::launch_game() Error while hiding quicklaunch. Possibly already hidden. | Err: {e}");
-    }
+pub async fn launch_game(frontend_game: &MonarchGame) -> Result<()> {
+    /*
+        if let Err(e) = hide_quicklaunch(handle) {
+            warn!("monarch_client::launch_game() Error while hiding quicklaunch. Possibly already hidden. | Err: {e}");
+        }
+    */
 
     let mut game: MonarchGame;
     unsafe {
@@ -45,7 +44,7 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             "Launching game with executable path: {}",
             game.executable_path
         );
-        
+
         // Reformat the launch command to work on the platform
         if cfg!(target_os = "windows") {
             game.executable_path = format!(r#"Start-Process "{}""#, game.executable_path);
@@ -62,7 +61,7 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             #[cfg(target_os = "linux")]
             {
                 use super::linux;
-                return linux::umu::umu_run(handle, &mut game).await;
+                return linux::umu::umu_run(&mut game).await;
             };
         }
 
@@ -77,9 +76,12 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
             format!("{} {}", launch_command, game.launch_args)
         };
 
-        return run_in_terminal(handle, &full_command, None, None)
-            .await
-            .with_context(|| "monarch_client::launch_game() -> ");
+        /*
+               return run_in_terminal(&full_command, None, None)
+                   .await
+                   .with_context(|| "monarch_client::launch_game() -> ");
+        */
+        return Ok(());
     }
 
     // Otherwise launch via platform
@@ -91,7 +93,7 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
         }
         "steamcmd" => {
             info!("Launching game via steamcmd: {}", game.platform_id);
-            steam_client::launch_cmd_game(handle, &game)
+            steam_client::launch_cmd_game(&game)
                 .await
                 .with_context(|| "monarch_client::launch_game() -> ")
         }
@@ -103,7 +105,6 @@ pub async fn launch_game(handle: &AppHandle, frontend_game: &MonarchGame) -> Res
 
 /// Downloads a game into default folder
 pub async fn download_game(
-    handle: &AppHandle,
     name: &str,
     platform: &str,
     platform_id: &str,
@@ -126,12 +127,12 @@ pub async fn download_game(
                 warn!("monarch_client::download_game() SteamCMD not found!");
                 info!("Attempting to download and install SteamCMD...");
 
-                steam_client::install_steamcmd(handle)
+                steam_client::install_steamcmd()
                     .await
                     .with_context(|| "monarch_client::download_game() -> ")?;
             }
 
-            let mut new_game = steam_client::download_game(handle, name, platform_id)
+            let mut new_game = steam_client::download_game(name, platform_id)
                 .await
                 .with_context(|| "monarch_client::download_game() -> ")?;
             new_game.platform = "steamcmd".to_string();
@@ -146,13 +147,13 @@ pub async fn download_game(
 }
 
 /// Remove an installed game
-pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &str) -> Result<()> {
+pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<()> {
     match platform {
         "steam" => {
             steam_client::uninstall_client_game(platform_id)
         }
         "steamcmd" => {
-            steam_client::uninstall_game(handle, platform_id)
+            steam_client::uninstall_game(platform_id)
             .await
             .with_context(|| "monarch_client::uninstall_game() -> ")?;
 
@@ -178,13 +179,13 @@ pub async fn uninstall_game(handle: &AppHandle, platform: &str, platform_id: &st
 }
 
 /// Update a game
-pub async fn update_game(handle: &AppHandle, platform: &str, platform_id: &str) -> Result<()> {
+pub async fn update_game(platform: &str, platform_id: &str) -> Result<()> {
     match platform {
         "steam" => {
             bail!("monarch_client::uninstall_game() | Err: Monarch currently does not support updating games from the steam desktop client!")
         }
         "steamcmd" => {
-            steam_client::update_game(handle, platform_id)
+            steam_client::update_game(platform_id)
             .await
             .with_context(|| "monarch_client::uninstall_game() -> ")
         }
@@ -229,7 +230,10 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
     unsafe {
         if let Err(e) = MONARCH_STATE.set_library_games(&games) {
-            error!("monarch_client::refresh_library() -> {}", e.chain().map(|e| e.to_string()).collect::<String>())
+            error!(
+                "monarch_client::refresh_library() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            )
         }
 
         // Replace games with the updated list of library games
@@ -247,6 +251,7 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
         "https://monarch-launcher.com/api/games?search={}",
         search_term
     );
+
     let response = reqwest::get(search_term).await.unwrap();
     let resp_content = response.text().await.unwrap();
 

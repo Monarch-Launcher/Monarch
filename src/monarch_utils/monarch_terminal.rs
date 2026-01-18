@@ -6,30 +6,30 @@
 * showing how to write a terminal in Tauri.
 */
 
-use super::monarch_windows::MiniWindow;
 use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
 use portable_pty::{native_pty_system, CommandBuilder, PtyPair, PtySize};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::sync::Arc;
-use tauri::async_runtime::Mutex as AsyncMutex;
-use tauri::{AppHandle, Manager};
-use tracing::{error, info};
 use std::path::Path;
+use std::sync::Arc;
+use tracing::{error, info};
 
 /*
- * Currently the write_to_pty() breaks if we remove the inner Arc<AsyncMutex<...>> 
- * Therefore they can stay here at the potential cost to performance of locking and 
+ * Currently the write_to_pty() breaks if we remove the inner Arc<AsyncMutex<...>>
+ * Therefore they can stay here at the potential cost to performance of locking and
  * unlocking more.
 */
+
+/*
 pub struct AppState {
     _pty_pair: PtyPair,
     writer: Arc<AsyncMutex<Box<dyn Write + Send>>>,
     reader: Arc<AsyncMutex<BufReader<Box<dyn Read + Send>>>>,
 }
 
-static APPSTATE: Lazy<Arc<AsyncMutex<Option<AppState>>>> = Lazy::new(|| Arc::new(AsyncMutex::new(None)));
+static APPSTATE: Lazy<Arc<AsyncMutex<Option<AppState>>>> =
+    Lazy::new(|| Arc::new(AsyncMutex::new(None)));
 
 /// Run a command in a new process and display to the user in a custom terminal window.
 pub async fn run_in_terminal(
@@ -119,7 +119,9 @@ pub async fn run_in_terminal(
         error!("monarch_terminal::run_in_terminal() -> {e}");
     }
 
-    let exit_status= child.wait().with_context(|| "Something went wrong while waiting for child process to finish! | Err: ")?;
+    let exit_status = child.wait().with_context(|| {
+        "Something went wrong while waiting for child process to finish! | Err: "
+    })?;
     info!("Child exited.");
     info!("Child process exited with status: {:?}", exit_status);
 
@@ -219,3 +221,4 @@ pub async fn write_to_pty(data: &str) -> Result<(), ()> {
         write!(writer, "{}", data).map_err(|_| ())
     }
 }
+*/

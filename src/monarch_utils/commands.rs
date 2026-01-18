@@ -11,9 +11,6 @@ use super::monarch_settings::{
     get_settings_state, set_default_settings, set_settings_state, write_settings, LauncherSettings,
     Settings,
 };
-use super::monarch_terminal::{
-    close_terminal_window, create_terminal_window, read_from_pty, write_to_pty,
-};
 
 /*
 *   Settings related commands
@@ -24,6 +21,7 @@ use super::monarch_terminal::{
 *   tauri::commands don't return the actual error message. Instead they write an easier error to understand for the user.
 */
 
+/*
 pub fn open_logs(handle: AppHandle) -> Result<(), String> {
     let log_path: PathBuf = get_log_dir();
     match log_path.to_str() {
@@ -46,6 +44,7 @@ pub fn open_logs(handle: AppHandle) -> Result<(), String> {
     }
     Ok(())
 }
+*/
 
 /// Returns settings read from settings.toml
 pub fn get_settings() -> Settings {
@@ -242,6 +241,7 @@ pub fn delete_secret(platform: String) -> Result<Settings, String> {
 * Misc commands
 */
 
+/*
 /// Builds a new terminal window.
 /// Starts as hidden until Monarch runs commands.
 pub async fn open_terminal(handle: AppHandle) {
@@ -307,6 +307,7 @@ pub fn zoom_window(window: WebviewWindow, scale_factor: f64) {
         }
     });
 }
+*/
 
 pub fn get_cache_size() -> Result<u64, String> {
     let cache_dir = monarch_fs::get_resources_cache();

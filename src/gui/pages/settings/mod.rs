@@ -9,7 +9,9 @@ pub enum Message {}
 pub struct SettingsPage {}
 
 impl SettingsPage {
-    pub fn update(&mut self, _msg: Message) {}
+    pub fn update(&mut self, _msg: Message) -> iced::Task<Message> {
+        iced::Task::none()
+    }
 
     pub fn view(&self) -> Element<'_, Message> {
         container(

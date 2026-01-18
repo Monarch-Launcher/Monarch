@@ -1,4 +1,4 @@
-use iced::widget::{button, container, row, text, Container};
+use iced::widget::{button, container, image, row, text, Container};
 use iced::{alignment, Length};
 
 #[derive(Clone, Debug)]
@@ -13,9 +13,11 @@ pub enum Message {
 pub struct Header {}
 
 impl Header {
-    pub fn update(&mut self, _msg: Message) {}
+    pub fn _update(&mut self, _msg: Message) {}
 
     pub fn view(&self, active_tab: crate::gui::pages::PageTab) -> Container<'_, Message> {
+        let logo = image("icons/Square71x71Logo.png");
+
         let button_content = |label| {
             text(label)
                 .width(Length::Fill)
@@ -32,7 +34,7 @@ impl Header {
 
             button(button_content(label))
                 .on_press(msg)
-                .width(Length::Fill)
+                .width(Length::Shrink)
                 .padding(15)
                 .style(style)
         };
@@ -54,9 +56,13 @@ impl Header {
         );
 
         container(
-            row![home_button, library_button, search_button, settings_button,]
-                .width(Length::Fill)
-                .spacing(10),
+            row![
+                logo,
+                row![home_button, library_button, search_button, settings_button,]
+                    .width(Length::Fill)
+                    .spacing(10),
+            ]
+            .align_y(alignment::Vertical::Center),
         )
         .padding(10)
         .style(crate::gui::styles::header::container)

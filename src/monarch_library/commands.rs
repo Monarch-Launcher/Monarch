@@ -3,7 +3,6 @@ use core::result::Result; // Using different Result type for sending to frontend
 use serde_json::Value;
 use tracing::error;
 
-#[tauri::command]
 /// Creates a new collection and writes to JSON
 pub async fn create_collection(
     collection_name: String,
@@ -23,7 +22,6 @@ pub async fn create_collection(
     }
 }
 
-#[tauri::command]
 /// Updates a collection and JSON file
 pub async fn update_collection(
     id: String,
@@ -44,7 +42,6 @@ pub async fn update_collection(
     }
 }
 
-#[tauri::command]
 /// Deletes a collection and writes to JSON
 pub async fn delete_collection(id: String) -> Result<Value, String> {
     match collections::delete_collections(&id) {
@@ -61,7 +58,6 @@ pub async fn delete_collection(id: String) -> Result<Value, String> {
     }
 }
 
-#[tauri::command]
 /// Reads collections from JSON
 pub async fn get_collections() -> Result<Value, String> {
     match collections::get_collections() {
