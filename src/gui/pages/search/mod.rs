@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
-use iced::widget::{button, column, container, image, row, scrollable, text, text_input};
+use iced::widget::{
+    button, column, container, image, mouse_area, responsive, row, scrollable, text, text_input,
+};
 use iced::{alignment, Color, Element, Length};
+use tracing::debug;
 
 use crate::monarch_games;
 use crate::monarch_games::monarchgame::MonarchGame;
@@ -13,7 +16,10 @@ pub enum Message {
     PerformSearch,
     UpdateGames(Vec<MonarchGame>),
     GameImgLoaded(MonarchGame),
+    GameHovered(String),
+    GameUnhovered,
     GamePressed(String),
+    Tick,
 }
 
 #[derive(Default)]
@@ -21,6 +27,8 @@ pub struct SearchPage {
     search_value: String,
     games: HashMap<String, MonarchGame>,
     is_searching: bool,
+    hovered_id: Option<String>,
+    hover_factors: HashMap<String, f32>, // 0.0 to 1.0 for each game animation
 }
 
 impl SearchPage {
@@ -44,6 +52,7 @@ impl SearchPage {
             }
             Message::UpdateGames(games) => {
                 self.is_searching = false;
+                debug!("{} Games found!", games.len());
 
                 self.games = games
                     .iter()
@@ -70,8 +79,41 @@ impl SearchPage {
                 }
                 iced::Task::none()
             }
+            Message::GameHovered(id) => {
+                self.hovered_id = Some(id);
+                iced::Task::none()
+            }
+            Message::GameUnhovered => {
+                self.hovered_id = None;
+                iced::Task::none()
+            }
             Message::GamePressed(_id) => {
                 // TODO: Show game details
+                iced::Task::none()
+            }
+            Message::Tick => {
+                let speed = 0.25; // Animation speed (lerp factor)
+                let mut _changed = false;
+
+                // Update factors for all games to reach target (1.0 if hovered, 0.0 if not)
+                for game_id in self.games.keys() {
+                    let target = if self.hovered_id.as_ref() == Some(game_id) {
+                        1.0
+                    } else {
+                        0.0
+                    };
+                    let current = self.hover_factors.get(game_id).copied().unwrap_or(0.0);
+
+                    if (current - target).abs() > 0.001 {
+                        let new_val = current + (target - current) * speed;
+                        self.hover_factors.insert(game_id.clone(), new_val);
+                        _changed = true;
+                    } else if current != target {
+                        self.hover_factors.insert(game_id.clone(), target);
+                        _changed = true;
+                    }
+                }
+
                 iced::Task::none()
             }
         }
@@ -95,21 +137,28 @@ impl SearchPage {
             .spacing(15)
             .align_y(alignment::Vertical::Center);
 
-        let mut games_column = column![].spacing(30).align_x(alignment::Horizontal::Center);
-
         // Convert HashMap to a sorted Vec for consistent grid rendering
-        let mut sorted_games: Vec<&MonarchGame> = self.games.values().collect();
-        sorted_games.sort_by(|a, b| a.name.cmp(&b.name));
+        let mut sorted_games_vec: Vec<&MonarchGame> = self.games.values().collect();
+        sorted_games_vec.sort_by(|a, b| a.name.cmp(&b.name));
 
-        // Grid layout for games
-        let games_per_row = 5;
-        for chunk in sorted_games.chunks(games_per_row) {
-            let mut row = row![].spacing(20);
-            for game in chunk {
-                row = row.push(self.view_game_card(game));
+        let games_grid = responsive(move |size| {
+            // Calculate how many games can fit in the available width
+            // base_width (240) + spacing (30) + some margin
+            let card_width = 240.0 + 30.0;
+            let games_per_row = (size.width / card_width).floor().max(1.0) as usize;
+
+            let mut games_column = column![].spacing(30).align_x(alignment::Horizontal::Center);
+
+            for chunk in sorted_games_vec.chunks(games_per_row) {
+                let mut row = row![].spacing(30);
+                for game in chunk {
+                    row = row.push(self.view_game_card(game));
+                }
+                games_column = games_column.push(row);
             }
-            games_column = games_column.push(row);
-        }
+
+            games_column.into()
+        });
 
         let games_content = if self.is_searching {
             container(
@@ -133,13 +182,30 @@ impl SearchPage {
             .padding(100)
             .align_x(alignment::Horizontal::Center)
             .align_y(alignment::Vertical::Center)
-        } else if self.games.is_empty() && !self.search_value.is_empty() {
+        } else if self.games.is_empty() {
             container(
-                text("No games found.")
-                    .size(24)
+                column![
+                    text(if self.search_value.is_empty() {
+                        "Explore Games"
+                    } else {
+                        "No games found"
+                    })
+                    .size(32)
                     .style(|_theme: &iced::Theme| text::Style {
                         color: Some(Color::from_rgb8(100, 100, 100)),
                     }),
+                    text(if self.search_value.is_empty() {
+                        "Type something to start searching..."
+                    } else {
+                        "Try a different search term"
+                    })
+                    .size(16)
+                    .style(|_theme: &iced::Theme| text::Style {
+                        color: Some(Color::from_rgb8(80, 80, 80)),
+                    }),
+                ]
+                .spacing(10)
+                .align_x(alignment::Horizontal::Center),
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -147,7 +213,7 @@ impl SearchPage {
             .align_y(alignment::Vertical::Center)
         } else {
             container(scrollable(
-                container(games_column)
+                container(games_grid)
                     .width(Length::Fill)
                     .padding(20)
                     .align_x(alignment::Horizontal::Center),
@@ -172,10 +238,17 @@ impl SearchPage {
     }
 
     fn view_game_card(&self, game: &MonarchGame) -> Element<'_, Message> {
+        let is_hovered = self.hovered_id.as_ref() == Some(&game.id);
+        let factor = self.hover_factors.get(&game.id).copied().unwrap_or(0.0);
+
+        let (base_width, base_height) = (240.0, 360.0);
+        let scale = 1.0 + (factor * 0.05);
+        let (width, height) = (base_width * scale, base_height * scale);
+
         let image_widget: Element<'_, Message> = if game.thumbnail_path.is_empty() {
             container(text(game.name.clone()).align_x(alignment::Horizontal::Center))
-                .width(Length::Fixed(240.0))
-                .height(Length::Fixed(360.0))
+                .width(Length::Fixed(width))
+                .height(Length::Fixed(height))
                 .align_x(alignment::Horizontal::Center)
                 .align_y(alignment::Vertical::Center)
                 .style(|_theme: &iced::Theme| container::Style {
@@ -183,7 +256,7 @@ impl SearchPage {
                     border: iced::Border {
                         color: Color::from_rgb8(50, 50, 60),
                         width: 1.0,
-                        radius: 10.0.into(),
+                        radius: 12.0.into(),
                     },
                     ..Default::default()
                 })
@@ -191,34 +264,51 @@ impl SearchPage {
         } else {
             container(
                 image(game.thumbnail_path.clone())
-                    .width(Length::Fixed(240.0))
-                    .height(Length::Fixed(360.0))
+                    .width(Length::Fixed(width))
+                    .height(Length::Fixed(height))
                     .content_fit(iced::ContentFit::Cover),
             )
             .clip(true)
-            .style(|_theme: &iced::Theme| container::Style {
+            .style(move |_theme: &iced::Theme| container::Style {
                 border: iced::Border {
                     color: Color::TRANSPARENT,
-                    width: 0.0,
-                    radius: 10.0.into(),
+                    width: if is_hovered { 2.0 } else { 0.0 },
+                    radius: 12.0.into(),
+                },
+                shadow: iced::Shadow {
+                    color: Color::from_rgba8(0, 0, 0, 0.6 * factor),
+                    offset: iced::Vector::new(0.0, 10.0 * factor),
+                    blur_radius: 20.0 * factor,
                 },
                 ..Default::default()
             })
             .into()
         };
 
-        button(image_widget)
+        let card_button = button(image_widget)
             .on_press(Message::GamePressed(game.id.clone()))
             .padding(0)
             .style(|_theme: &iced::Theme, _status| button::Style {
                 background: None,
                 border: iced::Border {
                     width: 0.0,
-                    radius: 10.0.into(),
+                    radius: 12.0.into(),
                     color: Color::TRANSPARENT,
                 },
                 ..Default::default()
-            })
-            .into()
+            });
+
+        // Use mouse_area to detect hover and apply the "moving uplift" effect via padding
+        mouse_area(
+            container(card_button)
+                .padding(10.0 * (1.0 - factor)) // Smooth padding transition
+                .width(base_width + 20.0)
+                .height(base_height + 20.0)
+                .align_x(alignment::Horizontal::Center)
+                .align_y(alignment::Vertical::Center),
+        )
+        .on_enter(Message::GameHovered(game.id.clone()))
+        .on_exit(Message::GameUnhovered)
+        .into()
     }
 }

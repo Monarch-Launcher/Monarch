@@ -40,8 +40,17 @@ impl App {
         )
         .title(|_: &App| "Monarch".to_string())
         .theme(|_: &App| styles::theme::monarch())
+        .subscription(App::subscription)
         .run()
         .unwrap();
+    }
+
+    fn subscription(&self) -> iced::Subscription<AppMessage> {
+        match self.active_tab {
+            pages::PageTab::Search => iced::time::every(std::time::Duration::from_millis(16))
+                .map(|_| AppMessage::Page(pages::Message::Search(pages::search::Message::Tick))),
+            _ => iced::Subscription::none(),
+        }
     }
 
     fn update_wrapper(&mut self, message: AppMessage) -> iced::Task<AppMessage> {
@@ -91,16 +100,20 @@ impl App {
         };
 
         let content = container(page_content.map(AppMessage::Page))
-            .height(Fill)
-            .width(Fill);
+            .width(Fill)
+            .height(Fill);
 
         container(
             iced::widget::Column::new()
                 .push(
                     Element::from(self.header.view(self.active_tab)).map(AppMessage::HeaderMessage),
                 )
-                .push(content),
+                .push(content)
+                .width(Fill)
+                .height(Fill),
         )
+        .width(Fill)
+        .height(Fill)
         .into()
     }
 }
