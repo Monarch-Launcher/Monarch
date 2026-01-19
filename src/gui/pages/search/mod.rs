@@ -16,7 +16,6 @@ pub enum Message {
     UpdateGames(Vec<MonarchGame>),
     GameImgLoaded(MonarchGame),
     GameCard(gamecard::GameCardMessage),
-    Drawer(DrawerMessage),
     Tick,
 }
 
@@ -26,9 +25,6 @@ pub struct SearchPage {
     games: GameCardContainer,
     is_searching: bool,
     selected_game: Option<MonarchGame>,
-    // Animation state: 0.0 (closed) to 1.0 (open)
-    drawer_animation: f32,
-    is_closing: bool,
 }
 
 impl SearchPage {
@@ -85,7 +81,6 @@ impl SearchPage {
                         if let Some(game_card) = self.games.games.iter().find(|g| g.game.id == *id)
                         {
                             self.selected_game = Some(game_card.game.clone());
-                            self.is_closing = false;
                             // Start animation from current state (usually 0.0 if closed)
                         }
                     }
@@ -93,33 +88,8 @@ impl SearchPage {
                 }
                 self.games.update(game_card_message).map(Message::GameCard)
             }
-            Message::Drawer(drawer_msg) => {
-                match drawer_msg {
-                    DrawerMessage::Close => {
-                        self.is_closing = true;
-                    }
-                    _ => {}
-                }
-                iced::Task::none()
-            }
             Message::Tick => {
-                // Animation Logic
-                let target = if self.is_closing || self.selected_game.is_none() {
-                    0.0
-                } else {
-                    1.0
-                };
-                let speed = 0.2; // Animation speed
-
-                if (self.drawer_animation - target).abs() > 0.001 {
-                    self.drawer_animation += (target - self.drawer_animation) * speed;
-                } else {
-                    self.drawer_animation = target;
-                    if self.is_closing && target == 0.0 {
-                        self.selected_game = None;
-                        self.is_closing = false;
-                    }
-                }
+                
 
                 self.games
                     .update(gamecard::GameCardMessage::Tick)

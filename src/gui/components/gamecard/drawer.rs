@@ -1,24 +1,51 @@
 use iced::widget::{column, container, image, row, scrollable, stack, text};
 use iced::{alignment, Color, Element, Length, Theme};
 
+use crate::gui::components::gamecard::GameCardMessage;
 use crate::monarch_games::monarchgame::MonarchGame;
-
-#[derive(Clone, Debug)]
-pub enum DrawerMessage {
-    Close,
-    Launch,
-}
 
 pub struct GameDrawer<'a> {
     game: &'a MonarchGame,
+
+    // Animation state: 0.0 (closed) to 1.0 (open)
+    drawer_animation: f32,
+    closed: bool,
 }
 
 impl<'a> GameDrawer<'a> {
     pub fn new(game: &'a MonarchGame) -> Self {
-        Self { game }
+        Self { game, drawer_animation: 0.0, closed: true}
     }
 
-    pub fn view(&self) -> Element<'a, DrawerMessage> {
+    pub fn update(&mut self, msg: GameCardMessage) -> iced::Task<GameCardMessage>{
+        match msg {
+            GameCardMessage::OpenDrawer => { iced::Task::none() }
+            GameCardMessage::CloseDrawer => {iced::Task::none()}
+            GameCardMessage::Tick => {
+                // Animation Logic
+                let target = if self.closed {
+                    0.0
+                } else {
+                    1.0
+                };
+                let speed = 0.2; // Animation speed
+
+                if (self.drawer_animation - target).abs() > 0.001 {
+                    self.drawer_animation += (target - self.drawer_animation) * speed;
+                } else {
+                    self.drawer_animation = target;
+                    if self.closed && target == 0.0 {
+                        self.closed = false;
+                    }
+                }
+                iced::Task::none()
+            }
+            _ => { iced::Task::none() }
+        }
+
+    }
+
+    pub fn view(&self) -> Element<'a, GameCardMessage> {
         let background_image = if self.game.thumbnail_path.is_empty() {
             container(text(""))
                 .width(Length::Fill)
@@ -36,6 +63,7 @@ impl<'a> GameDrawer<'a> {
             )
         };
 
+        
         let overlay = container(column![])
             .width(Length::Fill)
             .height(Length::Fill)
@@ -44,7 +72,8 @@ impl<'a> GameDrawer<'a> {
                 ..Default::default()
             });
 
-        let content = scrollable(
+        if self.drawer_animation == 1.0 {
+let content = scrollable(
             column![
                 // Header Image
                 container(
@@ -100,7 +129,14 @@ impl<'a> GameDrawer<'a> {
         )
         .width(Length::Fill);
 
-        stack![background_image, overlay, container(content).padding(20),]
+    return stack![background_image, overlay, container(content).padding(20),]
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
+        }
+        
+
+        stack![background_image, overlay,]
             .width(Length::Fill)
             .height(Length::Fill)
             .into()

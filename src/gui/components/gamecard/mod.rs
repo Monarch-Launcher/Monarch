@@ -11,4 +11,6 @@ pub enum GameCardMessage {
     GamePressed(String),
     Tick,
     UpdateGames(Vec<MonarchGame>),
+    OpenDrawer,
+    CloseDrawer,
 }
