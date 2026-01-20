@@ -50,6 +50,8 @@ impl App {
         match self.active_tab {
             pages::PageTab::Search => iced::time::every(std::time::Duration::from_millis(16))
                 .map(|_| AppMessage::Page(pages::Message::Search(pages::search::Message::Tick))),
+            pages::PageTab::Library => iced::time::every(std::time::Duration::from_millis(16))
+                .map(|_| AppMessage::Page(pages::Message::Library(pages::library::Message::Tick))),
             _ => iced::Subscription::none(),
         }
     }

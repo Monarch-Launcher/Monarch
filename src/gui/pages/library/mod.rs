@@ -15,19 +15,23 @@ pub enum Message {
     UpdateGames(Vec<MonarchGame>),
     GameImgLoaded(MonarchGame),
     GameCard(gamecard::GameCardMessage),
+    Tick,
 }
 
-#[derive(Default)]
 pub struct LibraryPage {
     browser: GameBrowser,
     is_refreshing: bool,
+    dot_count: u8,
+    tick_counter: u8,
 }
 
 impl LibraryPage {
     pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
         match msg {
             Message::RefreshLibrary => {
-                self.is_refreshing= true;
+                self.is_refreshing = true;
+                self.dot_count = 3;
+                self.tick_counter = 0;
                 iced::Task::perform(
                     async move { monarch_games::commands::refresh_library().await },
                     Message::UpdateGames,
@@ -71,9 +75,28 @@ impl LibraryPage {
 
                 download_tasks
             }
-            _ => {
+            Message::GameImgLoaded(game) => {
+                if let Some(card) = self
+                    .browser
+                    .games
+                    .games
+                    .iter_mut()
+                    .find(|c| c.game.id == game.id)
+                {
+                    card.game.thumbnail_path = game.thumbnail_path.clone();
+                }
                 iced::Task::none()
             }
+            Message::Tick => {
+                if self.is_refreshing {
+                    self.tick_counter = self.tick_counter.wrapping_add(1);
+                    if self.tick_counter % 60 == 0 {
+                        self.dot_count = (self.dot_count % 3) + 1;
+                    }
+                }
+                iced::Task::none()
+            }
+            _ => iced::Task::none(),
         }
     }
 
@@ -81,12 +104,13 @@ impl LibraryPage {
         let refresh_btn = primary_button("Scan for games", Some(Message::RefreshLibrary));
 
         let games_content: Element<'_, Message> = if self.is_refreshing {
+            let dots = ".".repeat(self.dot_count as usize);
             container(
-                column![text("Looking for games...")
-                    .size(32)
-                    .style(|_theme: &iced::Theme| text::Style {
+                column![text(format!("Looking for games{dots}")).size(32).style(
+                    |_theme: &iced::Theme| text::Style {
                         color: Some(Color::from_rgb8(255, 127, 0)),
-                    })]
+                    }
+                )]
                 .spacing(20)
                 .align_x(alignment::Horizontal::Center),
             )
@@ -104,7 +128,7 @@ impl LibraryPage {
             column![
                 container(refresh_btn)
                     .width(Fill)
-                    .height(Fill)
+                    .padding(20)
                     .align_x(alignment::Horizontal::Left)
                     .align_y(alignment::Vertical::Top),
                 games_content
@@ -114,5 +138,27 @@ impl LibraryPage {
         .width(Length::Fill)
         .height(Length::Fill)
         .into()
+    }
+}
+
+impl Default for LibraryPage {
+    fn default() -> Self {
+        let mut browser: GameBrowser = GameBrowser::default();
+
+        match monarch_games::commands::get_library() {
+            Ok(games) => {
+                let _ = browser.update(gamecard::GameCardMessage::UpdateGames(games));
+            }
+            Err(e) => {
+                error!("Failed to get library: {}", e);
+            }
+        }
+
+        Self {
+            browser: browser,
+            is_refreshing: false,
+            dot_count: 3,
+            tick_counter: 0,
+        }
     }
 }

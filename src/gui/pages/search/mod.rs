@@ -24,6 +24,8 @@ pub struct SearchPage {
     search_value: String,
     browser: GameBrowser,
     is_searching: bool,
+    dot_count: u8,
+    tick_counter: u8,
 }
 
 impl SearchPage {
@@ -39,6 +41,8 @@ impl SearchPage {
             }
             Message::PerformSearch => {
                 self.is_searching = true;
+                self.dot_count = 3;
+                self.tick_counter = 0;
                 let search_term = self.search_value.clone();
                 iced::Task::perform(
                     async move { monarch_games::commands::search_games(search_term, true).await },
@@ -95,10 +99,17 @@ impl SearchPage {
                 .browser
                 .update(game_card_message)
                 .map(Message::GameCard),
-            Message::Tick => self
-                .browser
-                .update(gamecard::GameCardMessage::Tick)
-                .map(Message::GameCard),
+            Message::Tick => {
+                if self.is_searching {
+                    self.tick_counter = self.tick_counter.wrapping_add(1);
+                    if self.tick_counter % 60 == 0 {
+                        self.dot_count = (self.dot_count % 3) + 1;
+                    }
+                }
+                self.browser
+                    .update(gamecard::GameCardMessage::Tick)
+                    .map(Message::GameCard)
+            }
         }
     }
 
@@ -121,13 +132,14 @@ impl SearchPage {
             .align_y(alignment::Vertical::Center);
 
         let games_content: Element<'_, Message> = if self.is_searching {
+            let dots = ".".repeat(self.dot_count as usize);
             container(
                 column![
-                    text("Searching for games...")
-                        .size(32)
-                        .style(|_theme: &iced::Theme| text::Style {
+                    text(format!("Searching for games{dots}")).size(32).style(
+                        |_theme: &iced::Theme| text::Style {
                             color: Some(Color::from_rgb8(255, 127, 0)),
-                        }),
+                        }
+                    ),
                     text("Sifting through the library...").size(16).style(
                         |_theme: &iced::Theme| text::Style {
                             color: Some(Color::from_rgb8(150, 150, 150)),

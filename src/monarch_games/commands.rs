@@ -25,7 +25,7 @@ use super::linux::steam;
 */
 
 /// Returns MonarchGames from library.json
-pub async fn get_library() -> Result<Value, String> {
+pub fn get_library() -> Result<Vec<MonarchGame>, String> {
     match games_library::get_games() {
         Ok(games) => Ok(games),
         Err(e) => {
@@ -38,14 +38,12 @@ pub async fn get_library() -> Result<Value, String> {
     }
 }
 
-pub async fn get_home_recomendations() -> Result<Value, String> {
+pub fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
     match games_library::get_games() {
-        Ok(games) => {
-            let mut games_vec: Vec<MonarchGame> = serde_json::from_value(games.clone()).unwrap();
-            if games_vec.len() > 4 {
-                games_vec.shuffle(&mut rng());
-                let recomended_games: &[MonarchGame] = &games_vec[0..4];
-                Ok(serde_json::to_value(recomended_games).unwrap_or_default())
+        Ok(mut games) => {
+            if games.len() > 4 {
+                games.shuffle(&mut rng());
+                Ok(games[0..4].to_vec())
             } else {
                 return Ok(games);
             }

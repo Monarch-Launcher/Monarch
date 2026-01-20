@@ -7,7 +7,8 @@ use tracing::error;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_fs::{
-    generate_library_image_path, get_library_json_path, get_monarch_games_path, path_exists, write_json_content
+    generate_library_image_path, get_library_json_path, get_monarch_games_path, path_exists,
+    write_json_content,
 };
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
@@ -55,7 +56,7 @@ pub fn write_monarchgame(game: &MonarchGame) -> Result<()> {
 }
 
 /// Returns JSON of games from library
-pub fn get_games() -> Result<Value> {
+pub fn get_games() -> Result<Vec<MonarchGame>> {
     let path: PathBuf = get_library_json_path();
 
     let file: File = fs::File::open(&path).with_context(|| -> String {
@@ -65,7 +66,7 @@ pub fn get_games() -> Result<Value> {
         )
     })?;
 
-    let games: Value = serde_json::from_reader(file)
+    let games: Vec<MonarchGame> = serde_json::from_reader(file)
         .with_context(|| "games_library::get_games() Failed to parse json! | Err: ")?;
     Ok(games) // Seperate return statement for verbosity
 }
@@ -89,7 +90,10 @@ pub fn get_monarchgames() -> Result<Vec<MonarchGame>> {
     // have no thumbnail path.
     for game in games.iter_mut() {
         if game.thumbnail_path.is_empty() {
-            game.thumbnail_path = generate_library_image_path(&game.name).to_str().unwrap().to_string()
+            game.thumbnail_path = generate_library_image_path(&game.name)
+                .to_str()
+                .unwrap()
+                .to_string()
         }
     }
 
@@ -104,14 +108,17 @@ pub fn add_game(game: &MonarchGame) -> Result<()> {
         games.push(game.clone());
 
         if let Err(e) = MONARCH_STATE.set_library_games(&games) {
-            error!("games_library::add_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+            error!(
+                "games_library::add_game() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
         }
     }
 
     write_monarchgame(game)
 }
 
-/// Backend functionality for removing a game from library.json 
+/// Backend functionality for removing a game from library.json
 pub fn remove_game(game: &MonarchGame) -> Result<()> {
     let mut games: Vec<MonarchGame>;
     unsafe {
@@ -125,11 +132,15 @@ pub fn remove_game(game: &MonarchGame) -> Result<()> {
         }
 
         if let Err(e) = MONARCH_STATE.set_library_games(&games) {
-            error!("games_library::remove_game() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+            error!(
+                "games_library::remove_game() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
         }
     }
 
-    let mut monarch_games = get_monarchgames().with_context(|| "games_library::remove_game() -> ")?;
+    let mut monarch_games =
+        get_monarchgames().with_context(|| "games_library::remove_game() -> ")?;
     for (i, g) in monarch_games.iter_mut().enumerate() {
         if g.id == game.id {
             monarch_games.remove(i);
@@ -141,12 +152,8 @@ pub fn remove_game(game: &MonarchGame) -> Result<()> {
 
 /// Updates the properties of a game in the library.
 pub fn update_game_properties(game: &MonarchGame) -> Result<()> {
-    let games_json: Value =
+    let mut games: Vec<MonarchGame> =
         get_games().with_context(|| "games_library::update_game_properties() -> ")?;
-
-    let mut games: Vec<MonarchGame> = serde_json::from_value(games_json).with_context(|| {
-        "games_library::update_game_properties() Failed to parse json to Vec<MonarchGame>! | Err: "
-    })?;
 
     for library_game in games.iter_mut() {
         if library_game.id == game.id {

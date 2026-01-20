@@ -197,10 +197,8 @@ pub async fn update_game(platform: &str, platform_id: &str) -> Result<()> {
 pub fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
     match games_library::get_games() {
-        Ok(library_json) => {
-            if let Ok(library) = serde_json::from_value::<Vec<MonarchGame>>(library_json) {
-                games = library;
-            }
+        Ok(library) => {
+            games = library;
         }
         Err(e) => {
             error!("monarch_client::get_library() -> {e}");
