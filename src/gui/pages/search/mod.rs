@@ -134,18 +134,11 @@ impl SearchPage {
         let games_content: Element<'_, Message> = if self.is_searching {
             let dots = ".".repeat(self.dot_count as usize);
             container(
-                column![
-                    text(format!("Searching for games{dots}")).size(32).style(
-                        |_theme: &iced::Theme| text::Style {
-                            color: Some(Color::from_rgb8(255, 127, 0)),
-                        }
-                    ),
-                    text("Sifting through the library...").size(16).style(
-                        |_theme: &iced::Theme| text::Style {
-                            color: Some(Color::from_rgb8(150, 150, 150)),
-                        }
-                    ),
-                ]
+                column![text(format!("Searching for games{dots}")).size(32).style(
+                    |_theme: &iced::Theme| text::Style {
+                        color: Some(Color::from_rgb8(255, 127, 0)),
+                    }
+                ),]
                 .spacing(20)
                 .align_x(alignment::Horizontal::Center),
             )

@@ -87,6 +87,10 @@ impl LibraryPage {
                 }
                 iced::Task::none()
             }
+            Message::GameCard(game_card_message) => self
+                .browser
+                .update(game_card_message)
+                .map(Message::GameCard),
             Message::Tick => {
                 if self.is_refreshing {
                     self.tick_counter = self.tick_counter.wrapping_add(1);
@@ -94,9 +98,11 @@ impl LibraryPage {
                         self.dot_count = (self.dot_count % 3) + 1;
                     }
                 }
-                iced::Task::none()
+
+                self.browser
+                    .update(gamecard::GameCardMessage::Tick)
+                    .map(Message::GameCard)
             }
-            _ => iced::Task::none(),
         }
     }
 
