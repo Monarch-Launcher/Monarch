@@ -3,7 +3,6 @@ use crate::monarch_games::monarchgame::MonarchGame;
 use iced::widget::{button, container, image, mouse_area};
 use iced::{alignment, Color, Element, Length};
 
-#[derive(Default)]
 pub struct GameCard {
     pub game: MonarchGame,
     hover: bool,
@@ -13,7 +12,7 @@ pub struct GameCard {
 impl GameCard {
     pub fn new(game: MonarchGame) -> Self {
         Self {
-            game,
+            game: game.clone(),
             hover: false,
             hover_factor: 0.0,
         }
@@ -50,10 +49,11 @@ impl GameCard {
                 iced::Task::none()
             }
             GameCardMessage::UpdateGames(_games) => iced::Task::none(),
+            _ => iced::Task::none(),
         }
     }
 
-    pub fn view(&self) -> Element<'_, GameCardMessage> {
+    pub fn view(&self, interactive: bool) -> Element<'_, GameCardMessage> {
         let (base_width, base_height) = (240.0, 360.0);
         let scale = 1.0 + (self.hover_factor * 0.05);
         let (width, height) = (base_width * scale, base_height * scale);
@@ -105,7 +105,11 @@ impl GameCard {
         };
 
         let card_button = button(image_widget)
-            .on_press(GameCardMessage::GamePressed(self.game.id.clone()))
+            .on_press_maybe(if interactive {
+                Some(GameCardMessage::GamePressed(self.game.id.clone()))
+            } else {
+                None
+            })
             .padding(0)
             .style(|_theme: &iced::Theme, _status| button::Style {
                 background: None,
@@ -117,16 +121,21 @@ impl GameCard {
                 ..Default::default()
             });
 
-        mouse_area(
+        let mut area = mouse_area(
             container(card_button)
                 .padding(10.0 * (1.0 - self.hover_factor))
                 .width(base_width + 20.0)
                 .height(base_height + 20.0)
                 .align_x(alignment::Horizontal::Center)
                 .align_y(alignment::Vertical::Center),
-        )
-        .on_enter(GameCardMessage::GameHovered(self.game.id.clone()))
-        .on_exit(GameCardMessage::GameUnhovered(self.game.id.clone()))
-        .into()
+        );
+
+        if interactive {
+            area = area
+                .on_enter(GameCardMessage::GameHovered(self.game.id.clone()))
+                .on_exit(GameCardMessage::GameUnhovered(self.game.id.clone()));
+        }
+
+        area.into()
     }
 }

@@ -2,6 +2,7 @@ use crate::monarch_games::monarchgame::MonarchGame;
 
 pub mod container;
 pub mod drawer;
+pub mod game_browser;
 pub mod gamecard;
 
 #[derive(Debug, Clone)]
@@ -13,4 +14,5 @@ pub enum GameCardMessage {
     UpdateGames(Vec<MonarchGame>),
     OpenDrawer,
     CloseDrawer,
+    NoOp,
 }

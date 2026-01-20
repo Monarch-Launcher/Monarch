@@ -1,10 +1,8 @@
-use iced::widget::{button, column, container, row, scrollable, stack, text, text_input};
+use iced::widget::{button, column, container, row, text, text_input};
 use iced::{alignment, Color, Element, Length};
-use tracing::debug;
+use tracing::{debug, error};
 
 use crate::gui::components::gamecard;
-use crate::gui::components::gamecard::container::GameCardContainer;
-use crate::gui::components::gamecard::drawer::{DrawerMessage, GameDrawer};
 use crate::monarch_games;
 use crate::monarch_games::monarchgame::MonarchGame;
 
@@ -19,12 +17,13 @@ pub enum Message {
     Tick,
 }
 
+use crate::gui::components::gamecard::game_browser::GameBrowser;
+
 #[derive(Default)]
 pub struct SearchPage {
     search_value: String,
-    games: GameCardContainer,
+    browser: GameBrowser,
     is_searching: bool,
-    selected_game: Option<MonarchGame>,
 }
 
 impl SearchPage {
@@ -50,51 +49,57 @@ impl SearchPage {
                 self.is_searching = false;
                 debug!("{} Games found!", games.len());
 
-                self.games = games
+                let processed_games: Vec<MonarchGame> = games
                     .iter()
                     .cloned()
                     .map(|mut game| {
-                        game.thumbnail_path = "icons/icon.png".to_string();
+                        game.thumbnail_path = "".to_string();
                         game
                     })
                     .collect();
 
-                iced::Task::batch(games.into_iter().map(|game| {
+                // Trigger download tasks
+                let download_tasks = iced::Task::batch(games.iter().cloned().map(|game| {
                     iced::Task::perform(
                         async move {
-                            let _ = monarch_games::commands::download_thumbnail(game.clone()).await;
+                            if let Err(e) =
+                                monarch_games::commands::download_thumbnail(game.clone()).await
+                            {
+                                error!("Failed to download thumbnail for game {}: {}", game.id, e);
+                            }
                             game
                         },
                         Message::GameImgLoaded,
                     )
-                }))
+                }));
+
+                // Update browser games
+                let _ = self
+                    .browser
+                    .update(gamecard::GameCardMessage::UpdateGames(processed_games));
+
+                download_tasks
             }
             Message::GameImgLoaded(game) => {
-                if let Some(g) = self.games.get_mut(&game.id) {
-                    g.thumbnail_path = game.thumbnail_path.clone();
+                if let Some(card) = self
+                    .browser
+                    .games
+                    .games
+                    .iter_mut()
+                    .find(|c| c.game.id == game.id)
+                {
+                    card.game.thumbnail_path = game.thumbnail_path.clone();
                 }
                 iced::Task::none()
             }
-            Message::GameCard(game_card_message) => {
-                match &game_card_message {
-                    gamecard::GameCardMessage::GamePressed(id) => {
-                        if let Some(game_card) = self.games.games.iter().find(|g| g.game.id == *id)
-                        {
-                            self.selected_game = Some(game_card.game.clone());
-                            // Start animation from current state (usually 0.0 if closed)
-                        }
-                    }
-                    _ => {}
-                }
-                self.games.update(game_card_message).map(Message::GameCard)
-            }
-            Message::Tick => {
-                
-
-                self.games
-                    .update(gamecard::GameCardMessage::Tick)
-                    .map(Message::GameCard)
-            }
+            Message::GameCard(game_card_message) => self
+                .browser
+                .update(game_card_message)
+                .map(Message::GameCard),
+            Message::Tick => self
+                .browser
+                .update(gamecard::GameCardMessage::Tick)
+                .map(Message::GameCard),
         }
     }
 
@@ -139,46 +144,8 @@ impl SearchPage {
             .align_x(alignment::Horizontal::Center)
             .align_y(alignment::Vertical::Center)
             .into()
-        } else if self.games.is_empty() {
-            container(
-                column![
-                    text(if self.search_value.is_empty() {
-                        "Explore Games"
-                    } else {
-                        "No games found"
-                    })
-                    .size(32)
-                    .style(|_theme: &iced::Theme| text::Style {
-                        color: Some(Color::from_rgb8(100, 100, 100)),
-                    }),
-                    text(if self.search_value.is_empty() {
-                        "Type something to start searching..."
-                    } else {
-                        "Try a different search term"
-                    })
-                    .size(16)
-                    .style(|_theme: &iced::Theme| text::Style {
-                        color: Some(Color::from_rgb8(80, 80, 80)),
-                    }),
-                ]
-                .spacing(10)
-                .align_x(alignment::Horizontal::Center),
-            )
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(alignment::Horizontal::Center)
-            .align_y(alignment::Vertical::Center)
-            .into()
         } else {
-            container(scrollable(
-                container(self.games.view().map(Message::GameCard))
-                    .width(Length::Fill)
-                    .padding(20)
-                    .align_x(alignment::Horizontal::Center),
-            ))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+            self.browser.view().map(Message::GameCard)
         };
 
         let content = container(
@@ -198,47 +165,6 @@ impl SearchPage {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        if let Some(game) = &self.selected_game {
-            iced::widget::responsive(move |size| {
-                let drawer_width = size.width * 0.5;
-                let padding_left = size.width - (drawer_width * self.drawer_animation);
-
-                let drawer_layer = container(GameDrawer::new(game).view().map(Message::Drawer))
-                    .width(Length::Fixed(drawer_width))
-                    .height(Length::Fill);
-
-                let drawer_wrapper = container(drawer_layer)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .padding(iced::Padding::default().left(padding_left))
-                    .align_x(alignment::Horizontal::Left);
-
-                stack![
-                    self.content_view(),
-                    container(
-                        iced::widget::mouse_area(
-                            container(text(""))
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .style(move |_theme: &iced::Theme| container::Style {
-                                    background: Some(
-                                        Color::from_rgba8(0, 0, 0, 0.5 * self.drawer_animation)
-                                            .into()
-                                    ),
-                                    ..Default::default()
-                                })
-                        )
-                        .on_press(Message::Drawer(DrawerMessage::Close))
-                    )
-                    .width(Length::Fill)
-                    .height(Length::Fill),
-                    drawer_wrapper
-                ]
-                .into()
-            })
-            .into()
-        } else {
-            self.content_view()
-        }
+        self.content_view()
     }
 }

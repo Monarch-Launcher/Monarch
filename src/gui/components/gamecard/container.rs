@@ -1,4 +1,4 @@
-use iced::widget::{column, responsive, row};
+use iced::widget::{column, row};
 use iced::{alignment, Element};
 
 use super::gamecard::GameCard;
@@ -41,8 +41,8 @@ impl GameCardContainer {
         }
     }
 
-    pub fn view(&self) -> Element<'_, GameCardMessage> {
-        responsive(move |size| {
+    pub fn view(&self, interactive: bool) -> Element<'_, GameCardMessage> {
+        iced::widget::responsive(move |size| {
             // Calculate how many games can fit in the available width
             // base_width (240) + spacing (30) + some margin
             let card_width = 240.0 + 20.0;
@@ -53,7 +53,7 @@ impl GameCardContainer {
             for chunk in self.games.chunks(games_per_row) {
                 let mut row = row![].spacing(20);
                 for game in chunk {
-                    row = row.push(game.view());
+                    row = row.push(game.view(interactive));
                 }
                 games_column = games_column.push(row);
             }
