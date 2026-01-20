@@ -1,14 +1,19 @@
 use iced::widget::{column, container, text};
 use iced::Length::{self, Fill};
 use iced::{alignment, Color, Element};
+use tracing::{error, info};
 
 use crate::gui::components::common::primary_button;
 use crate::gui::components::gamecard;
 use crate::gui::components::gamecard::game_browser::GameBrowser;
+use crate::monarch_games;
+use crate::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Clone, Debug)]
 pub enum Message {
     RefreshLibrary,
+    UpdateGames(Vec<MonarchGame>),
+    GameImgLoaded(MonarchGame),
     GameCard(gamecard::GameCardMessage),
 }
 
@@ -19,12 +24,61 @@ pub struct LibraryPage {
 }
 
 impl LibraryPage {
-    pub fn update(&mut self, _msg: Message) -> iced::Task<Message> {
-        iced::Task::none()
+    pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
+        match msg {
+            Message::RefreshLibrary => {
+                self.is_refreshing= true;
+                iced::Task::perform(
+                    async move { monarch_games::commands::refresh_library().await },
+                    Message::UpdateGames,
+                )
+            }
+            Message::UpdateGames(games) => {
+                self.is_refreshing = false;
+
+                for game in games.iter() {
+                    info!("Found game: {:?}", game);
+                }
+
+                let processed_games: Vec<MonarchGame> = games
+                    .iter()
+                    .cloned()
+                    .map(|mut game| {
+                        game.thumbnail_path = "".to_string();
+                        game
+                    })
+                    .collect();
+
+                // Trigger download tasks
+                let download_tasks = iced::Task::batch(games.iter().cloned().map(|game| {
+                    iced::Task::perform(
+                        async move {
+                            if let Err(e) =
+                                monarch_games::commands::download_thumbnail(game.clone()).await
+                            {
+                                error!("Failed to download thumbnail for game {}: {}", game.id, e);
+                            }
+                            game
+                        },
+                        Message::GameImgLoaded,
+                    )
+                }));
+
+                // Update browser games
+                let _ = self
+                    .browser
+                    .update(gamecard::GameCardMessage::UpdateGames(processed_games));
+
+                download_tasks
+            }
+            _ => {
+                iced::Task::none()
+            }
+        }
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let refresh_btn = primary_button("Refresh Library", Some(Message::RefreshLibrary));
+        let refresh_btn = primary_button("Scan for games", Some(Message::RefreshLibrary));
 
         let games_content: Element<'_, Message> = if self.is_refreshing {
             container(

@@ -7,7 +7,7 @@ use tracing::error;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_fs::{
-    get_library_json_path, get_monarch_games_path, path_exists, write_json_content,
+    generate_library_image_path, get_library_json_path, get_monarch_games_path, path_exists, write_json_content
 };
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
@@ -81,9 +81,18 @@ pub fn get_monarchgames() -> Result<Vec<MonarchGame>> {
         )
     })?;
 
-    let games: Vec<MonarchGame> = serde_json::from_reader(file).with_context(|| {
+    let mut games: Vec<MonarchGame> = serde_json::from_reader(file).with_context(|| {
         "games_library::get_monarchgames() Could not parse json value as Vec<MonarchGame> | Err: "
     })?;
+
+    // Fix for refreshing games with manually added games, which for some reason
+    // have no thumbnail path.
+    for game in games.iter_mut() {
+        if game.thumbnail_path.is_empty() {
+            game.thumbnail_path = generate_library_image_path(&game.name).to_str().unwrap().to_string()
+        }
+    }
+
     Ok(games)
 }
 

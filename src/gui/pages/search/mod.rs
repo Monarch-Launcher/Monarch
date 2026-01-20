@@ -47,7 +47,6 @@ impl SearchPage {
             }
             Message::UpdateGames(games) => {
                 self.is_searching = false;
-                debug!("{} Games found!", games.len());
 
                 let processed_games: Vec<MonarchGame> = games
                     .iter()
