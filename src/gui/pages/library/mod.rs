@@ -3,7 +3,7 @@ use iced::Length::{self, Fill};
 use iced::{alignment, Color, Element};
 use tracing::{error, info};
 
-use crate::gui::components::common::primary_button;
+use crate::gui::components::common::{primary_button, secondary_button};
 use crate::gui::components::gamecard;
 use crate::gui::components::gamecard::game_browser::GameBrowser;
 use crate::monarch_games;
@@ -134,7 +134,7 @@ impl LibraryPage {
             column![
                 container(refresh_btn)
                     .width(Fill)
-                    .padding(20)
+                    .padding(30)
                     .align_x(alignment::Horizontal::Left)
                     .align_y(alignment::Vertical::Top),
                 games_content

@@ -18,7 +18,7 @@ pub fn primary(theme: &Theme, status: button::Status) -> button::Style {
         },
         button::Status::Hovered => button::Style {
             background: Some(Background::Color(Color {
-                a: 0.8,
+                a: 0.9,
                 ..palette.primary
             })),
             text_color: Color::WHITE,
@@ -32,7 +32,7 @@ pub fn primary(theme: &Theme, status: button::Status) -> button::Style {
         },
         button::Status::Pressed => button::Style {
             background: Some(Background::Color(Color {
-                a: 0.6,
+                a: 0.8,
                 ..palette.primary
             })),
             text_color: Color::WHITE,
@@ -66,61 +66,51 @@ pub fn primary(theme: &Theme, status: button::Status) -> button::Style {
 
 pub fn secondary(theme: &Theme, status: button::Status) -> button::Style {
     let palette = theme.palette();
-    let base_color = Color::from_rgb8(60, 60, 60);
 
     match status {
         button::Status::Active => button::Style {
-            background: Some(Background::Color(base_color)),
+            background: Some(Background::Color(Color::from_rgba8(255, 255, 255, 0.1))),
             text_color: palette.text,
             border: Border {
                 radius: 4.0.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
+                width: 1.0,
+                color: Color::from_rgba8(255, 255, 255, 0.15),
             },
             shadow: Default::default(),
             snap: false,
         },
         button::Status::Hovered => button::Style {
-            background: Some(Background::Color(Color {
-                a: 0.8,
-                ..base_color
-            })),
+            background: Some(Background::Color(Color::from_rgba8(255, 255, 255, 0.2))),
             text_color: palette.text,
             border: Border {
                 radius: 4.0.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
+                width: 1.0,
+                color: Color::from_rgba8(255, 255, 255, 0.3),
             },
             shadow: Default::default(),
             snap: false,
         },
         button::Status::Pressed => button::Style {
-            background: Some(Background::Color(Color {
-                a: 0.6,
-                ..base_color
-            })),
+            background: Some(Background::Color(Color::from_rgba8(255, 255, 255, 0.15))),
             text_color: palette.text,
             border: Border {
                 radius: 4.0.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
+                width: 1.0,
+                color: Color::from_rgba8(255, 255, 255, 0.25),
             },
             shadow: Default::default(),
             snap: false,
         },
         button::Status::Disabled => button::Style {
-            background: Some(Background::Color(Color {
-                a: 0.3,
-                ..base_color
-            })),
+            background: Some(Background::Color(Color::from_rgba8(255, 255, 255, 0.05))),
             text_color: Color {
                 a: 0.3,
                 ..palette.text
             },
             border: Border {
                 radius: 4.0.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
+                width: 1.0,
+                color: Color::from_rgba8(255, 255, 255, 0.05),
             },
             shadow: Default::default(),
             snap: false,
