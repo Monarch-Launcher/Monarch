@@ -93,7 +93,7 @@ pub fn get_monarchgames() -> Result<Vec<MonarchGame>> {
             game.thumbnail_path = generate_library_image_path(&game.name)
                 .to_str()
                 .unwrap()
-                .to_string()
+                .to_string();
         }
     }
 

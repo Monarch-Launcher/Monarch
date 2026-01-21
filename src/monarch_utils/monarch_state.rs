@@ -22,39 +22,9 @@ impl MonarchState {
     /// For setting known library games.
     /// Should probably only be run when refreshing library.
     pub fn set_library_games(&mut self, games: &[MonarchGame]) -> Result<()> {
-        if self.library_games.is_empty() {
-            self.library_games = games.to_vec();
-            write_games(&self.library_games).with_context(|| "monarch_state::set_library_games() -> ")?;
-            return Ok(());
-        }
-
-        // Remove games that are no longer in library
-        let mut new_games = self
-            .library_games
-            .iter()
-            .zip(games.iter())
-            .filter(|&(self_g, g)| self_g.id == g.id)
-            .map(|(self_g, _)| self_g)
-            .cloned()
-            .collect::<Vec<MonarchGame>>();
-
-        // Append new games
-        for game in games {
-            let mut is_dupe: bool = false;
-            for self_game in new_games.iter() {
-                if game.id == self_game.id {
-                    is_dupe = true;
-                    break;
-                }
-            }
-            if !is_dupe {
-                new_games.push(game.clone());
-            }
-        }
-
-        self.library_games = new_games;
+        self.library_games = games.to_vec();
         write_games(&self.library_games).with_context(|| "monarch_state::set_library_games() -> ")?;
-        Ok(())
+        return Ok(());
     }
 
     /// Update a game.
