@@ -1,6 +1,6 @@
 use iced::widget::{button, column, container, row, text, text_input};
 use iced::{alignment, Color, Element, Length};
-use tracing::{debug, error};
+use tracing::error;
 
 use crate::gui::components::gamecard;
 use crate::monarch_games;
