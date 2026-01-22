@@ -8,10 +8,6 @@ use crate::monarch_games::monarchgame::MonarchGame;
 pub struct GameDrawer {}
 
 impl GameDrawer {
-    pub fn new() -> Self {
-        Self {}
-    }
-
     pub fn view<'a>(&self, game: &'a MonarchGame) -> Element<'a, GameCardMessage> {
         let background_image = if game.thumbnail_path.is_empty() {
             container(text(""))

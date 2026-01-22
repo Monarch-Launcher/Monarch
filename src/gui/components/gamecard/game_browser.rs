@@ -14,15 +14,6 @@ pub struct GameBrowser {
 }
 
 impl GameBrowser {
-    pub fn new() -> Self {
-        Self {
-            games: GameCardContainer::default(),
-            drawer: GameDrawer::new(),
-            selected_game: None,
-            drawer_animation: 0.0,
-        }
-    }
-
     pub fn update(&mut self, msg: GameCardMessage) -> iced::Task<GameCardMessage> {
         match &msg {
             GameCardMessage::GamePressed(id) => {
@@ -135,9 +126,5 @@ impl GameBrowser {
         } else {
             self.view_grid(true)
         }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.games.is_empty()
     }
 }

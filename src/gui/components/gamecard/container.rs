@@ -15,13 +15,6 @@ impl GameCardContainer {
         self.games.is_empty()
     }
 
-    pub fn get_mut(&mut self, id: &str) -> Option<&mut MonarchGame> {
-        self.games
-            .iter_mut()
-            .find(|g| g.game.id == id)
-            .map(|g| &mut g.game)
-    }
-
     pub fn update(&mut self, msg: GameCardMessage) -> iced::Task<GameCardMessage> {
         match msg {
             GameCardMessage::UpdateGames(games) => {

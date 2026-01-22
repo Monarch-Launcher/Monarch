@@ -69,7 +69,10 @@ impl App {
                     header::Message::HomePage => self.active_tab = PageTab::Home,
                     header::Message::LibraryPage => self.active_tab = PageTab::Library,
                     header::Message::SearchPage => self.active_tab = PageTab::Search,
-                    header::Message::SettingsPage => self.active_tab = PageTab::Settings,
+                    header::Message::SettingsPage => {
+                        self.active_tab = PageTab::Settings;
+                        self.settings_page.refresh();
+                    }
                 }
                 iced::Task::none()
             }

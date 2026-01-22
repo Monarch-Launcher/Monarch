@@ -73,7 +73,7 @@ pub fn set_settings(settings: Settings) -> Result<Settings, String> {
 /// Write default settings to settings.toml
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
-pub fn revert_settings() -> Result<Settings, String> {
+pub fn reset_settings() -> Result<Settings, String> {
     match set_default_settings() {
         Ok(ret_settings) => {
             set_settings_state(ret_settings.clone());
@@ -272,6 +272,7 @@ pub async fn async_write_to_pty(data: &str) -> Result<(), ()> {
         Err(_) => Err(()),
     }
 }
+    */
 
 /// Manually clear all images in the resources/cache directory
 /// Don't return custom error message as they instead return the state of settings according to
@@ -280,6 +281,7 @@ pub fn clear_cached_images() {
     clear_all_cache();
 }
 
+/*
 /// Code found at https://github.com/phcode-dev/phoenix-desktop/pull/162/files
 /// for implementing zoom.
 pub fn zoom_window(window: WebviewWindow, scale_factor: f64) {
