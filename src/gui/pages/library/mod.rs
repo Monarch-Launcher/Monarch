@@ -15,6 +15,7 @@ pub enum Message {
     UpdateGames(Vec<MonarchGame>),
     GameImgLoaded(MonarchGame),
     GameCard(gamecard::GameCardMessage),
+    OpenGameDetails(MonarchGame),
     Tick,
 }
 
@@ -87,10 +88,25 @@ impl LibraryPage {
                 }
                 iced::Task::none()
             }
-            Message::GameCard(game_card_message) => self
-                .browser
-                .update(game_card_message)
-                .map(Message::GameCard),
+            Message::GameCard(game_card_message) => {
+                // Check if it's a game press event
+                if let gamecard::GameCardMessage::GamePressed(id) = &game_card_message {
+                    // Find the game and emit OpenGameDetails
+                    if let Some(game_card) =
+                        self.browser.games.games.iter().find(|g| g.game.id == *id)
+                    {
+                        return iced::Task::done(Message::OpenGameDetails(game_card.game.clone()));
+                    }
+                }
+
+                self.browser
+                    .update(game_card_message)
+                    .map(Message::GameCard)
+            }
+            Message::OpenGameDetails(_) => {
+                // This will be handled by the parent App
+                iced::Task::none()
+            }
             Message::Tick => {
                 if self.is_refreshing {
                     self.tick_counter = self.tick_counter.wrapping_add(1);

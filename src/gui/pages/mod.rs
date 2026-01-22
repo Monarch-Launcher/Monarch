@@ -1,3 +1,4 @@
+pub mod game_details;
 pub mod home;
 pub mod library;
 pub mod search;
@@ -9,6 +10,7 @@ pub enum Message {
     Library(library::Message),
     Search(search::Message),
     Settings(settings::Message),
+    GameDetails(game_details::Message),
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -18,4 +20,5 @@ pub enum PageTab {
     Library,
     Search,
     Settings,
+    GameDetails,
 }

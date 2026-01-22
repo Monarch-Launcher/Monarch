@@ -14,16 +14,20 @@ pub mod styles;
 enum AppMessage {
     HeaderMessage(header::Message),
     Page(pages::Message),
+    OpenGameDetails(crate::monarch_games::monarchgame::MonarchGame),
+    CloseGameDetails,
 }
 
 #[derive(Default)]
 pub struct App {
     header: Header,
     active_tab: PageTab,
+    previous_tab: PageTab, // Track previous tab for back navigation
     home_page: pages::home::HomePage,
     library_page: pages::library::LibraryPage,
     search_page: pages::search::SearchPage,
     settings_page: pages::settings::SettingsPage,
+    game_details_page: pages::game_details::GameDetailsPage,
 }
 
 impl App {
@@ -76,15 +80,21 @@ impl App {
                 }
                 iced::Task::none()
             }
+
             AppMessage::Page(page_msg) => match page_msg {
                 pages::Message::Home(msg) => self
                     .home_page
                     .update(msg)
                     .map(|m| AppMessage::Page(pages::Message::Home(m))),
-                pages::Message::Library(msg) => self
-                    .library_page
-                    .update(msg)
-                    .map(|m| AppMessage::Page(pages::Message::Library(m))),
+                pages::Message::Library(msg) => {
+                    // Check if it's OpenGameDetails
+                    if let pages::library::Message::OpenGameDetails(game) = &msg {
+                        return iced::Task::done(AppMessage::OpenGameDetails(game.clone()));
+                    }
+                    self.library_page
+                        .update(msg)
+                        .map(|m| AppMessage::Page(pages::Message::Library(m)))
+                }
                 pages::Message::Search(msg) => self
                     .search_page
                     .update(msg)
@@ -93,7 +103,28 @@ impl App {
                     .settings_page
                     .update(msg)
                     .map(|m| AppMessage::Page(pages::Message::Settings(m))),
+                pages::Message::GameDetails(msg) => {
+                    match msg {
+                        pages::game_details::Message::BackPressed => {
+                            // Navigate back to previous page
+                            self.active_tab = self.previous_tab;
+                            iced::Task::none()
+                        }
+                    }
+                }
             },
+
+            AppMessage::OpenGameDetails(game) => {
+                self.previous_tab = self.active_tab;
+                self.game_details_page.set_game(game);
+                self.active_tab = PageTab::GameDetails;
+                iced::Task::none()
+            }
+
+            AppMessage::CloseGameDetails => {
+                self.active_tab = self.previous_tab;
+                iced::Task::none()
+            }
         }
     }
 
@@ -103,6 +134,10 @@ impl App {
             PageTab::Library => self.library_page.view().map(pages::Message::Library),
             PageTab::Search => self.search_page.view().map(pages::Message::Search),
             PageTab::Settings => self.settings_page.view().map(pages::Message::Settings),
+            PageTab::GameDetails => self
+                .game_details_page
+                .view()
+                .map(pages::Message::GameDetails),
         };
 
         let content = container(page_content.map(AppMessage::Page))

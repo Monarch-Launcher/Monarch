@@ -24,6 +24,23 @@ pub struct MonarchGame {
 
     #[serde(default)]
     pub summary: String,
+
+    #[serde(default)]
+    pub artwork_path: String,
+    pub artwork_url: String,
+
+    // Technical fields for game details
+    #[serde(default)]
+    pub install_size: String,
+
+    #[serde(default)]
+    pub last_played: String,
+
+    #[serde(default)]
+    pub play_time: String,
+
+    #[serde(default)]
+    pub version: String,
 }
 
 impl MonarchGame {
@@ -49,6 +66,12 @@ impl MonarchGame {
             store_page: store_page.to_string(),
             install_dir: String::new(),
             summary: String::new(),
+            artwork_url: String::new(),
+            artwork_path: String::new(),
+            install_size: String::new(),
+            last_played: String::new(),
+            play_time: String::new(),
+            version: String::new(),
         }
     }
 
@@ -92,6 +115,12 @@ impl MonarchGame {
             store_page: other.store_page.to_string(),
             install_dir: "".to_string(),
             summary: other.summary.clone(),
+            artwork_url: other.artwork_url.clone(),
+            artwork_path: "".to_string(),
+            install_size: "Unknown".to_string(),
+            last_played: "Never".to_string(),
+            play_time: "0 hours".to_string(),
+            version: "Unknown".to_string(),
         }
     }
 }
