@@ -94,9 +94,9 @@ type Props = {
 };
 
 const OS_OPTIONS = [
-  { value: 'windows', label: 'Windows (default)' },
-  { value: 'linux', label: 'Linux (Proton)' },
-  { value: 'native', label: 'Linux (Native)' },
+  { value: 'Windows', label: 'Windows (default)' },
+  { value: 'Linux', label: 'Linux (Proton)' },
+  { value: 'Native', label: 'Linux (Native)' },
 ];
 
 export default function DownloadModal({
@@ -162,8 +162,10 @@ export default function DownloadModal({
       os: os || '',
     };
 
+    console.log("Using options: ", options)
+
     try {
-      await invoke('download_game', { options });
+      await invoke('download_game', { opts: options });
       if (onDownloadSuccess) onDownloadSuccess();
       close();
     } catch (err) {

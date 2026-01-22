@@ -17,7 +17,7 @@ struct Asset {
     browser_download_url: String,
 }
 
-/// Returns path to directory where Monarch stores its copy of the umu-launcher binary.
+/// Returns path to directory where Monarch stores its copy of the legendary launcher binary.
 fn get_legendary_dir() -> PathBuf {
     let path = get_monarch_home();
     path.join("legendary")
@@ -25,7 +25,7 @@ fn get_legendary_dir() -> PathBuf {
 
 /// Returns path to umu-launcher binary.
 pub fn get_legendary_exe() -> PathBuf {
-    get_legendary_dir().join("legendary")
+    get_legendary_dir().join("legendary.exe")
 }
 
 /// For now a simple check to verify that umu-launcher exists.
@@ -37,7 +37,7 @@ pub fn legendary_is_installed() -> bool {
     get_legendary_exe().exists()
 }
 
-/// Installs the umu-launcher by downloading the binary to $MONARCH_HOME/umu/umu-run
+/// Installs the legendary launcher by downloading the binary to $MONARCH_HOME/legendary/legendary.exe
 pub fn install_legendary() -> Result<()> {
     if legendary_is_installed() {
         bail!("windows::legendary::install_legendary() Failed to install legendary! | Err: Legendary path already exists.")

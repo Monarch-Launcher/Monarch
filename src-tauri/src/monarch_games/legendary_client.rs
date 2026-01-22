@@ -1,9 +1,7 @@
-use std::path::PathBuf;
-
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use tauri::AppHandle;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame};
@@ -11,6 +9,7 @@ use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::generate_cache_image_path;
 use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::monarch_utils::monarch_terminal::run_in_terminal;
+use crate::monarch_games::stores::DownloadOptions;
 
 use super::games::GameType;
 use super::stores::StoreType;
@@ -38,7 +37,7 @@ impl LegendaryClient {
     /// Abstraction for all legendary functions to run terminal commands.
     fn run_legendary_cmd(&self, handle: AppHandle, command: String) -> Result<()> {
         // Start a new async thread launching the game
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             if let Err(e) = run_in_terminal(&handle, &command, None, None).await {
                 error!("legendary_client::launch_game() -> {e}");
                 // TODO: Trigger an error dialog in frontend.
@@ -46,6 +45,16 @@ impl LegendaryClient {
         });
         Ok(())
     }
+
+    pub fn login(&self, handle: AppHandle) -> Result<()> {
+        let login_cmd: String = format!("{} auth", self.cli_path);
+
+        info!("Loging in to Epic Games with Legendary...");
+        self.run_legendary_cmd(handle, login_cmd).with_context(|| "legendary_client::login() -> ")?;
+        info!("Logic complete!");
+
+        Ok(())
+    } 
 }
 
 #[async_trait]
@@ -53,7 +62,7 @@ impl StoreType for LegendaryClient {
     async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
         let monarch_url: &'static str = std::env!("MONARCH_URL");
         let search_term: String = format!(
-            "{}/api/games?search={}?platform=legendary",
+            "{}/api/games?search={}?platform=epicgames",
             monarch_url, name,
         );
 
@@ -106,14 +115,13 @@ impl StoreType for LegendaryClient {
             .collect()
     }
 
-    async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-        let game_folder = PathBuf::from(get_settings_state().monarch.game_folder).join(&game.name);
-
+    async fn install_game(&self, handle: &AppHandle, game: &MonarchGame, opts: &DownloadOptions) -> Result<()> {
         let command: String = format!(
-            "{} install {} --game-folder {} --platform Linux",
+            "{} install {} --game-folder {} --platform {}",
             self.cli_path,
             &game.name,
-            game_folder.display(),
+            opts.folder,
+            opts.os
         );
 
         self.run_legendary_cmd(handle.clone(), command)
@@ -141,6 +149,7 @@ impl StoreType for LegendaryClient {
         let command: String = format!("{} launch {}", self.cli_path, game.name);
         self.run_legendary_cmd(handle.clone(), command)
     }
+
 }
 
 pub fn legendary_is_installed() -> bool {
@@ -148,5 +157,5 @@ pub fn legendary_is_installed() -> bool {
 }
 
 pub fn install_legendary() -> Result<()> {
-    legendary::install_legendary()
+    legendary::install_legendary().with_context(|| "legendary_client::install_legendary() -> ")
 }

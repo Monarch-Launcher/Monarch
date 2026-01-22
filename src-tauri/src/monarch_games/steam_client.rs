@@ -1,4 +1,3 @@
-use super::games::GameType;
 use super::stores::StoreType;
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -20,6 +19,7 @@ use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
 };
+use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_utils::monarch_settings::{get_settings_state, LauncherSettings};
 
 #[cfg(target_os = "windows")]
@@ -55,7 +55,7 @@ impl StoreType for SteamClient {
             .collect::<Vec<Box<dyn SearchResult>>>()
     }
 
-    async fn install_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+    async fn install_game(&self, handle: &AppHandle, game: &MonarchGame, _opts: &DownloadOptions) -> Result<()> {
         let game: MonarchGame = download_game(handle, &game.name, &game.platform_id)
             .await
             .with_context(|| "steam_client::install_game() -> ")?;

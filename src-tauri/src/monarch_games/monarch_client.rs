@@ -1,5 +1,5 @@
 use super::games::{GameType, SearchResult};
-use super::stores::StoreType;
+use super::stores::{StoreType, DownloadOptions};
 use super::{monarchgame::MonarchGame, steam_client};
 use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebApiGame};
 use crate::monarch_games::stores::SearchFilter;
@@ -79,7 +79,7 @@ impl StoreType for MonarchClient {
             .collect()
     }
 
-    async fn install_game(&self, _handle: &AppHandle, _game: &MonarchGame) -> Result<()> {
+    async fn install_game(&self, _handle: &AppHandle, _game: &MonarchGame, _opts: &DownloadOptions) -> Result<()> {
         error!("monarch_client::install_game() Not implemented!");
         bail!("monarch_client::install_game() currently not supported!")
     }
@@ -378,8 +378,9 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 /// TODO: Add support for things like filters in the future.
 /// TODO: Remove unwraps after testing
 pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
+    let monarch_url: &'static str = std::env!("MONARCH_URL");
     let search_term: String = format!(
-        "https://monarch-launcher.com/api/games?search={}",
+        "{monarch_url}/api/games?search={}",
         search_term
     );
     let response = reqwest::get(search_term).await.unwrap();
@@ -444,7 +445,8 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
             }
         }
     } else {
-        let search_term: String = format!("http://localhost:1337/api/games?id={}", game.id);
+        let monarch_url: &'static str = std::env!("MONARCH_URL");
+        let search_term: String = format!("{monarch_url}/api/games?id={}", game.id);
         let response = reqwest::get(search_term).await.unwrap();
         let resp_content = response.text().await.unwrap();
         let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&resp_content).unwrap();

@@ -14,6 +14,7 @@ use super::stores::{SearchFilter, StoreType};
 use crate::monarch_games::games::{GameType, SearchResult};
 use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebApiGame};
+use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
@@ -158,25 +159,23 @@ pub async fn launch_game(handle: AppHandle, game: MonarchGame) -> Result<(), Str
 /// Tells Monarch to download specified game
 pub async fn download_game(
     handle: AppHandle,
-    name: String,
-    platform: String,
-    platform_id: String,
+    opts: DownloadOptions,
 ) -> Result<Vec<MonarchGame>, String> {
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
-    info!("Installing: {name}");
+    info!("Installing: {}", opts.game_name);
 
-    let game = MonarchGame::new(&name, 0, &platform, &platform_id, "", "", "");
+    let game = MonarchGame::new(&opts.game_name, 0, &opts.game_platform, &opts.game_platform_id, "", "", "");
 
-    let result: Result<(), String> = match platform.as_str() {
+    let result: Result<(), String> = match opts.game_platform.as_str() {
         "steam" => {
-            if let Err(e) = SteamClient::new().install_game(&handle, &game).await {
+            if let Err(e) = SteamClient::new().install_game(&handle, &game, &opts).await {
                 return Err(e.to_string());
             }
             Ok(())
         }
         "epicgames" => {
-            if let Err(e) = LegendaryClient::new().install_game(&handle, &game).await {
+            if let Err(e) = LegendaryClient::new().install_game(&handle, &game, &opts).await {
                 return Err(e.to_string());
             }
             Ok(())
@@ -522,7 +521,7 @@ pub fn legendary_is_installed() -> bool {
 }
 
 #[tauri::command]
-pub fn install_legendary() -> Result<(), String> {
+pub fn install_legendary(handle: AppHandle) -> Result<(), String> {
     if let Err(e) = legendary_client::install_legendary() {
         error!(
             "monarch_games::commands::install_legendary() -> {}",
@@ -530,5 +529,15 @@ pub fn install_legendary() -> Result<(), String> {
         );
         return Err(String::from("Failed to download Legendary!"));
     }
+
+    let client: LegendaryClient = LegendaryClient::new();
+    if let Err(e) =client.login(handle) {
+        error!(
+            "monarch_games::commands::install_legendary() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to login to Legendary!"));
+    }
+
     Ok(())
 }
