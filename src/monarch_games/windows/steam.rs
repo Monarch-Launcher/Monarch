@@ -3,16 +3,14 @@ use reqwest::Response;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
-use tauri::AppHandle;
 use tracing::{error, info};
 use zip::ZipArchive;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
 use crate::monarch_utils::monarch_fs::{create_dir, path_exists};
-use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_utils::monarch_vdf;
 use crate::monarch_utils::monarch_winreg::is_installed;
 
@@ -95,12 +93,13 @@ pub async fn install_steamcmd() -> Result<()> {
 
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
-pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()> {
+pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd");
     path.push("steamcmd.exe");
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
+    /*
     run_in_terminal(
         handle,
         &format!("{} {}", path.display(), args_string),
@@ -109,6 +108,7 @@ pub async fn steamcmd_command(handle: &AppHandle, args: Vec<&str>) -> Result<()>
     )
     .await
     .with_context(|| "windows::steam::steamcmd_command() -> ")?;
+ */
 
     Ok(())
 }
