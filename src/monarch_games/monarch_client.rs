@@ -1,5 +1,5 @@
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_games::monarchgame::MonarchWebGame;
+use crate::monarch_games::monarchgame::{GameImageType, MonarchWebGame};
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
@@ -69,7 +69,7 @@ pub async fn launch_game(frontend_game: &MonarchGame) -> Result<()> {
         let launch_command: String = format!("{}", game.executable_path);
 
         // Order launch args and command in proper order
-        let full_command: String = if game.launch_args.find("%command%").is_some() {
+        let _full_command: String = if game.launch_args.find("%command%").is_some() {
             warn!("Using Steam %command% style launch arguments!");
             game.launch_args.replace("%command%", &launch_command)
         } else {
@@ -258,7 +258,7 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     let mut monarch_games: Vec<MonarchGame> = Vec::new();
     for game in web_games {
         let thumbnail_path = String::from(
-            generate_cache_image_path(&game.name.clone())
+            generate_cache_image_path(&game.name.clone(), GameImageType::Cover)
                 .to_str()
                 .unwrap(),
         );

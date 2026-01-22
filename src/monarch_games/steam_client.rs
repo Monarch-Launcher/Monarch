@@ -8,6 +8,7 @@ use tokio::task;
 use tracing::{error, info, warn};
 
 use super::monarchgame::{MonarchGame, MonarchWebGame};
+use crate::monarch_games::monarchgame::GameImageType;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
@@ -339,18 +340,31 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
 
     // Parse content into MonarchGame
     if let Some(game_info) = game_info_opt {
-        let thumbnail_path = if is_cache {
-            String::from(generate_cache_image_path(&game_info.name).to_str().unwrap())
-        } else {
-            String::from(
-                generate_library_image_path(&game_info.name)
+        let mut monarch_game = MonarchGame::from(&game_info);
+
+        if is_cache {
+            let path: String = String::from(
+                generate_cache_image_path(&game_info.name, GameImageType::Cover)
                     .to_str()
                     .unwrap(),
-            )
+            );
+            monarch_game.thumbnail_path = path;
+        } else {
+            let cover_path: String = String::from(
+                generate_library_image_path(&game_info.name, GameImageType::Cover)
+                    .to_str()
+                    .unwrap(),
+            );
+            let artwork_path: String = String::from(
+                generate_library_image_path(&game_info.name, GameImageType::Artwork)
+                    .to_str()
+                    .unwrap(),
+            );
+
+            monarch_game.thumbnail_path = cover_path;
+            monarch_game.artwork_path = artwork_path;
         };
 
-        let mut monarch_game = MonarchGame::from(&game_info);
-        monarch_game.thumbnail_path = thumbnail_path;
         return Ok(monarch_game);
     }
 
@@ -433,9 +447,17 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
 
     // Parse content into MonarchGame
     let thumbnail_path = if is_cache {
-        String::from(generate_cache_image_path(&name).to_str().unwrap())
+        String::from(
+            generate_cache_image_path(&name, GameImageType::Cover)
+                .to_str()
+                .unwrap(),
+        )
     } else {
-        String::from(generate_library_image_path(&name).to_str().unwrap())
+        String::from(
+            generate_library_image_path(&name, GameImageType::Cover)
+                .to_str()
+                .unwrap(),
+        )
     };
     let mut monarch_game =
         MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);

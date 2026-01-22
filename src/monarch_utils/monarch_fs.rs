@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 use std::{fs, process::exit};
 use tracing::{error, info, warn};
 
+use crate::monarch_games::monarchgame::GameImageType;
+
 use super::monarch_settings::{get_settings_state, Settings};
 
 /*
@@ -208,15 +210,21 @@ pub fn get_resources_library() -> PathBuf {
 
 /// Create a name for image file in cache directory
 /// Can be used to download image and check if an image already exists
-pub fn generate_cache_image_path(name: &str) -> PathBuf {
-    let filename = generate_image_filename(name);
+pub fn generate_cache_image_path(name: &str, t: GameImageType) -> PathBuf {
+    let filename = match t {
+        GameImageType::Cover => generate_image_filename(&format!("{name}_cover")),
+        GameImageType::Artwork => generate_image_filename(&format!("{name}_artwork")),
+    };
     let path: PathBuf = get_resources_cache();
     path.join(filename)
 }
 
 /// Create a name for image file in cache directory
-pub fn generate_library_image_path(name: &str) -> PathBuf {
-    let filename = generate_image_filename(name);
+pub fn generate_library_image_path(name: &str, t: GameImageType) -> PathBuf {
+    let filename = match t {
+        GameImageType::Cover => generate_image_filename(&format!("{name}_cover")),
+        GameImageType::Artwork => generate_image_filename(&format!("{name}_artwork")),
+    };
     let path: PathBuf = get_resources_library();
     path.join(filename)
 }

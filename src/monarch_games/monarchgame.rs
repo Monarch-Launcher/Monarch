@@ -89,6 +89,20 @@ impl MonarchGame {
         Ok(())
     }
 
+    /// Download thumbnail for MonarchGame
+    pub async fn download_artwork(&self) -> Result<()> {
+        let path: PathBuf = PathBuf::from(&self.artwork_path);
+
+        if path_exists(&path) {
+            return Ok(());
+        }
+
+        download_image(&self.artwork_url, &path)
+            .await
+            .with_context(|| "monarchgame::download_thumbnail() -> ")?;
+        Ok(())
+    }
+
     /// Randomly generates a Monarch ID
     pub fn manually_generate_id(&mut self) {
         let mut id: String = format!("MONARCH-{}", rand::random::<u32>());
@@ -155,4 +169,9 @@ pub struct MonarchWebGame {
     pub platform: String,
     pub platform_id: String,
     pub store_page: String,
+}
+
+pub enum GameImageType {
+    Cover,
+    Artwork,
 }

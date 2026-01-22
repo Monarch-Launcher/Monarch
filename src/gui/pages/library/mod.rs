@@ -41,10 +41,6 @@ impl LibraryPage {
             Message::UpdateGames(games) => {
                 self.is_refreshing = false;
 
-                for game in games.iter() {
-                    info!("Found game: {:?}", game);
-                }
-
                 let processed_games: Vec<MonarchGame> = games
                     .iter()
                     .cloned()
@@ -55,11 +51,14 @@ impl LibraryPage {
                     .collect();
 
                 // Trigger download tasks
-                let download_tasks = iced::Task::batch(games.iter().cloned().map(|game| {
+                let download_tasks = iced::Task::batch(games.into_iter().map(|game| {
                     iced::Task::perform(
                         async move {
-                            if let Err(e) =
-                                monarch_games::commands::download_thumbnail(game.clone()).await
+                            info!("Downloading artwork for: {}", game.name);
+                            let _ = monarch_games::commands::download_artwork(&game).await;
+
+                            info!("Downloading cover for: {}", game.name);
+                            if let Err(e) = monarch_games::commands::download_thumbnail(&game).await
                             {
                                 error!("Failed to download thumbnail for game {}: {}", game.id, e);
                             }

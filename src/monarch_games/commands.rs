@@ -1,13 +1,14 @@
 use super::monarchgame::MonarchGame;
 use super::{monarch_client, steam_client};
 use anyhow::Result;
+use core::error;
 use rand::rng;
 use rand::seq::SliceRandom;
 use std::path::PathBuf;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::monarch_library::{self, games_library};
-use crate::monarch_utils::monarch_fs;
+use crate::monarch_utils::monarch_fs::{self, path_exists};
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 
 #[cfg(target_os = "windows")]
@@ -72,13 +73,47 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 }
 
 /// Tell backend to download cover/thumbnail for game.
-pub async fn download_thumbnail(game: MonarchGame) -> Result<(), String> {
+pub async fn download_thumbnail(game: &MonarchGame) -> Result<(), String> {
     if let Err(e) = game.download_thumbnail().await {
         error!(
             "monarch_games::commands::download_thumbnail() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
         return Err(String::from("Failed to download thumbnail"));
+    }
+
+    // Make sure image has been saved
+    let path = PathBuf::from(&game.thumbnail_path);
+    if !path_exists(&path) {
+        warn!(
+            "Cover reported finished downloading, not found: {}",
+            game.thumbnail_path
+        );
+
+        for _ in 0..3 {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            if path_exists(&path) {
+                break;
+            }
+        }
+
+        error!(
+            "monarch_games::commands::download_thumbnail() Could not find: {}",
+            game.thumbnail_path
+        );
+    }
+
+    Ok(())
+}
+
+/// Tell backend to download cover/thumbnail for game.
+pub async fn download_artwork(game: &MonarchGame) -> Result<(), String> {
+    if let Err(e) = game.download_artwork().await {
+        error!(
+            "monarch_games::commands::download_artwork() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to download artwork"));
     }
     Ok(())
 }

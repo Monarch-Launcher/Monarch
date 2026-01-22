@@ -98,7 +98,7 @@ impl GameDetailsPage {
             });
 
         // Back button in top left
-        let back_btn = container(primary_button("← Back", Some(Message::BackPressed))).padding(30);
+        let back_btn = container(primary_button("← Back", Some(Message::BackPressed))).padding(40);
 
         // Game cover/thumbnail
         let game_cover = if !game.thumbnail_path.is_empty() {
@@ -293,16 +293,16 @@ impl GameDetailsPage {
                 back_btn,
                 container(main_content)
                     .width(Length::Fill)
-                    .max_width(1400)
+                    .max_width(1200)
                     .padding(
                         iced::Padding::new(0.0)
                             .top(0.0)
-                            .right(60.0)
-                            .bottom(60.0)
-                            .left(60.0)
+                            .right(40.0)
+                            .bottom(40.0)
+                            .left(40.0)
                     ),
             ]
-            .align_x(alignment::Horizontal::Center),
+            .align_x(alignment::Horizontal::Left),
         )
         .width(Length::Fill)
         .height(Length::Fill);

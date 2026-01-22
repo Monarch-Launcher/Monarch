@@ -5,7 +5,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use tracing::error;
 
-use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_games::monarchgame::{GameImageType, MonarchGame};
 use crate::monarch_utils::monarch_fs::{
     generate_library_image_path, get_library_json_path, get_monarch_games_path, path_exists,
     write_json_content,
@@ -90,7 +90,16 @@ pub fn get_monarchgames() -> Result<Vec<MonarchGame>> {
     // have no thumbnail path.
     for game in games.iter_mut() {
         if game.thumbnail_path.is_empty() {
-            game.thumbnail_path = generate_library_image_path(&game.name)
+            game.thumbnail_path = generate_library_image_path(&game.name, GameImageType::Cover)
+                .to_str()
+                .unwrap()
+                .to_string();
+        }
+    }
+
+    for game in games.iter_mut() {
+        if game.thumbnail_path.is_empty() {
+            game.thumbnail_path = generate_library_image_path(&game.name, GameImageType::Artwork)
                 .to_str()
                 .unwrap()
                 .to_string();

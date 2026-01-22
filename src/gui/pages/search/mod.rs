@@ -65,8 +65,7 @@ impl SearchPage {
                 let download_tasks = iced::Task::batch(games.iter().cloned().map(|game| {
                     iced::Task::perform(
                         async move {
-                            if let Err(e) =
-                                monarch_games::commands::download_thumbnail(game.clone()).await
+                            if let Err(e) = monarch_games::commands::download_thumbnail(&game).await
                             {
                                 error!("Failed to download thumbnail for game {}: {}", game.id, e);
                             }
