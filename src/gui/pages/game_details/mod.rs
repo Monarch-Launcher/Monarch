@@ -1,7 +1,7 @@
 use iced::widget::{column, container, image, row, scrollable, stack, text};
 use iced::{alignment, Color, Element, Length, Theme};
 
-use crate::gui::components::common::primary_button;
+use crate::gui::components::common::{primary_button, secondary_button};
 use crate::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Clone, Debug)]
@@ -56,7 +56,7 @@ impl GameDetailsPage {
             container(
                 image(game.artwork_path.clone())
                     .width(Length::Fill)
-                    .height(Length::Fill)
+                    .height(800)
                     .content_fit(iced::ContentFit::Cover),
             )
         } else if !game.thumbnail_path.is_empty() {
@@ -88,17 +88,18 @@ impl GameDetailsPage {
             .height(Length::Fill)
             .style(|_theme: &Theme| container::Style {
                 background: Some(
-                    iced::gradient::Linear::new(iced::Radians(std::f32::consts::PI / 2.0))
-                        .add_stop(0.0, Color::from_rgba8(0, 0, 0, 0.6))
-                        .add_stop(0.5, Color::from_rgba8(0, 0, 0, 0.8))
-                        .add_stop(1.0, Color::from_rgba8(0, 0, 0, 0.9))
+                    iced::gradient::Linear::new(iced::Radians(std::f32::consts::PI))
+                        .add_stop(0.0, Color::from_rgba8(10, 10, 17, 0.4))
+                        .add_stop(0.3, Color::from_rgba8(10, 10, 17, 0.7))
+                        .add_stop(0.5, Color::from_rgba8(10, 10, 17, 1.0))
                         .into(),
                 ),
                 ..Default::default()
             });
 
         // Back button in top left
-        let back_btn = container(primary_button("← Back", Some(Message::BackPressed))).padding(40);
+        let back_btn =
+            container(secondary_button("← Back", Some(Message::BackPressed))).padding(40);
 
         // Game cover/thumbnail
         let game_cover = if !game.thumbnail_path.is_empty() {
@@ -278,14 +279,8 @@ impl GameDetailsPage {
         .width(Length::Fill);
 
         // Main content area with horizontal layout
-        let main_content = row![
-            cover_container,
-            container(info_panel)
-                .width(Length::Fill)
-                .padding(iced::Padding::new(0.0).left(40.0)),
-        ]
-        .spacing(40)
-        .align_y(alignment::Vertical::Top);
+        let main_content =
+            column![cover_container, container(info_panel).width(Length::Fill),].spacing(40);
 
         // Full content with back button and scrollable area
         let content = scrollable(

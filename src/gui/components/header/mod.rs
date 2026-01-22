@@ -45,7 +45,7 @@ impl Header {
         let library_button = header_button(
             "Library",
             Message::LibraryPage,
-            active_tab == PageTab::Library,
+            active_tab == PageTab::Library || active_tab == PageTab::GameDetails,
         );
         let search_button =
             header_button("Search", Message::SearchPage, active_tab == PageTab::Search);
