@@ -110,6 +110,7 @@ impl App {
                             self.active_tab = self.previous_tab;
                             iced::Task::none()
                         }
+                        pages::game_details::Message::LaunchGame => iced::Task::none(),
                     }
                 }
             },

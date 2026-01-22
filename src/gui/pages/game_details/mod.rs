@@ -1,12 +1,13 @@
 use iced::widget::{column, container, image, row, scrollable, stack, text};
 use iced::{alignment, Color, Element, Length, Theme};
 
-use crate::gui::components::common::{primary_button, secondary_button};
+use crate::gui::components::common::{launch_button, primary_button, secondary_button};
 use crate::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Clone, Debug)]
 pub enum Message {
     BackPressed,
+    LaunchGame,
 }
 
 pub struct GameDetailsPage {
@@ -22,12 +23,13 @@ impl GameDetailsPage {
         self.game = Some(game);
     }
 
-    pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
+    pub fn _update(&mut self, msg: Message) -> iced::Task<Message> {
         match msg {
             Message::BackPressed => {
                 // This will be handled by the parent to navigate back
                 iced::Task::none()
             }
+            Message::LaunchGame => iced::Task::none(),
         }
     }
 
@@ -265,6 +267,8 @@ impl GameDetailsPage {
             ..Default::default()
         });
 
+        let launch_btn = launch_button("Launch", Some(Message::LaunchGame));
+
         // Right side content (info panel)
         let info_panel = column![
             title,
@@ -279,8 +283,12 @@ impl GameDetailsPage {
         .width(Length::Fill);
 
         // Main content area with horizontal layout
-        let main_content =
-            column![cover_container, container(info_panel).width(Length::Fill),].spacing(40);
+        let main_content = column![
+            cover_container,
+            launch_btn,
+            container(info_panel).width(Length::Fill),
+        ]
+        .spacing(40);
 
         // Full content with back button and scrollable area
         let content = scrollable(

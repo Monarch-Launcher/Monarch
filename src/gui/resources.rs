@@ -35,3 +35,8 @@ pub static ITCH: Lazy<svg::Handle> = Lazy::new(|| {
     let bytes = include_bytes!("../../icons/Stores/itch_io_icon_198115.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });
+
+pub static PLAY: Lazy<svg::Handle> = Lazy::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/play_icon.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});

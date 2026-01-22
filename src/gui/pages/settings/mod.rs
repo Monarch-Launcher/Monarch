@@ -159,8 +159,7 @@ impl SettingsPage {
                 svg(icon)
                     .width(Length::Fixed(20.0))
                     .height(Length::Fixed(20.0))
-                    .style(move |theme: &Theme, _status| {
-                        let palette = theme.palette();
+                    .style(move |_theme: &Theme, _status| {
                         iced::widget::svg::Style {
                             color: Some(if is_active {
                                 Color::BLACK

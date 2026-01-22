@@ -1,7 +1,6 @@
 use super::monarchgame::MonarchGame;
 use super::{monarch_client, steam_client};
 use anyhow::Result;
-use core::error;
 use rand::rng;
 use rand::seq::SliceRandom;
 use std::path::PathBuf;
