@@ -6,7 +6,7 @@ import Button from '../button';
 
 const SearchContainer = styled.div`
   display: flex;
-  max-height: 2rem;
+  height: 2.5rem;
 `;
 
 const StyledInput = styled.input<{
@@ -18,7 +18,8 @@ const StyledInput = styled.input<{
     $hideSearchButton ? '0.5rem' : '0.5rem 0 0 0.5rem'};
   border: none;
   color: ${({ theme }) => theme.colors.white};
-  padding: 0.5rem;
+  padding: 0.75rem;
+  font-size: 1rem;
   &:focus {
     outline: none;
   }
@@ -33,7 +34,7 @@ const StyledInput = styled.input<{
 const SearchButton = styled(Button)`
   border-radius: 0 0.5rem 0.5rem 0;
   border: none;
-  padding: 0.2rem 0.3rem;
+  padding: 0.5rem 0.75rem;
 
   &:hover,
   &:focus {

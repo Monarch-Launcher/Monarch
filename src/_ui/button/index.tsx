@@ -90,38 +90,44 @@ type ButtonProps = {
   title?: string;
 };
 
-const Button = ({
-  type,
-  variant,
-  onClick,
-  disabled = false,
-  loading = false,
-  children,
-  leftIcon,
-  rightIcon,
-  fullWidth = false,
-  title,
-  className,
-}: ButtonProps) => {
-  return (
-    <MonarchButton
-      type={type}
-      onClick={onClick}
-      disabled={disabled || loading}
-      title={title}
-      className={className}
-      $hasLeftIcon={leftIcon !== undefined}
-      $hasRightIcon={rightIcon !== undefined}
-      $variant={variant}
-      $disabled={disabled}
-      $fullWidth={fullWidth}
-      $loading={loading}
-    >
-      {leftIcon && leftIcon({ size: 24 })}
-      {children}
-      {rightIcon && rightIcon({ size: 24 })}
-    </MonarchButton>
-  );
-};
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      type,
+      variant,
+      onClick,
+      disabled = false,
+      loading = false,
+      children,
+      leftIcon,
+      rightIcon,
+      fullWidth = false,
+      title,
+      className,
+    }: ButtonProps,
+    ref,
+  ) => {
+    return (
+      <MonarchButton
+        ref={ref}
+        type={type}
+        onClick={onClick}
+        disabled={disabled || loading}
+        title={title}
+        className={className}
+        $hasLeftIcon={leftIcon !== undefined}
+        $hasRightIcon={rightIcon !== undefined}
+        $variant={variant}
+        $disabled={disabled}
+        $fullWidth={fullWidth}
+        $loading={loading}
+      >
+        {leftIcon && leftIcon({ size: 24 })}
+        {children}
+        {rightIcon && rightIcon({ size: 24 })}
+      </MonarchButton>
+    );
+  },
+);
 
 export default Button;

@@ -1,5 +1,8 @@
+use super::games::{GameType, SearchResult};
+use super::stores::{StoreType, DownloadOptions};
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebGame};
+use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebApiGame};
+use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
@@ -9,9 +12,102 @@ use crate::monarch_utils::monarch_vdf;
 use crate::monarch_utils::quicklaunch::hide_quicklaunch;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::{error, info, warn};
+
+pub struct MonarchClient {}
+
+impl MonarchClient {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[async_trait]
+impl StoreType for MonarchClient {
+    async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
+        let monarch_url: &'static str = std::env!("MONARCH_URL");
+        let search_term: String = format!("{monarch_url}/api/games?search={}", name);
+        let response = match reqwest::get(search_term).await {
+            Ok(resp) => resp,
+            Err(e) => {
+                error!(
+                    "monarch_client::search_games() reqwest::get() failed! | Err: {}",
+                    e
+                );
+                return Vec::new();
+            }
+        };
+
+        let resp_content = match response.text().await {
+            Ok(content) => content,
+            Err(e) => {
+                error!(
+                    "monarch_client::search_games() response.text() failed! | Err: {}",
+                    e
+                );
+                return Vec::new();
+            }
+        };
+
+        let mut web_games: Vec<Box<MonarchWebApiGame>> =
+            match serde_json::from_str::<Vec<MonarchWebApiGame>>(&resp_content) {
+                Ok(games) => games.into_iter().map(Box::new).collect(),
+                Err(e) => {
+                    error!(
+                        "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
+                        e
+                    );
+                    return Vec::new();
+                }
+            };
+
+        for game in web_games.iter_mut() {
+            let thumbnail_path = String::from(
+                generate_cache_image_path(&game.name.clone())
+                    .to_str()
+                    .unwrap(),
+            );
+            game.thumbnail_path = thumbnail_path;
+        }
+
+        web_games
+            .into_iter()
+            .map(|g| g as Box<dyn SearchResult>)
+            .collect()
+    }
+
+    async fn install_game(&self, _handle: &AppHandle, _game: &MonarchGame, _opts: &DownloadOptions) -> Result<()> {
+        error!("monarch_client::install_game() Not implemented!");
+        bail!("monarch_client::install_game() currently not supported!")
+    }
+
+    async fn uninstall_game(&self, _handle: &AppHandle, _game: &MonarchGame) -> Result<()> {
+        error!("monarch_client::uninstall_game() Not implemented!");
+        bail!("monarch_client::uninstall_game() currently not supported!")
+    }
+
+    async fn update_game(&self, _handle: &AppHandle, _game: &MonarchGame) -> Result<()> {
+        error!("monarch_client::update_game() Not implemented!");
+        bail!("monarch_client::update_game() currently not supported!")
+    }
+
+    fn game_is_installed(&self, _handle: &AppHandle, _platform_id: &str) -> bool {
+        error!("monarch_client::game_is_installed() Not implemented!");
+        false
+    }
+
+    fn platform_enabled(&self) -> bool {
+        error!("monarch_client::platform_enabled() Not implemented!");
+        false
+    }
+
+    async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        game.launch(handle).await
+    }
+}
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -282,14 +378,15 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 /// TODO: Add support for things like filters in the future.
 /// TODO: Remove unwraps after testing
 pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
+    let monarch_url: &'static str = std::env!("MONARCH_URL");
     let search_term: String = format!(
-        "https://monarch-launcher.com/api/games?search={}",
+        "{monarch_url}/api/games?search={}",
         search_term
     );
     let response = reqwest::get(search_term).await.unwrap();
     let resp_content = response.text().await.unwrap();
 
-    let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
+    let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&resp_content).unwrap();
 
     let mut monarch_games: Vec<MonarchGame> = Vec::new();
     for game in web_games {
@@ -348,21 +445,27 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
             }
         }
     } else {
-        let search_term: String =
-            format!("https://monarch-launcher.com/api/games?name={}", game.name);
+        let monarch_url: &'static str = std::env!("MONARCH_URL");
+        let search_term: String = format!("{monarch_url}/api/games?id={}", game.id);
         let response = reqwest::get(search_term).await.unwrap();
         let resp_content = response.text().await.unwrap();
-        let web_games: Vec<MonarchWebGame> = serde_json::from_str(&resp_content).unwrap();
+        let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&resp_content).unwrap();
 
         if !web_games.is_empty() {
-            let web_game: &MonarchWebGame = &web_games[0];
-            properties.platform = web_game.platform.to_string();
+            let web_game: &MonarchWebApiGame = &web_games[0];
             properties.description = web_game.summary.to_string();
+
+            for platform in web_game.platforms.iter() {
+                if platform.name == "steam" {
+                    properties.platform = "steam".to_string();
+                    properties.platform_id = platform.platform_id.to_string();
+                }
+            }
 
             #[cfg(target_os = "linux")]
             {
-                if web_game.platform == "steam" {
-                    match steam_client::get_protondb_rating(&web_game.platform_id).await {
+                if properties.platform == "steam" {
+                    match steam_client::get_protondb_rating(&properties.platform_id).await {
                         Ok((rating, url)) => {
                             properties.protondb_rating = rating;
                             properties.protondb_url = url;

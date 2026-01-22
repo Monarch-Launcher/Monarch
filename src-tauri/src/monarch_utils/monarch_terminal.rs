@@ -12,15 +12,15 @@ use once_cell::sync::Lazy;
 use portable_pty::{native_pty_system, CommandBuilder, PtyPair, PtySize};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
+use std::path::Path;
 use std::sync::Arc;
 use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::{AppHandle, Manager};
 use tracing::{error, info};
-use std::path::Path;
 
 /*
- * Currently the write_to_pty() breaks if we remove the inner Arc<AsyncMutex<...>> 
- * Therefore they can stay here at the potential cost to performance of locking and 
+ * Currently the write_to_pty() breaks if we remove the inner Arc<AsyncMutex<...>>
+ * Therefore they can stay here at the potential cost to performance of locking and
  * unlocking more.
 */
 pub struct AppState {
@@ -29,7 +29,8 @@ pub struct AppState {
     reader: Arc<AsyncMutex<BufReader<Box<dyn Read + Send>>>>,
 }
 
-static APPSTATE: Lazy<Arc<AsyncMutex<Option<AppState>>>> = Lazy::new(|| Arc::new(AsyncMutex::new(None)));
+static APPSTATE: Lazy<Arc<AsyncMutex<Option<AppState>>>> =
+    Lazy::new(|| Arc::new(AsyncMutex::new(None)));
 
 /// Run a command in a new process and display to the user in a custom terminal window.
 pub async fn run_in_terminal(
@@ -119,9 +120,13 @@ pub async fn run_in_terminal(
         error!("monarch_terminal::run_in_terminal() -> {e}");
     }
 
-    let exit_status= child.wait().with_context(|| "Something went wrong while waiting for child process to finish! | Err: ")?;
+    let exit_status = child.wait().with_context(|| {
+        "Something went wrong while waiting for child process to finish! | Err: "
+    })?;
     info!("Child exited.");
     info!("Child process exited with status: {:?}", exit_status);
+
+    std::thread::sleep(std::time::Duration::from_secs(2));
 
     if let Err(e) = close_terminal_window(handle).await {
         error!("monarch_terminal::run_in_terminal() -> {e}");

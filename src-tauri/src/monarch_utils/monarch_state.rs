@@ -24,7 +24,8 @@ impl MonarchState {
     pub fn set_library_games(&mut self, games: &[MonarchGame]) -> Result<()> {
         if self.library_games.is_empty() {
             self.library_games = games.to_vec();
-            write_games(&self.library_games).with_context(|| "monarch_state::set_library_games() -> ")?;
+            write_games(&self.library_games)
+                .with_context(|| "monarch_state::set_library_games() -> ")?;
             return Ok(());
         }
 
@@ -53,7 +54,8 @@ impl MonarchState {
         }
 
         self.library_games = new_games;
-        write_games(&self.library_games).with_context(|| "monarch_state::set_library_games() -> ")?;
+        write_games(&self.library_games)
+            .with_context(|| "monarch_state::set_library_games() -> ")?;
         Ok(())
     }
 
@@ -64,7 +66,8 @@ impl MonarchState {
         for (i, self_game) in self.library_games.iter_mut().enumerate() {
             if self_game.id == game.id {
                 self.library_games[i] = game.clone();
-                write_games(&self.library_games).with_context(|| "monarch_state::update_game() -> ")?;
+                write_games(&self.library_games)
+                    .with_context(|| "monarch_state::update_game() -> ")?;
                 return Ok(());
             }
         }

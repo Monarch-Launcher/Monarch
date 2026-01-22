@@ -11,6 +11,7 @@ edition = "2021"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+dotenv = "0.15.0" 
 
 [dependencies]
 # Tauri dependencies
@@ -46,6 +47,7 @@ tar = "0.4.44"
 flate2 = "1.1.2"
 fs_extra = "1.3.0"
 tauri-plugin-opener = "2"
+async-trait = "0.1.89"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = "2.0.1" # if tauri build fails, make sure to match this version to what we have in tauri

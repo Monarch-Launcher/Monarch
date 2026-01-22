@@ -1,11 +1,22 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use tauri::AppHandle;
 use tracing::error;
 
+use super::games::GameType;
+use super::stores::StoreType;
+use crate::monarch_games::games::SearchResult;
+use crate::monarch_games::legendary_client::LegendaryClient;
+use crate::monarch_games::monarch_client::MonarchClient;
+use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::path_exists;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
+
+#[cfg(target_os = "linux")]
+use crate::monarch_games::linux::umu::umu_run;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MonarchGame {
@@ -92,21 +103,93 @@ impl MonarchGame {
     }
 
     /// Convert MonarchWebGame to MonarchGame
-    pub fn from(other: &MonarchWebGame) -> Self {
+    pub fn from(other: &MonarchWebApiGame) -> Self {
         Self {
             name: other.name.to_string(),
             id: other.id.to_string(),
-            platform: other.platform.to_string(),
-            platform_id: other.platform_id.to_string(),
+            platform: "".to_string(),
+            platform_id: "".to_string(),
             executable_path: "".to_string(),
-            thumbnail_path: "".to_string(),
+            thumbnail_path: other.thumbnail_path.to_string(),
             thumbnail_url: other.cover_url.to_string(),
             launch_args: "".to_string(),
             compatibility: "".to_string(),
-            store_page: other.store_page.to_string(),
+            store_page: "".to_string(),
             install_dir: "".to_string(),
             description: other.summary.to_string(),
         }
+    }
+}
+
+#[async_trait]
+impl GameType for MonarchGame {
+    fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn get_platform(&self) -> Box<dyn StoreType> {
+        match self.platform.as_str() {
+            "monarch" => Box::new(MonarchClient::new()),
+            "steam" => Box::new(SteamClient::new()),
+            "steamcmd" => Box::new(SteamClient::new()),
+            "epic" => Box::new(LegendaryClient::new()),
+            _ => {
+                panic!("Invalid platform: {}", self.platform)
+            }
+        }
+    }
+
+    fn get_platform_id(&self) -> String {
+        self.platform_id.clone()
+    }
+
+    fn get_description(&self) -> String {
+        unimplemented!()
+    }
+
+    fn get_price(&self) -> f64 {
+        0.0
+    }
+
+    async fn launch(&self, handle: &AppHandle) -> Result<()> {
+        let game: MonarchGame = match MONARCH_STATE.read() {
+            Ok(state) => match state.get_game(&self.id) {
+                Some(game) => game,
+                None => {
+                    bail!("monarchgame::launch() -> Game not found");
+                }
+            },
+            Err(e) => {
+                bail!(
+                    "monarchgame::launch() Failed to lock on MONARCH_STATE | Err: {}",
+                    e
+                );
+            }
+        };
+
+        #[cfg(target_os = "linux")]
+        {
+            if !game.executable_path.is_empty() {
+                return umu_run(handle, &game)
+                    .await
+                    .with_context(|| "monarchgame::launch() -> ");
+            }
+
+            if game.compatibility.contains("UMU") {
+                return umu_run(handle, &game)
+                    .await
+                    .with_context(|| "monarchgame::launch() -> ");
+            }
+        }
+
+        game.get_platform()
+            .launch_game(handle, &game)
+            .await
+            .with_context(|| "monarchgame::launch() -> ")
+    }
+
+    fn into_monarchgame(&self) -> MonarchGame {
+        self.clone()
     }
 }
 
@@ -130,22 +213,71 @@ impl Eq for MonarchGame {}
 
 /// Struct representation of games returned from monarch-launcher.com
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MonarchWebGame {
+pub struct MonarchWebApiGame {
     pub name: String,
     pub id: String,
     pub igdb_id: i32,
     pub cover_url: String,
     pub artwork_url: String,
     pub summary: String,
-    pub platform: String,
+    pub platforms: Vec<MonarchWebApiPlatform>,
+
+    #[serde(default)]
+    pub thumbnail_path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MonarchWebApiPlatform {
+    pub name: String,
     pub platform_id: String,
     pub store_page: String,
+}
+
+impl SearchResult for MonarchWebApiGame {
+    fn to_search_result(&self) -> MonarchWebApiGame {
+        return self.clone();
+    }
+
+    fn into_monarchgame(&self) -> MonarchGame {
+        MonarchGame::from(self)
+    }
+}
+
+impl MonarchWebApiGame {
+    pub fn from_monarchgame(monarch_game: MonarchGame) -> Self {
+        let platform: MonarchWebApiPlatform;
+
+        match monarch_game.platform.as_str() {
+            "steam" => {
+                platform = MonarchWebApiPlatform {
+                    name: "steam".to_string(),
+                    platform_id: monarch_game.platform_id,
+                    store_page: monarch_game.store_page,
+                }
+            }
+            _ => {
+                panic!("Unknown platform: {}", monarch_game.platform)
+            }
+        }
+
+        Self {
+            name: monarch_game.name,
+            id: monarch_game.id,
+            igdb_id: -1,
+            cover_url: monarch_game.thumbnail_url,
+            artwork_url: "".to_string(),
+            summary: monarch_game.description,
+            platforms: vec![platform],
+            thumbnail_path: monarch_game.thumbnail_path,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MonarchGameProperties {
     pub name: String,
     pub platform: String,
+    pub platform_id: String,
     pub install_dir: String,
     pub size_on_disk: String,
     pub last_played: String,
@@ -161,6 +293,7 @@ impl Default for MonarchGameProperties {
         Self {
             name: "Error".to_string(),
             platform: "Error".to_string(),
+            platform_id: "Error".to_string(),
             install_dir: "Error".to_string(),
             size_on_disk: "Error".to_string(),
             last_played: "Error".to_string(),

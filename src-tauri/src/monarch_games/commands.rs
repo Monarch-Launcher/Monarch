@@ -1,16 +1,23 @@
+use super::monarch_client;
 use super::monarchgame::MonarchGame;
-use super::{monarch_client, steam_client};
 use anyhow::Result;
 use rand::rng;
 use rand::seq::SliceRandom;
 use serde_json::value::Value;
 use std::path::PathBuf;
 use tauri::AppHandle;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
-use crate::monarch_games::monarchgame::MonarchGameProperties;
+use super::monarch_client::MonarchClient;
+use super::steam_client::SteamClient;
+use super::stores::{SearchFilter, StoreType};
+use crate::monarch_games::games::{GameType, SearchResult};
+use crate::monarch_games::legendary_client::{self, LegendaryClient};
+use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebApiGame};
+use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 use crate::monarch_utils::monarch_windows::MiniWindow;
 
@@ -67,12 +74,44 @@ pub async fn get_home_recomendations() -> Result<Value, String> {
 
 #[tauri::command]
 /// Search for games on Monarch, currently only support Steam search
-pub async fn search_games(name: String, useMonarch: bool) -> Vec<MonarchGame> {
-    if useMonarch {
-        monarch_client::find_games(&name).await
-    } else {
-        steam_client::find_game(&name).await
+pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebApiGame> {
+    if filter.monarch {
+        let client = MonarchClient::new();
+        return client
+            .search_games(&name, &filter)
+            .await
+            .into_iter()
+            .map(|g| g.to_search_result())
+            .collect();
     }
+
+    let mut games: Vec<MonarchWebApiGame> = Vec::new();
+
+    if filter.steam_powered {
+        let client = SteamClient::new();
+        games.append(
+            &mut client
+                .search_games(&name, &filter)
+                .await
+                .into_iter()
+                .map(|g| g.to_search_result())
+                .collect(),
+        );
+    }
+
+    if filter.egs {
+        let client = LegendaryClient::new();
+        games.append(
+            &mut client
+                .search_games(&name, &filter)
+                .await
+                .into_iter()
+                .map(|g| g.to_search_result())
+                .collect(),
+        );
+    }
+
+    games
 }
 
 #[tauri::command]
@@ -95,10 +134,15 @@ pub async fn download_thumbnail(game: MonarchGame) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn search_page_download_thumbnail(game: MonarchWebApiGame) -> Result<(), String> {
+    download_thumbnail(game.into_monarchgame()).await
+}
+
+#[tauri::command]
 /// Launch a game
-pub async fn launch_game(handle: AppHandle, mut game: MonarchGame) -> Result<(), String> {
+pub async fn launch_game(handle: AppHandle, game: MonarchGame) -> Result<(), String> {
     info!("Launching game: {}", game.name);
-    if let Err(e) = monarch_client::launch_game(&handle, &mut game).await {
+    if let Err(e) = game.launch(&handle).await {
         error!(
             "monarch_games::commands::launch_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -115,21 +159,44 @@ pub async fn launch_game(handle: AppHandle, mut game: MonarchGame) -> Result<(),
 /// Tells Monarch to download specified game
 pub async fn download_game(
     handle: AppHandle,
-    name: String,
-    platform: String,
-    platform_id: String,
+    opts: DownloadOptions,
 ) -> Result<Vec<MonarchGame>, String> {
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
-    info!("Installing: {name}");
-    match monarch_client::download_game(&handle, &name, &platform, &platform_id).await {
-        Ok(new_library) => Ok(new_library),
+    info!("Installing: {}", opts.game_name);
+
+    let game = MonarchGame::new(&opts.game_name, 0, &opts.game_platform, &opts.game_platform_id, "", "", "");
+
+    let result: Result<(), String> = match opts.game_platform.as_str() {
+        "steam" => {
+            if let Err(e) = SteamClient::new().install_game(&handle, &game, &opts).await {
+                return Err(e.to_string());
+            }
+            Ok(())
+        }
+        "epicgames" => {
+            if let Err(e) = LegendaryClient::new().install_game(&handle, &game, &opts).await {
+                return Err(e.to_string());
+            }
+            Ok(())
+        }
+        _ => Err(String::from("Unsupported platform")),
+    };
+
+    if let Err(e) = result {
+        return Err(e);
+    }
+
+    match MONARCH_STATE.read() {
+        Ok(state) => {
+            return Ok(state.get_library_games());
+        }
         Err(e) => {
             error!(
-                "monarch_games::commands::download_game() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
+                "monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}",
+                e
             );
-            Err(format!("Something went wrong while downloading: {name}"))
+            return Err(String::from("Failed to get updated library."));
         }
     }
 }
@@ -234,6 +301,7 @@ pub async fn open_store(url: String, handle: AppHandle) -> Result<(), String> {
 #[tauri::command]
 /// Updates the properties of a game in the library.
 pub async fn update_game_properties(game: MonarchGame) -> Result<(), String> {
+    info!("Updating properties for: {}", game.name);
     match games_library::update_game_properties(&game) {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -444,5 +512,32 @@ pub async fn install_steamcmd(handle: AppHandle) -> Result<(), String> {
         );
         return Err(String::from("Failed to download SteamCMD!"));
     }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn legendary_is_installed() -> bool {
+    legendary_client::legendary_is_installed()
+}
+
+#[tauri::command]
+pub fn install_legendary(handle: AppHandle) -> Result<(), String> {
+    if let Err(e) = legendary_client::install_legendary() {
+        error!(
+            "monarch_games::commands::install_legendary() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to download Legendary!"));
+    }
+
+    let client: LegendaryClient = LegendaryClient::new();
+    if let Err(e) =client.login(handle) {
+        error!(
+            "monarch_games::commands::install_legendary() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to login to Legendary!"));
+    }
+
     Ok(())
 }

@@ -11,7 +11,20 @@ import { ThemeProvider } from 'styled-components';
 
 const App = () => {
   return (
-    <MantineProvider>
+    <MantineProvider
+      theme={{
+        components: {
+          Modal: {
+            defaultProps: {
+              withinPortal: true,
+              centered: true,
+              zIndex: 20001,
+              lockScroll: false,
+            },
+          },
+        },
+      }}
+    >
       <ThemeProvider theme={theme}>
         <SettingsProvider>
           <LibraryProvider>

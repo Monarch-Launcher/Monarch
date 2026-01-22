@@ -1,21 +1,22 @@
 import Button from '@_ui/button';
 import { NoticeBar, NoticeText } from '@_ui/noticeBar';
-import { invoke } from '@tauri-apps/api/core';
 import Page from '@_ui/page';
 import { useSettings } from '@global/contexts/settingsProvider';
 import { Settings } from '@global/types';
 import { Input, Switch } from '@mantine/core';
+import { invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
-import { FaFolderOpen, FaLock, FaSave, FaTrash, FaUser } from 'react-icons/fa';
+import { FaFolderOpen, FaLock, FaSave, FaSteam,FaTrash, FaUser } from 'react-icons/fa';
+import { SiEpicgames } from 'react-icons/si';
 import styled from 'styled-components';
 
 const SectionTitle = styled.h3`
-  color: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.white};
   font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 `;
 
 const MonarchSwitch = styled(Switch)`
@@ -25,8 +26,9 @@ const MonarchSwitch = styled(Switch)`
   }
 
   .mantine-Switch-track {
-    background-color: ${({ theme }) => theme.colors.secondary};
-    border-color: ${({ theme }) => theme.colors.secondary};
+    background-color: ${({ theme }) => theme.colors.surface};
+    border-color: ${({ theme }) => theme.colors.surface};
+    cursor: pointer;
   }
 
   .mantine-Switch-label {
@@ -34,10 +36,7 @@ const MonarchSwitch = styled(Switch)`
     font-family: 'IBM Plex Mono', Inter, Avenir, Helvetica, Arial, sans-serif;
     font-size: 1rem;
     font-weight: 500;
-  }
-
-  &:hover {
-    opacity: 0.9;
+    padding-left: 1rem;
   }
 `;
 
@@ -55,115 +54,49 @@ const ButtonContainer = styled.div`
   margin-top: 1rem;
 `;
 
-const StyledButton = styled(Button)`
-  border-radius: 10px;
-  padding: 10px 20px;
-  font-weight: bold;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  border: none !important;
-
-  &:hover {
-    background-color: ${({ theme }) => theme.colors.primary};
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-`;
-
 const CenteredContainer = styled.div`
-  height: 100vh;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
   background: none;
-  padding: 3.5rem 0 2rem 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  padding: 2rem 0;
 `;
 
 const Card = styled.div`
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  border: 2px solid ${({ theme }) => theme.colors.primary};
-  padding: 2.5rem 2rem 2rem 2rem;
-  margin-bottom: 2.5rem;
+  background: transparent;
+  border-radius: 12px;
+  padding: 0;
+  margin-bottom: 2rem;
   width: 100%;
   max-width: none;
-  transition: box-shadow 0.3s, transform 0.2s;
-  backdrop-filter: blur(6px);
-  position: relative;
-  z-index: 1;
   box-sizing: border-box;
-  overflow: hidden;
-  &:hover {
-    transform: none;
-  }
-`;
-
-// NoticeBar and NoticeText are imported from '@_ui/noticeBar'
-
-const AnimatedButton = styled(StyledButton) <{ $danger?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: background 0.2s, transform 0.2s, box-shadow 0.2s, border 0.2s;
-  ${({ $danger }) =>
-    $danger && `
-      background: #e74c3c;
-      color: white;
-      border: none !important;
-      &:hover { background: #c0392b; }
-    `}
-  &:hover {
-    background: linear-gradient(
-      90deg,
-      ${({ theme }) => theme.colors.primary} 60%,
-      ${({ theme }) => theme.colors.secondary} 100%
-    );
-    transform: translateY(-3px) scale(1.04);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
-  }
-`;
-
-const AnimatedSwitch = styled(MonarchSwitch)`
-  transition: box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  .mantine-Switch-label {
-    font-family: 'IBM Plex Mono', Inter, Avenir, Helvetica, Arial, sans-serif;
-    font-size: 1rem;
-    font-weight: 500;
-  }
-  &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  }
 `;
 
 const Feedback = styled.div`
   color: ${({ theme }) => theme.colors.primary};
-  font-size: 1rem;
+  font-size: 0.9rem;
   margin-top: 0.5rem;
   min-height: 1.2em;
+  text-align: right;
 `;
 
 // Layout for left-side tabs
 const SettingsWrapper = styled.div`
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  column-gap: 1.75rem;
+  column-gap: 2rem;
   width: 100%;
   max-width: none;
-  padding-left: 1rem;
-  padding-right: 4rem;
+  margin: 0;
+  padding: 0 4rem 0 2rem;
   box-sizing: border-box;
-  overflow-x: hidden;
 
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
     row-gap: 1rem;
-    padding-left: 1rem;
-    padding-right: 2rem;
+    padding: 0 1rem;
   }
 `;
 
@@ -173,14 +106,16 @@ const Sidebar = styled.aside`
   gap: 0.5rem;
   min-width: 220px;
   position: sticky;
-  top: 3.5rem; /* match top padding of container */
-  left: 0;
+  top: 2rem;
+  height: fit-content;
 
   @media (max-width: 900px) {
     flex-direction: row;
     min-width: 0;
     width: 100%;
     position: static;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
   }
 `;
 
@@ -188,32 +123,39 @@ const TabButton = styled.button<{ $active?: boolean }>`
   all: unset;
   cursor: pointer;
   padding: 0.75rem 1rem;
-  border-radius: 10px;
-  border: 2px solid
-    ${({ theme, $active }) => ($active ? theme.colors.primary : 'rgba(255,255,255,0.15)')};
-  color: ${({ theme }) => theme.colors.white};
-  background: ${({ $active }) => ($active ? 'rgba(255,255,255,0.08)' : 'transparent')};
+  border-radius: 8px;
+  color: ${({ theme, $active }) => ($active ? theme.colors.white : 'rgba(255,255,255,0.6)')};
+  background: ${({ theme, $active }) => ($active ? theme.colors.primary : 'transparent')};
   font-weight: 600;
-  transition: background 0.2s, transform 0.2s, box-shadow 0.2s, border 0.2s;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-  
-  @media (max-width: 900px) {
-    flex: 1;
-    text-align: center;
+    background: ${({ theme, $active }) => ($active ? theme.colors.primary : 'rgba(255,255,255,0.05)')};
+    color: ${({ theme }) => theme.colors.white};
   }
 `;
 
 const ContentArea = styled.div`
   min-width: 0;
   width: 100%;
-  padding-right: 4rem;
-  overflow-x: hidden;
+`;
 
-  @media (max-width: 900px) {
-    padding-right: 2rem;
+const Description = styled.p`
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 1.5rem 0;
+  font-size: 1rem;
+  line-height: 1.5;
+`;
+
+const Link = styled.a`
+  color: ${({ theme }) => theme.colors.primary};
+  text-decoration: none;
+  font-weight: 600;
+  &:hover {
+    text-decoration: underline;
   }
 `;
 
@@ -235,26 +177,25 @@ const SettingsPage = () => {
     saveSecret,
     deleteSecret,
   } = useSettings();
-  const [activeTab, setActiveTab] = React.useState<'monarch' | 'steam'>('monarch');
+  const [activeTab, setActiveTab] = React.useState<'monarch' | 'steam' | 'epic'>('monarch');
+
+  // Feedback states
   const [feedback, setFeedback] = React.useState<string>('');
   const [deleteFeedback, setDeleteFeedback] = React.useState<string>('');
   const [secretFeedback, setSecretFeedback] = React.useState<string>('');
   const [gameFolderFeedback, setGameFolderFeedback] = React.useState<string>('');
+
+  // Installation states
   const [steamcmdInstalled, setSteamcmdInstalled] = React.useState<boolean | null>(null);
   const [steamcmdInstalling, setSteamcmdInstalling] = React.useState<boolean>(false);
+  const [legendaryInstalled, setLegendaryInstalled] = React.useState<boolean | null>(null);
+  const [legendaryInstalling, setLegendaryInstalling] = React.useState<boolean>(false);
+
+  // Cache states
   const [cacheLoading, setCacheLoading] = React.useState<boolean>(false);
   const [cacheSize, setCacheSize] = React.useState<string | null>(null);
 
-  const onSubmit = React.useCallback(
-    async (values: FormValues) => {
-      const { username, password } = values;
-      await saveCredentials(username, password, 'steam');
-      setFeedback('Credentials saved!');
-      setTimeout(() => setFeedback(''), 2000);
-      reset({ username: '', password: '' });
-    },
-    [saveCredentials, reset],
-  );
+  // --- Monarch Handlers ---
 
   const toggleQuickLaunch = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,41 +210,6 @@ const SettingsPage = () => {
     },
     [settings, updateSettings],
   );
-
-  const toggleSteam = React.useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const updatedSettings: Settings = {
-        ...settings,
-        steam: {
-          ...settings.steam,
-          manage: e.currentTarget.checked,
-        },
-      };
-      await updateSettings(updatedSettings);
-    },
-    [settings, updateSettings],
-  );
-
-  const handleDelete = React.useCallback(async () => {
-    deleteCredentials('steam');
-    setDeleteFeedback('User deleted!');
-    setTimeout(() => setDeleteFeedback(''), 2000);
-  }, []);
-
-  const onSubmitSecret = React.useCallback(
-    async (values: FormValues) => {
-      const { secret } = values;
-      saveSecret(secret, 'steam');
-      setSecretFeedback('Shared secret saved!');
-      setTimeout(() => setSecretFeedback(''), 2000);
-      reset({ secret: '' });
-    },
-    [reset, saveSecret],
-  );
-
-  const handleDeleteSecret = React.useCallback(async () => {
-    await deleteSecret('steam');
-  }, [deleteSecret]);
 
   const handleGameFolderBrowse = React.useCallback(async () => {
     try {
@@ -341,23 +247,13 @@ const SettingsPage = () => {
     [settings, updateSettings, reset],
   );
 
-  const checkSteamcmd = React.useCallback(async () => {
-    try {
-      const installed: boolean = await invoke('steamcmd_is_installed');
-      setSteamcmdInstalled(installed);
-    } catch (e) {
-      console.error('Failed to check SteamCMD installation:', e);
-      setSteamcmdInstalled(false);
-    }
-  }, []);
-
   const formatBytes = React.useCallback((bytes: number) => {
     if (!Number.isFinite(bytes) || bytes < 0) return 'Unavailable';
     if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    const value = bytes / Math.pow(k, i);
+    const value = bytes / (k ** i);
     return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
   }, []);
 
@@ -379,7 +275,7 @@ const SettingsPage = () => {
       await invoke('clear_cached_images');
       await fetchCacheSize();
     } catch (_e) {
-      // ignore, fetch will set Unavailable if needed
+      // ignore
     } finally {
       setCacheLoading(false);
     }
@@ -393,42 +289,17 @@ const SettingsPage = () => {
     }
   }, []);
 
-  const handleResetToDefaultSettings = React.useCallback(async () => {
+  // --- Steam Handlers ---
+
+  const checkSteamcmd = React.useCallback(async () => {
     try {
-      const defaultSettings = await invoke<Settings>('default_settings');
-      // Update the settings context with the default values
-      updateSettings(defaultSettings);
-      // Refresh any dependent data
-      if (activeTab === 'monarch') {
-        fetchCacheSize();
-      } else if (activeTab === 'steam') {
-        checkSteamcmd();
-      }
+      const installed: boolean = await invoke('steamcmd_is_installed');
+      setSteamcmdInstalled(installed);
     } catch (e) {
-      console.error('Failed to reset settings');
-      // If the error contains settings data, use it to update the UI
-      if (e && typeof e === 'object' && 'settings' in e) {
-        updateSettings(e.settings as Settings);
-        if (activeTab === 'monarch') {
-          fetchCacheSize();
-        } else if (activeTab === 'steam') {
-          checkSteamcmd();
-        }
-      }
+      console.error('Failed to check SteamCMD installation:', e);
+      setSteamcmdInstalled(false);
     }
-  }, [updateSettings, activeTab, fetchCacheSize, checkSteamcmd]);
-
-  React.useEffect(() => {
-    if (activeTab === 'steam') {
-      checkSteamcmd();
-    }
-  }, [activeTab, checkSteamcmd]);
-
-  React.useEffect(() => {
-    if (activeTab === 'monarch') {
-      fetchCacheSize();
-    }
-  }, [activeTab, fetchCacheSize]);
+  }, []);
 
   const handleInstallSteamcmd = React.useCallback(async () => {
     try {
@@ -442,6 +313,132 @@ const SettingsPage = () => {
     }
   }, [checkSteamcmd]);
 
+  const toggleSteam = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const updatedSettings: Settings = {
+        ...settings,
+        steam: {
+          ...settings.steam,
+          manage: e.currentTarget.checked,
+        },
+      };
+      await updateSettings(updatedSettings);
+    },
+    [settings, updateSettings],
+  );
+
+  const onSubmitSteam = React.useCallback(
+    async (values: FormValues) => {
+      const { username, password } = values;
+      await saveCredentials(username, password, 'steam');
+      setFeedback('Credentials saved!');
+      setTimeout(() => setFeedback(''), 2000);
+      reset({ username: '', password: '' });
+    },
+    [saveCredentials, reset],
+  );
+
+  const handleDeleteSteam = React.useCallback(async () => {
+    deleteCredentials('steam');
+    setDeleteFeedback('User deleted!');
+    setTimeout(() => setDeleteFeedback(''), 2000);
+  }, [deleteCredentials]);
+
+  const onSubmitSecret = React.useCallback(
+    async (values: FormValues) => {
+      const { secret } = values;
+      saveSecret(secret, 'steam');
+      setSecretFeedback('Shared secret saved!');
+      setTimeout(() => setSecretFeedback(''), 2000);
+      reset({ secret: '' });
+    },
+    [reset, saveSecret],
+  );
+
+  const handleDeleteSecret = React.useCallback(async () => {
+    await deleteSecret('steam');
+  }, [deleteSecret]);
+
+  // --- Epic Handlers ---
+
+  const checkLegendary = React.useCallback(async () => {
+    try {
+      const installed: boolean = await invoke('legendary_is_installed');
+      setLegendaryInstalled(installed);
+    } catch (e) {
+      console.error('Failed to check Legendary installation:', e);
+      setLegendaryInstalled(false);
+    }
+  }, []);
+
+  const handleInstallLegendary = React.useCallback(async () => {
+    try {
+      setLegendaryInstalling(true);
+      await invoke('install_legendary');
+      await checkLegendary();
+    } catch (e) {
+      console.error('Failed to install Legendary:', e);
+    } finally {
+      setLegendaryInstalling(false);
+    }
+  }, [checkLegendary]);
+
+  const toggleEpic = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const updatedSettings: Settings = {
+        ...settings,
+        epic: {
+          ...settings.epic,
+          manage: e.currentTarget.checked,
+        },
+      };
+      await updateSettings(updatedSettings);
+    },
+    [settings, updateSettings],
+  );
+
+  const onSubmitEpic = React.useCallback(
+    async (values: FormValues) => {
+      const { username, password } = values;
+      await saveCredentials(username, password, 'epic');
+      setFeedback('Credentials saved!');
+      setTimeout(() => setFeedback(''), 2000);
+      reset({ username: '', password: '' });
+    },
+    [saveCredentials, reset],
+  );
+
+  const handleDeleteEpic = React.useCallback(async () => {
+    deleteCredentials('epic');
+    setDeleteFeedback('User deleted!');
+    setTimeout(() => setDeleteFeedback(''), 2000);
+  }, [deleteCredentials]);
+
+  // --- Reset Handler (Moved down to access checkSteamcmd/checkLegendary) ---
+
+  const handleResetToDefaultSettings = React.useCallback(async () => {
+    try {
+      const defaultSettings = await invoke<Settings>('default_settings');
+      updateSettings(defaultSettings);
+      if (activeTab === 'monarch') fetchCacheSize();
+      if (activeTab === 'steam') checkSteamcmd();
+      if (activeTab === 'epic') checkLegendary();
+    } catch (e) {
+      console.error('Failed to reset settings');
+      if (e && typeof e === 'object' && 'settings' in e) {
+        updateSettings(e.settings as Settings);
+      }
+    }
+  }, [updateSettings, activeTab, fetchCacheSize, checkSteamcmd, checkLegendary]);
+
+  // --- Effects ---
+
+  React.useEffect(() => {
+    if (activeTab === 'monarch') fetchCacheSize();
+    if (activeTab === 'steam') checkSteamcmd();
+    if (activeTab === 'epic') checkLegendary();
+  }, [activeTab, fetchCacheSize, checkSteamcmd, checkLegendary]);
+
   return (
     <Page>
       <CenteredContainer>
@@ -451,50 +448,34 @@ const SettingsPage = () => {
               Monarch
             </TabButton>
             <TabButton $active={activeTab === 'steam'} onClick={() => setActiveTab('steam')}>
-              Steam
+              <FaSteam size={20} /> Steam
+            </TabButton>
+            <TabButton $active={activeTab === 'epic'} onClick={() => setActiveTab('epic')}>
+              <SiEpicgames size={20} /> Epic Games
             </TabButton>
           </Sidebar>
+
           <ContentArea>
             {activeTab === 'monarch' && (
               <Card>
-                <SectionTitle>Monarch</SectionTitle>
-                <p
-                  style={{
-                    color: '#fff',
-                    margin: '1rem 0 0.5rem 0',
-                    fontSize: '1.05rem',
-                    fontWeight: 400,
-                  }}
-                >
-                  Our start-menu like launcher.
-                  Enables quicker access to launching games by not requiring you to navigate
-                  through the main application.
-                  Stability issues under Linux running Wayland.
-                  This is due to how Wayland handles global shortcuts.
-                </p>
-                <AnimatedSwitch
+                <SectionTitle>General</SectionTitle>
+                <Description>
+                  Configure general behavior and preferences for the Monarch launcher.
+                </Description>
+
+                <MonarchSwitch
                   checked={settings.quicklaunch.enabled}
                   onChange={toggleQuickLaunch}
                   size="md"
-                  label={(
-                    <>
-                      Quicklaunch (Requires application restart. Shortcut: Ctrl+Enter)
-                    </>
-                  )}
+                  label="Quicklaunch (Requires restart. Shortcut: Ctrl+Enter)"
                   labelPosition="left"
                 />
 
-                {/* Game Folder Section */}
-                <div style={{ marginTop: '2rem' }}>
-                  <p style={{ color: '#fff', margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 400 }}>
-                    Set the default folder where Monarch will download new games to.
-                  </p>
-                  <p
-                    style={{ color: '#fff', margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 400 }}
-                  >
-                    (Currently disabled due to weird SteamCMD behaviour.
-                    Games will instead be installed in your default steam library location.)
-                  </p>
+                <div style={{ marginTop: '2.5rem' }}>
+                  <SectionTitle>Game Library Folder</SectionTitle>
+                  <Description>
+                    Set the default folder where Monarch will download new games.
+                  </Description>
                   <form onSubmit={handleSubmit(handleGameFolderSave)}>
                     <FormContainer>
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
@@ -505,222 +486,264 @@ const SettingsPage = () => {
                           style={{ flex: 1 }}
                           {...register('gameFolder')}
                         />
-                        <AnimatedButton
+                        <Button
                           type="button"
-                          variant="primary"
+                          variant="secondary"
                           onClick={handleGameFolderBrowse}
+                          leftIcon={FaFolderOpen}
                         >
-                          <FaFolderOpen /> Browse
-                        </AnimatedButton>
+                          Browse
+                        </Button>
                       </div>
                       <ButtonContainer>
-                        <AnimatedButton type="submit" variant="primary">
-                          <FaSave /> Save Game Folder
-                        </AnimatedButton>
+                        <Button type="submit" variant="secondary" leftIcon={FaSave}>
+                          Save
+                        </Button>
                       </ButtonContainer>
-                      <div style={{ color: '#fff', fontWeight: 500 }}>
-                        Current folder: {settings.monarch.game_folder || 'Not set'}
+                      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>
+                        Current: {settings.monarch.game_folder || 'Not set'}
                       </div>
                       <Feedback>{gameFolderFeedback}</Feedback>
                     </FormContainer>
                   </form>
                 </div>
-                <div style={{ marginTop: '2rem' }}>
-                  <SectionTitle>Storage and Cache</SectionTitle>
+
+                <div style={{ marginTop: '2.5rem' }}>
+                  <SectionTitle>Storage & Cache</SectionTitle>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                    <p
-                      style={{ color: '#fff', margin: 0, fontSize: '1rem', fontWeight: 400 }}
-                    >
-                      Cached images: {cacheLoading ? 'Calculating…' : cacheSize ?? 'Unavailable'}
+                    <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+                      Cached images: {cacheLoading ? 'Calculating...' : cacheSize ?? 'Unavailable'}
                     </p>
-                    <AnimatedButton type="button" variant="primary" onClick={handleClearCache} disabled={cacheLoading}>
+                    <Button type="button" variant="secondary" onClick={handleClearCache} disabled={cacheLoading}>
                       Clear cache
-                    </AnimatedButton>
-                  </div>
-                </div>
-                <div style={{ marginTop: '2rem' }}>
-                  <SectionTitle>Logs</SectionTitle>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                    <AnimatedButton type="button" variant="primary" onClick={handleOpenLogs}>
-                      Open logs
-                    </AnimatedButton>
+                    </Button>
                   </div>
                 </div>
 
-                <div style={{ marginTop: '2rem' }}>
-                  <SectionTitle>Danger Zone</SectionTitle>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                    <AnimatedButton 
-                      type="button" 
-                      variant="primary" 
+                <div style={{ marginTop: '2.5rem' }}>
+                  <SectionTitle>System</SectionTitle>
+                  <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-start' }}>
+                    <Button type="button" variant="secondary" onClick={handleOpenLogs}>
+                      Open Logs
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
                       onClick={handleResetToDefaultSettings}
-                      $danger
                     >
-                      Reset to Default Settings
-                    </AnimatedButton>
+                      Reset to Defaults
+                    </Button>
                   </div>
                 </div>
               </Card>
             )}
 
-            {/* Storage and Cache Section */}
-            {
-              activeTab === 'steam' && steamcmdInstalled === false && (
-                <NoticeBar>
-                  <NoticeText>
-                    SteamCMD is not installed. Some features may require it.
-                  </NoticeText>
-                  <AnimatedButton
-                    type="button"
-                    variant="primary"
-                    onClick={handleInstallSteamcmd}
-                    disabled={steamcmdInstalling}
-                  >
-                    {steamcmdInstalling ? 'Downloading...' : 'Download SteamCMD'}
-                  </AnimatedButton>
-                </NoticeBar>
-              )
-            }
+            {activeTab === 'steam' && (
+              <>
+                {steamcmdInstalled === false && (
+                  <NoticeBar>
+                    <NoticeText>
+                      SteamCMD is not installed. Required for Steam integration.
+                    </NoticeText>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleInstallSteamcmd}
+                      loading={steamcmdInstalling}
+                    >
+                      {steamcmdInstalling ? 'Installing...' : 'Install SteamCMD'}
+                    </Button>
+                  </NoticeBar>
+                )}
 
-            {
-              activeTab === 'steam' && (
                 <Card>
-                  <SectionTitle>Steam</SectionTitle>
-                  <AnimatedSwitch
+                  <SectionTitle>Steam Integration</SectionTitle>
+                  <MonarchSwitch
                     checked={settings.steam.manage}
                     onChange={toggleSteam}
                     size="md"
                     label="Allow Monarch to manage Steam games"
                     labelPosition="left"
                   />
-                  {/* Info paragraph about Steam login */}
-                  <p
-                    style={{
-                      color: '#fff',
-                      margin: '1rem 0 0.5rem 0',
-                      fontSize: '1.05rem',
-                      fontWeight: 400,
-                    }}
-                  >
-                    We recommend only filling in username to begin with,
-                    as you&apos;ll then be prompted by SteamCMD to enter a password on the first run.
-                    After that SteamCMD should remember you.
-                  </p>
-                  <a
-                    href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: '#fa5002', textDecoration: 'underline', fontWeight: 600 }}
-                  >
-                    How Monarch handles user authentication
-                  </a>
-                  <form onSubmit={handleSubmit(onSubmit)}>
-                    <FormContainer>
-                      <Input
-                        placeholder="Steam username"
-                        variant="filled"
-                        icon={<FaUser />}
-                        radius="md"
-                        {...register('username')}
-                      />
-                      <Input
-                        placeholder="Steam password"
-                        variant="filled"
-                        type="password"
-                        icon={<FaLock />}
-                        radius="md"
-                        {...register('password')}
-                      />
-                      <ButtonContainer>
-                        <AnimatedButton type="submit" variant="primary">
-                          <FaSave /> Save
-                        </AnimatedButton>
-                      </ButtonContainer>
-                      <ButtonContainer>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            width: '100%',
-                          }}
-                        >
-                          <span style={{ color: '#fff', fontWeight: 500 }}>
-                            Steam login: {settings.steam.username ? settings.steam.username : 'no login'}
+
+                  <div style={{ marginTop: '2rem' }}>
+                    <Description>
+                      Enter your Steam credentials to enable library synchronization and game downloads.
+                      <br />
+                      <Link
+                        href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Read about authentication security
+                      </Link>
+                    </Description>
+
+                    <form onSubmit={handleSubmit(onSubmitSteam)}>
+                      <FormContainer>
+                        <Input
+                          placeholder="Steam Username"
+                          variant="filled"
+                          icon={<FaUser />}
+                          radius="md"
+                          {...register('username')}
+                        />
+                        <Input
+                          placeholder="Steam Password"
+                          variant="filled"
+                          type="password"
+                          icon={<FaLock />}
+                          radius="md"
+                          {...register('password')}
+                        />
+                        <ButtonContainer>
+                          <Button type="submit" variant="secondary" leftIcon={FaSave}>
+                            Save Credentials
+                          </Button>
+                        </ButtonContainer>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.7)' }}>
+                            Status: {settings.steam.username ? `Logged in as ${settings.steam.username}` : 'Not logged in'}
                           </span>
-                          <AnimatedButton
-                            type="button"
-                            variant="primary"
-                            onClick={handleDelete}
-                            $danger
-                          >
-                            <FaTrash /> Delete user
-                          </AnimatedButton>
+                          {settings.steam.username && (
+                            <Button type="button" variant="danger" onClick={handleDeleteSteam} leftIcon={FaTrash}>
+                              Remove Account
+                            </Button>
+                          )}
                         </div>
-                      </ButtonContainer>
-                      <Feedback>{feedback}</Feedback>
-                    </FormContainer>
-                  </form>
-                  <form onSubmit={handleSubmit(onSubmitSecret)}>
-                    <FormContainer>
-                      {/* Instructional text and tutorial link for shared secret */}
-                      <div style={{ color: '#fff', marginBottom: '0.5rem', fontWeight: 500 }}>
-                        Insert your Steam shared secret, if using a 3rd party 2FA. (Advanced) <br />
-                        <a
-                          href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: '#fa5002', textDecoration: 'underline', fontWeight: 600 }}
-                        >
-                          How to set up your Steam shared secret (guide)
-                        </a>
-                      </div>
-                      <Input
-                        placeholder="Steam shared secret"
-                        variant="filled"
-                        type="password"
-                        icon={<FaLock />}
-                        radius="md"
-                        {...register('secret')}
-                      />
-                      <ButtonContainer>
-                        <AnimatedButton type="submit" variant="primary">
-                          <FaSave /> Save
-                        </AnimatedButton>
-                      </ButtonContainer>
-                      <ButtonContainer>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            width: '100%',
-                          }}
-                        >
-                          <span style={{ color: '#fff', fontWeight: 500 }}>
-                            {settings.steam.twofa ? 'Secret set' : 'Secret not set'}
+                        <Feedback>{feedback}</Feedback>
+                        <Feedback>{deleteFeedback}</Feedback>
+                      </FormContainer>
+                    </form>
+                  </div>
+
+                  <div style={{ marginTop: '2.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
+                    <SectionTitle>Steam Guard (2FA)</SectionTitle>
+                    <Description>
+                      If you use Steam Guard Mobile Authenticator, you can provide your shared secret here.
+                      <br />
+                      <Link
+                        href="https://github.com/Monarch-Launcher/Monarch/blob/development/docs/steam_login.md"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        How to find your shared secret
+                      </Link>
+                    </Description>
+
+                    <form onSubmit={handleSubmit(onSubmitSecret)}>
+                      <FormContainer>
+                        <Input
+                          placeholder="Shared Secret"
+                          variant="filled"
+                          type="password"
+                          icon={<FaLock />}
+                          radius="md"
+                          {...register('secret')}
+                        />
+                        <ButtonContainer>
+                          <Button type="submit" variant="secondary" leftIcon={FaSave}>
+                            Save Secret
+                          </Button>
+                        </ButtonContainer>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.7)' }}>
+                            Status: {settings.steam.twofa ? 'Secret configured' : 'Not configured'}
                           </span>
-                          <AnimatedButton
-                            type="button"
-                            variant="primary"
-                            onClick={handleDeleteSecret}
-                            $danger
-                          >
-                            <FaTrash /> Delete secret
-                          </AnimatedButton>
+                          {settings.steam.twofa && (
+                            <Button type="button" variant="danger" onClick={handleDeleteSecret} leftIcon={FaTrash}>
+                              Remove Secret
+                            </Button>
+                          )}
                         </div>
-                      </ButtonContainer>
-                      <Feedback>{secretFeedback}</Feedback>
-                    </FormContainer>
-                  </form>
-                  <Feedback>{deleteFeedback}</Feedback>
+                        <Feedback>{secretFeedback}</Feedback>
+                      </FormContainer>
+                    </form>
+                  </div>
                 </Card>
-              )
-            }
-          </ContentArea >
-        </SettingsWrapper >
-      </CenteredContainer >
-    </Page >
+              </>
+            )}
+
+            {activeTab === 'epic' && (
+              <>
+                {legendaryInstalled === false && (
+                  <NoticeBar>
+                    <NoticeText>
+                      Legendary is not installed. Required for Epic Games integration.
+                    </NoticeText>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleInstallLegendary}
+                      loading={legendaryInstalling}
+                    >
+                      {legendaryInstalling ? 'Installing...' : 'Install Legendary'}
+                    </Button>
+                  </NoticeBar>
+                )}
+
+                <Card>
+                  <SectionTitle>Epic Games Integration</SectionTitle>
+                  <MonarchSwitch
+                    checked={settings.epic.manage}
+                    onChange={toggleEpic}
+                    size="md"
+                    label="Allow Monarch to manage Epic Games"
+                    labelPosition="left"
+                  />
+
+                  <div style={{ marginTop: '2rem' }}>
+                    <Description>
+                      Enter your Epic Games credentials to enable library synchronization and game downloads.
+                    </Description>
+
+                    <form onSubmit={handleSubmit(onSubmitEpic)}>
+                      <FormContainer>
+                        <Input
+                          placeholder="Epic Username / Email"
+                          variant="filled"
+                          icon={<FaUser />}
+                          radius="md"
+                          {...register('username')}
+                        />
+                        <Input
+                          placeholder="Password"
+                          variant="filled"
+                          type="password"
+                          icon={<FaLock />}
+                          radius="md"
+                          {...register('password')}
+                        />
+                        <ButtonContainer>
+                          <Button type="submit" variant="secondary" leftIcon={FaSave}>
+                            Save Credentials
+                          </Button>
+                        </ButtonContainer>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.7)' }}>
+                            Status: {settings.epic.username ? `Logged in as ${settings.epic.username}` : 'Not logged in'}
+                          </span>
+                          {settings.epic.username && (
+                            <Button type="button" variant="danger" onClick={handleDeleteEpic} leftIcon={FaTrash}>
+                              Remove Account
+                            </Button>
+                          )}
+                        </div>
+                        <Feedback>{feedback}</Feedback>
+                        <Feedback>{deleteFeedback}</Feedback>
+                      </FormContainer>
+                    </form>
+                  </div>
+                </Card>
+              </>
+            )}
+          </ContentArea>
+        </SettingsWrapper>
+      </CenteredContainer>
+    </Page>
   );
 };
 

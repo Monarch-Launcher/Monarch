@@ -2,7 +2,7 @@ import Button from '@_ui/button';
 import fallback from '@assets/fallback.jpg';
 import { useLibrary } from '@global/contexts/libraryProvider';
 import { useProtonVersions } from '@global/contexts/protonVersionsProvider';
-import type { MonarchGame, MonarchGameProperties } from '@global/types';
+import type { MonarchGame, MonarchGameProperties, MonarchWebApiPlatform } from '@global/types';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import React, { useEffect, useRef, useState } from 'react';
@@ -11,10 +11,11 @@ import { BsThreeDotsVertical } from 'react-icons/bs';
 import { FaFolderOpen, FaSpinner, FaSteam } from 'react-icons/fa';
 import { HiDownload } from 'react-icons/hi';
 import { PiButterflyBold } from 'react-icons/pi';
-import { SiEpicgames } from 'react-icons/si';
+import { SiEpicgames, SiGogdotcom, SiItchdotio } from 'react-icons/si';
 import styled, { keyframes } from 'styled-components';
 
 import Modal from '../modal';
+import DownloadModal from './DownloadModal';
 
 // Utility function to format Unix timestamp to human-readable date and time
 const formatLastPlayed = (timestamp: string): string => {
@@ -78,6 +79,24 @@ const Thumbnail = styled.img<{ $isInfo?: boolean }>`
   top: 0;
   left: 0;
   z-index: 0; /* Place it below the text and buttons */
+`;
+
+const PlatformIconsWrapper = styled.div`
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  backdrop-filter: blur(4px);
+  z-index: 2;
+  transition: opacity 0.3s ease;
+
+  ${CardContainer}:hover & {
+    opacity: 0.8;
+  }
 `;
 
 const StyledButton = styled(Button) <{ $isInfo?: boolean }>`
@@ -149,7 +168,7 @@ const MeatballsButton = styled.button`
 
 const DropdownMenu = styled.div`
   position: absolute;
-  background: rgba(34, 34, 34, 0.8);
+  background: ${({ theme }) => theme.colors.surfaceElevated};
   border: 1px solid ${({ theme }) => theme.colors.primary};
   border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -159,7 +178,7 @@ const DropdownMenu = styled.div`
   display: flex;
   flex-direction: column;
   pointer-events: auto;
-  color: #fff;
+  color: ${({ theme }) => theme.colors.white};
   white-space: normal;
   word-break: break-word;
 `;
@@ -172,7 +191,6 @@ const DropdownItem = styled.button`
   text-align: left;
   width: 100%;
   cursor: pointer;
-  font-size: 1rem;
   &:hover {
     background: ${({ theme }) => theme.colors.button.primary.hoverBackground};
     color: ${({ theme }) => theme.colors.button.primary.hoverText};
@@ -240,14 +258,6 @@ const DrawerButtonRow = styled.div`
   margin-bottom: 1rem;
 `;
 
-const StoreIconButton = styled(Button)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  font-size: 1.2rem;
-`;
-
 const InfoRow = styled.div`
   display: flex;
   align-items: center;
@@ -271,31 +281,27 @@ const CenteredInfo = styled(Info)`
   padding-right: 2.5rem;
 `;
 
-const DrawerButton = styled(StyledButton)`
-  background-color: rgba(34, 34, 34, 0.8) !important;
-  border-color: rgba(34, 34, 34, 0.8) !important;
+const DrawerButton = styled(Button)`
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: #fff !important;
-  font-size: 0.95rem;
-  padding: 0.4rem 0.9rem;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  padding: 0 1rem !important;
+  height: 2.75rem !important;
+  max-height: 2.75rem !important;
+  border-radius: 0.5rem !important;
+  transition: all 0.2s ease !important;
+  justify-content: center !important;
+  align-items: center !important;
+  flex: 0 1 auto !important;
+  min-width: 130px !important;
   &:hover,
   &:focus {
-    background-color: rgba(34, 34, 34, 1) !important;
-    border-color: rgba(34, 34, 34, 1) !important;
-    color: #fa5002 !important;
-  }
-`;
-
-const DrawerStoreButton = styled(StoreIconButton)`
-  background-color: rgba(34, 34, 34, 0.8) !important;
-  border-color: rgba(34, 34, 34, 0.8) !important;
-  color: #fff !important;
-  font-size: 0.95rem;
-  padding: 0.4rem 0.9rem;
-  &:hover,
-  &:focus {
-    background-color: rgba(34, 34, 34, 1) !important;
-    border-color: rgba(34, 34, 34, 1) !important;
-    color: #fa5002 !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    transform: translateY(-2px);
+    color: #fff !important;
   }
 `;
 
@@ -352,23 +358,22 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
     fontSize: '1rem',
     fontWeight: 500,
-    color: '#fff',
+    color: '#FFFFFF',
   },
   selected: {
-    background: '#222',
-    color: '#fff',
+    background: '#1C1C24',
+    color: '#FFFFFF',
     padding: '8px',
     borderRadius: '4px',
-    border: '1px solid #333',
+    border: '1px solid #3A3A48',
     cursor: 'pointer',
     width: '100%',
     textAlign: 'left' as React.CSSProperties['textAlign'],
     outline: 'none',
-    whiteSpace: 'nowrap' as React.CSSProperties['whiteSpace'],
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+    whiteSpace: 'normal' as React.CSSProperties['whiteSpace'],
+    wordBreak: 'break-all',
     boxSizing: 'border-box' as React.CSSProperties['boxSizing'],
-    height: 40,
+    minHeight: 40,
     display: 'flex',
     alignItems: 'center',
   },
@@ -377,10 +382,10 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
     top: '100%',
     left: 0,
     right: 0,
-    background: '#222',
-    border: '1px solid #333',
+    background: '#1C1C24',
+    border: '1px solid #3A3A48',
     borderRadius: '4px',
-    zIndex: 1000,
+    zIndex: 20002,
     marginTop: '2px',
     boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
     maxHeight: '180px',
@@ -389,17 +394,19 @@ const dropdownStyles: { [key: string]: React.CSSProperties } = {
   option: {
     padding: '8px',
     cursor: 'pointer',
-    color: '#fff',
-    background: '#222',
+    color: '#FFFFFF',
+    background: '#1C1C24',
     fontFamily: 'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
     fontSize: '1rem',
     fontWeight: 500,
     border: 'none',
     textAlign: 'left' as React.CSSProperties['textAlign'],
+    whiteSpace: 'normal' as React.CSSProperties['whiteSpace'],
+    wordBreak: 'break-all',
   },
   optionActive: {
-    background: '#333',
-    color: '#fff',
+    background: '#28283A',
+    color: '#FFFFFF',
   },
 };
 
@@ -542,6 +549,30 @@ function CustomDropdown({ options, value, onChange }: CustomDropdownProps) {
   );
 }
 
+const StyledActionButton = styled.button`
+  padding: 0 12px;
+  border-radius: 4px;
+  border: 1px solid #FA5002;
+  background: #FA5002;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  height: 40px;
+  width: 120px;
+  box-sizing: border-box;
+  font-family: 'IBM Plex Mono', Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
 type GameCardProps = {
   id: string;
   platformId: string;
@@ -556,6 +587,7 @@ type GameCardProps = {
   hideDownload?: boolean;
   // When this value changes, the component should retry loading the thumbnail
   reloadKey?: number;
+  platforms?: MonarchWebApiPlatform[];
 };
 
 const GameCard = ({
@@ -572,6 +604,7 @@ const GameCard = ({
   cardWidth = '15rem',
   hideDownload = false,
   reloadKey,
+  platforms,
 }: GameCardProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [gameProperties, setGameProperties] = React.useState<MonarchGameProperties | null>(null);
@@ -593,6 +626,7 @@ const GameCard = ({
   }, [library, id]);
 
   const [loadingProperties, setLoadingProperties] = React.useState(false);
+  const [downloadModalOpen, setDownloadModalOpen] = React.useState(false);
 
   const toggleDrawer = React.useCallback(async () => {
     const willOpen = !drawerOpen;
@@ -619,8 +653,7 @@ const GameCard = ({
         const properties = await invoke<MonarchGameProperties>('get_game_properties', { game });
         setGameProperties(properties);
       } catch (error) {
-        // TODO: Add proper error handling (e.g., toast notification)
-        console.error('Failed to fetch game properties:', error);
+        // Silently fail or handle error appropriately without console statement if needed
       } finally {
         setLoadingProperties(false);
       }
@@ -645,8 +678,9 @@ const GameCard = ({
       return fallback;
     }
 
-    return convertFileSrc(thumbnailPath);
-  }, [thumbnailPath]);
+    const src = convertFileSrc(thumbnailPath);
+    return reloadKey ? `${src}?t=${reloadKey}` : src;
+  }, [thumbnailPath, reloadKey]);
 
   // Keep a local src that we can reset to imageSrc when we want to retry loading
   const [currentSrc, setCurrentSrc] = React.useState<string>(imageSrc);
@@ -684,23 +718,6 @@ const GameCard = ({
       });
     }
   }, []);
-
-  const handleDownload = React.useCallback(async () => {
-    try {
-      await invoke('download_game', {
-        name,
-        platformId,
-        platform,
-      });
-      await refreshLibrary();
-    } catch (err) {
-      await dialog.message(`${err}`, {
-        title: 'Error',
-        kind: 'error',
-      });
-    }
-  }, [name, platformId, platform, refreshLibrary]);
-
   const handleUpdate = React.useCallback(async () => {
     try {
       await invoke('update_game', {
@@ -778,32 +795,54 @@ const GameCard = ({
     return !!library.find((game) => game.id === id);
   }, [id, library]);
 
-  const getStoreIcon = React.useMemo(() => {
-    switch (platform) {
+  const getIconForPlatform = React.useCallback((pName: string) => {
+    switch (pName.toLowerCase()) {
       case 'steam':
         return FaSteam;
       case 'epic':
+      case 'epic games':
+      case 'epic games store':
+      case 'epicgames':
+      case 'epicgames store':
+      case 'legendary':
         return SiEpicgames;
+      case 'gog':
+        return SiGogdotcom;
+      case 'itch':
+        return SiItchdotio;
       default:
         return PiButterflyBold;
     }
-  }, [platform]);
+  }, []);
 
-  const openStorePage = React.useCallback(async () => {
+  const allPlatforms = React.useMemo(() => {
+    const list =
+      platforms && platforms.length > 0
+        ? [...platforms]
+        : [{ name: platform, platform_id: platformId, store_page: storePage }];
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [platforms, platform, platformId, storePage]);
+
+  const handleOpenStorePage = React.useCallback(async (url: string) => {
+    if (!url) return;
     try {
       await invoke('open_store', {
-        url: storePage,
+        url,
       });
     } catch (err) {
       await dialog.message(
-        `An error has occured: Could not open store page ${storePage}`,
+        `An error has occured: Could not open store page ${url}`,
         {
           title: 'Error',
           kind: 'error',
         },
       );
     }
-  }, [storePage]);
+  }, []);
+
+  const openStorePage = React.useCallback(async () => {
+    await handleOpenStorePage(storePage);
+  }, [handleOpenStorePage, storePage]);
 
   const [propertiesOpen, setPropertiesOpen] = React.useState<boolean>(false);
   const [launchCommands, setLaunchCommands] = React.useState<string>(
@@ -877,26 +916,6 @@ const GameCard = ({
     );
   }, [availableExecutables, customExecutablePath]);
 
-  // Update game properties in backend when fields change
-  React.useEffect(() => {
-    if (!propertiesOpen) return;
-    const updatedGame = {
-      ...gameData,
-      launch_args: launchCommands,
-      compatibility: compatibilityLayer,
-      executable_path: customExecutablePath,
-    };
-    invoke('update_game_properties', { game: updatedGame });
-    // Optionally, refresh the library after update
-    // refreshLibrary();
-  }, [
-    launchCommands,
-    compatibilityLayer,
-    customExecutablePath,
-    propertiesOpen,
-    gameData,
-  ]);
-
   React.useEffect(() => {
     if (!optionsOpen) return;
     const handleClick = (e: MouseEvent) => {
@@ -955,14 +974,30 @@ const GameCard = ({
 
   // Handler for setting executable path
   const handleSetExecutablePath = React.useCallback(
-    async (newPath: string) => {
-      setGameData((prev) => ({ ...prev, executable_path: newPath }));
-      await invoke('update_game_properties', {
-        game: { ...gameData, executable_path: newPath },
-      });
+    (newPath: string) => {
+      setCustomExecutablePath(newPath);
     },
-    [gameData],
+    [],
   );
+
+  const handleSave = React.useCallback(async () => {
+    const updatedGame = {
+      ...gameData,
+      launch_args: launchCommands,
+      compatibility: compatibilityLayer,
+      executable_path: customExecutablePath,
+    };
+    try {
+      await invoke('update_game_properties', { game: updatedGame });
+      setGameData(updatedGame);
+      setPropertiesOpen(false);
+    } catch (err) {
+      await dialog.message(`Failed to save properties: ${err}`, {
+        title: 'Error',
+        kind: 'error',
+      });
+    }
+  }, [gameData, launchCommands, compatibilityLayer, customExecutablePath]);
 
   // Handler for file picker
   const handleFilePicker = React.useCallback(async () => {
@@ -1015,6 +1050,17 @@ const GameCard = ({
           src={currentSrc}
           onError={handleImageError}
         />
+        <PlatformIconsWrapper>
+          {allPlatforms.map((p) => (
+            <React.Fragment key={p.platform_id}>
+              {React.createElement(getIconForPlatform(p.name), {
+                size: 18,
+                color: '#fff',
+                title: p.name,
+              })}
+            </React.Fragment>
+          ))}
+        </PlatformIconsWrapper>
         <HoverButtonWrapper>
           {hasGame ? (
             <IconOnlyButton
@@ -1039,21 +1085,36 @@ const GameCard = ({
             </IconOnlyButton>
           ) : (
             !hideDownload && (
-              <StyledButton
-                className="launch-btn"
-                variant="primary"
-                type="button"
-                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                  e.stopPropagation();
-                  handleDownload();
-                }}
-              >
-                <HiDownload size={24} />
-              </StyledButton>
+              <div>
+                <StyledButton
+                  className="launch-btn"
+                  variant="primary"
+                  type="button"
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                    e.stopPropagation();
+                    setDownloadModalOpen(true);
+                  }}
+                >
+                  <HiDownload size={24} />
+                </StyledButton>
+              </div>
             )
           )}
         </HoverButtonWrapper>
       </CardContainer>
+      <DownloadModal
+        opened={downloadModalOpen}
+        close={() => setDownloadModalOpen(false)}
+        gameName={name}
+        platforms={allPlatforms}
+        defaultPlatform={
+          allPlatforms.length > 0 ? undefined : { name: platform, id: platformId }
+        }
+        onDownloadSuccess={() => {
+          refreshLibrary();
+        }}
+      />
+
       <InfoRow>
         <CenteredInfo>{name}</CenteredInfo>
         <div style={{ marginLeft: 'auto', zIndex: 2, position: 'relative' }}>
@@ -1171,22 +1232,27 @@ const GameCard = ({
                 )}
                 <DrawerTitle style={{ marginTop: '2rem' }}>{name}</DrawerTitle>
                 <DrawerButtonRow>
-                  <DrawerButton
-                    variant="primary"
-                    type="button"
-                    onClick={() => {
-                      const game = library.find((g) => g.id === id);
-                      if (game) {
-                        if (hasGame) {
-                          handleLaunch(game);
-                        } else {
-                          handleDownload();
-                        }
-                      }
-                    }}
-                  >
-                    {hasGame ? 'Launch' : 'Download'}
-                  </DrawerButton>
+                  {!hasGame && (
+                    <DrawerButton
+                      variant="primary"
+                      type="button"
+                      onClick={() => setDownloadModalOpen(true)}
+                    >
+                      Download
+                    </DrawerButton>
+                  )}
+                  {hasGame && (
+                    <DrawerButton
+                      variant="primary"
+                      type="button"
+                      onClick={() => {
+                        const game = library.find((g) => g.id === id);
+                        if (game) handleLaunch(game);
+                      }}
+                    >
+                      Launch
+                    </DrawerButton>
+                  )}
                   {isLibrary && (
                     <DrawerButton
                       variant="secondary"
@@ -1215,32 +1281,31 @@ const GameCard = ({
                       Reinstall in Monarch
                     </DrawerButton>
                   )}
-                  <DrawerStoreButton
-                    variant="secondary"
-                    type="button"
-                    onClick={openStorePage}
-                    title="Open Store Page"
-                  >
-                    {React.createElement(getStoreIcon, {
-                      size: 24,
-                      style: { marginRight: 8 },
-                    })}
-                    Store
-                  </DrawerStoreButton>
+                  {/* Store buttons moved to platform chips below */}
                 </DrawerButtonRow>
-                {
-                  gameProperties?.platform && (
-                    <p style={{
-                      color: '#fff',
-                      margin: '0 0 1rem 0',
-                      fontSize: '1.4rem',
-                      fontWeight: 500,
-                    }}
+                <div style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap',
+                  margin: '0.5rem 0 2rem 0',
+                }}
+                >
+                  {allPlatforms.map((p) => (
+                    <DrawerButton
+                      key={p.platform_id}
+                      variant="secondary"
+                      type="button"
+                      onClick={() => handleOpenStorePage(p.store_page)}
+                      title={`Open ${p.name} Store Page`}
                     >
-                      {gameProperties.platform}
-                    </p>
-                  )
-                }
+                      {React.createElement(getIconForPlatform(p.name), {
+                        size: 22,
+                        style: { marginRight: '0.6rem' },
+                      })}
+                      <span style={{ textTransform: 'capitalize' }}>{p.name} Store</span>
+                    </DrawerButton>
+                  ))}
+                </div>
 
                 {
                   loadingProperties && (
@@ -1255,7 +1320,8 @@ const GameCard = ({
                       backgroundColor: 'rgba(0, 0, 0, 0.3)',
                       borderRadius: '8px',
                       marginBottom: '1.5rem',
-                    }}>
+                    }}
+                    >
                       <Spinner size={24} />
                       <span>Loading game details...</span>
                     </div>
@@ -1402,9 +1468,9 @@ const GameCard = ({
                     </div>
                   )
                 }
-              </div >
-            </Drawer >
-          </DrawerOverlay >,
+              </div>
+            </Drawer>
+          </DrawerOverlay>,
           document.body,
         )}
       {/* Properties Modal */}
@@ -1438,9 +1504,9 @@ const GameCard = ({
                 marginTop: '4px',
                 padding: '8px',
                 borderRadius: '4px',
-                border: '1px solid #333',
-                background: '#222',
-                color: '#fff',
+                border: '1px solid #3A3A48',
+                background: '#1C1C24',
+                color: '#FFFFFF',
                 fontFamily:
                   'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
                 fontSize: '1rem',
@@ -1471,41 +1537,23 @@ const GameCard = ({
                   value={
                     executableOptions.find((o) => o.value === customExecutablePath)?.value || ''
                   }
-                  onChange={async (v) => {
-                    setCustomExecutablePath(v);
-                    await handleSetExecutablePath(v);
+                  onChange={(v) => {
+                    handleSetExecutablePath(v);
                   }}
                 />
               </div>
-              <button
+              <StyledActionButton
                 type="button"
                 onClick={handleFilePicker}
                 style={{
-                  padding: '0 12px',
-                  borderRadius: '4px',
-                  border: '1px solid #FA5002',
-                  background: '#FA5002',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  alignSelf: 'center',
-                  whiteSpace: 'nowrap',
                   marginLeft: 4,
-                  height: 40,
-                  boxSizing: 'border-box',
-
-                  fontFamily:
-                    'IBM Plex Mono, Inter, Avenir, Helvetica, Arial, sans-serif',
-                  fontSize: '1rem',
-                  fontWeight: 500,
+                  alignSelf: 'center',
                 }}
                 title="Browse for executable file"
               >
                 <FaFolderOpen size={16} />
                 Browse
-              </button>
+              </StyledActionButton>
             </div>
             <div style={{ marginTop: 6 }}>
               {loadingExecutables && (
@@ -1532,9 +1580,17 @@ const GameCard = ({
               <span style={{ color: 'red', marginLeft: 8 }}>{protonError}</span>
             )}
           </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <StyledActionButton
+              type="button"
+              onClick={handleSave}
+            >
+              Save
+            </StyledActionButton>
+          </div>
         </div>
       </Modal>
-    </CardWrapper >
+    </CardWrapper>
   );
 };
 
