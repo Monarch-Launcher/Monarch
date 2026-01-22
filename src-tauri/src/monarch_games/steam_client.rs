@@ -395,10 +395,11 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
 
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.
 async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame> {
-    info!("Parsing {id} via monarch-launcher.com.");
+    let monarch_url: &'static str = std::env!("MONARCH_URL");
+
+    info!("Parsing {id} via {monarch_url}.");
     let mut game_info_opt: Option<MonarchWebApiGame> = None;
-    let target: String =
-        format!("https://monarch-launcher.com/api/games?platform=steam&platform_id={id}");
+    let target: String = format!("{monarch_url}/api/games?platform=steam&platform_id={id}");
 
     // GET info from Steam servers
     match reqwest::get(&target).await {

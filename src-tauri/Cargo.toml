@@ -11,6 +11,7 @@ edition = "2021"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+dotenv = "0.15.0" 
 
 [dependencies]
 # Tauri dependencies
