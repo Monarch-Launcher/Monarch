@@ -9,12 +9,14 @@ use super::games::GameType;
 use super::stores::StoreType;
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::legendary_client::LegendaryClient;
-use crate::monarch_games::linux::umu::umu_run;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::path_exists;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
+
+#[cfg(target_os = "linux")]
+use crate::monarch_games::linux::umu::umu_run;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MonarchGame {
