@@ -1,10 +1,11 @@
 use crate::{monarch_games::monarchgame::MonarchGame, monarch_library::games_library::write_games};
 use anyhow::{bail, Context, Result};
-use once_cell::sync::Lazy;
+use std::sync::{LazyLock, RwLock};
 
 /// Global state of monarch backend (excluding settings for now)
 /// TODO: Change to some Atomic structure in the future to avoid using shared refrences to mut static
-pub static mut MONARCH_STATE: Lazy<MonarchState> = Lazy::<MonarchState>::new(MonarchState::default);
+pub static MONARCH_STATE: LazyLock<RwLock<MonarchState>> =
+    LazyLock::new(|| RwLock::new(MonarchState::default()));
 
 /// A struct for storing some sort of global state that
 /// the backend can access to recieve relevant info.
@@ -23,7 +24,8 @@ impl MonarchState {
     /// Should probably only be run when refreshing library.
     pub fn set_library_games(&mut self, games: &[MonarchGame]) -> Result<()> {
         self.library_games = games.to_vec();
-        write_games(&self.library_games).with_context(|| "monarch_state::set_library_games() -> ")?;
+        write_games(&self.library_games)
+            .with_context(|| "monarch_state::set_library_games() -> ")?;
         return Ok(());
     }
 
@@ -34,7 +36,8 @@ impl MonarchState {
         for (i, self_game) in self.library_games.iter_mut().enumerate() {
             if self_game.id == game.id {
                 self.library_games[i] = game.clone();
-                write_games(&self.library_games).with_context(|| "monarch_state::update_game() -> ")?;
+                write_games(&self.library_games)
+                    .with_context(|| "monarch_state::update_game() -> ")?;
                 return Ok(());
             }
         }

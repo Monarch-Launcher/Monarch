@@ -2,6 +2,9 @@ pub mod commands;
 pub mod monarch_client;
 pub mod monarchgame;
 pub mod steam_client;
+pub mod stores;
+pub mod games;
+pub mod legendary_client;
 
 #[cfg(target_os = "windows")]
 pub mod windows;

@@ -4,3 +4,22 @@
 .env
 
 target/
+#
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Other stuff
+squashfs-root/
+vite.config.ts.timestamp*
+
+**/.history
+
+.env

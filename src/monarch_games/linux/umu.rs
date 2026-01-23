@@ -36,7 +36,7 @@ pub fn umu_is_installed() -> bool {
     if !umu_path.exists() {
         return false;
     }
-    umu_path.join("umu-run").exists()
+    get_umu_exe().exists()
 }
 
 /// Installs the umu-launcher by downloading the binary to $MONARCH_HOME/umu/umu-run
@@ -122,17 +122,26 @@ pub fn install_umu() -> Result<()> {
 /// Executes the game using umu-launcher to run in proton.
 pub async fn umu_run(game: &mut MonarchGame) -> Result<()> {
     info!("Compatibility layer set: {}", game.compatibility);
-    game.compatibility = game.compatibility.replace(" ", "\\ ");
 
-    let env_vars: HashMap<&str, &str> =
-        HashMap::from([("PROTON_PATH", game.compatibility.as_str())]);
+    let platform_arg = match game.platform.as_str() {
+        "epic" => "egs",
+        _ => "none",
+    };
+
+    let gameid_arg = format!("umu-{}", game.platform_id);
+
+    let env_vars: HashMap<&str, &str> = HashMap::from([
+        ("PROTON_PATH", game.compatibility.as_str()),
+        ("GAMEID", &gameid_arg),
+        ("STORE", &platform_arg),
+    ]);
 
     let umu: PathBuf = get_umu_exe();
-    let launch_command: String = format!("{} {}", umu.display(), game.executable_path);
+    let launch_command: String = format!("{} '{}'", umu.display(), game.executable_path);
 
     // Order launch args and command in proper order
     info!("Launch args: {}", game.launch_args);
-    let full_command: String = if game.launch_args.find("%command%").is_some() {
+    let full_command: String = if game.launch_args.contains("%command%") {
         warn!("Using Steam %command% style launch arguments!");
         game.launch_args.replace("%command%", &launch_command)
     } else {

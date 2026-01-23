@@ -125,6 +125,8 @@ pub async fn run_in_terminal(
     info!("Child exited.");
     info!("Child process exited with status: {:?}", exit_status);
 
+    std::thread::sleep(std::time::Duration::from_secs(2));
+
     if let Err(e) = close_terminal_window(handle).await {
         error!("monarch_terminal::run_in_terminal() -> {e}");
     }

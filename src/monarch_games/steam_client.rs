@@ -1,14 +1,21 @@
+use super::stores::StoreType;
 use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
 use reqwest;
 use scraper::{Html, Selector};
+use serde::Deserialize;
 use serde_json::Value;
 use simple_steam_totp::generate;
 use std::path::PathBuf;
 use tokio::task;
 use tracing::{error, info, warn};
 
-use super::monarchgame::{MonarchGame, MonarchWebGame};
+use super::monarchgame::{MonarchGame, MonarchWebApiGame};
+use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::GameImageType;
+use crate::monarch_games::stores::DownloadOptions;
+use crate::monarch_games::stores::SearchFilter;
+use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
@@ -29,6 +36,87 @@ use super::linux::steam;
 *
 * Basically just some fancy OS specific behaviour gets abstracted away for easier readabilty.
 */
+
+pub struct SteamClient {}
+
+impl SteamClient {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[async_trait]
+impl StoreType for SteamClient {
+    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
+        find_game(name)
+            .await
+            .into_iter()
+            .map(|g| Box::new(MonarchWebApiGame::from_monarchgame(g)) as Box<dyn SearchResult>)
+            .collect::<Vec<Box<dyn SearchResult>>>()
+    }
+
+    async fn install_game(
+        &self,
+        handle: &AppHandle,
+        game: &MonarchGame,
+        _opts: &DownloadOptions,
+    ) -> Result<()> {
+        let game: MonarchGame = download_game(handle, &game.name, &game.platform_id)
+            .await
+            .with_context(|| "steam_client::install_game() -> ")?;
+        games_library::add_game(&game).with_context(|| "steam_client::install_game() -> ")
+    }
+
+    async fn uninstall_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        match game.platform.as_str() {
+            "steam" => uninstall_client_game(&game.platform_id)
+                .with_context(|| "steam_client::uninstall_game() -> "),
+            "steamcmd" => uninstall_game(handle, &game.platform_id)
+                .await
+                .with_context(|| "steam_client::uninstall_game() -> "),
+            _ => {
+                bail!(
+                    "Invalid platform! Expected 'steam' or 'steamcmd', instead got: {}!",
+                    game.platform
+                )
+            }
+        }
+    }
+
+    async fn update_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        update_game(handle, &game.platform_id)
+            .await
+            .with_context(|| "steam_client::update_game() -> ")
+    }
+
+    fn game_is_installed(&self, handle: &AppHandle, platform_id: &str) -> bool {
+        unimplemented!()
+    }
+
+    fn platform_enabled(&self) -> bool {
+        unimplemented!()
+    }
+
+    async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+        match game.platform.as_str() {
+            "steam" => launch_client_game(game),
+            "steamcmd" => {
+                let handle_clone: AppHandle = handle.clone();
+                let game_clone: MonarchGame = game.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = launch_cmd_game(&handle_clone, &game_clone).await {
+                        error!(
+                            "steam_client::SteamClient::launch_game() -> {}",
+                            e.chain().map(|e| e.to_string()).collect::<String>()
+                        );
+                    }
+                });
+                Ok(())
+            }
+            _ => bail!("Neither Steam client nor SteamCMD was detected as game platform!"),
+        }
+    }
+}
 
 /// Returns if SteamCMD is installed on system or not.
 pub fn steamcmd_is_installed() -> bool {
@@ -312,16 +400,17 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
 
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.
 async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame> {
-    info!("Parsing {id} via monarch-launcher.com.");
-    let mut game_info_opt: Option<MonarchWebGame> = None;
-    let target: String =
-        format!("https://monarch-launcher.com/api/games?platform=steam&platform_id={id}");
+    let monarch_url: &'static str = std::env!("MONARCH_URL");
+
+    info!("Parsing {id} via {monarch_url}.");
+    let mut game_info_opt: Option<MonarchWebApiGame> = None;
+    let target: String = format!("{monarch_url}/api/games?platform=steam&platform_id={id}");
 
     // GET info from Steam servers
     match reqwest::get(&target).await {
         Ok(response) => match response.text().await {
             Ok(body) => {
-                let web_games: Vec<MonarchWebGame> = serde_json::from_str(&body).unwrap();
+                let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&body).unwrap();
                 if web_games.is_empty() {
                     bail!("Nothing returned for game with ID: {id}");
                 }
@@ -463,4 +552,33 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
         MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
     monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
+}
+
+#[derive(Deserialize)]
+struct ProtonDbResults {
+    #[serde(rename = "bestReportedTier")]
+    best_reported_tier: String,
+
+    confidence: String,
+    score: f32,
+    tier: String,
+    total: i32,
+
+    #[serde(rename = "trendingTier")]
+    trending_tier: String,
+}
+
+/// Queries ProtonDB for game proton support rating
+pub async fn get_protondb_rating(steam_appid: &str) -> Result<(String, String)> {
+    let target: String =
+        format!("https://www.protondb.com/api/v1/reports/summaries/{steam_appid}.json");
+    let response = reqwest::get(&target).await?;
+    let repsonse_text: String = response.text().await?;
+
+    let proton_rating: ProtonDbResults = serde_json::from_str(&repsonse_text)?;
+
+    Ok((
+        proton_rating.tier,
+        format!("https://www.protondb.com/app/{steam_appid}"),
+    ))
 }
