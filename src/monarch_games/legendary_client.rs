@@ -1,14 +1,12 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use tauri::AppHandle;
 use tracing::{error, info};
 
 use crate::monarch_games::games::SearchResult;
-use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame};
+use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::generate_cache_image_path;
 use crate::monarch_utils::monarch_settings::get_settings_state;
-use crate::monarch_utils::monarch_terminal::run_in_terminal;
 use crate::monarch_games::stores::DownloadOptions;
 
 use super::games::GameType;
@@ -35,22 +33,24 @@ impl LegendaryClient {
     }
 
     /// Abstraction for all legendary functions to run terminal commands.
-    fn run_legendary_cmd(&self, handle: AppHandle, command: String) -> Result<()> {
+    fn run_legendary_cmd(&self, command: String) -> Result<()> {
         // Start a new async thread launching the game
+        /*
         tauri::async_runtime::spawn(async move {
             if let Err(e) = run_in_terminal(&handle, &command, None, None).await {
                 error!("legendary_client::launch_game() -> {e}");
                 // TODO: Trigger an error dialog in frontend.
             }
         });
+        */
         Ok(())
     }
 
-    pub fn login(&self, handle: AppHandle) -> Result<()> {
+    pub fn login(&self) -> Result<()> {
         let login_cmd: String = format!("{} auth", self.cli_path);
 
         info!("Loging in to Epic Games with Legendary...");
-        self.run_legendary_cmd(handle, login_cmd).with_context(|| "legendary_client::login() -> ")?;
+        self.run_legendary_cmd(login_cmd).with_context(|| "legendary_client::login() -> ")?;
         info!("Logic complete!");
 
         Ok(())
@@ -102,7 +102,7 @@ impl StoreType for LegendaryClient {
 
         for game in web_games.iter_mut() {
             let thumbnail_path = String::from(
-                generate_cache_image_path(&game.name.clone())
+                generate_cache_image_path(&game.name.clone(), GameImageType::Cover)
                     .to_str()
                     .unwrap(),
             );
@@ -115,7 +115,7 @@ impl StoreType for LegendaryClient {
             .collect()
     }
 
-    async fn install_game(&self, handle: &AppHandle, game: &MonarchGame, opts: &DownloadOptions) -> Result<()> {
+    async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()> {
         let command: String = format!(
             "{} install {} --game-folder {} --platform {}",
             self.cli_path,
@@ -124,20 +124,20 @@ impl StoreType for LegendaryClient {
             opts.os
         );
 
-        self.run_legendary_cmd(handle.clone(), command)
+        self.run_legendary_cmd(command)
     }
 
-    async fn uninstall_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+    async fn uninstall_game(&self, game: &MonarchGame) -> Result<()> {
         let command: String = format!("{} uninstall {}", self.cli_path, &game.name);
-        self.run_legendary_cmd(handle.clone(), command)
+        self.run_legendary_cmd(command)
     }
 
-    async fn update_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+    async fn update_game(&self, game: &MonarchGame) -> Result<()> {
         let command: String = format!("{} update {}", self.cli_path, &game.name);
-        self.run_legendary_cmd(handle.clone(), command)
+        self.run_legendary_cmd(command)
     }
 
-    fn game_is_installed(&self, handle: &AppHandle, platform_id: &str) -> bool {
+    fn game_is_installed(&self, platform_id: &str) -> bool {
         unimplemented!()
     }
 
@@ -145,9 +145,9 @@ impl StoreType for LegendaryClient {
         get_settings_state().epic.manage
     }
 
-    async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+    async fn launch_game(&self, game: &MonarchGame) -> Result<()> {
         let command: String = format!("{} launch {}", self.cli_path, game.name);
-        self.run_legendary_cmd(handle.clone(), command)
+        self.run_legendary_cmd(command)
     }
 
 }

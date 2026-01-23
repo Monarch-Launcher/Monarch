@@ -83,7 +83,7 @@ impl SettingsPage {
                 );
             }
             Message::ResetDefaults => {
-                self.settings = monarch_utils::commands::reset_settings().unwrap()
+                self.settings = monarch_utils::commands::default_settings().unwrap()
             }
             Message::ClearCache => {
                 monarch_utils::commands::clear_cached_images();

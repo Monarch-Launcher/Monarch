@@ -4,20 +4,22 @@ use tracing::error;
 
 use crate::gui::components::gamecard;
 use crate::monarch_games;
-use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_games::games::SearchResult;
+use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame};
 
 #[derive(Clone, Debug)]
 pub enum Message {
     SearchChanged(String),
     FiltersPressed,
     PerformSearch,
-    UpdateGames(Vec<MonarchGame>),
-    GameImgLoaded(MonarchGame),
+    UpdateGames(Vec<MonarchWebApiGame>),
+    GameImgLoaded(MonarchWebApiGame),
     GameCard(gamecard::GameCardMessage),
     Tick,
 }
 
 use crate::gui::components::gamecard::game_browser::GameBrowser;
+use crate::monarch_games::stores::SearchFilter;
 
 #[derive(Default)]
 pub struct SearchPage {
@@ -45,14 +47,14 @@ impl SearchPage {
                 self.tick_counter = 0;
                 let search_term = self.search_value.clone();
                 iced::Task::perform(
-                    async move { monarch_games::commands::search_games(search_term, true).await },
+                    async move { monarch_games::commands::search_games(search_term, SearchFilter::default()).await },
                     Message::UpdateGames,
                 )
             }
             Message::UpdateGames(games) => {
                 self.is_searching = false;
 
-                let processed_games: Vec<MonarchGame> = games
+                let processed_games: Vec<MonarchWebApiGame> = games
                     .iter()
                     .cloned()
                     .map(|mut game| {
@@ -65,7 +67,7 @@ impl SearchPage {
                 let download_tasks = iced::Task::batch(games.iter().cloned().map(|game| {
                     iced::Task::perform(
                         async move {
-                            if let Err(e) = monarch_games::commands::download_thumbnail(&game).await
+                            if let Err(e) = monarch_games::commands::download_thumbnail(&game.into_monarchgame()).await
                             {
                                 error!("Failed to download thumbnail for game {}: {}", game.id, e);
                             }
@@ -78,7 +80,7 @@ impl SearchPage {
                 // Update browser games
                 let _ = self
                     .browser
-                    .update(gamecard::GameCardMessage::UpdateGames(processed_games));
+                    .update(gamecard::GameCardMessage::UpdateGames(processed_games.iter().map(|g| g.into_monarchgame()).collect()));
 
                 download_tasks
             }

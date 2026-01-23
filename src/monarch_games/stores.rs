@@ -2,19 +2,16 @@ use crate::monarch_games::{games::SearchResult, monarchgame::MonarchGame};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
-
-use super::games::GameType;
 
 #[async_trait]
 pub trait StoreType: Send + Sync {
     async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn SearchResult>>;
-    async fn install_game(&self, handle: &AppHandle, game: &MonarchGame, opts: &DownloadOptions) -> Result<()>;
-    async fn uninstall_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()>;
-    async fn update_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()>;
-    fn game_is_installed(&self, handle: &AppHandle, platform_id: &str) -> bool;
+    async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()>;
+    async fn uninstall_game(&self, game: &MonarchGame) -> Result<()>;
+    async fn update_game(&self, game: &MonarchGame) -> Result<()>;
+    fn game_is_installed(&self, platform_id: &str) -> bool;
     fn platform_enabled(&self) -> bool;
-    async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()>;
+    async fn launch_game(&self, game: &MonarchGame) -> Result<()>;
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -29,6 +26,21 @@ pub struct SearchFilter {
     pub monarch: bool,
     pub steam_powered: bool,
     pub egs: bool,
+}
+
+impl Default for SearchFilter {
+    fn default() -> Self {
+        Self { 
+            steam: true,
+            epic: true,
+            gog: true,
+            itch: true,
+
+            monarch: true,
+            steam_powered: false,
+            egs: false
+         }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]

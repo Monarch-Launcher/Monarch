@@ -15,11 +15,9 @@ use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebApiGame
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;
-use crate::monarch_utils::monarch_fs::{self, path_exists};
+use crate::monarch_utils::monarch_fs::path_exists;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
-use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
-use crate::monarch_utils::monarch_windows::MiniWindow;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -161,7 +159,7 @@ pub async fn download_artwork(game: &MonarchGame) -> Result<(), String> {
 }
 
 pub async fn search_page_download_thumbnail(game: MonarchWebApiGame) -> Result<(), String> {
-    download_thumbnail(game.into_monarchgame()).await
+    download_thumbnail(&game.into_monarchgame()).await
 }
 
 /// Launch a game
@@ -182,7 +180,6 @@ pub async fn launch_game(game: MonarchGame) -> Result<(), String> {
 
 /// Tells Monarch to download specified game
 pub async fn download_game(
-    handle: AppHandle,
     opts: DownloadOptions,
 ) -> Result<Vec<MonarchGame>, String> {
     // For best user experience Monarch downloads all games by itself
@@ -201,14 +198,14 @@ pub async fn download_game(
 
     let result: Result<(), String> = match opts.game_platform.as_str() {
         "steam" => {
-            if let Err(e) = SteamClient::new().install_game(&handle, &game, &opts).await {
+            if let Err(e) = SteamClient::new().install_game(&game, &opts).await {
                 return Err(e.to_string());
             }
             Ok(())
         }
         "epicgames" => {
             if let Err(e) = LegendaryClient::new()
-                .install_game(&handle, &game, &opts)
+                .install_game(&game, &opts)
                 .await
             {
                 return Err(e.to_string());
@@ -539,7 +536,7 @@ pub fn legendary_is_installed() -> bool {
     legendary_client::legendary_is_installed()
 }
 
-pub fn install_legendary(handle: AppHandle) -> Result<(), String> {
+pub fn install_legendary() -> Result<(), String> {
     if let Err(e) = legendary_client::install_legendary() {
         error!(
             "monarch_games::commands::install_legendary() -> {}",
@@ -549,7 +546,7 @@ pub fn install_legendary(handle: AppHandle) -> Result<(), String> {
     }
 
     let client: LegendaryClient = LegendaryClient::new();
-    if let Err(e) = client.login(handle) {
+    if let Err(e) = client.login() {
         error!(
             "monarch_games::commands::install_legendary() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

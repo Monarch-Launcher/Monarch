@@ -120,7 +120,7 @@ pub fn install_umu() -> Result<()> {
 }
 
 /// Executes the game using umu-launcher to run in proton.
-pub async fn umu_run(game: &mut MonarchGame) -> Result<()> {
+pub async fn umu_run(game: &MonarchGame) -> Result<()> {
     info!("Compatibility layer set: {}", game.compatibility);
 
     let platform_arg = match game.platform.as_str() {

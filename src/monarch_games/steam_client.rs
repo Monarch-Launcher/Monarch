@@ -57,21 +57,20 @@ impl StoreType for SteamClient {
 
     async fn install_game(
         &self,
-        handle: &AppHandle,
         game: &MonarchGame,
         _opts: &DownloadOptions,
     ) -> Result<()> {
-        let game: MonarchGame = download_game(handle, &game.name, &game.platform_id)
+        let game: MonarchGame = download_game(&game.name, &game.platform_id)
             .await
             .with_context(|| "steam_client::install_game() -> ")?;
         games_library::add_game(&game).with_context(|| "steam_client::install_game() -> ")
     }
 
-    async fn uninstall_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+    async fn uninstall_game(&self, game: &MonarchGame) -> Result<()> {
         match game.platform.as_str() {
             "steam" => uninstall_client_game(&game.platform_id)
                 .with_context(|| "steam_client::uninstall_game() -> "),
-            "steamcmd" => uninstall_game(handle, &game.platform_id)
+            "steamcmd" => uninstall_game(&game.platform_id)
                 .await
                 .with_context(|| "steam_client::uninstall_game() -> "),
             _ => {
@@ -83,13 +82,13 @@ impl StoreType for SteamClient {
         }
     }
 
-    async fn update_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-        update_game(handle, &game.platform_id)
+    async fn update_game(&self, game: &MonarchGame) -> Result<()> {
+        update_game(&game.platform_id)
             .await
             .with_context(|| "steam_client::update_game() -> ")
     }
 
-    fn game_is_installed(&self, handle: &AppHandle, platform_id: &str) -> bool {
+    fn game_is_installed(&self, platform_id: &str) -> bool {
         unimplemented!()
     }
 
@@ -97,14 +96,13 @@ impl StoreType for SteamClient {
         unimplemented!()
     }
 
-    async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
+    async fn launch_game(&self,game: &MonarchGame) -> Result<()> {
         match game.platform.as_str() {
             "steam" => launch_client_game(game),
             "steamcmd" => {
-                let handle_clone: AppHandle = handle.clone();
                 let game_clone: MonarchGame = game.clone();
                 tokio::spawn(async move {
-                    if let Err(e) = launch_cmd_game(&handle_clone, &game_clone).await {
+                    if let Err(e) = launch_cmd_game(&game_clone).await {
                         error!(
                             "steam_client::SteamClient::launch_game() -> {}",
                             e.chain().map(|e| e.to_string()).collect::<String>()

@@ -2,7 +2,6 @@ use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tauri::AppHandle;
 use tracing::error;
 
 use super::games::GameType;
@@ -30,7 +29,6 @@ pub struct MonarchGame {
     pub launch_args: String,
     pub compatibility: String,
     pub store_page: String,
-    pub description: String,
 
     #[serde(default)]
     pub install_dir: String,
@@ -216,20 +214,20 @@ impl GameType for MonarchGame {
         #[cfg(target_os = "linux")]
         {
             if !game.executable_path.is_empty() {
-                return umu_run(handle, &game)
+                return umu_run(&game)
                     .await
                     .with_context(|| "monarchgame::launch() -> ");
             }
 
             if game.compatibility.contains("UMU") {
-                return umu_run(handle, &game)
+                return umu_run(&game)
                     .await
                     .with_context(|| "monarchgame::launch() -> ");
             }
         }
 
         game.get_platform()
-            .launch_game(handle, &game)
+            .launch_game(&game)
             .await
             .with_context(|| "monarchgame::launch() -> ")
     }
@@ -317,7 +315,7 @@ impl MonarchWebApiGame {
             igdb_id: -1,
             cover_url: monarch_game.thumbnail_url,
             artwork_url: "".to_string(),
-            summary: monarch_game.description,
+            summary: monarch_game.summary,
             platforms: vec![platform],
             thumbnail_path: monarch_game.thumbnail_path,
         }

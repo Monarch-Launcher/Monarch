@@ -1,12 +1,13 @@
 use super::games::{GameType, SearchResult};
 use super::stores::{DownloadOptions, StoreType};
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_games::monarchgame::{GameImageType, MonarchWebApiGame};
+use crate::monarch_games::monarchgame::{GameImageType, MonarchGameProperties, MonarchWebApiGame};
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings_state;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
+use crate::monarch_utils::monarch_vdf;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -62,7 +63,7 @@ impl StoreType for MonarchClient {
 
         for game in web_games.iter_mut() {
             let thumbnail_path = String::from(
-                generate_cache_image_path(&game.name.clone())
+                generate_cache_image_path(&game.name.clone(), GameImageType::Cover)
                     .to_str()
                     .unwrap(),
             );
@@ -77,7 +78,6 @@ impl StoreType for MonarchClient {
 
     async fn install_game(
         &self,
-        _handle: &AppHandle,
         _game: &MonarchGame,
         _opts: &DownloadOptions,
     ) -> Result<()> {
@@ -85,17 +85,17 @@ impl StoreType for MonarchClient {
         bail!("monarch_client::install_game() currently not supported!")
     }
 
-    async fn uninstall_game(&self, _handle: &AppHandle, _game: &MonarchGame) -> Result<()> {
+    async fn uninstall_game(&self, _game: &MonarchGame) -> Result<()> {
         error!("monarch_client::uninstall_game() Not implemented!");
         bail!("monarch_client::uninstall_game() currently not supported!")
     }
 
-    async fn update_game(&self, _handle: &AppHandle, _game: &MonarchGame) -> Result<()> {
+    async fn update_game(&self, _game: &MonarchGame) -> Result<()> {
         error!("monarch_client::update_game() Not implemented!");
         bail!("monarch_client::update_game() currently not supported!")
     }
 
-    fn game_is_installed(&self, _handle: &AppHandle, _platform_id: &str) -> bool {
+    fn game_is_installed(&self, _platform_id: &str) -> bool {
         error!("monarch_client::game_is_installed() Not implemented!");
         false
     }
@@ -105,8 +105,8 @@ impl StoreType for MonarchClient {
         false
     }
 
-    async fn launch_game(&self, handle: &AppHandle, game: &MonarchGame) -> Result<()> {
-        game.launch(handle).await
+    async fn launch_game(&self, game: &MonarchGame) -> Result<()> {
+        game.launch().await
     }
 }
 
@@ -433,7 +433,7 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
 
                     if let Ok(state) = MONARCH_STATE.read() {
                         if let Some(g) = state.get_game(&game.id) {
-                            props.description = g.description;
+                            props.description = g.summary;
                         }
                     }
                     properties = props;

@@ -28,11 +28,16 @@ fn init() {
     verify_monarch_folders(); // Checks that directories are as Monarch expects
 
     // Set initial monarch state
-    unsafe {
-        if let Err(e) =
-            MONARCH_STATE.set_library_games(&crate::monarch_games::monarch_client::get_library())
-        {
-            panic!("init() Failed to set library games in state! | Err: {e}")
+    match MONARCH_STATE.write() {
+        Ok(mut state) => {
+            if let Err(e) =
+                state.set_library_games(&crate::monarch_games::monarch_client::get_library())
+            {
+                panic!("init() Failed to set library games in state! | Err: {}", e)
+            }
+        }
+        Err(e) => {
+            panic!("init() Failed to get lock on MONARCH_STATE | Err: {}", e)
         }
     }
 
