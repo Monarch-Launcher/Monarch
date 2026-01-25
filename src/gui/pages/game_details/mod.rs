@@ -1,13 +1,19 @@
-use iced::widget::{column, container, image, row, scrollable, stack, text};
-use iced::{alignment, Color, Element, Length, Theme};
+use std::collections::HashMap;
 
-use crate::gui::components::common::{launch_button, primary_button, secondary_button};
+use iced::widget::{column, container, image, row, scrollable, stack, text};
+use iced::window::Id;
+use iced::{alignment, window, Color, Element, Length, Theme};
+
+use crate::gui::components::common::{launch_button, secondary_button};
+use crate::gui::components::terminal::TermInstance;
 use crate::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Clone, Debug)]
 pub enum Message {
     BackPressed,
     LaunchGame,
+    OpenTerminal(Id),
+    CloseTerminal(Id),
 }
 
 pub struct GameDetailsPage {
@@ -23,13 +29,17 @@ impl GameDetailsPage {
         self.game = Some(game);
     }
 
-    pub fn _update(&mut self, msg: Message) -> iced::Task<Message> {
+    pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
         match msg {
             Message::BackPressed => {
                 // This will be handled by the parent to navigate back
                 iced::Task::none()
             }
-            Message::LaunchGame => iced::Task::none(),
+            Message::LaunchGame => {
+                let term: TermInstance = TermInstance::new("sh".to_string(), HashMap::new());
+                term.open_terminal()
+            }
+            _ => iced::Task::none(),
         }
     }
 
@@ -91,8 +101,8 @@ impl GameDetailsPage {
             .style(|_theme: &Theme| container::Style {
                 background: Some(
                     iced::gradient::Linear::new(iced::Radians(std::f32::consts::PI))
-                        .add_stop(0.0, Color::from_rgba8(10, 10, 17, 0.4))
-                        .add_stop(0.3, Color::from_rgba8(10, 10, 17, 0.7))
+                        .add_stop(0.0, Color::from_rgba8(10, 10, 17, 0.2))
+                        .add_stop(0.3, Color::from_rgba8(10, 10, 17, 0.5))
                         .add_stop(0.5, Color::from_rgba8(10, 10, 17, 1.0))
                         .into(),
                 ),

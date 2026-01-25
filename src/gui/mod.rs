@@ -1,4 +1,6 @@
-use iced::{widget::container, Element, Length::Fill};
+use iced::{widget::container, window::Id, Element, Length::Fill, Subscription};
+use iced_term;
+use tracing::info;
 
 use crate::gui::{
     components::header::{self, Header},
@@ -16,6 +18,9 @@ enum AppMessage {
     Page(pages::Message),
     OpenGameDetails(crate::monarch_games::monarchgame::MonarchGame),
     CloseGameDetails,
+    OpenTerminal(Id),
+    CloseTerminal(Id),
+    Terminal(iced_term::Event),
 }
 
 #[derive(Default)]
@@ -28,6 +33,8 @@ pub struct App {
     search_page: pages::search::SearchPage,
     settings_page: pages::settings::SettingsPage,
     game_details_page: pages::game_details::GameDetailsPage,
+
+    active_terminals: Vec<Id>,
 }
 
 impl App {
@@ -51,13 +58,34 @@ impl App {
     }
 
     fn subscription(&self) -> iced::Subscription<AppMessage> {
-        match self.active_tab {
+        // Terminal subscriptions
+        let terminal_subscription: Subscription<AppMessage> = if !self.active_terminals.is_empty() {
+            return iced::event::listen_with(|event, status, id| match status {
+                iced::event::Status::Ignored => match event {
+                    iced::Event::Window(iced::window::Event::CloseRequested) => {
+                        Some(AppMessage::CloseTerminal(id))
+                    }
+                    _ => Some(AppMessage::CloseTerminal(id)),
+                },
+                iced::event::Status::Captured => None,
+            });
+        } else {
+            iced::Subscription::none()
+        };
+
+        // Page/animation subscriptions
+        let page_subscription: Subscription<AppMessage> = match self.active_tab {
             pages::PageTab::Search => iced::time::every(std::time::Duration::from_millis(16))
                 .map(|_| AppMessage::Page(pages::Message::Search(pages::search::Message::Tick))),
             pages::PageTab::Library => iced::time::every(std::time::Duration::from_millis(16))
                 .map(|_| AppMessage::Page(pages::Message::Library(pages::library::Message::Tick))),
             _ => iced::Subscription::none(),
-        }
+        };
+
+        let subscriptions: [Subscription<AppMessage>; 2] =
+            [terminal_subscription, page_subscription];
+
+        iced::Subscription::batch(subscriptions)
     }
 
     fn update_wrapper(&mut self, message: AppMessage) -> iced::Task<AppMessage> {
@@ -80,7 +108,6 @@ impl App {
                 }
                 iced::Task::none()
             }
-
             AppMessage::Page(page_msg) => match page_msg {
                 pages::Message::Home(msg) => self
                     .home_page
@@ -110,22 +137,45 @@ impl App {
                             self.active_tab = self.previous_tab;
                             iced::Task::none()
                         }
-                        pages::game_details::Message::LaunchGame => iced::Task::none(),
+                        pages::game_details::Message::LaunchGame => self
+                            .game_details_page
+                            .update(msg)
+                            .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
+                        pages::game_details::Message::OpenTerminal(id) => {
+                            self.update(AppMessage::OpenTerminal(id))
+                        }
+                        pages::game_details::Message::CloseTerminal(id) => {
+                            self.update(AppMessage::CloseTerminal(id))
+                        }
                     }
                 }
             },
-
             AppMessage::OpenGameDetails(game) => {
                 self.previous_tab = self.active_tab;
                 self.game_details_page.set_game(game);
                 self.active_tab = PageTab::GameDetails;
                 iced::Task::none()
             }
-
             AppMessage::CloseGameDetails => {
                 self.active_tab = self.previous_tab;
                 iced::Task::none()
             }
+            AppMessage::OpenTerminal(id) => {
+                self.active_terminals.push(id);
+                info!("Open | Terms: {:?}", self.active_terminals);
+                iced::Task::none()
+            }
+            AppMessage::CloseTerminal(id) => {
+                self.active_terminals = self
+                    .active_terminals
+                    .iter()
+                    .cloned()
+                    .filter(|&t| t != id)
+                    .collect();
+                info!("Close | Terms: {:?}", self.active_terminals);
+                iced::Task::none()
+            }
+            AppMessage::Terminal(event) => iced::Task::none(),
         }
     }
 

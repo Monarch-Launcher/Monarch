@@ -1,7 +1,7 @@
 use crate::gui::resources::PLAY;
 use crate::gui::styles;
 use iced::widget::{button, pick_list, row, svg, text_editor, text_input, Text};
-use iced::{alignment, Color, ContentFit, Element, Length, Theme};
+use iced::{alignment, Color, Element, Length, Theme};
 use std::borrow::Cow;
 
 pub fn primary_button<'a, Message>(
