@@ -1,11 +1,8 @@
-use std::collections::HashMap;
-
 use iced::widget::{column, container, image, row, scrollable, stack, text};
 use iced::window::Id;
-use iced::{alignment, window, Color, Element, Length, Theme};
+use iced::{alignment, Color, Element, Length, Theme};
 
 use crate::gui::components::common::{launch_button, secondary_button};
-use crate::gui::components::terminal::TermInstance;
 use crate::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Clone, Debug)]
@@ -36,8 +33,11 @@ impl GameDetailsPage {
                 iced::Task::none()
             }
             Message::LaunchGame => {
-                let term: TermInstance = TermInstance::new("sh".to_string(), HashMap::new());
-                term.open_terminal()
+                crate::monarch_utils::monarch_terminal::spawn_terminal(
+                    "echo 'Starting game...' && sleep 2 && echo 'Exiting...' && exit".to_string(),
+                    std::collections::HashMap::new(),
+                );
+                iced::Task::none()
             }
             _ => iced::Task::none(),
         }

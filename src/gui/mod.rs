@@ -1,9 +1,21 @@
-use iced::{widget::container, window::Id, Element, Length::Fill, Subscription};
+use std::collections::HashMap;
+
+use futures::channel::mpsc::Sender;
+use iced::{
+    widget::container,
+    window::{self, Id},
+    Element,
+    Length::Fill,
+    Subscription,
+};
 use iced_term;
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 use tracing::info;
 
 use crate::gui::{
     components::header::{self, Header},
+    components::terminal::TermInstance,
     pages::PageTab,
 };
 
@@ -13,18 +25,27 @@ pub mod resources;
 pub mod styles;
 
 #[derive(Clone, Debug)]
-enum AppMessage {
+pub enum AppMessage {
     HeaderMessage(header::Message),
     Page(pages::Message),
     OpenGameDetails(crate::monarch_games::monarchgame::MonarchGame),
     CloseGameDetails,
     OpenTerminal(Id),
     CloseTerminal(Id),
+    CloseWindow(Id),
     Terminal(iced_term::Event),
+    OpenTerminalRaw(String, HashMap<String, String>),
 }
 
-#[derive(Default)]
+pub static GUI_SENDER: Lazy<Mutex<Option<futures::channel::mpsc::UnboundedSender<AppMessage>>>> =
+    Lazy::new(|| Mutex::new(None));
+
+static EXTERNAL_RECEIVER: Mutex<Option<futures::channel::mpsc::UnboundedReceiver<AppMessage>>> =
+    Mutex::new(None);
+
 pub struct App {
+    app_id: Id,
+
     header: Header,
     active_tab: PageTab,
     previous_tab: PageTab, // Track previous tab for back navigation
@@ -34,44 +55,66 @@ pub struct App {
     settings_page: pages::settings::SettingsPage,
     game_details_page: pages::game_details::GameDetailsPage,
 
-    active_terminals: Vec<Id>,
+    active_terminals: HashMap<Id, TermInstance>,
 }
 
 impl App {
-    pub fn new() -> Self {
+    fn new(id: Id) -> Self {
         Self {
+            app_id: id,
             ..Default::default()
         }
     }
 
-    pub fn run(&self) {
-        iced::application(
-            || (App::new(), iced::Task::none()),
-            App::update_wrapper,
+    pub fn run() {
+        iced::daemon(
+            || {
+                let (sender, receiver) = futures::channel::mpsc::unbounded();
+                *GUI_SENDER.lock().unwrap() = Some(sender);
+                *EXTERNAL_RECEIVER.lock().unwrap() = Some(receiver);
+
+                let (id, task) = window::open(window::Settings::default());
+                (
+                    App::new(id),
+                    task.map(|_| AppMessage::HeaderMessage(header::Message::HomePage)),
+                )
+            },
+            App::update,
             App::view,
         )
-        .title(|_: &App| "Monarch".to_string())
-        .theme(|_: &App| styles::theme::monarch())
+        .title("Monarch")
+        .theme(App::theme)
         .subscription(App::subscription)
         .run()
         .unwrap();
     }
 
+    fn theme(&self, _window_id: Id) -> iced::Theme {
+        styles::theme::monarch()
+    }
+
     fn subscription(&self) -> iced::Subscription<AppMessage> {
         // Terminal subscriptions
-        let terminal_subscription: Subscription<AppMessage> = if !self.active_terminals.is_empty() {
-            return iced::event::listen_with(|event, status, id| match status {
-                iced::event::Status::Ignored => match event {
-                    iced::Event::Window(iced::window::Event::CloseRequested) => {
-                        Some(AppMessage::CloseTerminal(id))
-                    }
-                    _ => Some(AppMessage::CloseTerminal(id)),
-                },
-                iced::event::Status::Captured => None,
-            });
-        } else {
-            iced::Subscription::none()
-        };
+        let mut subscriptions: Vec<Subscription<AppMessage>> = Vec::new();
+
+        if !self.active_terminals.is_empty() {
+            subscriptions.push(Subscription::batch(
+                self.active_terminals
+                    .values()
+                    .map(|term| term.subscription().map(AppMessage::Terminal)),
+            ));
+        }
+
+        let window_subscription = iced::event::listen_with(|event, status, id| match status {
+            iced::event::Status::Ignored => match event {
+                iced::Event::Window(iced::window::Event::Closed) => {
+                    Some(AppMessage::CloseWindow(id))
+                }
+                _ => None,
+            },
+            iced::event::Status::Captured => None,
+        });
+        subscriptions.push(window_subscription);
 
         // Page/animation subscriptions
         let page_subscription: Subscription<AppMessage> = match self.active_tab {
@@ -81,19 +124,16 @@ impl App {
                 .map(|_| AppMessage::Page(pages::Message::Library(pages::library::Message::Tick))),
             _ => iced::Subscription::none(),
         };
-
-        let subscriptions: [Subscription<AppMessage>; 2] =
-            [terminal_subscription, page_subscription];
+        subscriptions.push(page_subscription);
+        subscriptions.push(Self::external_subscription());
 
         iced::Subscription::batch(subscriptions)
     }
 
-    fn update_wrapper(&mut self, message: AppMessage) -> iced::Task<AppMessage> {
-        self.update(message)
+    fn external_subscription() -> Subscription<AppMessage> {
+        Subscription::run_with((), external_subscription_stream)
     }
-}
 
-impl App {
     fn update(&mut self, message: AppMessage) -> iced::Task<AppMessage> {
         match message {
             AppMessage::HeaderMessage(msg) => {
@@ -139,10 +179,11 @@ impl App {
                         }
                         pages::game_details::Message::LaunchGame => self
                             .game_details_page
-                            .update(msg)
+                            .update(pages::game_details::Message::LaunchGame)
                             .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
-                        pages::game_details::Message::OpenTerminal(id) => {
-                            self.update(AppMessage::OpenTerminal(id))
+                        pages::game_details::Message::OpenTerminal(_id) => {
+                            // Already handled in LaunchGame? No, Task returns Id.
+                            iced::Task::none()
                         }
                         pages::game_details::Message::CloseTerminal(id) => {
                             self.update(AppMessage::CloseTerminal(id))
@@ -160,26 +201,57 @@ impl App {
                 self.active_tab = self.previous_tab;
                 iced::Task::none()
             }
-            AppMessage::OpenTerminal(id) => {
-                self.active_terminals.push(id);
-                info!("Open | Terms: {:?}", self.active_terminals);
+            AppMessage::OpenTerminal(_id) => {
+                // ID already inserted in LaunchGame
                 iced::Task::none()
             }
             AppMessage::CloseTerminal(id) => {
-                self.active_terminals = self
-                    .active_terminals
-                    .iter()
-                    .cloned()
-                    .filter(|&t| t != id)
-                    .collect();
-                info!("Close | Terms: {:?}", self.active_terminals);
-                iced::Task::none()
+                self.active_terminals.remove(&id);
+                info!("Close | Terms keys: {:?}", self.active_terminals.keys());
+                iced::window::close(id)
             }
-            AppMessage::Terminal(event) => iced::Task::none(),
+            AppMessage::CloseWindow(id) => {
+                if id == self.app_id {
+                    info!("Monarch close requested. Cleaning up...");
+                    return iced::exit();
+                }
+                iced::window::close(id)
+            }
+            AppMessage::Terminal(event) => {
+                // Broadcast event to all terminals or find which one?
+                // iced_term 0.7.0 subscription usually binds to a specific terminal if mapped correctly?
+                // Wait, our TermInstance::subscription calls term.subscription().
+                // We should probably route the event to the correct terminal if possible.
+                // But AppMessage::Terminal(event) loses the ID context if we don't wrap it.
+                // However, the View is what processes input.
+                // The Subscription is for PTY output.
+                // If we iterate active_terminals, we should probably update them?
+
+                iced::Task::batch(
+                    self.active_terminals
+                        .values_mut()
+                        .map(|term| term.update(event.clone())),
+                )
+            }
+            AppMessage::OpenTerminalRaw(command, env) => {
+                let settings = window::Settings {
+                    decorations: false,
+                    ..Default::default()
+                };
+                let (id, task) = window::open(settings);
+
+                let term = TermInstance::new(id, command, env);
+                self.active_terminals.insert(id, term);
+                task.map(AppMessage::OpenTerminal)
+            }
         }
     }
 
-    fn view(&self) -> Element<'_, AppMessage> {
+    fn view(&self, window_id: Id) -> Element<'_, AppMessage> {
+        if let Some(term) = self.active_terminals.get(&window_id) {
+            return term.view().map(AppMessage::Terminal);
+        }
+
         let page_content = match self.active_tab {
             PageTab::Home => self.home_page.view().map(pages::Message::Home),
             PageTab::Library => self.library_page.view().map(pages::Message::Library),
@@ -207,5 +279,37 @@ impl App {
         .width(Fill)
         .height(Fill)
         .into()
+    }
+}
+
+fn external_subscription_stream(_: &()) -> iced::futures::stream::BoxStream<'static, AppMessage> {
+    use iced::futures::{SinkExt, StreamExt};
+    iced::stream::channel(100, |mut output: Sender<AppMessage>| async move {
+        let mut rx = EXTERNAL_RECEIVER.lock().unwrap().take();
+        if let Some(mut rx) = rx {
+            while let Some(msg) = rx.next().await {
+                let _ = output.send(msg).await;
+            }
+        }
+        // Keep the stream alive
+        std::future::pending::<()>().await;
+    })
+    .boxed()
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            app_id: Id::unique(),
+            header: Header::default(),
+            active_tab: PageTab::Home,
+            previous_tab: PageTab::Home,
+            home_page: pages::home::HomePage::default(),
+            library_page: pages::library::LibraryPage::default(),
+            search_page: pages::search::SearchPage::default(),
+            settings_page: pages::settings::SettingsPage::default(),
+            game_details_page: pages::game_details::GameDetailsPage::default(),
+            active_terminals: HashMap::new(),
+        }
     }
 }

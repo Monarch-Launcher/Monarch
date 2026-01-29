@@ -47,7 +47,10 @@ impl SearchPage {
                 self.tick_counter = 0;
                 let search_term = self.search_value.clone();
                 iced::Task::perform(
-                    async move { monarch_games::commands::search_games(search_term, SearchFilter::default()).await },
+                    async move {
+                        monarch_games::commands::search_games(search_term, SearchFilter::default())
+                            .await
+                    },
                     Message::UpdateGames,
                 )
             }
@@ -67,7 +70,10 @@ impl SearchPage {
                 let download_tasks = iced::Task::batch(games.iter().cloned().map(|game| {
                     iced::Task::perform(
                         async move {
-                            if let Err(e) = monarch_games::commands::download_thumbnail(&game.into_monarchgame()).await
+                            if let Err(e) = monarch_games::commands::download_thumbnail(
+                                &game.into_monarchgame(),
+                            )
+                            .await
                             {
                                 error!("Failed to download thumbnail for game {}: {}", game.id, e);
                             }
@@ -78,9 +84,12 @@ impl SearchPage {
                 }));
 
                 // Update browser games
-                let _ = self
-                    .browser
-                    .update(gamecard::GameCardMessage::UpdateGames(processed_games.iter().map(|g| g.into_monarchgame()).collect()));
+                let _ = self.browser.update(gamecard::GameCardMessage::UpdateGames(
+                    processed_games
+                        .iter()
+                        .map(|g| g.into_monarchgame())
+                        .collect(),
+                ));
 
                 download_tasks
             }

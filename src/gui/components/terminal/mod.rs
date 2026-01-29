@@ -1,13 +1,12 @@
-use std::collections::HashMap;
+use iced::window::Id;
+use std::{collections::HashMap, fmt::Debug};
+use tracing::error;
 
-use iced::{window::Settings, Task};
-use iced_term;
-use tracing::info;
-
-use crate::gui::pages::game_details;
+use crate::gui::AppMessage;
 
 pub struct TermInstance {
     title: String,
+    id: Id,
 
     command: String,
     env: HashMap<String, String>,
@@ -15,40 +14,69 @@ pub struct TermInstance {
 }
 
 impl TermInstance {
-    pub fn new(command: String, env: HashMap<String, String>) -> Self {
+    pub fn new(id: Id, command: String, env: HashMap<String, String>) -> Self {
         let shell = std::env::var("SHELL").unwrap();
         let term_settings = iced_term::settings::Settings {
             backend: iced_term::settings::BackendSettings {
                 program: shell.to_string(),
+                args: vec!["-c".to_string(), command.clone()],
+                env: env.clone(),
                 ..Default::default()
             },
             ..Default::default()
         };
-        let term = iced_term::Terminal::new(0, term_settings).unwrap();
+        let term = iced_term::Terminal::new(id.to_string().parse::<u64>().unwrap(), term_settings)
+            .unwrap();
 
         Self {
             title: "Monarch Terminal".to_string(),
+            id,
             command,
             env,
             term,
         }
     }
 
-    /// Open a new terminal instance.
-    pub fn open_terminal(&self) -> Task<game_details::Message> {
-        info!("Opening terminal");
-        let terminal_window_settings: Settings = Settings {
-            visible: true,
-            decorations: false,
-
-            ..Default::default()
-        };
-        let (id, task) = iced::window::open(terminal_window_settings);
-        info!("Opened terminal with id: {id}");
-        task.map(|id| game_details::Message::OpenTerminal(id))
+    pub fn view(&self) -> iced::Element<'_, iced_term::Event> {
+        iced_term::TerminalView::show(&self.term)
     }
 
-    pub fn close_terminal(&self) {}
+    pub fn subscription(&self) -> iced::Subscription<iced_term::Event> {
+        self.term.subscription()
+    }
 
-    pub fn run_command(&self) {}
+    pub fn update(&mut self, event: iced_term::Event) -> iced::Task<AppMessage> {
+        match event {
+            iced_term::Event::BackendCall(id, cmd) => {
+                if id == self.term.id {
+                    let action = self.term.handle(iced_term::Command::ProxyToBackend(cmd));
+                    match action {
+                        iced_term::actions::Action::Shutdown => {
+                            let id = self.id;
+                            return iced::Task::perform(
+                                async move { id },
+                                AppMessage::CloseTerminal,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        iced::Task::none()
+    }
+
+    /*
+       pub fn alacritty_update(&mut self, event: iced_term::AlacrittyEvent) {
+           match event {
+               iced_term::AlacrittyEvent::ChildExit(code) => {
+                   if code != 0 {
+                       error!("Child process exited with status code: {code}")
+                   }
+                   self.term.handle(iced_term::Command::Exit);
+               }
+               _ => {}
+           }
+       }
+    */
 }

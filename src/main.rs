@@ -47,6 +47,6 @@ fn init() {
 fn main() {
     init();
 
-    let monarch: App = App::new();
-    monarch.run();
+    // Run Monarch
+    App::run();
 }
