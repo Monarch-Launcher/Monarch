@@ -163,7 +163,7 @@ pub async fn search_page_download_thumbnail(game: MonarchWebApiGame) -> Result<(
 }
 
 /// Launch a game
-pub async fn launch_game(game: MonarchGame) -> Result<(), String> {
+pub async fn launch_game(game: &MonarchGame) -> Result<(), String> {
     info!("Launching game: {}", game.name);
     if let Err(e) = game.launch().await {
         error!(
@@ -179,9 +179,7 @@ pub async fn launch_game(game: MonarchGame) -> Result<(), String> {
 }
 
 /// Tells Monarch to download specified game
-pub async fn download_game(
-    opts: DownloadOptions,
-) -> Result<Vec<MonarchGame>, String> {
+pub async fn download_game(opts: DownloadOptions) -> Result<Vec<MonarchGame>, String> {
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
     info!("Installing: {}", opts.game_name);
@@ -204,10 +202,7 @@ pub async fn download_game(
             Ok(())
         }
         "epicgames" => {
-            if let Err(e) = LegendaryClient::new()
-                .install_game(&game, &opts)
-                .await
-            {
+            if let Err(e) = LegendaryClient::new().install_game(&game, &opts).await {
                 return Err(e.to_string());
             }
             Ok(())

@@ -1,8 +1,10 @@
 use iced::widget::{column, container, image, row, scrollable, stack, text};
 use iced::window::Id;
 use iced::{alignment, Color, Element, Length, Theme};
+use tracing::{error, Instrument};
 
 use crate::gui::components::common::{launch_button, secondary_button};
+use crate::monarch_games;
 use crate::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Clone, Debug)]
@@ -11,6 +13,7 @@ pub enum Message {
     LaunchGame,
     OpenTerminal(Id),
     CloseTerminal(Id),
+    Nop,
 }
 
 pub struct GameDetailsPage {
@@ -33,11 +36,22 @@ impl GameDetailsPage {
                 iced::Task::none()
             }
             Message::LaunchGame => {
-                crate::monarch_utils::monarch_terminal::spawn_terminal(
-                    "echo 'Starting game...' && sleep 2 && echo 'Exiting...' && exit".to_string(),
-                    std::collections::HashMap::new(),
-                );
-                iced::Task::none()
+                let game = match &self.game {
+                    Some(g) => g.clone(),
+                    None => {
+                        error!("No game in GameDetailsPage!");
+                        return iced::Task::none();
+                    }
+                };
+
+                iced::Task::perform(
+                    async move {
+                        if let Err(e) = monarch_games::commands::launch_game(&game).await {
+                            error!("Failed to launch: {} | Err: {}", game.name, e)
+                        }
+                    },
+                    Message::Nop,
+                )
             }
             _ => iced::Task::none(),
         }
