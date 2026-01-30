@@ -55,11 +55,7 @@ impl StoreType for SteamClient {
             .collect::<Vec<Box<dyn SearchResult>>>()
     }
 
-    async fn install_game(
-        &self,
-        game: &MonarchGame,
-        _opts: &DownloadOptions,
-    ) -> Result<()> {
+    async fn install_game(&self, game: &MonarchGame, _opts: &DownloadOptions) -> Result<()> {
         let game: MonarchGame = download_game(&game.name, &game.platform_id)
             .await
             .with_context(|| "steam_client::install_game() -> ")?;
@@ -96,7 +92,7 @@ impl StoreType for SteamClient {
         unimplemented!()
     }
 
-    async fn launch_game(&self,game: &MonarchGame) -> Result<()> {
+    async fn launch_game(&self, game: &MonarchGame) -> Result<()> {
         match game.platform.as_str() {
             "steam" => launch_client_game(game),
             "steamcmd" => {
@@ -428,6 +424,8 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
     // Parse content into MonarchGame
     if let Some(game_info) = game_info_opt {
         let mut monarch_game = MonarchGame::from(&game_info);
+        monarch_game.platform = "steam".to_string();
+        monarch_game.platform_id = id;
 
         if is_cache {
             let path: String = String::from(

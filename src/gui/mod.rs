@@ -188,6 +188,7 @@ impl App {
                         pages::game_details::Message::CloseTerminal(id) => {
                             self.update(AppMessage::CloseTerminal(id))
                         }
+                        pages::game_details::Message::Nop(_) => iced::Task::none(),
                     }
                 }
             },

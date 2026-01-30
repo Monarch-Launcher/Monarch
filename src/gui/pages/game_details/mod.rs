@@ -1,7 +1,7 @@
 use iced::widget::{column, container, image, row, scrollable, stack, text};
 use iced::window::Id;
 use iced::{alignment, Color, Element, Length, Theme};
-use tracing::{error, Instrument};
+use tracing::error;
 
 use crate::gui::components::common::{launch_button, secondary_button};
 use crate::monarch_games;
@@ -13,7 +13,7 @@ pub enum Message {
     LaunchGame,
     OpenTerminal(Id),
     CloseTerminal(Id),
-    Nop,
+    Nop(()),
 }
 
 pub struct GameDetailsPage {
