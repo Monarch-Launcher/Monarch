@@ -2,13 +2,18 @@ use iced::widget::{column, container, image, row, scrollable, stack, text};
 use iced::{alignment, Color, Element, Length, Theme};
 
 use crate::gui::components::gamecard::GameCardMessage;
-use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_games::games::GameType;
+use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 
 #[derive(Default)]
 pub struct GameDrawer {}
 
 impl GameDrawer {
-    pub fn view<'a>(&self, game: &'a MonarchGame) -> Element<'a, GameCardMessage> {
+    pub fn view<'a>(
+        &self,
+        game: &'a MonarchGame,
+        stores: Vec<MonarchWebApiPlatform>,
+    ) -> Element<'a, GameCardMessage> {
         let background_image = if game.thumbnail_path.is_empty() {
             container(text(""))
                 .width(Length::Fill)
@@ -34,6 +39,7 @@ impl GameDrawer {
                 ..Default::default()
             });
 
+        let store_names: String = stores.iter().map(|s| format!(" {} ", s.name)).collect();
         let content = scrollable(
             column![
                 // Header Image
@@ -72,7 +78,7 @@ impl GameDrawer {
                 // Stores / Platform
                 row![
                     text("Available at:").color(Color::from_rgb8(180, 180, 180)),
-                    text(&game.platform).color(Color::from_rgb8(255, 127, 0))
+                    text(store_names).color(Color::from_rgb8(255, 127, 0))
                 ]
                 .spacing(10),
                 // Description

@@ -11,8 +11,10 @@ use tokio::task;
 use tracing::{error, info, warn};
 
 use super::monarchgame::{MonarchGame, MonarchWebApiGame};
+use crate::monarch_games::games::GameType;
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::GameImageType;
+use crate::monarch_games::monarchgame::StoreInfo;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library;
@@ -56,30 +58,30 @@ impl StoreType for SteamClient {
     }
 
     async fn install_game(&self, game: &MonarchGame, _opts: &DownloadOptions) -> Result<()> {
-        let game: MonarchGame = download_game(&game.name, &game.platform_id)
+        let game: MonarchGame = download_game(&game.name, &game.get_store_id())
             .await
             .with_context(|| "steam_client::install_game() -> ")?;
         games_library::add_game(&game).with_context(|| "steam_client::install_game() -> ")
     }
 
     async fn uninstall_game(&self, game: &MonarchGame) -> Result<()> {
-        match game.platform.as_str() {
-            "steam" => uninstall_client_game(&game.platform_id)
+        match game.get_store_name().as_str() {
+            "steam" => uninstall_client_game(&game.get_store_id())
                 .with_context(|| "steam_client::uninstall_game() -> "),
-            "steamcmd" => uninstall_game(&game.platform_id)
+            "steamcmd" => uninstall_game(&game.get_store_id())
                 .await
                 .with_context(|| "steam_client::uninstall_game() -> "),
             _ => {
                 bail!(
                     "Invalid platform! Expected 'steam' or 'steamcmd', instead got: {}!",
-                    game.platform
+                    game.get_store_name()
                 )
             }
         }
     }
 
     async fn update_game(&self, game: &MonarchGame) -> Result<()> {
-        update_game(&game.platform_id)
+        update_game(&game.get_store_id())
             .await
             .with_context(|| "steam_client::update_game() -> ")
     }
@@ -93,7 +95,7 @@ impl StoreType for SteamClient {
     }
 
     async fn launch_game(&self, game: &MonarchGame) -> Result<()> {
-        match game.platform.as_str() {
+        match game.get_store_name().as_str() {
             "steam" => launch_client_game(game),
             "steamcmd" => {
                 let game_clone: MonarchGame = game.clone();
@@ -189,7 +191,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
 /// Attempts to launch Steam Client game.
 pub fn launch_client_game(game: &MonarchGame) -> Result<()> {
-    let command: String = format!("steam://rungameid/{}", &game.platform_id);
+    let command: String = format!("steam://rungameid/{}", &game.get_store_id());
     steam::run_command(&command).with_context(|| "steam_client::launch_game() -> ")
 }
 
@@ -206,12 +208,13 @@ pub async fn launch_cmd_game(game: &MonarchGame) -> Result<()> {
     let steam_settings = settings.steam;
     let login_arg = get_steamcmd_login(&steam_settings)
         .with_context(|| "steam_client::launch_cmd_game() -> ")?;
+    let id = game.get_store_id();
 
     let args: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
         &login_arg,
         "+app_launch",
-        &game.platform_id,
+        &id,
         &game.launch_args,
     ];
 
@@ -264,7 +267,13 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
 
     let mut monarchgame: MonarchGame =
         parse_steam_ids(&[String::from(id)], false, true).await[0].clone();
-    monarchgame.platform = "steamcmd".to_string();
+
+    monarchgame.stores.push(StoreInfo {
+        name: "steamcmd".to_string(),
+        store_id: id.to_string(),
+        store_url: "".to_string(),
+    });
+
     Ok(monarchgame)
 }
 
@@ -424,8 +433,8 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
     // Parse content into MonarchGame
     if let Some(game_info) = game_info_opt {
         let mut monarch_game = MonarchGame::from(&game_info);
-        monarch_game.platform = "steam".to_string();
-        monarch_game.platform_id = id;
+
+        monarch_game.stores = game_info.platforms.iter().map(StoreInfo::from).collect();
 
         if is_cache {
             let path: String = String::from(

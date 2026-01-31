@@ -5,6 +5,7 @@ use tracing::error;
 
 use crate::gui::components::common::{launch_button, secondary_button};
 use crate::monarch_games;
+use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Clone, Debug)]
@@ -164,12 +165,15 @@ impl GameDetailsPage {
             });
 
         // Platform/Store info
-        let platform_badge = container(text(&game.platform).size(14).color(Color::WHITE).font(
-            iced::Font {
-                weight: iced::font::Weight::Semibold,
-                ..Default::default()
-            },
-        ))
+        let platform_badge = container(
+            text(game.get_store_name())
+                .size(14)
+                .color(Color::WHITE)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Semibold,
+                    ..Default::default()
+                }),
+        )
         .padding(iced::Padding::from([6, 12]))
         .style(|_theme: &Theme| container::Style {
             background: Some(Color::from_rgb8(255, 127, 0).into()),

@@ -1,7 +1,7 @@
 use crate::gui::components::gamecard::container::GameCardContainer;
 use crate::gui::components::gamecard::drawer::GameDrawer;
 use crate::gui::components::gamecard::GameCardMessage;
-use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 use iced::widget::{container, stack, text};
 use iced::{alignment, Color, Element, Length};
 
@@ -85,8 +85,14 @@ impl GameBrowser {
             iced::widget::responsive(move |size| {
                 let drawer_width = size.width * 0.5;
                 let padding_left = size.width - (drawer_width * self.drawer_animation);
+                let platforms: Vec<MonarchWebApiPlatform> = game
+                    .stores
+                    .iter()
+                    .cloned()
+                    .map(MonarchWebApiPlatform::from)
+                    .collect();
 
-                let drawer_layer = container(self.drawer.view(game))
+                let drawer_layer = container(self.drawer.view(game, platforms))
                     .width(Length::Fixed(drawer_width))
                     .height(Length::Fill);
 

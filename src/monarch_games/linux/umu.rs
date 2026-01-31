@@ -5,7 +5,10 @@ use std::{collections::HashMap, path::PathBuf};
 use tar::Archive;
 use tracing::{info, warn};
 
-use crate::{monarch_games::monarchgame::MonarchGame, monarch_utils::monarch_fs::get_monarch_home};
+use crate::{
+    monarch_games::{games::GameType, monarchgame::MonarchGame},
+    monarch_utils::monarch_fs::get_monarch_home,
+};
 
 #[derive(Debug, Deserialize)]
 struct Release {
@@ -123,12 +126,12 @@ pub fn install_umu() -> Result<()> {
 pub async fn umu_run(game: &MonarchGame) -> Result<()> {
     info!("Compatibility layer set: {}", game.compatibility);
 
-    let platform_arg = match game.platform.as_str() {
+    let platform_arg = match game.get_store_name().as_str() {
         "epic" => "egs",
         _ => "none",
     };
 
-    let gameid_arg = format!("umu-{}", game.platform_id);
+    let gameid_arg = format!("umu-{}", game.get_store_id());
 
     let env_vars: HashMap<&str, &str> = HashMap::from([
         ("PROTON_PATH", game.compatibility.as_str()),

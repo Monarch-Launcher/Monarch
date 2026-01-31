@@ -10,6 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{error, info, warn};
 
+use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties};
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
@@ -190,14 +191,14 @@ pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Res
         .with_context(|| "monarch_vdf::AppState::read() -> ")?;
 
     for (_, libraryfolder) in library_folders.0 {
-        if libraryfolder.apps.contains_key(&game.platform_id) {
-            let manifest_file = format!("appmanifest_{}.acf", game.platform_id);
+        if libraryfolder.apps.contains_key(&game.get_store_id()) {
+            let manifest_file = format!("appmanifest_{}.acf", game.get_store_id());
             let path = PathBuf::from(libraryfolder.path)
                 .join("steamapps")
                 .join(manifest_file);
 
             if !path.exists() {
-                bail!("monarch_vdf::set_install_dir() Failed to find manifest file for game: {} (appid: {})", game.name, game.platform_id);
+                bail!("monarch_vdf::set_install_dir() Failed to find manifest file for game: {} (appid: {})", game.name, game.get_store_id());
             }
 
             let app_state: AppState =
@@ -234,7 +235,8 @@ pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Res
 
     error!(
         "No install dir found for game: {} (appid: {})",
-        game.name, game.platform_id
+        game.name,
+        game.get_store_id()
     );
     bail!("monarch_vdf::set_install_dir() No install dir found! | Err: No matching manifest file found.")
 }
@@ -307,14 +309,14 @@ pub fn get_game_properties_from_manifest(
     };
 
     for (_, libraryfolder) in library_folders.0 {
-        if libraryfolder.apps.contains_key(&game.platform_id) {
-            let manifest_file = format!("appmanifest_{}.acf", game.platform_id);
+        if libraryfolder.apps.contains_key(&game.get_store_id()) {
+            let manifest_file = format!("appmanifest_{}.acf", game.get_store_id());
             let path = PathBuf::from(libraryfolder.path)
                 .join("steamapps")
                 .join(manifest_file);
 
             if !path.exists() {
-                error!("monarch_vdf::get_game_properties_from_manifest() Failed to find manifest file for game: {} (appid: {})", game.name, game.platform_id);
+                error!("monarch_vdf::get_game_properties_from_manifest() Failed to find manifest file for game: {} (appid: {})", game.name, game.get_store_id());
                 return properties;
             }
 
@@ -342,7 +344,7 @@ pub fn get_game_properties_from_manifest(
 
     error!(
         "monarch_vdf::get_game_properties_from_manifest() No properties found for game: {} (appid: {})",
-        game.name, game.platform_id
+        game.name, game.get_store_id()
     );
     properties
 }
