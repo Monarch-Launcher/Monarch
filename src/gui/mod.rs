@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use futures::channel::mpsc::Sender;
 use iced::{
-    widget::container,
+    alignment,
+    widget::{container, text},
     window::{self, Id},
     Element,
     Length::Fill,
@@ -25,6 +26,12 @@ pub mod resources;
 pub mod styles;
 
 #[derive(Clone, Debug)]
+pub enum ModalState {
+    Error(String),
+    Confirm(String, Box<AppMessage>),
+}
+
+#[derive(Clone, Debug)]
 pub enum AppMessage {
     HeaderMessage(header::Message),
     Page(pages::Message),
@@ -35,10 +42,30 @@ pub enum AppMessage {
     CloseWindow(Id),
     Terminal(iced_term::Event),
     OpenTerminalRaw(String, HashMap<String, String>),
+    ShowModal(ModalState),
+    CloseModal,
+    OpenLogs,
 }
 
 pub static GUI_SENDER: Lazy<Mutex<Option<futures::channel::mpsc::UnboundedSender<AppMessage>>>> =
     Lazy::new(|| Mutex::new(None));
+
+/// Display an error modal with the given message.
+pub fn show_error(message: impl Into<String>) {
+    if let Some(sender) = GUI_SENDER.lock().unwrap().as_mut() {
+        let _ = sender.unbounded_send(AppMessage::ShowModal(ModalState::Error(message.into())));
+    }
+}
+
+/// Display a confirmation modal with the given message and action.
+pub fn show_confirm(message: impl Into<String>, on_confirm: AppMessage) {
+    if let Some(sender) = GUI_SENDER.lock().unwrap().as_mut() {
+        let _ = sender.unbounded_send(AppMessage::ShowModal(ModalState::Confirm(
+            message.into(),
+            Box::new(on_confirm),
+        )));
+    }
+}
 
 static EXTERNAL_RECEIVER: Mutex<Option<futures::channel::mpsc::UnboundedReceiver<AppMessage>>> =
     Mutex::new(None);
@@ -56,6 +83,7 @@ pub struct App {
     game_details_page: pages::game_details::GameDetailsPage,
 
     active_terminals: HashMap<Id, TermInstance>,
+    active_modal: Option<ModalState>,
 }
 
 impl App {
@@ -218,22 +246,11 @@ impl App {
                 }
                 iced::window::close(id)
             }
-            AppMessage::Terminal(event) => {
-                // Broadcast event to all terminals or find which one?
-                // iced_term 0.7.0 subscription usually binds to a specific terminal if mapped correctly?
-                // Wait, our TermInstance::subscription calls term.subscription().
-                // We should probably route the event to the correct terminal if possible.
-                // But AppMessage::Terminal(event) loses the ID context if we don't wrap it.
-                // However, the View is what processes input.
-                // The Subscription is for PTY output.
-                // If we iterate active_terminals, we should probably update them?
-
-                iced::Task::batch(
-                    self.active_terminals
-                        .values_mut()
-                        .map(|term| term.update(event.clone())),
-                )
-            }
+            AppMessage::Terminal(event) => iced::Task::batch(
+                self.active_terminals
+                    .values_mut()
+                    .map(|term| term.update(event.clone())),
+            ),
             AppMessage::OpenTerminalRaw(command, env) => {
                 let settings = window::Settings {
                     decorations: false,
@@ -244,6 +261,18 @@ impl App {
                 let term = TermInstance::new(id, command, env);
                 self.active_terminals.insert(id, term);
                 task.map(AppMessage::OpenTerminal)
+            }
+            AppMessage::ShowModal(state) => {
+                self.active_modal = Some(state);
+                iced::Task::none()
+            }
+            AppMessage::CloseModal => {
+                self.active_modal = None;
+                iced::Task::none()
+            }
+            AppMessage::OpenLogs => {
+                let _ = crate::monarch_utils::commands::open_logs();
+                iced::Task::none()
             }
         }
     }
@@ -264,22 +293,72 @@ impl App {
                 .map(pages::Message::GameDetails),
         };
 
-        let content = container(page_content.map(AppMessage::Page))
-            .width(Fill)
-            .height(Fill);
-
-        container(
+        let main_content = container(
             iced::widget::Column::new()
                 .push(
                     Element::from(self.header.view(self.active_tab)).map(AppMessage::HeaderMessage),
                 )
-                .push(content)
+                .push(page_content.map(AppMessage::Page))
                 .width(Fill)
                 .height(Fill),
         )
         .width(Fill)
-        .height(Fill)
-        .into()
+        .height(Fill);
+
+        let app_content: Element<'_, AppMessage> = main_content.into();
+
+        if let Some(modal_state) = &self.active_modal {
+            let modal_element = match modal_state {
+                ModalState::Error(error) => components::modal::Modal::new(
+                    "Error",
+                    iced::widget::column![
+                        text(error.clone()),
+                        iced::widget::row![
+                            components::common::secondary_button(
+                                "Open Logs",
+                                Some(AppMessage::OpenLogs)
+                            ),
+                            iced::widget::Space::new().width(Fill),
+                            components::common::primary_button(
+                                "Close",
+                                Some(AppMessage::CloseModal)
+                            ),
+                        ]
+                        .width(Fill)
+                        .spacing(10)
+                    ]
+                    .spacing(20),
+                )
+                .on_close(AppMessage::CloseModal)
+                .view(),
+                ModalState::Confirm(msg, on_confirm) => components::modal::Modal::new(
+                    "Confirm",
+                    iced::widget::column![
+                        text(msg.clone()),
+                        iced::widget::row![
+                            components::common::primary_button(
+                                "Confirm",
+                                Some((**on_confirm).clone())
+                            ),
+                            iced::widget::Space::new().width(Fill),
+                            components::common::secondary_button(
+                                "Cancel",
+                                Some(AppMessage::CloseModal)
+                            ),
+                        ]
+                        .width(Fill)
+                        .spacing(10)
+                    ]
+                    .spacing(20),
+                )
+                .on_close(AppMessage::CloseModal)
+                .view(),
+            };
+
+            iced::widget::stack![app_content, modal_element].into()
+        } else {
+            app_content
+        }
     }
 }
 
@@ -311,6 +390,7 @@ impl Default for App {
             settings_page: pages::settings::SettingsPage::default(),
             game_details_page: pages::game_details::GameDetailsPage::default(),
             active_terminals: HashMap::new(),
+            active_modal: None,
         }
     }
 }

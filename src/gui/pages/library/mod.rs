@@ -6,6 +6,7 @@ use tracing::{error, info};
 use crate::gui::components::common::primary_button;
 use crate::gui::components::gamecard;
 use crate::gui::components::gamecard::game_browser::GameBrowser;
+use crate::gui::{show_confirm, show_error};
 use crate::monarch_games;
 use crate::monarch_games::monarchgame::MonarchGame;
 
@@ -172,6 +173,7 @@ impl Default for LibraryPage {
             }
             Err(e) => {
                 error!("Failed to get library: {}", e);
+                show_error("Failed to get library!");
             }
         }
 

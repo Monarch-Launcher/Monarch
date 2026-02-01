@@ -4,6 +4,7 @@ use crate::gui::components::gamecard::GameCardMessage;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 use iced::widget::{container, stack, text};
 use iced::{alignment, Color, Element, Length};
+use tracing::info;
 
 #[derive(Default)]
 pub struct GameBrowser {

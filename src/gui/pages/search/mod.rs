@@ -1,11 +1,11 @@
 use iced::widget::{button, column, container, row, text, text_input};
 use iced::{alignment, Color, Element, Length};
-use tracing::error;
+use tracing::{error, info};
 
 use crate::gui::components::gamecard;
 use crate::monarch_games;
 use crate::monarch_games::games::SearchResult;
-use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame};
+use crate::monarch_games::monarchgame::MonarchWebApiGame;
 
 #[derive(Clone, Debug)]
 pub enum Message {

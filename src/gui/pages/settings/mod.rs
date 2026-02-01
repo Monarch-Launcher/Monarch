@@ -1,8 +1,9 @@
 use iced::widget::{button, column, container, row, scrollable, svg, text, toggler, Space};
 use iced::{alignment, Color, Element, Length, Theme};
+use tracing::error;
 
 use crate::gui::components::common::{input_field, primary_button, secondary_button};
-use crate::gui::styles;
+use crate::gui::{show_error, styles};
 use crate::monarch_utils;
 use crate::monarch_utils::monarch_settings::Settings;
 
@@ -37,6 +38,7 @@ pub enum Message {
     EpicPasswordChanged(String),
     SaveEpicCredentials,
     Refresh,
+    RequestTestModal,
 }
 
 pub struct SettingsPage {
@@ -82,21 +84,39 @@ impl SettingsPage {
                     p,
                 );
             }
-            Message::ResetDefaults => {
-                self.settings = monarch_utils::commands::default_settings().unwrap()
-            }
+            Message::ResetDefaults => match monarch_utils::commands::default_settings() {
+                Ok(settings) => self.settings = settings,
+                Err(settings) => {
+                    error!("Failed to reset settings");
+                    show_error("Failed to reset settings!");
+                    self.settings = settings;
+                }
+            },
             Message::ClearCache => {
                 monarch_utils::commands::clear_cached_images();
                 self.refresh();
             }
             Message::Refresh => self.refresh(),
+            Message::RequestTestModal => {
+                crate::gui::show_error("Easy error display works!");
+            }
+            Message::OpenLogs => {
+                let _ = monarch_utils::commands::open_logs();
+            }
             _ => {}
         }
         iced::Task::none()
     }
 
     pub fn refresh(&mut self) {
-        self.cache_size = monarch_utils::commands::get_cache_size().unwrap_or(0);
+        match monarch_utils::commands::get_cache_size() {
+            Ok(size) => self.cache_size = size,
+            Err(e) => {
+                self.cache_size = 0;
+                error!("Failed to get cache size: {}", e);
+                show_error("Failed to get cache size!");
+            }
+        }
     }
 
     pub fn view(&self) -> Element<'_, Message, Theme> {
@@ -186,8 +206,9 @@ impl SettingsPage {
     fn view_monarch(&self) -> Element<'_, Message, Theme> {
         column![
             self.section_header("General"),
+            Space::new().height(20),
             text("Configure general behavior and preferences for the Monarch launcher.")
-                .size(14)
+                .size(20)
                 .color([0.7, 0.7, 0.7]),
             Space::new().height(20),
             row![

@@ -21,30 +21,27 @@ use super::monarch_settings::{
 *   tauri::commands don't return the actual error message. Instead they write an easier error to understand for the user.
 */
 
-/*
-pub fn open_logs(handle: AppHandle) -> Result<(), String> {
+pub fn open_logs() -> Result<(), String> {
     let log_path: PathBuf = get_log_dir();
-    match log_path.to_str() {
-        Some(path) => {
-            if let Err(e) = handle.opener().open_path(path, None::<&str>) {
-                error!(
-                    "monarch_utils::commands::open_logs() Failed to open: {} | Err: {}",
-                    path, e
-                );
-                return Err(String::from("Failed to open logs in file manager."));
-            }
-        }
-        None => {
+    let res = if cfg!(target_os = "windows") {
+        std::process::Command::new("explorer").arg(log_path).spawn()
+    } else if cfg!(target_os = "macos") {
+        std::process::Command::new("open").arg(log_path).spawn()
+    } else {
+        std::process::Command::new("xdg-open").arg(log_path).spawn()
+    };
+
+    match res {
+        Ok(_) => Ok(()),
+        Err(e) => {
             error!(
-                "monarch_utils::commands::open_logs() {} returned None when running .to_str()",
-                log_path.display()
+                "monarch_utils::commands::open_logs() Failed to open logs | Err: {}",
+                e
             );
-            return Err(String::from("Failed to get log path."));
+            Err(String::from("Failed to open logs in file manager."))
         }
     }
-    Ok(())
 }
-*/
 
 /// Returns settings read from settings.toml
 pub fn get_settings() -> Settings {

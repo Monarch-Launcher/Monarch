@@ -2,7 +2,6 @@ use iced::widget::{column, container, image, row, scrollable, stack, text};
 use iced::{alignment, Color, Element, Length, Theme};
 
 use crate::gui::components::gamecard::GameCardMessage;
-use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 
 #[derive(Default)]
