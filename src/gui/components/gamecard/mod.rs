@@ -14,5 +14,6 @@ pub enum GameCardMessage {
     UpdateGames(Vec<MonarchGame>),
     OpenDrawer,
     CloseDrawer,
+    OpenStorePage(String),
     NoOp,
 }

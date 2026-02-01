@@ -65,18 +65,4 @@ impl TermInstance {
         }
         iced::Task::none()
     }
-
-    /*
-       pub fn alacritty_update(&mut self, event: iced_term::AlacrittyEvent) {
-           match event {
-               iced_term::AlacrittyEvent::ChildExit(code) => {
-                   if code != 0 {
-                       error!("Child process exited with status code: {code}")
-                   }
-                   self.term.handle(iced_term::Command::Exit);
-               }
-               _ => {}
-           }
-       }
-    */
 }

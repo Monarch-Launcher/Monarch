@@ -87,7 +87,18 @@ impl GameDrawer {
                 } else {
                     &game.summary
                 })
-                .color(Color::from_rgb8(200, 200, 200))
+                .color(Color::from_rgb8(200, 200, 200)),
+                row(stores
+                    .iter()
+                    .filter(|s| !s.store_page.is_empty())
+                    .map(|s| {
+                        crate::gui::components::common::primary_button(
+                            &format!("{} Store", s.name),
+                            Some(GameCardMessage::OpenStorePage(s.store_page.clone())),
+                        )
+                    })
+                    .collect::<Vec<Element<'a, GameCardMessage>>>())
+                .spacing(10),
             ]
             .spacing(20)
             .padding(40)

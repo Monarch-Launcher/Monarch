@@ -45,6 +45,11 @@ impl GameBrowser {
             GameCardMessage::CloseDrawer => {
                 self.selected_game = None;
             }
+            GameCardMessage::OpenStorePage(url) => {
+                let tasks = crate::gui::components::webview::open_webview(url.clone())
+                    .map(|_| GameCardMessage::NoOp);
+                return tasks;
+            }
             GameCardMessage::UpdateGames(_) => {
                 // Handled in container update, but we might want to reset selection?
             }
