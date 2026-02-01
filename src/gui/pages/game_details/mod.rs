@@ -116,9 +116,8 @@ impl GameDetailsPage {
             .style(|_theme: &Theme| container::Style {
                 background: Some(
                     iced::gradient::Linear::new(iced::Radians(std::f32::consts::PI))
-                        .add_stop(0.0, Color::from_rgba8(10, 10, 17, 0.2))
-                        .add_stop(0.3, Color::from_rgba8(10, 10, 17, 0.5))
-                        .add_stop(0.5, Color::from_rgba8(10, 10, 17, 1.0))
+                        .add_stop(0.5, Color::from_rgba8(10, 10, 17, 0.0))
+                        .add_stop(0.6, Color::from_rgba8(10, 10, 17, 1.0))
                         .into(),
                 ),
                 ..Default::default()
