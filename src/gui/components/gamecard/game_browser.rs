@@ -46,10 +46,21 @@ impl GameBrowser {
                 self.selected_game = None;
             }
             GameCardMessage::OpenStorePage(url) => {
-                std::process::Command::new("xdg-open")
-                    .arg(url)
-                    .spawn()
-                    .unwrap();
+                #[cfg(target_os = "linux")]
+                {
+                    std::process::Command::new("xdg-open")
+                        .arg(url)
+                        .spawn()
+                        .unwrap();
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    std::process::Command::new("cmd.exe")
+                        .arg("/C")
+                        .arg(format!("start {}", url))
+                        .spawn()
+                        .unwrap();
+                }
                 return iced::Task::none();
             }
             GameCardMessage::UpdateGames(_) => {
