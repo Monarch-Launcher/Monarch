@@ -42,7 +42,6 @@ tar = "0.4.44"
 flate2 = "1.1.2"
 fs_extra = "1.3.0"
 async-trait = "0.1.89"
-wry = "0.54.1"
 
 
 [target.'cfg(target_os = "macos")'.dependencies]

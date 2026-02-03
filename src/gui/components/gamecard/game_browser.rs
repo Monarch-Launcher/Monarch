@@ -46,9 +46,11 @@ impl GameBrowser {
                 self.selected_game = None;
             }
             GameCardMessage::OpenStorePage(url) => {
-                let tasks = crate::gui::components::webview::open_webview(url.clone())
-                    .map(|_| GameCardMessage::NoOp);
-                return tasks;
+                std::process::Command::new("xdg-open")
+                    .arg(url)
+                    .spawn()
+                    .unwrap();
+                return iced::Task::none();
             }
             GameCardMessage::UpdateGames(_) => {
                 // Handled in container update, but we might want to reset selection?

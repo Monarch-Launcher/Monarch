@@ -15,5 +15,6 @@ pub enum GameCardMessage {
     OpenDrawer,
     CloseDrawer,
     OpenStorePage(String),
+    WebviewOpened(iced::window::Id),
     NoOp,
 }

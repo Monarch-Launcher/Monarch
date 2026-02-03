@@ -282,6 +282,12 @@ impl App {
             return term.view().map(AppMessage::Terminal);
         }
 
+        // If it's not the main window and not a terminal, it's a webview or other secondary window.
+        // Render empty content to avoid duplicating the main app.
+        if window_id != self.app_id {
+            return iced::widget::Space::new().into();
+        }
+
         let page_content = match self.active_tab {
             PageTab::Home => self.home_page.view().map(pages::Message::Home),
             PageTab::Library => self.library_page.view().map(pages::Message::Library),
