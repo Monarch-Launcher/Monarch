@@ -7,6 +7,7 @@ pub struct Modal<'a, Message> {
     title: String,
     content: Element<'a, Message, Theme>,
     on_close: Option<Message>,
+    width: Option<Length>,
 }
 
 impl<'a, Message> Modal<'a, Message>
@@ -18,11 +19,17 @@ where
             title: title.into(),
             content: content.into(),
             on_close: None,
+            width: None,
         }
     }
 
     pub fn on_close(mut self, message: Message) -> Self {
         self.on_close = Some(message);
+        self
+    }
+
+    pub fn width(mut self, width: Length) -> Self {
+        self.width = Some(width);
         self
     }
 
@@ -48,7 +55,7 @@ where
                 .spacing(20)
                 .padding(20),
         )
-        .width(Length::Fixed(500.0))
+        .width(self.width.unwrap_or(Length::Fixed(500.0)))
         .style(styles::modal::content);
 
         container(modal_content)

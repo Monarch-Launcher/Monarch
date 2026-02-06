@@ -1,5 +1,6 @@
 use crate::gui::components::gamecard::container::GameCardContainer;
 use crate::gui::components::gamecard::drawer::GameDrawer;
+use crate::gui::components::gamecard::properties::PropertiesModal;
 use crate::gui::components::gamecard::GameCardMessage;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 use iced::widget::{container, stack, text};
@@ -12,6 +13,7 @@ pub struct GameBrowser {
     drawer: GameDrawer,
     selected_game: Option<MonarchGame>,
     drawer_animation: f32,
+    properties_modal: Option<PropertiesModal>,
 }
 
 impl GameBrowser {
@@ -63,6 +65,28 @@ impl GameBrowser {
                 }
                 return iced::Task::none();
             }
+            GameCardMessage::OpenProperties(game) => {
+                let (modal, task) = PropertiesModal::new(game.clone());
+                self.properties_modal = Some(modal);
+                return task.map(GameCardMessage::Properties);
+            }
+            GameCardMessage::CloseProperties => {
+                self.properties_modal = None;
+            }
+            GameCardMessage::Properties(prop_msg) => {
+                if let Some(modal) = &mut self.properties_modal {
+                    match prop_msg {
+                        crate::gui::components::gamecard::properties::Message::Cancel => {
+                            self.properties_modal = None;
+                        }
+                        _ => {
+                            return modal
+                                .update(prop_msg.clone())
+                                .map(GameCardMessage::Properties);
+                        }
+                    }
+                }
+            }
             GameCardMessage::UpdateGames(_) => {
                 // Handled in container update, but we might want to reset selection?
             }
@@ -100,7 +124,7 @@ impl GameBrowser {
     }
 
     pub fn view(&self) -> Element<'_, GameCardMessage> {
-        if let Some(game) = &self.selected_game {
+        let content = if let Some(game) = &self.selected_game {
             iced::widget::responsive(move |size| {
                 let drawer_width = size.width * 0.5;
                 let padding_left = size.width - (drawer_width * self.drawer_animation);
@@ -150,6 +174,12 @@ impl GameBrowser {
             .into()
         } else {
             self.view_grid(true)
+        };
+
+        if let Some(modal) = &self.properties_modal {
+            stack![content, modal.view().map(GameCardMessage::Properties)].into()
+        } else {
+            content
         }
     }
 }

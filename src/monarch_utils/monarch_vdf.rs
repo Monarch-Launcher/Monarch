@@ -46,10 +46,16 @@ impl LibraryFolders {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ProtonVersion {
-    name: String,
-    path: String,
+    pub name: String,
+    pub path: String,
+}
+
+impl std::fmt::Display for ProtonVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
 }
 
 /// Parses steams libraryfolders.vdf file to structs that can be used to find

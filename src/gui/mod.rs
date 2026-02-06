@@ -216,6 +216,14 @@ impl App {
                         pages::game_details::Message::CloseTerminal(id) => {
                             self.update(AppMessage::CloseTerminal(id))
                         }
+                        pages::game_details::Message::OpenProperties => self
+                            .game_details_page
+                            .update(pages::game_details::Message::OpenProperties)
+                            .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
+                        pages::game_details::Message::Properties(p_msg) => self
+                            .game_details_page
+                            .update(pages::game_details::Message::Properties(p_msg))
+                            .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
                         pages::game_details::Message::Nop(_) => iced::Task::none(),
                     }
                 }

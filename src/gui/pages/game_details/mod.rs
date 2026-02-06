@@ -4,6 +4,7 @@ use iced::{alignment, Color, Element, Length, Theme};
 use tracing::error;
 
 use crate::gui::components::common::{launch_button, secondary_button};
+use crate::gui::components::gamecard::properties::{self, PropertiesModal};
 use crate::monarch_games;
 use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::MonarchGame;
@@ -14,16 +15,22 @@ pub enum Message {
     LaunchGame,
     OpenTerminal(Id),
     CloseTerminal(Id),
+    OpenProperties,
+    Properties(properties::Message),
     Nop(()),
 }
 
 pub struct GameDetailsPage {
     game: Option<MonarchGame>,
+    properties_modal: Option<PropertiesModal>,
 }
 
 impl GameDetailsPage {
     pub fn new() -> Self {
-        Self { game: None }
+        Self {
+            game: None,
+            properties_modal: None,
+        }
     }
 
     pub fn set_game(&mut self, game: MonarchGame) {
@@ -54,6 +61,25 @@ impl GameDetailsPage {
                     Message::Nop,
                 )
             }
+            Message::OpenProperties => {
+                if let Some(game) = &self.game {
+                    let (modal, task) = PropertiesModal::new(game.clone());
+                    self.properties_modal = Some(modal);
+                    return task.map(Message::Properties);
+                }
+                iced::Task::none()
+            }
+            Message::Properties(prop_msg) => {
+                if let properties::Message::Cancel = prop_msg {
+                    self.properties_modal = None;
+                    return iced::Task::none();
+                }
+
+                if let Some(modal) = &mut self.properties_modal {
+                    return modal.update(prop_msg).map(Message::Properties);
+                }
+                iced::Task::none()
+            }
             _ => iced::Task::none(),
         }
     }
@@ -77,7 +103,7 @@ impl GameDetailsPage {
         }
     }
 
-    fn view_game_details<'a>(&self, game: &'a MonarchGame) -> Element<'a, Message> {
+    fn view_game_details<'a>(&'a self, game: &'a MonarchGame) -> Element<'a, Message> {
         // Determine background image with fallback logic
         let background_image = if !game.artwork_path.is_empty() {
             container(
@@ -295,6 +321,7 @@ impl GameDetailsPage {
         });
 
         let launch_btn = launch_button("Launch", Some(Message::LaunchGame));
+        let properties_btn = secondary_button("Properties", Some(Message::OpenProperties));
 
         // Right side content (info panel)
         let info_panel = column![
@@ -312,7 +339,9 @@ impl GameDetailsPage {
         // Main content area with horizontal layout
         let main_content = column![
             cover_container,
-            launch_btn,
+            row![launch_btn, properties_btn]
+                .spacing(10)
+                .align_y(alignment::Vertical::Center),
             container(info_panel).width(Length::Fill),
         ]
         .spacing(40);
@@ -338,10 +367,15 @@ impl GameDetailsPage {
         .height(Length::Fill);
 
         // Stack everything: background -> overlay -> content
-        stack![background_image, overlay, content]
+        let mut layers = stack![background_image, overlay, content]
             .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+            .height(Length::Fill);
+
+        if let Some(modal) = &self.properties_modal {
+            layers = layers.push(modal.view().map(Message::Properties));
+        }
+
+        layers.into()
     }
 }
 
