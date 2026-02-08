@@ -453,8 +453,8 @@ pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
     }
 }
 
-pub async fn get_game_properties(game: MonarchGame) -> MonarchGameProperties {
-    monarch_client::get_game_properties(&game).await
+pub async fn get_game_properties(game: &mut MonarchGame) -> MonarchGameProperties {
+    monarch_client::get_game_properties(game).await
 }
 
 pub async fn manual_remove_game(game: MonarchGame) -> Result<(), String> {

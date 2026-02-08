@@ -406,7 +406,7 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     monarch_games
 }
 
-pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
+pub async fn get_game_properties(game: &mut MonarchGame) {
     let mut platform = game.get_store_name();
     if platform == "steamcmd" {
         platform = "steam".to_string();
@@ -434,6 +434,8 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
                         }
                     }
 
+                    game.properties = props;
+
                     if let Ok(state) = MONARCH_STATE.read() {
                         if let Some(g) = state.get_game(&game.id) {
                             props.description = g.summary;
@@ -443,7 +445,7 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
                 }
                 Err(e) => {
                     error!("monarch_client::get_game_properties() Failed to get path to Steams libraryfolders.vdf! | Err: {}", e);
-                    return MonarchGameProperties::default();
+                    return;
                 }
             }
         }
@@ -456,18 +458,20 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
 
         if !web_games.is_empty() {
             let web_game: &MonarchWebApiGame = &web_games[0];
+
+            if game.platform.is_empty() {
+                game.platform = web_game.platform.to_string();
+                game.platform_id = web_game.platform_id.to_string();
+            }
             properties.description = web_game.summary.to_string();
 
             for platform in web_game.platforms.iter() {
-                if platform.name == "steam" {
-                    properties.platform = "steam".to_string();
-                    properties.platform_id = platform.platform_id.to_string();
-                }
+                if platform.name == "steam" {}
             }
 
             #[cfg(target_os = "linux")]
             {
-                if properties.platform == "steam" {
+                if  == "steam" {
                     match steam_client::get_protondb_rating(&properties.platform_id).await {
                         Ok((rating, url)) => {
                             properties.protondb_rating = rating;
@@ -480,7 +484,6 @@ pub async fn get_game_properties(game: &MonarchGame) -> MonarchGameProperties {
                 }
             }
         }
+        game.properties = properties;
     }
-
-    properties
 }
