@@ -1,7 +1,9 @@
 mod update;
 mod view;
 
-use iced::widget::{container, text};
+use std::sync::{Arc, Mutex};
+
+use iced::widget::{container, stack, text};
 use iced::window::Id;
 use iced::{alignment, Color, Element, Length, Theme};
 
@@ -20,7 +22,7 @@ pub enum Message {
 }
 
 pub struct GameDetailsPage {
-    game: Option<MonarchGame>,
+    game: Option<Arc<Mutex<MonarchGame>>>,
     properties_modal: Option<PropertiesModal>,
 }
 
@@ -32,7 +34,7 @@ impl GameDetailsPage {
         }
     }
 
-    pub fn set_game(&mut self, game: MonarchGame) {
+    pub fn set_game(&mut self, game: Arc<Mutex<MonarchGame>>) {
         self.game = Some(game);
     }
 
@@ -50,8 +52,16 @@ impl GameDetailsPage {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        if let Some(game) = &self.game {
-            self.view_game_details(game)
+        if self.game.is_some() {
+            let mut content = self.view_game_details();
+
+            if let Some(modal) = &self.properties_modal {
+                let mut layers = stack![content].width(Length::Fill).height(Length::Fill);
+
+                layers = layers.push(modal.view().map(Message::Properties));
+                content = layers.into();
+            }
+            content
         } else {
             container(
                 text("No game selected")

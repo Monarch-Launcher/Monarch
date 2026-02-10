@@ -209,7 +209,7 @@ pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Res
 
             let app_state: AppState =
                 AppState::read(&path).with_context(|| "monarch_vdf::AppState::read() -> ")?;
-            game.install_dir = PathBuf::from(path.parent().unwrap())
+            game.properties.install_dir = PathBuf::from(path.parent().unwrap())
                 .join("common")
                 .join(app_state.installdir)
                 .to_str()
@@ -253,7 +253,7 @@ pub struct SteamGameProperties {
     appid: String,
     installdir: String,
     LastPlayed: String,
-    SizeOnDisk: String,
+    SizeOnDisk: u64,
 }
 
 impl SteamGameProperties {
@@ -276,14 +276,12 @@ impl SteamGameProperties {
 impl Into<MonarchGameProperties> for SteamGameProperties {
     fn into(self) -> MonarchGameProperties {
         MonarchGameProperties {
-            name: self.name,
-            platform: "Steam".to_string(),
-            platform_id: self.appid,
             install_dir: self.installdir,
             size_on_disk: self.SizeOnDisk,
             last_played: self.LastPlayed,
             time_played: "WIP".to_string(),
             description: "WIP".to_string(),
+            version: "".to_string(),
             protondb_rating: "N/A".to_string(),
             protondb_url: "".to_string(),
         }
@@ -298,8 +296,8 @@ pub fn get_game_properties_from_manifest(
         name: "Error".to_string(),
         appid: "Error".to_string(),
         installdir: "Error".to_string(),
-        LastPlayed: "Error".to_string(),
-        SizeOnDisk: "Error".to_string(),
+        LastPlayed: "".to_string(),
+        SizeOnDisk: 0
     };
 
     let library_folders: LibraryFolders = match LibraryFolders::read(libraryfolders_vdf) {

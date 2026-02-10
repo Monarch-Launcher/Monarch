@@ -6,7 +6,7 @@ use tracing::{error, info};
 use crate::gui::components::common::primary_button;
 use crate::gui::components::gamecard;
 use crate::gui::components::gamecard::game_browser::GameBrowser;
-use crate::gui::{show_confirm, show_error};
+use crate::gui::show_error;
 use crate::monarch_games;
 use crate::monarch_games::monarchgame::MonarchGame;
 
@@ -14,12 +14,14 @@ use crate::monarch_games::monarchgame::MonarchGame;
 pub enum Message {
     RefreshLibrary,
     UpdateGames(Vec<MonarchGame>),
-    GameImgLoaded(MonarchGame),
+    UpdateGameProperties,
+    GameUpdated(MonarchGame),
     GameCard(gamecard::GameCardMessage),
     OpenGameDetails(MonarchGame),
     Tick,
 }
 
+#[derive(Debug, Clone)]
 pub struct LibraryPage {
     browser: GameBrowser,
     is_refreshing: bool,
@@ -52,7 +54,7 @@ impl LibraryPage {
                     .collect();
 
                 // Trigger download tasks
-                let download_tasks = iced::Task::batch(games.into_iter().map(|game| {
+                let download_tasks = iced::Task::batch(games.into_iter().map(|mut game| {
                     iced::Task::perform(
                         async move {
                             info!("Downloading artwork for: {}", game.name);
@@ -63,9 +65,12 @@ impl LibraryPage {
                             {
                                 error!("Failed to download thumbnail for game {}: {}", game.id, e);
                             }
+
+                            info!("Updating game properties for : {}", game.name);
+                            monarch_games::commands::get_game_properties(&mut game).await;
                             game
                         },
-                        Message::GameImgLoaded,
+                        Message::GameUpdated,
                     )
                 }));
 
@@ -76,7 +81,21 @@ impl LibraryPage {
 
                 download_tasks
             }
-            Message::GameImgLoaded(game) => {
+            Message::UpdateGameProperties => {
+                // Trigger download tasks
+                let update_tasks = iced::Task::batch(self.browser.games.games.iter().cloned().map(|mut gamecard| {
+                    iced::Task::perform(
+                        async move {
+                            monarch_games::commands::get_game_properties(&mut gamecard.game).await;
+                            gamecard.game
+                        },
+                        Message::GameUpdated
+                    )
+                }));
+
+               update_tasks 
+            }
+            Message::GameUpdated(game) => {
                 if let Some(card) = self
                     .browser
                     .games
@@ -84,7 +103,7 @@ impl LibraryPage {
                     .iter_mut()
                     .find(|c| c.game.id == game.id)
                 {
-                    card.game.thumbnail_path = game.thumbnail_path.clone();
+                    card.game = game;
                 }
                 iced::Task::none()
             }

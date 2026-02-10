@@ -4,7 +4,7 @@ use iced::{alignment, Color, Element, Length, Theme};
 use crate::gui::components::gamecard::GameCardMessage;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct GameDrawer {}
 
 impl GameDrawer {

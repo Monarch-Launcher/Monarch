@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use iced::widget::{button, column, combo_box, row, text, text_input, Space};
 use iced::{alignment, Element, Length, Task};
@@ -18,11 +19,11 @@ pub enum Message {
     LaunchArgsChanged(String),
     Save,
     Cancel,
-    NoOp,
 }
 
+#[derive(Debug, Clone)]
 pub struct PropertiesModal {
-    game: MonarchGame,
+    game: Arc<Mutex<MonarchGame>>,
     executables: combo_box::State<String>,
     executable_list: Vec<String>,
     selected_executable: Option<String>,
@@ -35,18 +36,20 @@ pub struct PropertiesModal {
 }
 
 impl PropertiesModal {
-    pub fn new(game: MonarchGame) -> (Self, Task<Message>) {
-        let launch_args = game.launch_args.clone();
-        let current_executable = if game.executable_path.is_empty() {
-            None
-        } else {
-            Some(game.executable_path.clone())
-        };
-
-        let _current_compatibility = if game.compatibility.is_empty() {
-            None
-        } else {
-            Some(game.compatibility.clone())
+    pub fn new(game: Arc<Mutex<MonarchGame>>) -> (Self, Task<Message>) {
+        let (launch_args, current_executable, _) = {
+            let game_lock = game.lock().unwrap();
+            let launch_args = game_lock.launch_args.clone();
+            let current_executable = if game_lock.executable_path.is_empty() {
+                None
+            } else {
+                Some(game_lock.executable_path.clone())
+            };
+            (
+                launch_args,
+                current_executable,
+                game_lock.compatibility.clone(),
+            )
         };
 
         let modal = Self {
@@ -67,8 +70,8 @@ impl PropertiesModal {
             Task::batch(vec![
                 Task::perform(
                     async move {
-                        let game_clone = game.clone();
-                        tokio::task::spawn_blocking(move || get_executables(game_clone))
+                        let game_inner = game.lock().unwrap().clone();
+                        tokio::task::spawn_blocking(move || get_executables(game_inner))
                             .await
                             .unwrap()
                     },
@@ -116,11 +119,12 @@ impl PropertiesModal {
                 self.compatibility_list = versions;
                 self.compatibility_layers = combo_box::State::new(self.compatibility_list.clone());
 
-                if !self.game.compatibility.is_empty() {
+                if !self.game.lock().unwrap().compatibility.is_empty() {
+                    let game_compat = self.game.lock().unwrap().compatibility.clone();
                     self.selected_compatibility = self
                         .compatibility_list
                         .iter()
-                        .find(|v| v.name == self.game.compatibility)
+                        .find(|v| v.name == game_compat)
                         .cloned();
                 }
 
@@ -139,7 +143,7 @@ impl PropertiesModal {
                 Task::none()
             }
             Message::Save => {
-                let mut game = self.game.clone();
+                let mut game = self.game.lock().unwrap();
                 if let Some(exe) = &self.selected_executable {
                     game.executable_path = exe.clone();
                 }
@@ -148,19 +152,22 @@ impl PropertiesModal {
                 }
                 game.launch_args = self.launch_args.clone();
 
-                Task::perform(async move { update_game_properties(game).await }, |res| {
-                    if let Err(e) = res {
-                        error!("Failed to save properties: {}", e);
-                    }
-                    Message::Cancel
-                })
+                let game_clone = game.clone();
+                Task::perform(
+                    async move { update_game_properties(&game_clone).await },
+                    |res| {
+                        if let Err(e) = res {
+                            error!("Failed to save properties: {}", e);
+                        }
+                        Message::Cancel
+                    },
+                )
             }
             Message::Cancel => Task::none(),
-            Message::NoOp => Task::none(),
         }
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<'_, Message> {
         let executables_combo = combo_box(
             &self.executables,
             "Select Executable",

@@ -3,6 +3,7 @@ use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 use iced::widget::{button, container, image, mouse_area};
 use iced::{alignment, Color, Element, Length};
 
+#[derive(Debug, Clone)]
 pub struct GameCard {
     pub game: MonarchGame,
     pub platforms: Vec<MonarchWebApiPlatform>,

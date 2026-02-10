@@ -337,10 +337,11 @@ impl MonarchWebApiGame {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MonarchGameProperties {
     pub install_dir: String,
-    pub size_on_disk: String,
+    pub size_on_disk: u64,
     pub last_played: String,
     pub time_played: String,
     pub description: String,
+    pub version: String,
 
     pub protondb_rating: String,
     pub protondb_url: String,
@@ -350,10 +351,11 @@ impl Default for MonarchGameProperties {
     fn default() -> Self {
         Self {
             install_dir: "Error".to_string(),
-            size_on_disk: "Error".to_string(),
-            last_played: "Error".to_string(),
+            size_on_disk: 0,
+            last_played: "".to_string(),
             time_played: "WIP".to_string(),
             description: "Error".to_string(),
+            version: "Error".to_string(),
             protondb_rating: "N/A".to_string(),
             protondb_url: "".to_string(),
         }

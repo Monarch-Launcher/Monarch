@@ -1,3 +1,4 @@
+use chrono::{TimeZone, Utc};
 use iced::{
     alignment,
     widget::{column, container, image, row, scrollable, stack, text, Space},
@@ -13,7 +14,9 @@ use crate::{
 };
 
 impl GameDetailsPage {
-    pub fn view_game_details<'a>(&'a self, game: &'a MonarchGame) -> Element<'a, Message> {
+    pub fn view_game_details(&self) -> Element<'_, Message> {
+        let game: MonarchGame = self.game.as_ref().unwrap().lock().unwrap().clone();
+
         // Determine background image with fallback logic
         let background_image = if !game.artwork_path.is_empty() {
             container(
@@ -91,7 +94,7 @@ impl GameDetailsPage {
         });
 
         // Title
-        let title = text(&game.name)
+        let title = text(game.name.clone())
             .size(42)
             .color(Color::WHITE)
             .font(iced::Font {
@@ -129,37 +132,35 @@ impl GameDetailsPage {
             });
 
         let description_text = text(if game.summary.is_empty() {
-            "No description available."
+            "No description available.".to_string()
         } else {
-            &game.summary
+            game.summary.clone()
         })
         .size(15)
         .color(Color::from_rgb8(180, 180, 180))
         .line_height(iced::widget::text::LineHeight::Relative(1.7));
 
         // Technical details
-        let install_size_display = if game.install_size.is_empty() {
-            "Unknown"
+        let install_size_display = format_size(game.properties.size_on_disk as f64);
+
+        let version_display = if game.properties.version.is_empty() {
+            "Unknown".to_string()
         } else {
-            &game.install_size
+            game.properties.version.clone()
         };
 
-        let version_display = if game.version.is_empty() {
-            "Unknown"
+        let play_time_display = if game.properties.time_played.is_empty() {
+            "0 hours".to_string()
         } else {
-            &game.version
+            game.properties.time_played.clone()
         };
 
-        let play_time_display = if game.play_time.is_empty() {
-            "0 hours"
+        let last_played_display = if game.properties.last_played.is_empty() {
+            "Unknown".to_string()
         } else {
-            &game.play_time
-        };
-
-        let last_played_display = if game.last_played.is_empty() {
-            "Never"
-        } else {
-            &game.last_played
+            Utc.timestamp_opt(game.properties.last_played.parse::<i64>().unwrap(), 0)
+                .unwrap()
+                .to_string()
         };
 
         let tech_details = container(
@@ -242,12 +243,16 @@ impl GameDetailsPage {
                 ..Default::default()
             });
 
-        let property_item = |label: &'a str, value: &'a str| -> Element<'a, Message> {
+        let property_item = |label: String, value: String| -> Element<'_, Message> {
             column![
                 text(label).size(12).color(Color::from_rgb8(140, 140, 140)),
-                text(if value.is_empty() { "Not set" } else { value })
-                    .size(14)
-                    .color(Color::from_rgb8(200, 200, 200)),
+                text(if value.is_empty() {
+                    "Not set".to_string()
+                } else {
+                    value
+                })
+                .size(14)
+                .color(Color::from_rgb8(200, 200, 200)),
             ]
             .spacing(4)
             .into()
@@ -259,9 +264,9 @@ impl GameDetailsPage {
                     .align_y(alignment::Vertical::Center),
                 container(
                     column![
-                        property_item("Executable", &game.executable_path),
-                        property_item("Compatibility", &game.compatibility),
-                        property_item("Launch Arguments", &game.launch_args),
+                        property_item("Executable".to_string(), game.executable_path.clone()),
+                        property_item("Compatibility".to_string(), game.compatibility.clone()),
+                        property_item("Launch Arguments".to_string(), game.launch_args.clone()),
                     ]
                     .spacing(16)
                 )
@@ -332,4 +337,16 @@ impl GameDetailsPage {
 
         layers.into()
     }
+}
+
+fn format_size(bytes: f64) -> String {
+    let prefixes: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
+    let k = 1024 as f64;
+    let i = (bytes.log2() / k.log2()).floor();
+    let size = bytes / (k.powi(i as i32));
+
+    if size.is_nan() {
+        return "0 B".to_string();
+    }
+    format!("{:.2} {}", size, prefixes[i as usize])
 }

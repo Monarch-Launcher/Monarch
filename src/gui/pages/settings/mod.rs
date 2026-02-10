@@ -400,7 +400,7 @@ impl SettingsPage {
     fn format_cache(&self) -> String {
         let prefixes: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
         let k = 1024 as f64;
-        let i = ((self.cache_size as f64).log2() / k.log2()).round();
+        let i = ((self.cache_size as f64).log2() / k.log2()).floor();
         let size = self.cache_size as f64 / (k.powi(i as i32));
 
         if size.is_nan() {

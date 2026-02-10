@@ -434,8 +434,6 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
                         }
                     }
 
-                    game.properties = props;
-
                     if let Ok(state) = MONARCH_STATE.read() {
                         if let Some(g) = state.get_game(&game.id) {
                             props.description = g.summary;
@@ -459,9 +457,7 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
         if !web_games.is_empty() {
             let web_game: &MonarchWebApiGame = &web_games[0];
 
-            if game.platform.is_empty() {
-                game.platform = web_game.platform.to_string();
-                game.platform_id = web_game.platform_id.to_string();
+            if game.stores.is_empty() {
             }
             properties.description = web_game.summary.to_string();
 
@@ -471,19 +467,23 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
 
             #[cfg(target_os = "linux")]
             {
-                if  == "steam" {
-                    match steam_client::get_protondb_rating(&properties.platform_id).await {
-                        Ok((rating, url)) => {
-                            properties.protondb_rating = rating;
-                            properties.protondb_url = url;
-                        }
-                        Err(e) => {
-                            error!("monarch_client::get_game_properties() Failed to get ProtonDB rating! | Err: {}", e);
+                for store in game.stores.iter() {
+                    if store.name == "steam" {
+                        match steam_client::get_protondb_rating(&store.store_id).await {
+                            Ok((rating, url)) => {
+                                properties.protondb_rating = rating;
+                                properties.protondb_url = url;
+                            }
+                            Err(e) => {
+                                error!("monarch_client::get_game_properties() Failed to get ProtonDB rating! | Err: {}", e);
+                            }
                         }
                     }
                 }
+                
             }
         }
-        game.properties = properties;
     }
+
+    game.properties = properties;
 }

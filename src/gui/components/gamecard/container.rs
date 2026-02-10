@@ -5,7 +5,7 @@ use super::gamecard::GameCard;
 use crate::gui::components::gamecard::GameCardMessage;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct GameCardContainer {
     pub games: Vec<GameCard>,
 }

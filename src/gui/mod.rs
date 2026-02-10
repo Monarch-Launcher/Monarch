@@ -11,13 +11,18 @@ use iced::{
 };
 use iced_term;
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use crate::gui::{
-    components::header::{self, Header},
-    components::terminal::TermInstance,
-    pages::PageTab,
+    components::{
+        header::{self, Header},
+        terminal::TermInstance,
+    },
+    pages::{
+        library::{self, LibraryPage},
+        PageTab,
+    },
 };
 
 pub mod components;
@@ -167,7 +172,13 @@ impl App {
             AppMessage::HeaderMessage(msg) => {
                 match msg {
                     header::Message::HomePage => self.active_tab = PageTab::Home,
-                    header::Message::LibraryPage => self.active_tab = PageTab::Library,
+                    header::Message::LibraryPage => {
+                        self.active_tab = PageTab::Library;
+                        return self
+                            .library_page
+                            .update(library::Message::UpdateGameProperties)
+                            .map(|m| AppMessage::Page(pages::Message::Library(m)));
+                    }
                     header::Message::SearchPage => self.active_tab = PageTab::Search,
                     header::Message::SettingsPage => {
                         self.active_tab = PageTab::Settings;
@@ -230,7 +241,7 @@ impl App {
             },
             AppMessage::OpenGameDetails(game) => {
                 self.previous_tab = self.active_tab;
-                self.game_details_page.set_game(game);
+                self.game_details_page.set_game(Arc::new(Mutex::new(game)));
                 self.active_tab = PageTab::GameDetails;
                 iced::Task::none()
             }

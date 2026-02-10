@@ -321,9 +321,9 @@ pub async fn open_store(url: String) -> Result<(), String> {
  */
 
 /// Updates the properties of a game in the library.
-pub async fn update_game_properties(game: MonarchGame) -> Result<(), String> {
+pub async fn update_game_properties(game: &MonarchGame) -> Result<(), String> {
     info!("Updating properties for: {}", game.name);
-    match games_library::update_game_properties(&game) {
+    match games_library::update_game_properties(game) {
         Ok(_) => Ok(()),
         Err(e) => {
             error!(
@@ -404,7 +404,7 @@ pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
 }
 
 pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
-    if game.install_dir.is_empty() {
+    if game.properties.install_dir.is_empty() {
         #[cfg(target_os = "linux")]
         use super::linux::steam;
 
@@ -441,7 +441,7 @@ pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
     }
 
     // Search for executable files in the installation directory
-    match monarch_fs::get_executables(&PathBuf::from(&game.install_dir)) {
+    match monarch_fs::get_executables(&PathBuf::from(&game.properties.install_dir)) {
         Ok(exes) => Ok(exes),
         Err(e) => {
             error!(
@@ -453,7 +453,7 @@ pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
     }
 }
 
-pub async fn get_game_properties(game: &mut MonarchGame) -> MonarchGameProperties {
+pub async fn get_game_properties(game: &mut MonarchGame) {
     monarch_client::get_game_properties(game).await
 }
 

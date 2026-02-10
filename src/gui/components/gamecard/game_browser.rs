@@ -5,9 +5,10 @@ use crate::gui::components::gamecard::GameCardMessage;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 use iced::widget::{container, stack, text};
 use iced::{alignment, Color, Element, Length};
+use std::sync::{Arc, Mutex};
 use tracing::info;
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct GameBrowser {
     pub games: GameCardContainer,
     drawer: GameDrawer,
@@ -66,7 +67,7 @@ impl GameBrowser {
                 return iced::Task::none();
             }
             GameCardMessage::OpenProperties(game) => {
-                let (modal, task) = PropertiesModal::new(game.clone());
+                let (modal, task) = PropertiesModal::new(Arc::new(Mutex::new(game.clone())));
                 self.properties_modal = Some(modal);
                 return task.map(GameCardMessage::Properties);
             }

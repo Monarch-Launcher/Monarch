@@ -11,7 +11,7 @@ use crate::{
 impl GameDetailsPage {
     pub fn launch_game(&self) -> iced::Task<Message> {
         let game = match &self.game {
-            Some(g) => g.clone(),
+            Some(g) => g.lock().unwrap().clone(),
             None => {
                 error!("No game in GameDetailsPage!");
                 return iced::Task::none();
