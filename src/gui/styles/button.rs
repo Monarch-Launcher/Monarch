@@ -69,19 +69,19 @@ pub fn secondary(theme: &Theme, status: button::Status) -> button::Style {
 
     match status {
         button::Status::Active => button::Style {
-            background: Some(Background::Color(Color::from_rgba8(255, 255, 255, 0.1))),
-            text_color: palette.text,
+            background: Some(Background::Color(Color::from_rgba8(40, 40, 50, 0.85))),
+            text_color: Color::WHITE,
             border: Border {
                 radius: 4.0.into(),
                 width: 1.0,
-                color: Color::from_rgba8(255, 255, 255, 0.15),
+                color: Color::from_rgba8(255, 255, 255, 0.2),
             },
             shadow: Default::default(),
             snap: false,
         },
         button::Status::Hovered => button::Style {
-            background: Some(Background::Color(Color::from_rgba8(255, 255, 255, 0.2))),
-            text_color: palette.text,
+            background: Some(Background::Color(Color::from_rgba8(60, 60, 75, 0.95))),
+            text_color: Color::WHITE,
             border: Border {
                 radius: 4.0.into(),
                 width: 1.0,
@@ -91,26 +91,26 @@ pub fn secondary(theme: &Theme, status: button::Status) -> button::Style {
             snap: false,
         },
         button::Status::Pressed => button::Style {
-            background: Some(Background::Color(Color::from_rgba8(255, 255, 255, 0.15))),
-            text_color: palette.text,
+            background: Some(Background::Color(Color::from_rgba8(30, 30, 40, 1.0))),
+            text_color: Color::WHITE,
             border: Border {
                 radius: 4.0.into(),
                 width: 1.0,
-                color: Color::from_rgba8(255, 255, 255, 0.25),
+                color: Color::from_rgba8(255, 255, 255, 0.4),
             },
             shadow: Default::default(),
             snap: false,
         },
         button::Status::Disabled => button::Style {
-            background: Some(Background::Color(Color::from_rgba8(255, 255, 255, 0.05))),
+            background: Some(Background::Color(Color::from_rgba8(40, 40, 50, 0.4))),
             text_color: Color {
                 a: 0.3,
-                ..palette.text
+                ..Color::WHITE
             },
             border: Border {
                 radius: 4.0.into(),
                 width: 1.0,
-                color: Color::from_rgba8(255, 255, 255, 0.05),
+                color: Color::from_rgba8(255, 255, 255, 0.1),
             },
             shadow: Default::default(),
             snap: false,
