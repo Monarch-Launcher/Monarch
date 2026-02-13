@@ -16,4 +16,9 @@ fn verify_env_vars() {
 
     // This line makes the variable available to `env!` macros
     println!("cargo:rustc-env=MONARCH_URL={}", monarch_url);
+
+    if let Err(e) = std::env::var("CARGO_PKG_VERSION") {
+        eprintln!("CARGO_PKG_VERSION not set | Err: {}", e);
+        std::process::exit(1);
+    }
 }

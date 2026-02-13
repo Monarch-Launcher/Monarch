@@ -1,5 +1,5 @@
 [package]
-name = "Monarch"
+name = "monarch"
 version = "0.1.2"
 description = "A FOSS game launcher/manager."
 authors = ["an0nymoos3", "Dre-Van-den-Hooff"]
@@ -43,6 +43,7 @@ flate2 = "1.1.2"
 fs_extra = "1.3.0"
 async-trait = "0.1.89"
 chrono = "0.4.43"
+cargo-packager = { version = "0.11.8", default-features = false }
 
 
 [target.'cfg(target_os = "macos")'.dependencies]
