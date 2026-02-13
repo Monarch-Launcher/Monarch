@@ -1,6 +1,6 @@
 # Monarch Launcher
 
-![alt text](src-tauri/icons/Square310x310Logo.png)
+![alt text](icons/Square310x310Logo.png)
 
 ## What is it?
 
@@ -36,7 +36,9 @@ These are some of the features we want to include in Monarch and their developme
 
 ### Blazingly fast!
 
-There's a meme that anything written in [Rust](<https://en.wikipedia.org/wiki/Rust_(programming_language)>) is "blazing fast." However, in Monarch's case, there's a grain of truth to it. [Rust](<https://en.wikipedia.org/wiki/Rust_(programming_language)>) is a very fast language. On top of that we don't build in bloated telemetry or unnecessary API calls to some remote server.
+There's a meme that anything written in [Rust](<https://en.wikipedia.org/wiki/Rust_(programming_language)>) is "blazing fast." However, in Monarch's case, there's a grain of truth to it.
+[Rust](<https://en.wikipedia.org/wiki/Rust_(programming_language)>) is a very fast and efficient language, enabling Monarch to both have a small memory footprint and run very fast.
+On top of that we don't build in bloated telemetry or unnecessary API calls to some remote server.
 
 ### Open-source
 
