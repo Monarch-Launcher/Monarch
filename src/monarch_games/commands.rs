@@ -403,7 +403,7 @@ pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
     return Ok(());
 }
 
-pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
+pub fn get_executables(game: &mut MonarchGame) -> Result<Vec<PathBuf>, String> {
     if game.properties.install_dir.is_empty() {
         #[cfg(target_os = "linux")]
         use super::linux::steam;
@@ -419,7 +419,7 @@ pub fn get_executables(mut game: MonarchGame) -> Result<Vec<PathBuf>, String> {
             Ok(path) => {
                 use crate::monarch_utils::monarch_vdf;
 
-                if let Err(e) = monarch_vdf::set_install_dir(&mut game, &path) {
+                if let Err(e) = monarch_vdf::set_install_dir(game, &path) {
                     error!(
                         "monarch_games::commands::get_executables() -> {}",
                         e.chain().map(|e| e.to_string()).collect::<String>()

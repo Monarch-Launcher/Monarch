@@ -55,11 +55,11 @@ impl PropertiesModal {
         let modal = Self {
             game: game.clone(),
             executables: combo_box::State::new(Vec::new()),
-            executable_list: Vec::new(),
+            executable_list: vec!["None".to_string()],
             selected_executable: current_executable,
 
             compatibility_layers: combo_box::State::new(Vec::new()),
-            compatibility_list: Vec::new(),
+            compatibility_list: vec![ProtonVersion{name: "Native".to_string(), path: "".to_string()}],
             selected_compatibility: None,
 
             launch_args,
@@ -70,8 +70,8 @@ impl PropertiesModal {
             Task::batch(vec![
                 Task::perform(
                     async move {
-                        let game_inner = game.lock().unwrap().clone();
-                        tokio::task::spawn_blocking(move || get_executables(game_inner))
+                        let mut game_inner = game.lock().unwrap().clone();
+                        tokio::task::spawn_blocking(move || get_executables(&mut game_inner))
                             .await
                             .unwrap()
                     },
@@ -104,10 +104,10 @@ impl PropertiesModal {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ExecutablesLoaded(exes) => {
-                self.executable_list = exes
+                self.executable_list.append(&mut exes
                     .into_iter()
                     .map(|p| p.to_string_lossy().into_owned())
-                    .collect();
+                    .collect::<Vec<String>>());
                 self.executables = combo_box::State::new(self.executable_list.clone());
 
                 if self.selected_executable.is_none() && !self.executable_list.is_empty() {
@@ -115,8 +115,8 @@ impl PropertiesModal {
                 }
                 Task::none()
             }
-            Message::CompatibilityLoaded(versions) => {
-                self.compatibility_list = versions;
+            Message::CompatibilityLoaded(mut versions) => {
+                self.compatibility_list.append(&mut versions);
                 self.compatibility_layers = combo_box::State::new(self.compatibility_list.clone());
 
                 if !self.game.lock().unwrap().compatibility.is_empty() {
