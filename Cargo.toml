@@ -43,8 +43,9 @@ flate2 = "1.1.2"
 fs_extra = "1.3.0"
 async-trait = "0.1.89"
 chrono = "0.4.43"
-cargo-packager = { version = "0.11.8", default-features = false }
 
+[workspace]
+members = ["package"]
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = { version = "0.2.7", features = ["exception"] }
