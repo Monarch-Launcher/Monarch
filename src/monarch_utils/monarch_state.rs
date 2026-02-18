@@ -1,6 +1,12 @@
-use crate::{monarch_games::{monarch_client::get_library, monarchgame::MonarchGame}, monarch_library::games_library::write_games, monarch_utils::monarch_settings::{Settings, read_settings}};
+use crate::{
+    monarch_games::{monarch_client::get_library, monarchgame::MonarchGame},
+    monarch_library::games_library::write_games,
+    monarch_utils::monarch_settings::{read_settings, Settings},
+};
 use anyhow::{bail, Context, Result};
-use std::sync::{Arc, LazyLock, RwLock};
+use std::sync::Arc;
+use std::sync::LazyLock;
+use std::sync::RwLock;
 
 /// Global state of monarch backend (excluding settings for now)
 /// TODO: Change to some Atomic structure in the future to avoid using shared refrences to mut static
@@ -76,7 +82,12 @@ impl Default for MonarchState {
     fn default() -> Self {
         Self {
             library_games: get_library(),
-            settings: Arc::new(RwLock::new(read_settings().unwrap().try_into().unwrap()))
+            settings: Arc::new(RwLock::new(
+                read_settings()
+                    .expect("Failed to read settings while initialising MONARCH_STATE")
+                    .try_into()
+                    .expect("Failed to parse settings while initialising MONARCH_STATE"),
+            )),
         }
     }
 }

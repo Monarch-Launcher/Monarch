@@ -11,9 +11,8 @@ use super::monarch_fs::{create_dir, generate_monarch_home, get_settings_path, pa
 use crate::monarch_games::monarch_client::generate_default_folder;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
-
 /*
-* ----- Settings struct related ------
+* ----- Settings related structs ------
 */
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,7 +48,6 @@ pub struct Settings {
     pub steam: LauncherSettings,
     pub epic: LauncherSettings,
 }
-
 
 // TODO: Redo this implementation to make sure it doesn't panic
 impl From<Settings> for Table {
@@ -107,9 +105,7 @@ impl Default for Settings {
 /// Function to do unsafe read of SETTINGS_STATE
 pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
     match MONARCH_STATE.read() {
-        Ok(state) => {
-            Ok(state.get_settings_ptr())
-        }
+        Ok(state) => Ok(state.get_settings_ptr()),
         Err(e) => {
             bail!("monarch_settings::get_settings() Failed to aqcuire read lock on MONARCH_STATE | Err: {e}")
         }
@@ -137,8 +133,6 @@ pub fn init() -> Result<()> {
             println!("Invalid settings detected in settings.toml!");
             bail!("monarch_settings::init() Invalid settings detected in settings.toml!")
         }
-        // Set SETTINGS_STATE to settings from settings.toml
-        //set_settings(settings.try_into().unwrap());
     }
 
     Ok(())
@@ -220,8 +214,7 @@ fn parse_table(content: String) -> Result<Table> {
 }
 
 /*
-* ----- Lots of stuff related to verifying that settings written to / read from settings.toml are
-* valid. -----
+* ----- Lots of stuff related to verifying that settings written to / read from settings.toml are valid. -----
 */
 
 /// Main function for verifying that Monarch settings are valid.

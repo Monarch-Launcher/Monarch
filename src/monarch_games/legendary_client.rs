@@ -4,10 +4,10 @@ use tracing::{error, info};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
+use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::generate_cache_image_path;
-use crate::monarch_utils::monarch_settings::get_settings_state;
-use crate::monarch_games::stores::DownloadOptions;
+use crate::monarch_utils::monarch_settings::get_settings;
 
 use super::games::GameType;
 use super::stores::StoreType;
@@ -50,11 +50,12 @@ impl LegendaryClient {
         let login_cmd: String = format!("{} auth", self.cli_path);
 
         info!("Loging in to Epic Games with Legendary...");
-        self.run_legendary_cmd(login_cmd).with_context(|| "legendary_client::login() -> ")?;
+        self.run_legendary_cmd(login_cmd)
+            .with_context(|| "legendary_client::login() -> ")?;
         info!("Logic complete!");
 
         Ok(())
-    } 
+    }
 }
 
 #[async_trait]
@@ -118,10 +119,7 @@ impl StoreType for LegendaryClient {
     async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()> {
         let command: String = format!(
             "{} install {} --game-folder {} --platform {}",
-            self.cli_path,
-            &game.name,
-            opts.folder,
-            opts.os
+            self.cli_path, &game.name, opts.folder, opts.os
         );
 
         self.run_legendary_cmd(command)
@@ -142,14 +140,34 @@ impl StoreType for LegendaryClient {
     }
 
     fn platform_enabled(&self) -> bool {
-        get_settings_state().epic.manage
+        let settings_lock = match get_settings() {
+            Ok(lock) => lock,
+            Err(e) => {
+                error!(
+                    "legendary_client::platform_enabled() get_settings() failed! | Err: {}",
+                    e
+                );
+                return false;
+            }
+        };
+        let settings = match settings_lock.read() {
+            Ok(settings) => settings,
+            Err(e) => {
+                error!(
+                    "legendary_client::platform_enabled() settings_lock.read() failed! | Err: {}",
+                    e
+                );
+                return false;
+            }
+        };
+
+        settings.epic.manage
     }
 
     async fn launch_game(&self, game: &MonarchGame) -> Result<()> {
         let command: String = format!("{} launch {}", self.cli_path, game.name);
         self.run_legendary_cmd(command)
     }
-
 }
 
 pub fn legendary_is_installed() -> bool {

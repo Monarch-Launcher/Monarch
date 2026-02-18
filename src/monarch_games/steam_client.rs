@@ -22,7 +22,7 @@ use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
 };
-use crate::monarch_utils::monarch_settings::{get_settings_state, LauncherSettings};
+use crate::monarch_utils::monarch_settings::{get_settings, LauncherSettings};
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -172,10 +172,25 @@ pub async fn install_steamcmd() -> Result<()> {
     }
 
     // Initial login to cache user credentials
-    let settings = get_settings_state();
-    let steam_settings = settings.steam;
-    let login_arg = get_steamcmd_login(&steam_settings)
-        .with_context(|| "steam_client::install_steamcmd() -> ")?;
+    let login_arg = {
+        let settings_lock = match get_settings() {
+            Ok(lock) => lock,
+            Err(e) => bail!(
+                "steam_client::install_steamcmd() Failed to get settings | Err: {}",
+                e
+            ),
+        };
+        let settings = match settings_lock.read() {
+            Ok(settings) => settings,
+            Err(e) => bail!(
+                "steam_client::install_steamcmd() Failed to get settings read lock | Err: {}",
+                e
+            ),
+        };
+
+        get_steamcmd_login(&settings.steam)
+            .with_context(|| "steam_client::install_steamcmd() -> ")?
+    };
 
     steam::steamcmd_command(vec![&login_arg, "-globaluser", "+quit"])
         .await
@@ -204,10 +219,26 @@ pub fn uninstall_client_game(id: &str) -> Result<()> {
 
 /// Attemps to launch SteamCMD game.
 pub async fn launch_cmd_game(game: &MonarchGame) -> Result<()> {
-    let settings = get_settings_state();
-    let steam_settings = settings.steam;
-    let login_arg = get_steamcmd_login(&steam_settings)
-        .with_context(|| "steam_client::launch_cmd_game() -> ")?;
+    let login_arg = {
+        let settings_lock = match get_settings() {
+            Ok(lock) => lock,
+            Err(e) => bail!(
+                "steam_client::launch_cmd_game() Failed to get settings | Err: {}",
+                e
+            ),
+        };
+        let settings = match settings_lock.read() {
+            Ok(settings) => settings,
+            Err(e) => bail!(
+                "steam_client::launch_cmd_game() Failed to get settings read lock | Err: {}",
+                e
+            ),
+        };
+
+        get_steamcmd_login(&settings.steam)
+            .with_context(|| "steam_client::launch_cmd_game() -> ")?
+    };
+
     let id = game.get_store_id();
 
     let args: Vec<&str> = vec![
@@ -225,26 +256,41 @@ pub async fn launch_cmd_game(game: &MonarchGame) -> Result<()> {
 
 /// Download a Steam game via Monarch and SteamCMD.
 pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
-    let settings = get_settings_state();
-    let steam_settings = settings.steam;
+    let login_arg = {
+        let settings_lock = match get_settings() {
+            Ok(lock) => lock,
+            Err(e) => bail!(
+                "steam_client::download_game() Failed to get settings | Err: {}",
+                e
+            ),
+        };
+        let settings = match settings_lock.read() {
+            Ok(settings) => settings,
+            Err(e) => bail!(
+                "steam_client::download_game() Failed to get settings read lock | Err: {}",
+                e
+            ),
+        };
 
-    if !steam_settings.manage {
-        warn!("steam_client::download_game() User tried to install game without allowing Monarch to manage Steam! Cancelling download...");
-        bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
-    }
+        if !settings.steam.manage {
+            warn!("steam_client::download_game() User tried to install game without allowing Monarch to manage Steam! Cancelling download...");
+            bail!(
+                "steam_client::download_game() | Err: Not allowed to manage games. Check settings."
+            )
+        }
 
-    let mut install_dir: PathBuf = PathBuf::from(settings.monarch.game_folder);
-    let sanitized_name: String = name.replace(" ", "\\ ");
-    install_dir.push(sanitized_name);
+        let mut install_dir: PathBuf = PathBuf::from(&settings.monarch.game_folder);
+        let sanitized_name: String = name.replace(" ", "\\ ");
+        install_dir.push(sanitized_name);
 
-    // Directory argument
-    // TODO: Figure out why force_install_dir wipes libraryfolders.vdf
-    //let mut install_dir_arg: String = String::from("+force_install_dir ");
-    //install_dir_arg.push_str(&install_dir.to_string_lossy());
+        // Directory argument
+        // TODO: Figure out why force_install_dir wipes libraryfolders.vdf
+        //let mut install_dir_arg: String = String::from("+force_install_dir ");
+        //install_dir_arg.push_str(&install_dir.to_string_lossy());
 
-    // Login argument
-    let login_arg =
-        get_steamcmd_login(&steam_settings).with_context(|| "steam_client::download_game() -> ")?;
+        // Login argument
+        get_steamcmd_login(&settings.steam).with_context(|| "steam_client::download_game() -> ")?
+    };
 
     // App ID argument
     let mut download_arg = String::from("+app_update ");
@@ -279,13 +325,30 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
 
 /// Uninstall a Steam game via SteamCMD
 pub async fn uninstall_game(id: &str) -> Result<()> {
-    let steam_settings = get_settings_state().steam;
-    if !steam_settings.manage {
-        warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
-        bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
-    }
+    let login_arg = {
+        let settings_lock = match get_settings() {
+            Ok(lock) => lock,
+            Err(e) => bail!(
+                "steam_client::uninstall_game() Failed to get settings | Err: {}",
+                e
+            ),
+        };
+        let settings = match settings_lock.read() {
+            Ok(settings) => settings,
+            Err(e) => bail!(
+                "steam_client::uninstall_game() Failed to get settings read lock | Err: {}",
+                e
+            ),
+        };
 
-    let login_arg = get_steamcmd_login(&steam_settings)?;
+        if !settings.steam.manage {
+            warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
+            bail!("steam_client::uninstall_game() | Err: Not allowed to manage games. Check settings.")
+        }
+
+        get_steamcmd_login(&settings.steam)?
+    };
+
     let remove_arg: String = format!("+app_uninstall {id}");
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",
@@ -301,13 +364,30 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
 
 /// Uninstall a Steam game via SteamCMD
 pub async fn update_game(id: &str) -> Result<()> {
-    let steam_settings = get_settings_state().steam;
-    if !steam_settings.manage {
-        warn!("steam_client::uninstall_game() User tried to uninstall game without allowing Monarch to manage Steam! Cancelling uninstall...");
-        bail!("steam_client::download_game() | Err: Not allowed to manage games. Check settings.")
-    }
+    let login_arg = {
+        let settings_lock = match get_settings() {
+            Ok(lock) => lock,
+            Err(e) => bail!(
+                "steam_client::update_game() Failed to get settings | Err: {}",
+                e
+            ),
+        };
+        let settings = match settings_lock.read() {
+            Ok(settings) => settings,
+            Err(e) => bail!(
+                "steam_client::update_game() Failed to get settings read lock | Err: {}",
+                e
+            ),
+        };
 
-    let login_arg = get_steamcmd_login(&steam_settings)?;
+        if !settings.steam.manage {
+            warn!("steam_client::update_game() User tried to update game without allowing Monarch to manage Steam! Cancelling update...");
+            bail!("steam_client::update_game() | Err: Not allowed to manage games. Check settings.")
+        }
+
+        get_steamcmd_login(&settings.steam)?
+    };
+
     let update_arg: String = format!("+app_update {id} validate");
     let command: Vec<&str> = vec![
         "+@ShutdownOnFailedCommand 1",

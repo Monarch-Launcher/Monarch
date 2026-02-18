@@ -297,7 +297,7 @@ pub fn get_game_properties_from_manifest(
         appid: "Error".to_string(),
         installdir: "Error".to_string(),
         LastPlayed: "".to_string(),
-        SizeOnDisk: 0
+        SizeOnDisk: 0,
     };
 
     let library_folders: LibraryFolders = match LibraryFolders::read(libraryfolders_vdf) {

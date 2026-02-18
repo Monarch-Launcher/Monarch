@@ -7,7 +7,7 @@ use crate::monarch_games::monarchgame::{
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
-use crate::monarch_utils::monarch_settings::get_settings_state;
+use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_vdf;
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
@@ -229,7 +229,24 @@ pub async fn download_game(
     platform: &str,
     platform_id: &str,
 ) -> Result<Vec<MonarchGame>> {
-    let mut path: PathBuf = PathBuf::from(get_settings_state().monarch.game_folder);
+    let settings_lock = match get_settings() {
+        Ok(lock) => lock,
+        Err(e) => {
+            error!("monarch_client::download_game() Failed to get settings | Err: {e}");
+            bail!("monarch_client::download_game() Failed to get settings | Err: {e}");
+        }
+    };
+    let settings = match settings_lock.read() {
+        Ok(settings) => settings,
+        Err(e) => {
+            error!(
+                "monarch_client::download_game() Failed to get read lock on settings | Err: {e}"
+            );
+            bail!("monarch_client::download_game() Failed to get read lock on settings | Err: {e}");
+        }
+    };
+
+    let mut path: PathBuf = PathBuf::from(&settings.monarch.game_folder);
 
     if !monarch_fs::path_exists(&path) {
         monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
@@ -457,8 +474,7 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
         if !web_games.is_empty() {
             let web_game: &MonarchWebApiGame = &web_games[0];
 
-            if game.stores.is_empty() {
-            }
+            if game.stores.is_empty() {}
             properties.description = web_game.summary.to_string();
 
             for platform in web_game.platforms.iter() {
@@ -480,7 +496,6 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
                         }
                     }
                 }
-                
             }
         }
     }

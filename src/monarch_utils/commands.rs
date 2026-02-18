@@ -1,17 +1,13 @@
+use anyhow::{bail, Result};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use iced::advanced::graphics::text::cosmic_text::skrifa::setting;
 use tracing::error;
-use anyhow::{Result, bail};
 
-use crate::monarch_utils::{monarch_fs, monarch_settings};
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
-use super::monarch_settings::{
-    LauncherSettings,
-    Settings,
-};
+use super::monarch_settings::{LauncherSettings, Settings};
+use crate::monarch_utils::{monarch_fs, monarch_settings};
 
 /*
 *   Settings related commands
@@ -63,115 +59,48 @@ pub fn write_settings(settings: &Settings) -> Result<()> {
 /// Set password in secure store
 /// TODO: Better error handling if write_settings() fails.
 pub fn set_password(
-    platform: String,
+    launcher: &str,
+    launcher_settings: &mut LauncherSettings,
     username: String,
     password: String,
 ) -> Result<()> {
-    let settings_lock: Arc<RwLock<Settings>>= get_settings().unwrap();
+    if !launcher_settings.username.is_empty() {
+        error!("monarch_utils::commands::set_password() | Err: User already defined in settings.",);
+        bail!("Monarch currently does not support more than one saved user!");
+    }
 
-    let result = match settings_lock.write() {
-        Ok(mut settings) => {
-            let launcher_settings: &mut LauncherSettings = match platform.as_str() {
-                    "steam" => &mut settings.steam,
-                    "epic" => &mut settings.epic,
-                    _ => {
-                        error!(
-                            "monarch_utils::commands::set_password() | Err: Invalid platform: {}",
-                            platform
-                        );
-                        bail!("Trying to write user credentials for unknown platform.");
-                    }
-                };
+    if let Err(e) = set_credentials(&launcher, &username, &password) {
+        error!(
+            "monarch_utils::commands::set_password() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        bail!("Something went wrong setting new password!");
+    }
 
-                if !launcher_settings.username.is_empty() {
-                    error!("monarch_utils::commands::set_password() | Err: User already defined in settings.",);
-                    bail!("Monarch currently does not support more than one saved user!");
-                }
-
-                if let Err(e) = set_credentials(&platform, &username, &password) {
-                    error!(
-                        "monarch_utils::commands::set_password() -> {}",
-                        e.chain().map(|e| e.to_string()).collect::<String>()
-                    );
-                    bail!("Something went wrong setting new password!");
-                }
-
-                launcher_settings.username = username;
-                write_settings(&settings).unwrap();
-                Ok(())
-            }
-        Err(e) => {
-            error!("monarch_utils::commands::set_password() Failed to aquire write lock on Settings! | Err: {e}");
-            bail!("Failed to lock on Settings!")
-        }
-    };
-
-    result
+    Ok(())
 }
 
 /// Delete password in secure store
 /// TODO: Better error handling if write_settings() fails.
-pub fn delete_password(platform: String) -> Result<Settings, String> {
-    let mut settings_lock: Arc<RwLock<Settings>>= get_settings().unwrap();
-
-    let result = match settings_lock.write() {
-        Ok(mut settings) => {
-let launcher_settings: &mut LauncherSettings = match platform.as_str() {
-        "steam" => &mut settings.steam,
-        "epic" => &mut settings.epic,
-        _ => {
-            error!(
-                "monarch_utils::commands::set_password() | Err: Invalid platform: {}",
-                platform
-            );
-            return Err(String::from(
-                "Trying to write user credentials for unknown platform.",
-            ));
-        }
-    };
-
-    if let Err(e) = delete_credentials(&platform, &launcher_settings.username) {
+pub fn delete_password(launcher: &str, launcher_settings: &mut LauncherSettings) -> Result<()> {
+    if let Err(e) = delete_credentials(&launcher, &launcher_settings.username) {
         error!(
             "monarch_utils::commands::delete_password() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(String::from(
-            "Something went wrong while deleting credentials!",
-        ));
+        bail!("Something went wrong while deleting credentials!");
     }
-
-    launcher_settings.username = String::new();
-    set_settings_state(settings.clone());
-    write_settings(settings.clone()).unwrap();
-    Ok(settings)
-        }
-        Err(e) => {
-
-        }
-    };
-    
-    result
+    Ok(())
 }
 
 /// Set secret in secure store
-pub fn set_secret(platform: String, secret: String) -> Result<Settings, String> {
-    let mut settings: Settings = get_settings_state();
-    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
-        "steam" => &mut settings.steam,
-        "epic" => &mut settings.epic,
-        _ => {
-            error!(
-                "monarch_utils::commands::set_password() | Err: Invalid platform: {}",
-                platform
-            );
-            return Err(String::from(
-                "Trying to write user credentials for unknown platform.",
-            ));
-        }
-    };
-
+pub fn set_secret(
+    launcher: &str,
+    launcher_settings: &mut LauncherSettings,
+    secret: String,
+) -> Result<()> {
     if let Err(e) = set_credentials(
-        &format!("{platform}-secret"),
+        &format!("{launcher}-secret"),
         &launcher_settings.username,
         &secret,
     ) {
@@ -179,45 +108,21 @@ pub fn set_secret(platform: String, secret: String) -> Result<Settings, String> 
             "monarch_utils::commands::set_secret() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(String::from("Something went wrong setting new secret!"));
+        bail!("Something went wrong setting new secret!")
     }
-    launcher_settings.twofa = true;
-
-    set_settings_state(settings.clone());
-    write_settings(settings.clone()).unwrap();
-    Ok(settings)
+    Ok(())
 }
 
 /// Delete secret in secure store
-pub fn delete_secret(platform: String) -> Result<Settings, String> {
-    let mut settings: Settings = get_settings_state();
-    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
-        "steam" => &mut settings.steam,
-        "epic" => &mut settings.epic,
-        _ => {
-            error!(
-                "monarch_utils::commands::delete_secret() | Err: Invalid platform: {}",
-                platform
-            );
-            return Err(String::from(
-                "Trying to write user credentials for unknown platform.",
-            ));
-        }
-    };
-
-    if let Err(e) = delete_credentials(&format!("{platform}-secret"), &launcher_settings.username) {
+pub fn delete_secret(launcher: &str, launcher_settings: &mut LauncherSettings) -> Result<()> {
+    if let Err(e) = delete_credentials(&format!("{launcher}-secret"), &launcher_settings.username) {
         error!(
-            "monarch_utils::commands::delete_password() -> {}",
+            "monarch_utils::commands::delete_secret() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(String::from("Something went wrong while deleting secret!"));
+        bail!("Something went wrong while deleting secret!");
     }
-
-    launcher_settings.twofa = false;
-
-    set_settings_state(settings.clone());
-    write_settings(settings.clone()).unwrap();
-    Ok(settings)
+    Ok(())
 }
 
 /*
