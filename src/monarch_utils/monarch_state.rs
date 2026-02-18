@@ -1,6 +1,6 @@
-use crate::{monarch_games::monarchgame::MonarchGame, monarch_library::games_library::write_games};
+use crate::{monarch_games::{monarch_client::get_library, monarchgame::MonarchGame}, monarch_library::games_library::write_games, monarch_utils::monarch_settings::{Settings, read_settings}};
 use anyhow::{bail, Context, Result};
-use std::sync::{LazyLock, RwLock};
+use std::sync::{Arc, LazyLock, RwLock};
 
 /// Global state of monarch backend (excluding settings for now)
 /// TODO: Change to some Atomic structure in the future to avoid using shared refrences to mut static
@@ -9,9 +9,10 @@ pub static MONARCH_STATE: LazyLock<RwLock<MonarchState>> =
 
 /// A struct for storing some sort of global state that
 /// the backend can access to recieve relevant info.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct MonarchState {
     library_games: Vec<MonarchGame>,
+    settings: Arc<RwLock<Settings>>,
 }
 
 impl MonarchState {
@@ -64,5 +65,18 @@ impl MonarchState {
             }
         }
         false
+    }
+
+    pub fn get_settings_ptr(&self) -> Arc<RwLock<Settings>> {
+        self.settings.clone()
+    }
+}
+
+impl Default for MonarchState {
+    fn default() -> Self {
+        Self {
+            library_games: get_library(),
+            settings: Arc::new(RwLock::new(read_settings().unwrap().try_into().unwrap()))
+        }
     }
 }

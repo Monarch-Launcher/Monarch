@@ -1,7 +1,3 @@
-use anyhow::{bail, Context, Result};
-
-use crate::monarch_utils::monarch_settings::get_settings_state;
-use tracing::{error, info};
 
 /// This function returns if quicklaunch is allowed to run or not.
 pub fn quicklaunch_is_enabled() -> bool {

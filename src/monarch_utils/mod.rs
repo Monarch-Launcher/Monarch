@@ -8,8 +8,7 @@ pub mod monarch_settings;
 pub mod monarch_state;
 pub mod monarch_terminal;
 pub mod monarch_vdf;
-pub mod monarch_windows;
-pub mod quicklaunch;
+//pub mod quicklaunch;
 
 #[cfg(target_os = "windows")]
 pub mod monarch_winreg;

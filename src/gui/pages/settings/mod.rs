@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use iced::widget::{button, column, container, row, scrollable, svg, text, toggler, Space};
 use iced::{alignment, Color, Element, Length, Theme};
 use tracing::error;
@@ -43,7 +45,7 @@ pub enum Message {
 
 pub struct SettingsPage {
     current_tab: SettingsTab,
-    settings: Settings,
+    settings: Arc<RwLock<Settings>>,
     cache_size: u64,
 }
 

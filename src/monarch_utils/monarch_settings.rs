@@ -1,18 +1,16 @@
 use anyhow::{bail, Context, Result};
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::{Arc, RwLock};
 use toml::Table;
 use tracing::error;
 
 use super::monarch_fs::{create_dir, generate_monarch_home, get_settings_path, path_exists};
 use crate::monarch_games::monarch_client::generate_default_folder;
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
-// Create a global variable containing the current state of settings according to Monarch backend.
-// Allows for fewer reads of settings.toml by storing in program memory.
-static mut SETTINGS_STATE: Lazy<Settings> = Lazy::<Settings>::new(Settings::default);
 
 /*
 * ----- Settings struct related ------
@@ -51,6 +49,7 @@ pub struct Settings {
     pub steam: LauncherSettings,
     pub epic: LauncherSettings,
 }
+
 
 // TODO: Redo this implementation to make sure it doesn't panic
 impl From<Settings> for Table {
@@ -105,16 +104,16 @@ impl Default for Settings {
     }
 }
 
-/// Function to do unsafe write of SETTINGS_STATE
-pub fn set_settings_state(settings: Settings) {
-    unsafe {
-        *SETTINGS_STATE = settings;
-    }
-}
-
 /// Function to do unsafe read of SETTINGS_STATE
-pub fn get_settings_state() -> Settings {
-    unsafe { (*SETTINGS_STATE).clone() }
+pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
+    match MONARCH_STATE.read() {
+        Ok(state) => {
+            Ok(state.get_settings_ptr())
+        }
+        Err(e) => {
+            bail!("monarch_settings::get_settings() Failed to aqcuire read lock on MONARCH_STATE | Err: {e}")
+        }
+    }
 }
 
 /*
@@ -139,7 +138,7 @@ pub fn init() -> Result<()> {
             bail!("monarch_settings::init() Invalid settings detected in settings.toml!")
         }
         // Set SETTINGS_STATE to settings from settings.toml
-        set_settings_state(settings.try_into().unwrap());
+        //set_settings(settings.try_into().unwrap());
     }
 
     Ok(())
@@ -148,7 +147,7 @@ pub fn init() -> Result<()> {
 /// Writes default settings to settings.toml
 pub fn set_default_settings() -> Result<Settings> {
     let settings: Settings = Settings::default();
-    set_settings_state(settings.clone());
+    //set_settings_state(settings.clone());
 
     let path: PathBuf =
         get_settings_path().with_context(|| "monarch_settings::set_default_settings() -> {}")?;
@@ -170,11 +169,11 @@ pub fn set_default_settings() -> Result<Settings> {
 
 /// Write settings to file where header is the "header" you want to change under,
 /// key is the name of the setting and value is the new value the setting should have.
-pub fn write_settings(settings: Settings) -> Result<Settings> {
+pub fn write_settings(settings: &Settings) -> Result<()> {
     let path = get_settings_path().with_context(|| "monarch_settings::write_settings() -> {}")?;
     write_toml_content(&path, settings.clone().into())
         .with_context(|| "monarch_settings::write_settings() -> {}")?;
-    Ok(settings)
+    Ok(())
 }
 
 /// Writes changes to settings.toml

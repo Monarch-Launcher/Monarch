@@ -2,12 +2,13 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
 use std::{fs, process::exit};
 use tracing::{error, info, warn};
 
 use crate::monarch_games::monarchgame::GameImageType;
 
-use super::monarch_settings::{get_settings_state, Settings};
+use super::monarch_settings::{get_settings, Settings};
 
 /*
 ---------- General functions for filesystem tasks ----------
@@ -48,8 +49,9 @@ pub fn get_unix_home() -> Result<PathBuf> {
 
 /// Returns the monarch data folder from settings.toml
 pub fn get_monarch_home() -> PathBuf {
-    let settings: Settings = get_settings_state();
-    PathBuf::from(settings.monarch.monarch_home)
+    let settings_lock: Arc<RwLock<Settings>> = get_settings().unwrap();
+    let settings = settings_lock.read().unwrap();
+    PathBuf::from(settings.monarch.monarch_home.clone())
 }
 
 /// Gets the users %appdata% or $HOME directory and adds Monarch to the end of it to generate Monarch path

@@ -1,14 +1,15 @@
-use core::result::Result;
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
+use iced::advanced::graphics::text::cosmic_text::skrifa::setting;
 use tracing::error;
+use anyhow::{Result, bail};
 
-use crate::monarch_utils::monarch_fs;
-
+use crate::monarch_utils::{monarch_fs, monarch_settings};
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{
-    get_settings_state, set_default_settings, set_settings_state, write_settings, LauncherSettings,
+    LauncherSettings,
     Settings,
 };
 
@@ -44,40 +45,15 @@ pub fn open_logs() -> Result<(), String> {
 }
 
 /// Returns settings read from settings.toml
-pub fn get_settings() -> Settings {
-    get_settings_state()
+pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
+    monarch_settings::get_settings()
 }
 
 /// Write setting to settings.toml
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
-pub fn set_settings(settings: Settings) -> Result<Settings, String> {
-    match write_settings(settings) {
-        Ok(ret_settings) => {
-            set_settings_state(ret_settings.clone());
-            Ok(ret_settings)
-        }
-        Err(e) => {
-            error!(
-                "monarch_utils::commands::set_settings() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from("Failed to write new settings!"))
-        }
-    }
-}
-
-/// Write default settings to settings.toml
-/// Don't return custom error message as they instead return the state of settings according to
-/// backend.
-pub fn default_settings() -> Result<Settings, Settings> {
-    if let Err(e) = set_default_settings() {
-        error!(
-            "monarch_utils::commands::default_settings() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-    }
-    Ok(get_settings_state())
+pub fn write_settings(settings: &Settings) -> Result<()> {
+    monarch_settings::write_settings(&settings)
 }
 
 /*
@@ -90,48 +66,57 @@ pub fn set_password(
     platform: String,
     username: String,
     password: String,
-) -> Result<Settings, String> {
-    let mut settings: Settings = get_settings_state();
-    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
-        "steam" => &mut settings.steam,
-        "epic" => &mut settings.epic,
-        _ => {
-            error!(
-                "monarch_utils::commands::set_password() | Err: Invalid platform: {}",
-                platform
-            );
-            return Err(String::from(
-                "Trying to write user credentials for unknown platform.",
-            ));
+) -> Result<()> {
+    let settings_lock: Arc<RwLock<Settings>>= get_settings().unwrap();
+
+    let result = match settings_lock.write() {
+        Ok(mut settings) => {
+            let launcher_settings: &mut LauncherSettings = match platform.as_str() {
+                    "steam" => &mut settings.steam,
+                    "epic" => &mut settings.epic,
+                    _ => {
+                        error!(
+                            "monarch_utils::commands::set_password() | Err: Invalid platform: {}",
+                            platform
+                        );
+                        bail!("Trying to write user credentials for unknown platform.");
+                    }
+                };
+
+                if !launcher_settings.username.is_empty() {
+                    error!("monarch_utils::commands::set_password() | Err: User already defined in settings.",);
+                    bail!("Monarch currently does not support more than one saved user!");
+                }
+
+                if let Err(e) = set_credentials(&platform, &username, &password) {
+                    error!(
+                        "monarch_utils::commands::set_password() -> {}",
+                        e.chain().map(|e| e.to_string()).collect::<String>()
+                    );
+                    bail!("Something went wrong setting new password!");
+                }
+
+                launcher_settings.username = username;
+                write_settings(&settings).unwrap();
+                Ok(())
+            }
+        Err(e) => {
+            error!("monarch_utils::commands::set_password() Failed to aquire write lock on Settings! | Err: {e}");
+            bail!("Failed to lock on Settings!")
         }
     };
 
-    if !launcher_settings.username.is_empty() {
-        error!("monarch_utils::commands::set_password() | Err: User already defined in settings.",);
-        return Err(String::from(
-            "Monarch currently does not support more than one saved user!",
-        ));
-    }
-
-    if let Err(e) = set_credentials(&platform, &username, &password) {
-        error!(
-            "monarch_utils::commands::set_password() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-        return Err(String::from("Something went wrong setting new password!"));
-    }
-
-    launcher_settings.username = username;
-    set_settings_state(settings.clone());
-    write_settings(settings.clone()).unwrap();
-    Ok(settings)
+    result
 }
 
 /// Delete password in secure store
 /// TODO: Better error handling if write_settings() fails.
 pub fn delete_password(platform: String) -> Result<Settings, String> {
-    let mut settings: Settings = get_settings_state();
-    let launcher_settings: &mut LauncherSettings = match platform.as_str() {
+    let mut settings_lock: Arc<RwLock<Settings>>= get_settings().unwrap();
+
+    let result = match settings_lock.write() {
+        Ok(mut settings) => {
+let launcher_settings: &mut LauncherSettings = match platform.as_str() {
         "steam" => &mut settings.steam,
         "epic" => &mut settings.epic,
         _ => {
@@ -159,6 +144,13 @@ pub fn delete_password(platform: String) -> Result<Settings, String> {
     set_settings_state(settings.clone());
     write_settings(settings.clone()).unwrap();
     Ok(settings)
+        }
+        Err(e) => {
+
+        }
+    };
+    
+    result
 }
 
 /// Set secret in secure store
@@ -232,75 +224,12 @@ pub fn delete_secret(platform: String) -> Result<Settings, String> {
 * Misc commands
 */
 
-/*
-/// Builds a new terminal window.
-/// Starts as hidden until Monarch runs commands.
-pub async fn open_terminal(handle: AppHandle) {
-    create_terminal_window(&handle).await.unwrap();
-}
-
-/// Builds a new terminal window.
-/// Starts as hidden until Monarch runs commands.
-pub async fn close_terminal(handle: AppHandle) {
-    close_terminal_window(&handle).await.unwrap();
-}
-
-/// Functions for frontend terminal window to read content
-/// of terminal command being run.
-pub async fn async_read_from_pty() -> Result<Option<String>, ()> {
-    match read_from_pty().await {
-        Ok(s) => Ok(s),
-        Err(_e) => {
-            error!("monarch_utils::commands::async_read_from_pty() Recieved error when reading pty! | Err:");
-            Err(())
-        }
-    }
-}
-
-pub async fn async_write_to_pty(data: &str) -> Result<(), ()> {
-    match write_to_pty(data).await {
-        Ok(_) => Ok(()),
-        Err(_) => Err(()),
-    }
-}
-    */
-
 /// Manually clear all images in the resources/cache directory
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
 pub fn clear_cached_images() {
     clear_all_cache();
 }
-
-/*
-/// Code found at https://github.com/phcode-dev/phoenix-desktop/pull/162/files
-/// for implementing zoom.
-pub fn zoom_window(window: WebviewWindow, scale_factor: f64) {
-    let _ = window.with_webview(move |webview| {
-        #[cfg(target_os = "linux")]
-        {
-            use webkit2gtk::WebViewExt;
-            webview.inner().set_zoom_level(scale_factor);
-        }
-
-        #[cfg(windows)]
-        unsafe {
-            // see https://docs.rs/webview2-com/0.19.1/webview2_com/Microsoft/Web/WebView2/Win32/struct.ICoreWebView2Controller.html
-            webview.controller().SetZoomFactor(scale_factor).unwrap();
-        }
-
-        #[cfg(target_os = "macos")]
-        unsafe {
-            /*
-            TODO: Troubleshoot likely memory issues causing application crash.
-            use objc::msg_send;
-            let inner = webview.inner();
-            let _: () = msg_send![class!(inner), setPageZoom: scale_factor];
-            */
-        }
-    });
-}
-*/
 
 pub fn get_cache_size() -> Result<u64, String> {
     let cache_dir = monarch_fs::get_resources_cache();
