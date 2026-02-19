@@ -14,6 +14,7 @@ impl SettingsPage {
         state: bool,
     ) {
         settings.quicklaunch.enabled = state;
+        self.write_settings(&settings);
     }
 
     pub fn change_library_folder(
@@ -21,11 +22,12 @@ impl SettingsPage {
         mut settings: RwLockWriteGuard<'_, Settings>,
         folder: &str,
     ) {
-        settings.monarch.game_folder = folder.to_string()
+        settings.monarch.game_folder = folder.to_string();
     }
 
     pub fn toggle_steam(&mut self, mut settings: RwLockWriteGuard<'_, Settings>, state: bool) {
         settings.steam.manage = state;
+        self.write_settings(&settings);
     }
 
     pub fn update_steam_username(
@@ -60,6 +62,7 @@ impl SettingsPage {
 
     pub fn toggle_epic(&mut self, mut settings: RwLockWriteGuard<'_, Settings>, state: bool) {
         settings.epic.manage = state;
+        self.write_settings(&settings);
     }
 
     pub fn update_epic_username(
@@ -80,13 +83,6 @@ impl SettingsPage {
             monarch_utils::commands::set_password("epic", &mut settings.epic, &username, password);
     }
 
-    pub fn save_settings(&self, settings: &Settings) {
-        if let Err(e) = monarch_utils::commands::write_settings(settings) {
-            error!("Failed to save settings: {e}");
-            show_error("Failed to save settings!");
-        }
-    }
-
     pub fn refresh(&mut self) {
         match monarch_utils::commands::get_cache_size() {
             Ok(size) => self.cache_size = size,
@@ -95,6 +91,13 @@ impl SettingsPage {
                 error!("Failed to get cache size: {}", e);
                 show_error("Failed to get cache size!");
             }
+        }
+    }
+
+    pub fn write_settings(&self, settings: &Settings) {
+        if let Err(e) = monarch_utils::commands::write_settings(settings) {
+            error!("Failed to write settings: {}", e);
+            show_error("Failed to write settings! The change will be reverted on next launch.");
         }
     }
 }

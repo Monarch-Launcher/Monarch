@@ -106,7 +106,7 @@ impl SettingsPage {
                 self.change_library_folder(write_guard.unwrap(), &folder)
             }
             Message::SaveLibraryFolder => {
-                self.save_settings(&write_guard.unwrap());
+                self.write_settings(&write_guard.unwrap());
             }
             Message::ToggleSteam(state) => self.toggle_steam(write_guard.unwrap(), state),
             Message::SteamUsernameChanged(u) => {
@@ -115,15 +115,15 @@ impl SettingsPage {
             Message::SteamPasswordChanged(p) => {
                 self.update_steam_password(write_guard.unwrap(), &p)
             }
-            Message::SaveSteamCredentials => self.save_settings(&write_guard.unwrap()),
+            Message::SaveSteamCredentials => self.write_settings(&write_guard.unwrap()),
             Message::SteamGuardSecretChanged(s) => {
                 self.update_steam_secret(write_guard.unwrap(), &s)
             }
-            Message::SaveSteamSecret => self.save_settings(&write_guard.unwrap()),
+            Message::SaveSteamSecret => self.write_settings(&write_guard.unwrap()),
             Message::ToggleEpic(state) => self.toggle_epic(write_guard.unwrap(), state),
             Message::EpicUsernameChanged(u) => self.update_epic_username(write_guard.unwrap(), &u),
             Message::EpicPasswordChanged(p) => self.update_epic_password(write_guard.unwrap(), &p),
-            Message::SaveEpicCredentials => self.save_settings(&write_guard.unwrap()),
+            Message::SaveEpicCredentials => self.write_settings(&write_guard.unwrap()),
             Message::ResetDefaults => match monarch_utils::monarch_settings::set_default_settings()
             {
                 Ok(settings) => {
