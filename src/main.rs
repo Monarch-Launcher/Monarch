@@ -27,6 +27,8 @@ fn init() {
         panic!("Error during settings initialization! | Err: {e}");
     }
 
+    init_logger(); // Starts logger
+
     MONARCH_STATE
         .write()
         .expect("Failed to aquire write lock on MONARCH_STATE")
@@ -34,7 +36,6 @@ fn init() {
 
     debug!("Initialised with MONARCH_STATE: {:?}", MONARCH_STATE);
 
-    init_logger(); // Starts logger
     verify_monarch_folders(); // Checks that directories are as Monarch expects
 
     housekeeping::start(); // Starts housekeeping loop
