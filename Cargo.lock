@@ -3216,7 +3216,6 @@ dependencies = [
  "keyring",
  "keyvalues-serde",
  "objc",
- "once_cell",
  "portable-pty",
  "rand 0.9.1",
  "regex",

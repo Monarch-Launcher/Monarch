@@ -49,6 +49,38 @@ pub struct Settings {
     pub epic: LauncherSettings,
 }
 
+impl Settings {
+    pub const fn new() -> Self {
+        Self {
+            monarch: MonarchSettings {
+                game_folder: String::new(),
+                monarch_home: String::new(),
+                run_on_startup: false,
+                send_logs: false,
+                start_minimized: false,
+            },
+            quicklaunch: QuicklaunchSettings {
+                close_shortcut: String::new(),
+                open_shortcut: String::new(),
+                enabled: false,
+                size: String::new(),
+            },
+            steam: LauncherSettings {
+                game_folders: Vec::new(),
+                manage: false,
+                username: String::new(),
+                twofa: false,
+            },
+            epic: LauncherSettings {
+                game_folders: Vec::new(),
+                manage: false,
+                username: String::new(),
+                twofa: false,
+            },
+        }
+    }
+}
+
 // TODO: Redo this implementation to make sure it doesn't panic
 impl From<Settings> for Table {
     fn from(src: Settings) -> Table {

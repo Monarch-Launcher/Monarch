@@ -15,6 +15,8 @@ use crate::{
     },
 };
 
+use tracing::debug;
+
 #[cfg(target_os = "macos")]
 #[macro_use]
 extern crate objc;
@@ -24,22 +26,16 @@ fn init() {
         // Crash program if this fails
         panic!("Error during settings initialization! | Err: {e}");
     }
+
+    MONARCH_STATE
+        .write()
+        .expect("Failed to aquire write lock on MONARCH_STATE")
+        .init();
+
+    debug!("Initialised with MONARCH_STATE: {:?}", MONARCH_STATE);
+
     init_logger(); // Starts logger
     verify_monarch_folders(); // Checks that directories are as Monarch expects
-
-    // Set initial monarch state
-    match MONARCH_STATE.write() {
-        Ok(mut state) => {
-            if let Err(e) =
-                state.set_library_games(&crate::monarch_games::monarch_client::get_library())
-            {
-                panic!("init() Failed to set library games in state! | Err: {}", e)
-            }
-        }
-        Err(e) => {
-            panic!("init() Failed to get lock on MONARCH_STATE | Err: {}", e)
-        }
-    }
 
     housekeeping::start(); // Starts housekeeping loop
 }

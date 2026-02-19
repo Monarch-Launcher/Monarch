@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use futures::channel::mpsc::Sender;
 use iced::{
-    alignment,
     widget::{container, text},
     window::{self, Id},
     Element,
@@ -10,8 +9,7 @@ use iced::{
     Subscription,
 };
 use iced_term;
-use once_cell::sync::Lazy;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use tracing::info;
 
 use crate::gui::{
@@ -19,10 +17,7 @@ use crate::gui::{
         header::{self, Header},
         terminal::TermInstance,
     },
-    pages::{
-        library::{self, LibraryPage},
-        PageTab,
-    },
+    pages::{library, PageTab},
 };
 
 pub mod components;
@@ -52,8 +47,9 @@ pub enum AppMessage {
     OpenLogs,
 }
 
-pub static GUI_SENDER: Lazy<Mutex<Option<futures::channel::mpsc::UnboundedSender<AppMessage>>>> =
-    Lazy::new(|| Mutex::new(None));
+pub static GUI_SENDER: LazyLock<
+    Mutex<Option<futures::channel::mpsc::UnboundedSender<AppMessage>>>,
+> = LazyLock::new(|| Mutex::new(None));
 
 /// Display an error modal with the given message.
 pub fn show_error(message: impl Into<String>) {

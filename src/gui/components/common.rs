@@ -128,3 +128,39 @@ where
         .width(Length::Fill)
         .into()
 }
+
+pub fn error_view<'a, Message>(
+    title: &'a str,
+    message: &'a str,
+    retry_msg: Option<Message>,
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
+    use iced::widget::{column, container, text, Space};
+
+    container(
+        column![
+            text(title).size(32).color(Color::from_rgb(0.9, 0.3, 0.3)), // Soft red
+            Space::new().height(15),
+            text(message)
+                .size(18)
+                .color(Color::from_rgb(0.6, 0.6, 0.6))
+                .align_x(alignment::Horizontal::Center),
+            Space::new().height(30),
+            if let Some(msg) = retry_msg {
+                primary_button("Try Again", Some(msg))
+            } else {
+                Element::from(Space::new())
+            }
+        ]
+        .spacing(10)
+        .align_x(alignment::Horizontal::Center),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .center_x(Length::Fill)
+    .center_y(Length::Fill)
+    .padding(40)
+    .into()
+}

@@ -7,6 +7,8 @@ use std::{fs, process::exit};
 use tracing::{error, info, warn};
 
 use crate::monarch_games::monarchgame::GameImageType;
+use crate::monarch_utils::monarch_settings::{self, read_settings};
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 use super::monarch_settings::{get_settings, Settings};
 
@@ -49,9 +51,31 @@ pub fn get_unix_home() -> Result<PathBuf> {
 
 /// Returns the monarch data folder from settings.toml
 pub fn get_monarch_home() -> PathBuf {
-    let settings_lock: Arc<RwLock<Settings>> = get_settings().unwrap();
-    let settings = settings_lock.read().unwrap();
-    PathBuf::from(settings.monarch.monarch_home.clone())
+    match MONARCH_STATE.try_read() {
+        Ok(state) => {
+            match state.get_settings_ptr().read() {
+                Ok(settings) => return PathBuf::from(settings.monarch.monarch_home.clone()),
+                Err(e) => {
+                    error!("monarch_fs::get_monarch_home() Failed to get read lock on Settings | Err: {e}");
+                }
+            }
+        }
+        Err(e) => {
+            error!("monarch_fs::get_monarch_home() Failed to get read lock on MONARCH_STATE | Err: {e}");
+        }
+    }
+
+    // Fallback to manually reading settings file
+    if let Ok(settings_table) = monarch_settings::read_settings() {
+        if let Ok(settings) = settings_table.try_into::<Settings>() {
+            return PathBuf::from(settings.monarch.monarch_home.clone());
+        }
+    }
+
+    // Else default
+    generate_monarch_home().expect(
+        "monarch_fs::get_monarch_home() Failed to generate monarch home path! Unrecoverable.",
+    )
 }
 
 /// Gets the users %appdata% or $HOME directory and adds Monarch to the end of it to generate Monarch path

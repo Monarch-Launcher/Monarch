@@ -49,7 +49,7 @@ pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
 pub fn write_settings(settings: &Settings) -> Result<()> {
-    monarch_settings::write_settings(&settings)
+    monarch_settings::write_settings(settings)
 }
 
 /*
@@ -61,15 +61,15 @@ pub fn write_settings(settings: &Settings) -> Result<()> {
 pub fn set_password(
     launcher: &str,
     launcher_settings: &mut LauncherSettings,
-    username: String,
-    password: String,
+    username: &str,
+    password: &str,
 ) -> Result<()> {
     if !launcher_settings.username.is_empty() {
         error!("monarch_utils::commands::set_password() | Err: User already defined in settings.",);
         bail!("Monarch currently does not support more than one saved user!");
     }
 
-    if let Err(e) = set_credentials(&launcher, &username, &password) {
+    if let Err(e) = set_credentials(launcher, username, password) {
         error!(
             "monarch_utils::commands::set_password() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -97,12 +97,12 @@ pub fn delete_password(launcher: &str, launcher_settings: &mut LauncherSettings)
 pub fn set_secret(
     launcher: &str,
     launcher_settings: &mut LauncherSettings,
-    secret: String,
+    secret: &str,
 ) -> Result<()> {
     if let Err(e) = set_credentials(
         &format!("{launcher}-secret"),
         &launcher_settings.username,
-        &secret,
+        secret,
     ) {
         error!(
             "monarch_utils::commands::set_secret() -> {}",

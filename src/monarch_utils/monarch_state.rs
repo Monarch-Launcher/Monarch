@@ -1,17 +1,18 @@
+use crate::monarch_games::monarch_client::get_library;
+use crate::monarch_utils::monarch_settings;
 use crate::{
-    monarch_games::{monarch_client::get_library, monarchgame::MonarchGame},
-    monarch_library::games_library::write_games,
-    monarch_utils::monarch_settings::{read_settings, Settings},
+    monarch_games::monarchgame::MonarchGame, monarch_library::games_library::write_games,
+    monarch_utils::monarch_settings::Settings,
 };
 use anyhow::{bail, Context, Result};
-use std::sync::Arc;
-use std::sync::LazyLock;
 use std::sync::RwLock;
+use std::sync::{Arc, LazyLock};
 
-/// Global state of monarch backend (excluding settings for now)
-/// TODO: Change to some Atomic structure in the future to avoid using shared refrences to mut static
+/// Global app state of app logic.
+/// Initialises a blank MonarchState to avoid RwLock deadlock on init.
+/// Therefore it uses new() here and can call MonarchState::init() in the main.rs init() function.
 pub static MONARCH_STATE: LazyLock<RwLock<MonarchState>> =
-    LazyLock::new(|| RwLock::new(MonarchState::default()));
+    LazyLock::new(|| RwLock::new(MonarchState::new()));
 
 /// A struct for storing some sort of global state that
 /// the backend can access to recieve relevant info.
@@ -22,6 +23,23 @@ pub struct MonarchState {
 }
 
 impl MonarchState {
+    pub fn new() -> Self {
+        Self {
+            library_games: Vec::new(),
+            settings: Arc::new(RwLock::new(Settings::new())),
+        }
+    }
+
+    pub fn init(&mut self) {
+        self.library_games = get_library();
+        self.settings = Arc::new(RwLock::new(
+            monarch_settings::read_settings()
+                .expect("monarch_state::init() -> Failed to read settings from disk")
+                .try_into()
+                .expect("monarch_state::init() -> Failed to convert into Settings"),
+        ));
+    }
+
     /// Returns what the backend thinks is the users library.
     pub fn get_library_games(&self) -> Vec<MonarchGame> {
         self.library_games.clone()
@@ -75,19 +93,5 @@ impl MonarchState {
 
     pub fn get_settings_ptr(&self) -> Arc<RwLock<Settings>> {
         self.settings.clone()
-    }
-}
-
-impl Default for MonarchState {
-    fn default() -> Self {
-        Self {
-            library_games: get_library(),
-            settings: Arc::new(RwLock::new(
-                read_settings()
-                    .expect("Failed to read settings while initialising MONARCH_STATE")
-                    .try_into()
-                    .expect("Failed to parse settings while initialising MONARCH_STATE"),
-            )),
-        }
     }
 }
