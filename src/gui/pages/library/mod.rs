@@ -1,9 +1,9 @@
-use iced::widget::{column, container, text};
+use iced::widget::{column, container, mouse_area, text};
 use iced::Length::{self, Fill};
 use iced::{alignment, Color, Element};
 use tracing::{error, info};
 
-use crate::gui::components::common::primary_button;
+use crate::gui::components::common::scanner_button;
 use crate::gui::components::gamecard;
 use crate::gui::components::gamecard::game_browser::GameBrowser;
 use crate::gui::show_error;
@@ -19,6 +19,7 @@ pub enum Message {
     GameCard(gamecard::GameCardMessage),
     OpenGameDetails(MonarchGame),
     Tick,
+    ScannerHovered(bool),
 }
 
 #[derive(Debug, Clone)]
@@ -27,6 +28,7 @@ pub struct LibraryPage {
     is_refreshing: bool,
     dot_count: u8,
     tick_counter: u8,
+    is_scanner_hovered: bool,
 }
 
 impl LibraryPage {
@@ -83,17 +85,20 @@ impl LibraryPage {
             }
             Message::UpdateGameProperties => {
                 // Trigger download tasks
-                let update_tasks = iced::Task::batch(self.browser.games.games.iter().cloned().map(|mut gamecard| {
-                    iced::Task::perform(
-                        async move {
-                            monarch_games::commands::get_game_properties(&mut gamecard.game).await;
-                            gamecard.game
-                        },
-                        Message::GameUpdated
-                    )
-                }));
+                let update_tasks = iced::Task::batch(self.browser.games.games.iter().cloned().map(
+                    |mut gamecard| {
+                        iced::Task::perform(
+                            async move {
+                                monarch_games::commands::get_game_properties(&mut gamecard.game)
+                                    .await;
+                                gamecard.game
+                            },
+                            Message::GameUpdated,
+                        )
+                    },
+                ));
 
-               update_tasks 
+                update_tasks
             }
             Message::GameUpdated(game) => {
                 if let Some(card) = self
@@ -138,11 +143,21 @@ impl LibraryPage {
                     .update(gamecard::GameCardMessage::Tick)
                     .map(Message::GameCard)
             }
+            Message::ScannerHovered(hovered) => {
+                self.is_scanner_hovered = hovered;
+                iced::Task::none()
+            }
         }
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let refresh_btn = primary_button("Scan for games", Some(Message::RefreshLibrary));
+        let refresh_btn = mouse_area(scanner_button(
+            "Scan for games",
+            Some(Message::RefreshLibrary),
+            self.is_scanner_hovered,
+        ))
+        .on_enter(Message::ScannerHovered(true))
+        .on_exit(Message::ScannerHovered(false));
 
         let games_content: Element<'_, Message> = if self.is_refreshing {
             let dots = ".".repeat(self.dot_count as usize);
@@ -201,6 +216,7 @@ impl Default for LibraryPage {
             is_refreshing: false,
             dot_count: 3,
             tick_counter: 0,
+            is_scanner_hovered: false,
         }
     }
 }

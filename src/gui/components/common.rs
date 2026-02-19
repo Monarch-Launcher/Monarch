@@ -1,4 +1,4 @@
-use crate::gui::resources::PLAY;
+use crate::gui::resources::{PLAY, REFRESH};
 use crate::gui::styles;
 use iced::widget::{button, pick_list, row, svg, text_editor, text_input, Text};
 use iced::{alignment, Color, Element, Length, Theme};
@@ -17,6 +17,41 @@ where
         .style(styles::button::primary)
         .padding(10)
         .into()
+}
+
+pub fn scanner_button<'a, Message>(
+    label: &str,
+    on_press: Option<Message>,
+    is_hovered: bool,
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
+    button(
+        row![
+            svg(REFRESH.clone())
+                .width(20)
+                .height(20)
+                .style(move |_theme: &Theme, _status| {
+                    iced::widget::svg::Style {
+                        color: Some(if is_hovered {
+                            Color::BLACK
+                        } else {
+                            Color::from_rgb8(255, 127, 0)
+                        }),
+                    }
+                }),
+            Text::new(label.to_owned())
+                .align_x(alignment::Horizontal::Center)
+                .size(16)
+        ]
+        .spacing(10)
+        .align_y(alignment::Vertical::Center),
+    )
+    .on_press_maybe(on_press)
+    .style(styles::button::scanner)
+    .padding(12)
+    .into()
 }
 
 pub fn secondary_button<'a, Message>(

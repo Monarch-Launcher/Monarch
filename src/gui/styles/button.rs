@@ -230,3 +230,50 @@ pub fn text(theme: &Theme, status: button::Status) -> button::Style {
         },
     }
 }
+
+pub fn scanner(_theme: &Theme, status: button::Status) -> button::Style {
+    let accent = Color::from_rgb8(255, 127, 0); // Monarch Orange
+
+    match status {
+        button::Status::Active => button::Style {
+            background: Some(Background::Color(Color::from_rgba8(30, 30, 35, 1.0))),
+            text_color: accent,
+            border: Border {
+                radius: 4.0.into(),
+                width: 1.0,
+                color: Color { a: 0.5, ..accent },
+            },
+            ..button::Style::default()
+        },
+        button::Status::Hovered => button::Style {
+            background: Some(Background::Color(accent)),
+            text_color: Color::BLACK,
+            border: Border {
+                radius: 4.0.into(),
+                width: 1.0,
+                color: accent,
+            },
+            ..button::Style::default()
+        },
+        button::Status::Pressed => button::Style {
+            background: Some(Background::Color(Color { a: 0.8, ..accent })),
+            text_color: Color::BLACK,
+            border: Border {
+                radius: 4.0.into(),
+                width: 1.0,
+                color: accent,
+            },
+            ..button::Style::default()
+        },
+        button::Status::Disabled => button::Style {
+            background: Some(Background::Color(Color::from_rgba8(30, 30, 35, 0.5))),
+            text_color: Color { a: 0.3, ..accent },
+            border: Border {
+                radius: 4.0.into(),
+                width: 1.0,
+                color: Color { a: 0.2, ..accent },
+            },
+            ..button::Style::default()
+        },
+    }
+}

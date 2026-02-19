@@ -40,3 +40,8 @@ pub static PLAY: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/play_icon.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });
+
+pub static REFRESH: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/refresh.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
