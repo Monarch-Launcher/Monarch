@@ -1,21 +1,19 @@
 use crate::gui::components::gamecard::GameCardMessage;
-use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
+use crate::monarch_games::monarchgame::MonarchGame;
 use iced::widget::{button, container, image, mouse_area};
 use iced::{alignment, Color, Element, Length};
 
 #[derive(Debug, Clone)]
 pub struct GameCard {
     pub game: MonarchGame,
-    pub platforms: Vec<MonarchWebApiPlatform>,
     hover: bool,
     hover_factor: f32,
 }
 
 impl GameCard {
-    pub fn new(game: MonarchGame, platforms: Vec<MonarchWebApiPlatform>) -> Self {
+    pub fn new(game: MonarchGame) -> Self {
         Self {
             game: game,
-            platforms: platforms,
             hover: false,
             hover_factor: 0.0,
         }

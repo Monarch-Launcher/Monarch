@@ -3,7 +3,7 @@ use iced::{alignment, Element};
 
 use super::gamecard::GameCard;
 use crate::gui::components::gamecard::GameCardMessage;
-use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
+use crate::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Default, Debug, Clone)]
 pub struct GameCardContainer {
@@ -18,15 +18,7 @@ impl GameCardContainer {
     pub fn update(&mut self, msg: GameCardMessage) -> iced::Task<GameCardMessage> {
         match msg {
             GameCardMessage::UpdateGames(games) => {
-                self.games = games
-                    .iter()
-                    .map(|g| {
-                        GameCard::new(
-                            g.clone(),
-                            g.stores.iter().map(MonarchWebApiPlatform::from).collect(),
-                        )
-                    })
-                    .collect();
+                self.games = games.iter().map(|g| GameCard::new(g.clone())).collect();
 
                 self.games.sort_by(|a, b| a.game.name.cmp(&b.game.name));
 
@@ -67,15 +59,7 @@ impl GameCardContainer {
 
 impl FromIterator<MonarchGame> for GameCardContainer {
     fn from_iter<I: IntoIterator<Item = MonarchGame>>(iter: I) -> Self {
-        let mut games: Vec<GameCard> = iter
-            .into_iter()
-            .map(|g| {
-                GameCard::new(
-                    g.clone(),
-                    g.stores.iter().map(MonarchWebApiPlatform::from).collect(),
-                )
-            })
-            .collect();
+        let mut games: Vec<GameCard> = iter.into_iter().map(|g| GameCard::new(g.clone())).collect();
         games.sort_by(|a, b| a.game.name.cmp(&b.game.name));
         Self { games }
     }

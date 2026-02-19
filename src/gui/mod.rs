@@ -216,13 +216,6 @@ impl App {
                             .game_details_page
                             .update(pages::game_details::Message::LaunchGame)
                             .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
-                        pages::game_details::Message::OpenTerminal(_id) => {
-                            // Already handled in LaunchGame? No, Task returns Id.
-                            iced::Task::none()
-                        }
-                        pages::game_details::Message::CloseTerminal(id) => {
-                            self.update(AppMessage::CloseTerminal(id))
-                        }
                         pages::game_details::Message::OpenProperties => self
                             .game_details_page
                             .update(pages::game_details::Message::OpenProperties)

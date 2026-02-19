@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use iced::widget::{button, column, combo_box, row, text, text_input, Space};
-use iced::{alignment, Element, Length, Task};
+use iced::widget::{button, column, combo_box, container, row, text, text_input, Space};
+use iced::{alignment, border, Element, Length, Task};
 use tracing::error;
 
 use crate::gui::styles;
@@ -15,6 +15,7 @@ pub enum Message {
     ExecutablesLoaded(Vec<PathBuf>),
     CompatibilityLoaded(Vec<ProtonVersion>),
     ExecutableSelected(String),
+    ExecutableHovered(String),
     CompatibilitySelected(ProtonVersion),
     LaunchArgsChanged(String),
     Save,
@@ -27,6 +28,7 @@ pub struct PropertiesModal {
     executables: combo_box::State<String>,
     executable_list: Vec<String>,
     selected_executable: Option<String>,
+    hovered_executable: Option<String>,
 
     compatibility_layers: combo_box::State<ProtonVersion>,
     compatibility_list: Vec<ProtonVersion>,
@@ -57,9 +59,13 @@ impl PropertiesModal {
             executables: combo_box::State::new(Vec::new()),
             executable_list: vec!["None".to_string()],
             selected_executable: current_executable,
+            hovered_executable: None,
 
             compatibility_layers: combo_box::State::new(Vec::new()),
-            compatibility_list: vec![ProtonVersion{name: "Native".to_string(), path: "".to_string()}],
+            compatibility_list: vec![ProtonVersion {
+                name: "Native".to_string(),
+                path: "".to_string(),
+            }],
             selected_compatibility: None,
 
             launch_args,
@@ -104,10 +110,12 @@ impl PropertiesModal {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ExecutablesLoaded(exes) => {
-                self.executable_list.append(&mut exes
-                    .into_iter()
-                    .map(|p| p.to_string_lossy().into_owned())
-                    .collect::<Vec<String>>());
+                self.executable_list.append(
+                    &mut exes
+                        .into_iter()
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .collect::<Vec<String>>(),
+                );
                 self.executables = combo_box::State::new(self.executable_list.clone());
 
                 if self.selected_executable.is_none() && !self.executable_list.is_empty() {
@@ -132,6 +140,11 @@ impl PropertiesModal {
             }
             Message::ExecutableSelected(exe) => {
                 self.selected_executable = Some(exe);
+                self.hovered_executable = None;
+                Task::none()
+            }
+            Message::ExecutableHovered(exe) => {
+                self.hovered_executable = Some(exe);
                 Task::none()
             }
             Message::CompatibilitySelected(version) => {
@@ -174,7 +187,29 @@ impl PropertiesModal {
             self.selected_executable.as_ref(),
             Message::ExecutableSelected,
         )
+        .on_option_hovered(Message::ExecutableHovered)
         .width(Length::Fill);
+
+        let hovered_path = if let Some(path) = &self.hovered_executable {
+            container(text(path).size(12))
+                .padding(5)
+                .style(|theme: &iced::Theme| {
+                    let palette = theme.palette();
+                    container::Style {
+                        background: Some(iced::Color::from_rgb8(30, 30, 45).into()),
+                        border: border::Border {
+                            color: palette.primary,
+                            width: 1.0,
+                            radius: 4.0.into(),
+                        },
+                        text_color: Some(palette.text),
+                        ..Default::default()
+                    }
+                })
+                .width(Length::Fill)
+        } else {
+            container(Space::new().height(Length::Fixed(28.0)))
+        };
 
         let compatibility_combo = combo_box(
             &self.compatibility_layers,
@@ -190,6 +225,7 @@ impl PropertiesModal {
 
         let content = column![
             text("Executables").size(18),
+            hovered_path,
             executables_combo,
             Space::new().height(Length::Fixed(10.0)),
             text("Compatibility Layer").size(18),

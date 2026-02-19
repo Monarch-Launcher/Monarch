@@ -5,8 +5,6 @@ use crate::gui::components::gamecard::GameCardMessage;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 use iced::widget::{container, stack, text};
 use iced::{alignment, Color, Element, Length};
-use std::sync::{Arc, Mutex};
-use tracing::info;
 
 #[derive(Default, Debug, Clone)]
 pub struct GameBrowser {
@@ -65,14 +63,6 @@ impl GameBrowser {
                         .unwrap();
                 }
                 return iced::Task::none();
-            }
-            GameCardMessage::OpenProperties(game) => {
-                let (modal, task) = PropertiesModal::new(Arc::new(Mutex::new(game.clone())));
-                self.properties_modal = Some(modal);
-                return task.map(GameCardMessage::Properties);
-            }
-            GameCardMessage::CloseProperties => {
-                self.properties_modal = None;
             }
             GameCardMessage::Properties(prop_msg) => {
                 if let Some(modal) = &mut self.properties_modal {

@@ -4,7 +4,6 @@ mod view;
 use std::sync::{Arc, Mutex};
 
 use iced::widget::{container, stack, text};
-use iced::window::Id;
 use iced::{alignment, Color, Element, Length, Theme};
 
 use crate::gui::components::gamecard::properties::{self, PropertiesModal};
@@ -14,8 +13,6 @@ use crate::monarch_games::monarchgame::MonarchGame;
 pub enum Message {
     BackPressed,
     LaunchGame,
-    OpenTerminal(Id),
-    CloseTerminal(Id),
     OpenProperties,
     Properties(properties::Message),
     Nop(()),

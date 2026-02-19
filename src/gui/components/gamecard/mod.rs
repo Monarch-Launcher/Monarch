@@ -13,14 +13,10 @@ pub enum GameCardMessage {
     GamePressed(String),
     Tick,
     UpdateGames(Vec<MonarchGame>),
-    OpenDrawer,
     CloseDrawer,
     OpenStorePage(String),
-    WebviewOpened(iced::window::Id),
     NoOp,
 
     // Properties related
-    OpenProperties(MonarchGame),
-    CloseProperties,
     Properties(properties::Message),
 }

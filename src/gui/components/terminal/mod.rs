@@ -1,6 +1,5 @@
 use iced::window::Id;
-use std::{collections::HashMap, fmt::Debug};
-use tracing::error;
+use std::collections::HashMap;
 
 use crate::gui::AppMessage;
 

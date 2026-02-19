@@ -7,7 +7,7 @@ use tracing::{info, warn};
 
 use crate::{
     monarch_games::{games::GameType, monarchgame::MonarchGame},
-    monarch_utils::monarch_fs::get_monarch_home,
+    monarch_utils::{monarch_fs::get_monarch_home, monarch_terminal},
 };
 
 #[derive(Debug, Deserialize)]
@@ -127,16 +127,16 @@ pub async fn umu_run(game: &MonarchGame) -> Result<()> {
     info!("Compatibility layer set: {}", game.compatibility);
 
     let platform_arg = match game.get_store_name().as_str() {
-        "epic" => "egs",
-        _ => "none",
+        "epic" => "egs".to_string(),
+        _ => "none".to_string(),
     };
 
     let gameid_arg = format!("umu-{}", game.get_store_id());
 
-    let env_vars: HashMap<&str, &str> = HashMap::from([
-        ("PROTON_PATH", game.compatibility.as_str()),
-        ("GAMEID", &gameid_arg),
-        ("STORE", &platform_arg),
+    let env_vars: HashMap<String, String> = HashMap::from([
+        ("PROTON_PATH".to_string(), game.compatibility.clone()),
+        ("GAMEID".to_string(), gameid_arg),
+        ("STORE".to_string(), platform_arg),
     ]);
 
     let umu: PathBuf = get_umu_exe();
@@ -153,10 +153,6 @@ pub async fn umu_run(game: &MonarchGame) -> Result<()> {
 
     info!("Env vars: {:?}", env_vars);
     info!("Launch command: {}", &full_command);
-    /*
-        run_in_terminal(&full_command, Some(&env_vars), None)
-            .await
-            .with_context(|| "monarch_client::launch_game() -> ")
-    */
+    monarch_terminal::spawn_terminal(full_command, env_vars);
     Ok(())
 }

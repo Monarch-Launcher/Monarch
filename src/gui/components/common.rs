@@ -33,7 +33,7 @@ where
         .into()
 }
 
-pub fn text_button<'a, Message>(
+pub fn _text_button<'a, Message>(
     label: &str,
     on_press: Option<Message>,
 ) -> Element<'a, Message, Theme>
@@ -96,7 +96,7 @@ where
         .into()
 }
 
-pub fn text_area<'a, Message>(
+pub fn _text_area<'a, Message>(
     content: &'a text_editor::Content,
     on_action: impl Fn(text_editor::Action) -> Message + 'a,
 ) -> Element<'a, Message, Theme>
@@ -111,7 +111,7 @@ where
         .into()
 }
 
-pub fn dropdown<'a, Message, T>(
+pub fn _dropdown<'a, Message, T>(
     options: impl Into<Cow<'a, [T]>>,
     selected: Option<T>,
     on_selected: impl Fn(T) -> Message + 'a,
