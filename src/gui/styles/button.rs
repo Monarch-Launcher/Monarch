@@ -64,9 +64,7 @@ pub fn primary(theme: &Theme, status: button::Status) -> button::Style {
     }
 }
 
-pub fn secondary(theme: &Theme, status: button::Status) -> button::Style {
-    let palette = theme.palette();
-
+pub fn secondary(_theme: &Theme, status: button::Status) -> button::Style {
     match status {
         button::Status::Active => button::Style {
             background: Some(Background::Color(Color::from_rgba8(40, 40, 50, 0.85))),

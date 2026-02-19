@@ -41,7 +41,6 @@ pub enum Message {
     EpicPasswordChanged(String),
     SaveEpicCredentials,
     Refresh,
-    RequestTestModal,
 }
 
 impl Message {
@@ -141,9 +140,6 @@ impl SettingsPage {
                 self.refresh();
             }
             Message::Refresh => self.refresh(),
-            Message::RequestTestModal => {
-                crate::gui::show_error("Easy error display works!");
-            }
             Message::OpenLogs => {
                 let _ = monarch_utils::commands::open_logs();
             }

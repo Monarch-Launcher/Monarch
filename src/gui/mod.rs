@@ -36,7 +36,6 @@ pub enum AppMessage {
     HeaderMessage(header::Message),
     Page(pages::Message),
     OpenGameDetails(crate::monarch_games::monarchgame::MonarchGame),
-    CloseGameDetails,
     OpenTerminal(Id),
     CloseTerminal(Id),
     CloseWindow(Id),
@@ -234,10 +233,6 @@ impl App {
                 self.active_tab = PageTab::GameDetails;
                 iced::Task::none()
             }
-            AppMessage::CloseGameDetails => {
-                self.active_tab = self.previous_tab;
-                iced::Task::none()
-            }
             AppMessage::OpenTerminal(_id) => {
                 // ID already inserted in LaunchGame
                 iced::Task::none()
@@ -379,7 +374,7 @@ impl App {
 fn external_subscription_stream(_: &()) -> iced::futures::stream::BoxStream<'static, AppMessage> {
     use iced::futures::{SinkExt, StreamExt};
     iced::stream::channel(100, |mut output: Sender<AppMessage>| async move {
-        let mut rx = EXTERNAL_RECEIVER.lock().unwrap().take();
+        let rx = EXTERNAL_RECEIVER.lock().unwrap().take();
         if let Some(mut rx) = rx {
             while let Some(msg) = rx.next().await {
                 let _ = output.send(msg).await;
