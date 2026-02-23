@@ -130,7 +130,7 @@ impl MonarchGame {
         Self {
             name: other.name.to_string(),
             id: other.id.to_string(),
-            stores: other.platforms.iter().map(StoreInfo::from).collect(),
+            stores: other.stores.iter().map(StoreInfo::from).collect(),
             executable_path: "".to_string(),
             thumbnail_path: other.thumbnail_path.to_string(),
             thumbnail_url: other.cover_url.to_string(),
@@ -139,7 +139,12 @@ impl MonarchGame {
             store_page: "".to_string(),
             summary: other.summary.clone(),
             artwork_url: other.artwork_url.clone(),
-            artwork_path: "".to_string(),
+            artwork_path: crate::monarch_utils::monarch_fs::generate_cache_image_path(
+                &other.name,
+                GameImageType::Artwork,
+            )
+            .to_string_lossy()
+            .into_owned(),
             properties: MonarchGameProperties::default(),
         }
     }
@@ -158,7 +163,7 @@ impl GameType for MonarchGame {
             "steamcmd" => Box::new(SteamClient::new()),
             "epic" => Box::new(LegendaryClient::new()),
             _ => {
-                panic!("Invalid platform: {:?}", self.stores)
+                panic!("Invalid store: {:?}", self.stores)
             }
         }
     }
@@ -258,21 +263,21 @@ pub struct StoreInfo {
     pub(crate) store_url: String,
 }
 
-impl From<MonarchWebApiPlatform> for StoreInfo {
-    fn from(value: MonarchWebApiPlatform) -> Self {
+impl From<MonarchWebApiStore> for StoreInfo {
+    fn from(value: MonarchWebApiStore) -> Self {
         Self {
             name: value.name,
-            store_id: value.platform_id,
+            store_id: value.store_id,
             store_url: value.store_page,
         }
     }
 }
 
-impl From<&MonarchWebApiPlatform> for StoreInfo {
-    fn from(value: &MonarchWebApiPlatform) -> Self {
+impl From<&MonarchWebApiStore> for StoreInfo {
+    fn from(value: &MonarchWebApiStore) -> Self {
         Self {
             name: value.name.to_string(),
-            store_id: value.platform_id.to_string(),
+            store_id: value.store_id.to_string(),
             store_url: value.store_page.to_string(),
         }
     }
@@ -287,16 +292,16 @@ pub struct MonarchWebApiGame {
     pub cover_url: String,
     pub artwork_url: String,
     pub summary: String,
-    pub platforms: Vec<MonarchWebApiPlatform>,
+    pub stores: Vec<MonarchWebApiStore>,
 
     #[serde(default)]
     pub thumbnail_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MonarchWebApiPlatform {
+pub struct MonarchWebApiStore {
     pub name: String,
-    pub platform_id: String,
+    pub store_id: String,
     pub store_page: String,
 }
 
@@ -324,10 +329,10 @@ impl MonarchWebApiGame {
             cover_url: monarch_game.thumbnail_url,
             artwork_url: "".to_string(),
             summary: monarch_game.summary,
-            platforms: monarch_game
+            stores: monarch_game
                 .stores
                 .iter()
-                .map(MonarchWebApiPlatform::from)
+                .map(MonarchWebApiStore::from)
                 .collect(),
             thumbnail_path: monarch_game.thumbnail_path,
         }
@@ -362,21 +367,21 @@ impl Default for MonarchGameProperties {
     }
 }
 
-impl From<StoreInfo> for MonarchWebApiPlatform {
+impl From<StoreInfo> for MonarchWebApiStore {
     fn from(value: StoreInfo) -> Self {
         Self {
             name: value.name,
-            platform_id: value.store_id,
+            store_id: value.store_id,
             store_page: value.store_url,
         }
     }
 }
 
-impl From<&StoreInfo> for MonarchWebApiPlatform {
+impl From<&StoreInfo> for MonarchWebApiStore {
     fn from(value: &StoreInfo) -> Self {
         Self {
             name: value.name.to_string(),
-            platform_id: value.store_id.to_string(),
+            store_id: value.store_id.to_string(),
             store_page: value.store_url.to_string(),
         }
     }

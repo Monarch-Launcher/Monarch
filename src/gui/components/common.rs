@@ -68,6 +68,20 @@ where
         .into()
 }
 
+pub fn store_button<'a, Message>(
+    label: &str,
+    on_press: Option<Message>,
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
+    button(Text::new(label.to_owned()).align_x(alignment::Horizontal::Center))
+        .on_press_maybe(on_press)
+        .style(styles::button::scanner)
+        .padding(10)
+        .into()
+}
+
 pub fn _text_button<'a, Message>(
     label: &str,
     on_press: Option<Message>,

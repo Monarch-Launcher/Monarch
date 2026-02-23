@@ -63,7 +63,7 @@ impl StoreType for LegendaryClient {
     async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
         let monarch_url: &'static str = std::env!("MONARCH_URL");
         let search_term: String = format!(
-            "{}/api/games?search={}?platform=epicgames",
+            "{}/api/games?search={}?store=epicgames",
             monarch_url, name,
         );
 
@@ -118,7 +118,7 @@ impl StoreType for LegendaryClient {
 
     async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()> {
         let command: String = format!(
-            "{} install {} --game-folder {} --platform {}",
+            "{} install {} --game-folder {} --store {}",
             self.cli_path, &game.name, opts.folder, opts.os
         );
 
@@ -135,16 +135,16 @@ impl StoreType for LegendaryClient {
         self.run_legendary_cmd(command)
     }
 
-    fn game_is_installed(&self, platform_id: &str) -> bool {
+    fn game_is_installed(&self, store_id: &str) -> bool {
         unimplemented!()
     }
 
-    fn platform_enabled(&self) -> bool {
+    fn store_enabled(&self) -> bool {
         let settings_lock = match get_settings() {
             Ok(lock) => lock,
             Err(e) => {
                 error!(
-                    "legendary_client::platform_enabled() get_settings() failed! | Err: {}",
+                    "legendary_client::store_enabled() get_settings() failed! | Err: {}",
                     e
                 );
                 return false;
@@ -154,7 +154,7 @@ impl StoreType for LegendaryClient {
             Ok(settings) => settings,
             Err(e) => {
                 error!(
-                    "legendary_client::platform_enabled() settings_lock.read() failed! | Err: {}",
+                    "legendary_client::store_enabled() settings_lock.read() failed! | Err: {}",
                     e
                 );
                 return false;

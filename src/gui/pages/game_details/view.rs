@@ -102,9 +102,9 @@ impl GameDetailsPage {
                 ..Default::default()
             });
 
-        // Platform/Store info
-        let platform_badge = container(
-            text(game.get_store_name())
+        // Store info
+        let store_badge = container(
+            text(game.get_store_name().to_uppercase())
                 .size(14)
                 .color(Color::WHITE)
                 .font(iced::Font {
@@ -286,7 +286,7 @@ impl GameDetailsPage {
         )
         .width(Length::FillPortion(1));
 
-        let header_panel = column![title, platform_badge].spacing(12);
+        let header_panel = column![title, store_badge].spacing(12);
 
         // Right side content (info panel)
         let info_panel = column![

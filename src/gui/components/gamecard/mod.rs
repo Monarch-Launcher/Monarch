@@ -1,7 +1,6 @@
 use crate::monarch_games::monarchgame::MonarchGame;
 
 pub mod container;
-pub mod drawer;
 pub mod game_browser;
 pub mod gamecard;
 pub mod properties;

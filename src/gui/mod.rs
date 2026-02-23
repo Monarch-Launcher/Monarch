@@ -36,6 +36,7 @@ pub enum AppMessage {
     HeaderMessage(header::Message),
     Page(pages::Message),
     OpenGameDetails(crate::monarch_games::monarchgame::MonarchGame),
+    OpenStoreDetails(crate::monarch_games::monarchgame::MonarchGame),
     OpenTerminal(Id),
     CloseTerminal(Id),
     CloseWindow(Id),
@@ -81,6 +82,7 @@ pub struct App {
     search_page: pages::search::SearchPage,
     settings_page: pages::settings::SettingsPage,
     game_details_page: pages::game_details::GameDetailsPage,
+    store_details_page: pages::store_details::StoreDetailsPage,
 
     active_terminals: HashMap<Id, TermInstance>,
     active_modal: Option<ModalState>,
@@ -196,10 +198,14 @@ impl App {
                         .update(msg)
                         .map(|m| AppMessage::Page(pages::Message::Library(m)))
                 }
-                pages::Message::Search(msg) => self
-                    .search_page
-                    .update(msg)
-                    .map(|m| AppMessage::Page(pages::Message::Search(m))),
+                pages::Message::Search(msg) => {
+                    if let pages::search::Message::OpenStoreDetails(game) = &msg {
+                        return iced::Task::done(AppMessage::OpenStoreDetails(game.clone()));
+                    }
+                    self.search_page
+                        .update(msg)
+                        .map(|m| AppMessage::Page(pages::Message::Search(m)))
+                }
                 pages::Message::Settings(msg) => self
                     .settings_page
                     .update(msg)
@@ -226,12 +232,44 @@ impl App {
                         pages::game_details::Message::Nop(_) => iced::Task::none(),
                     }
                 }
+                pages::Message::StoreDetails(msg) => match msg {
+                    pages::store_details::Message::BackPressed => {
+                        self.active_tab = self.previous_tab;
+                        iced::Task::none()
+                    }
+                    _ => self
+                        .store_details_page
+                        .update(msg)
+                        .map(|m| AppMessage::Page(pages::Message::StoreDetails(m))),
+                },
             },
             AppMessage::OpenGameDetails(game) => {
                 self.previous_tab = self.active_tab;
                 self.game_details_page.set_game(Arc::new(Mutex::new(game)));
                 self.active_tab = PageTab::GameDetails;
                 iced::Task::none()
+            }
+            AppMessage::OpenStoreDetails(game) => {
+                self.previous_tab = self.active_tab;
+                self.store_details_page
+                    .set_game(Arc::new(Mutex::new(game.clone())));
+                self.active_tab = PageTab::StoreDetails;
+
+                iced::Task::perform(
+                    async move {
+                        let artwork_path = game.artwork_path.clone();
+                        if !artwork_path.is_empty() && std::path::Path::new(&artwork_path).exists()
+                        {
+                            return ();
+                        }
+                        let _ = crate::monarch_games::commands::download_artwork(&game).await;
+                    },
+                    |_| {
+                        AppMessage::Page(pages::Message::StoreDetails(
+                            pages::store_details::Message::ArtworkDownloaded,
+                        ))
+                    },
+                )
             }
             AppMessage::OpenTerminal(_id) => {
                 // ID already inserted in LaunchGame
@@ -300,6 +338,10 @@ impl App {
                 .game_details_page
                 .view()
                 .map(pages::Message::GameDetails),
+            PageTab::StoreDetails => self
+                .store_details_page
+                .view()
+                .map(pages::Message::StoreDetails),
         };
 
         let main_content = container(
@@ -398,6 +440,7 @@ impl Default for App {
             search_page: pages::search::SearchPage::default(),
             settings_page: pages::settings::SettingsPage::default(),
             game_details_page: pages::game_details::GameDetailsPage::default(),
+            store_details_page: pages::store_details::StoreDetailsPage::default(),
             active_terminals: HashMap::new(),
             active_modal: None,
         }

@@ -14,6 +14,7 @@ pub enum Message {
     UpdateGames(Vec<MonarchWebApiGame>),
     GameImgLoaded(MonarchWebApiGame),
     GameCard(gamecard::GameCardMessage),
+    OpenStoreDetails(crate::monarch_games::monarchgame::MonarchGame),
     Tick,
 }
 
@@ -43,10 +44,19 @@ impl SearchPage {
             Message::PerformSearch => self.perform_search(SearchFilter::default()),
             Message::UpdateGames(games) => self.update_games(games),
             Message::GameImgLoaded(game) => self.game_img_loaded(game),
-            Message::GameCard(game_card_message) => self
-                .browser
-                .update(game_card_message)
-                .map(Message::GameCard),
+            Message::GameCard(game_card_message) => {
+                if let gamecard::GameCardMessage::GamePressed(id) = &game_card_message {
+                    if let Some(game_card) =
+                        self.browser.games.games.iter().find(|g| g.game.id == *id)
+                    {
+                        return iced::Task::done(Message::OpenStoreDetails(game_card.game.clone()));
+                    }
+                }
+                self.browser
+                    .update(game_card_message)
+                    .map(Message::GameCard)
+            }
+            Message::OpenStoreDetails(_) => iced::Task::none(),
             Message::Tick => self.tick(),
         }
     }

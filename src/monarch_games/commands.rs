@@ -187,14 +187,14 @@ pub async fn download_game(opts: DownloadOptions) -> Result<Vec<MonarchGame>, St
     let game = MonarchGame::new(
         &opts.game_name,
         0,
-        &opts.game_platform,
-        &opts.game_platform_id,
+        &opts.game_store,
+        &opts.game_store_id,
         "",
         "",
         "",
     );
 
-    let result: Result<(), String> = match opts.game_platform.as_str() {
+    let result: Result<(), String> = match opts.game_store.as_str() {
         "steam" => {
             if let Err(e) = SteamClient::new().install_game(&game, &opts).await {
                 return Err(e.to_string());
@@ -207,7 +207,7 @@ pub async fn download_game(opts: DownloadOptions) -> Result<Vec<MonarchGame>, St
             }
             Ok(())
         }
-        _ => Err(String::from("Unsupported platform")),
+        _ => Err(String::from("Unsupported store")),
     };
 
     if let Err(e) = result {
@@ -231,11 +231,11 @@ pub async fn download_game(opts: DownloadOptions) -> Result<Vec<MonarchGame>, St
 /// Tells Monarch to download specified game
 pub async fn update_game(
     name: String,
-    platform: String,
-    platform_id: String,
+    store: String,
+    store_id: String,
 ) -> Result<(), String> {
     info!("Updating: {name}");
-    match monarch_client::update_game(&platform, &platform_id).await {
+    match monarch_client::update_game(&store, &store_id).await {
         Ok(_) => Ok(()),
         Err(e) => {
             error!(
@@ -250,11 +250,11 @@ pub async fn update_game(
 /// Tells Monarch to remove specified game
 pub async fn remove_game(
     name: String,
-    platform: String,
-    platform_id: String,
+    store: String,
+    store_id: String,
 ) -> Result<(), String> {
     info!("Uninstalling: {name}");
-    if let Err(e) = monarch_client::uninstall_game(&platform, &platform_id).await {
+    if let Err(e) = monarch_client::uninstall_game(&store, &store_id).await {
         error!(
             "monarch_games::commands::remove_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -266,13 +266,13 @@ pub async fn remove_game(
 
 pub async fn move_game_to_monarch(
     name: String,
-    platform: String,
-    platform_id: String,
+    store: String,
+    store_id: String,
 ) -> Result<(), String> {
-    info!("Moving {name} from {platform} to Monarch...");
+    info!("Moving {name} from {store} to Monarch...");
 
-    // First remove the game from old platform
-    if let Err(e) = monarch_client::uninstall_game(&platform, &platform_id).await {
+    // First remove the game from old store
+    if let Err(e) = monarch_client::uninstall_game(&store, &store_id).await {
         error!(
             "monarch_games::commands::move_game_to_monarch() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -281,7 +281,7 @@ pub async fn move_game_to_monarch(
     }
 
     // Then reinstall on Monarch
-    if let Err(e) = monarch_client::download_game(&name, &platform, &platform_id).await {
+    if let Err(e) = monarch_client::download_game(&name, &store, &store_id).await {
         error!(
             "monarch_games::commands::move_game_to_monarch() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

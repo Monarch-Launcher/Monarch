@@ -73,7 +73,7 @@ impl StoreType for SteamClient {
                 .with_context(|| "steam_client::uninstall_game() -> "),
             _ => {
                 bail!(
-                    "Invalid platform! Expected 'steam' or 'steamcmd', instead got: {}!",
+                    "Invalid store! Expected 'steam' or 'steamcmd', instead got: {}!",
                     game.get_store_name()
                 )
             }
@@ -86,11 +86,11 @@ impl StoreType for SteamClient {
             .with_context(|| "steam_client::update_game() -> ")
     }
 
-    fn game_is_installed(&self, platform_id: &str) -> bool {
+    fn game_is_installed(&self, store_id: &str) -> bool {
         unimplemented!()
     }
 
-    fn platform_enabled(&self) -> bool {
+    fn store_enabled(&self) -> bool {
         unimplemented!()
     }
 
@@ -109,7 +109,7 @@ impl StoreType for SteamClient {
                 });
                 Ok(())
             }
-            _ => bail!("Neither Steam client nor SteamCMD was detected as game platform!"),
+            _ => bail!("Neither Steam client nor SteamCMD was detected as game store!"),
         }
     }
 }
@@ -487,7 +487,7 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
 
     info!("Parsing {id} via {monarch_url}.");
     let mut game_info_opt: Option<MonarchWebApiGame> = None;
-    let target: String = format!("{monarch_url}/api/games?platform=steam&platform_id={id}");
+    let target: String = format!("{monarch_url}/api/games?store=steam&store_id={id}");
 
     // GET info from Steam servers
     match reqwest::get(&target).await {
@@ -514,7 +514,7 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
     if let Some(game_info) = game_info_opt {
         let mut monarch_game = MonarchGame::from(&game_info);
 
-        monarch_game.stores = game_info.platforms.iter().map(StoreInfo::from).collect();
+        monarch_game.stores = game_info.stores.iter().map(StoreInfo::from).collect();
 
         if is_cache {
             let path: String = String::from(

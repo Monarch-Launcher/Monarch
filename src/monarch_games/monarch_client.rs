@@ -93,13 +93,12 @@ impl StoreType for MonarchClient {
         bail!("monarch_client::update_game() currently not supported!")
     }
 
-    fn game_is_installed(&self, _platform_id: &str) -> bool {
-        error!("monarch_client::game_is_installed() Not implemented!");
+    fn game_is_installed(&self, _store_id: &str) -> bool {
         false
     }
 
-    fn platform_enabled(&self) -> bool {
-        error!("monarch_client::platform_enabled() Not implemented!");
+    fn store_enabled(&self) -> bool {
+        error!("monarch_client::store_enabled() Not implemented!");
         false
     }
 
@@ -165,7 +164,7 @@ pub async fn launch_game(frontend_game: &MonarchGame) -> Result<()> {
             game.executable_path
         );
 
-        // Reformat the launch command to work on the platform
+        // Reformat the launch command to work on the store
         if cfg!(target_os = "windows") {
             game.executable_path = format!(r#"Start-Process "{}""#, game.executable_path);
         } else {
@@ -204,7 +203,7 @@ pub async fn launch_game(frontend_game: &MonarchGame) -> Result<()> {
         return Ok(());
     }
 
-    // Otherwise launch via platform
+    // Otherwise launch via store
     match game.get_store_name().as_str() {
         "steam" => {
             info!("Launching game via steam client: {}", game.get_store_id());
@@ -218,17 +217,13 @@ pub async fn launch_game(frontend_game: &MonarchGame) -> Result<()> {
                 .with_context(|| "monarch_client::launch_game() -> ")
         }
         &_ => {
-            bail!("monarch_client::launch_game() User tried launching a game on an invalid platform: {} | Err: Invalid platform!", game.get_store_name())
+            bail!("monarch_client::launch_game() User tried launching a game on an invalid store: {} | Err: Invalid store!", game.get_store_name())
         }
     }
 }
 
 /// Downloads a game into default folder
-pub async fn download_game(
-    name: &str,
-    platform: &str,
-    platform_id: &str,
-) -> Result<Vec<MonarchGame>> {
+pub async fn download_game(name: &str, store: &str, store_id: &str) -> Result<Vec<MonarchGame>> {
     let settings_lock = match get_settings() {
         Ok(lock) => lock,
         Err(e) => {
@@ -257,7 +252,7 @@ pub async fn download_game(
         monarch_fs::create_dir(&path).with_context(|| "monarch_client::download_game() -> ")?;
     }
 
-    let new_game: MonarchGame = match platform {
+    let new_game: MonarchGame = match store {
         "steam" => {
             // Check if steamcmd is installed
             if !steam_client::steamcmd_is_installed() {
@@ -269,18 +264,18 @@ pub async fn download_game(
                     .with_context(|| "monarch_client::download_game() -> ")?;
             }
 
-            let mut new_game = steam_client::download_game(name, platform_id)
+            let mut new_game = steam_client::download_game(name, store_id)
                 .await
                 .with_context(|| "monarch_client::download_game() -> ")?;
 
             new_game.stores.push(StoreInfo {
                 name: "steamcmd".to_string(),
-                store_id: platform_id.to_string(),
+                store_id: store_id.to_string(),
                 store_url: "".to_string(),
             });
             new_game
         }
-        &_ => bail!("monarch_client::download_game() Invalid platform!"),
+        &_ => bail!("monarch_client::download_game() Invalid store!"),
     };
 
     games_library::add_game(&new_game).with_context(|| "monarch_client::download_game() -> ")?;
@@ -289,25 +284,26 @@ pub async fn download_game(
 }
 
 /// Remove an installed game
-pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<()> {
-    match platform {
-        "steam" => {
-            steam_client::uninstall_client_game(platform_id)
-        }
+pub async fn uninstall_game(store: &str, store_id: &str) -> Result<()> {
+    match store {
+        "steam" => steam_client::uninstall_client_game(store_id),
         "steamcmd" => {
-            steam_client::uninstall_game(platform_id)
-            .await
-            .with_context(|| "monarch_client::uninstall_game() -> ")?;
+            steam_client::uninstall_game(store_id)
+                .await
+                .with_context(|| "monarch_client::uninstall_game() -> ")?;
 
-            let mut monarch_games = games_library::get_monarchgames().with_context(|| "monarch_client::uninstall_game() -> ")?;
+            let mut monarch_games = games_library::get_monarchgames()
+                .with_context(|| "monarch_client::uninstall_game() -> ")?;
 
             for (i, game) in monarch_games.clone().iter().enumerate() {
-                if game.get_store_name() == platform && game.get_store_id() == platform_id {
+                if game.get_store_name() == store && game.get_store_id() == store_id {
                     monarch_games.remove(i);
 
                     match MONARCH_STATE.write() {
                         Ok(mut state) => {
-                            state.set_library_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")?;
+                            state
+                                .set_library_games(&monarch_games)
+                                .with_context(|| "monarch_client::uninstall_game() -> ")?;
 
                             // Replace games with the updated list of library games
                             monarch_games = state.get_library_games();
@@ -316,28 +312,31 @@ pub async fn uninstall_game(platform: &str, platform_id: &str) -> Result<()> {
                             error!("monarch_client::uninstall_game() Failed to lock on MONARCH_STATE | Err: {}", e);
                         }
                     }
-                    return write_monarch_games(&monarch_games).with_context(|| "monarch_client::uninstall_game() -> ")
+                    return write_monarch_games(&monarch_games)
+                        .with_context(|| "monarch_client::uninstall_game() -> ");
                 }
             }
-            bail!("monarch_client::update_game() | Err: Game: {platform_id} uninstalled, not removed from monarch_games.json, due to not found!")
+            bail!("monarch_client::update_game() | Err: Game: {store_id} uninstalled, not removed from monarch_games.json, due to not found!")
         }
 
-        &_ => bail!("monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )")
+        &_ => bail!(
+            "monarch_client::uninstall_game() | Err: Invalid store passed as argument ( {store} )"
+        ),
     }
 }
 
 /// Update a game
-pub async fn update_game(platform: &str, platform_id: &str) -> Result<()> {
-    match platform {
+pub async fn update_game(store: &str, store_id: &str) -> Result<()> {
+    match store {
         "steam" => {
             bail!("monarch_client::uninstall_game() | Err: Monarch currently does not support updating games from the steam desktop client!")
         }
-        "steamcmd" => {
-            steam_client::update_game(platform_id)
+        "steamcmd" => steam_client::update_game(store_id)
             .await
-            .with_context(|| "monarch_client::uninstall_game() -> ")
-        }
-        &_ => bail!("monarch_client::uninstall_game() | Err: Invalid platform passed as argument ( {platform} )")
+            .with_context(|| "monarch_client::uninstall_game() -> "),
+        &_ => bail!(
+            "monarch_client::uninstall_game() | Err: Invalid store passed as argument ( {store} )"
+        ),
     }
 }
 
@@ -424,15 +423,15 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
 }
 
 pub async fn get_game_properties(game: &mut MonarchGame) {
-    let mut platform = game.get_store_name();
-    if platform == "steamcmd" {
-        platform = "steam".to_string();
+    let mut store = game.get_store_name();
+    if store == "steamcmd" {
+        store = "steam".to_string();
     }
 
     let mut properties: MonarchGameProperties = MonarchGameProperties::default();
 
     if game.is_installed() {
-        if platform == "steam" {
+        if store == "steam" {
             match steam::get_default_libraryfolders_location() {
                 Ok(p) => {
                     let mut props: MonarchGameProperties =
@@ -477,8 +476,8 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
             if game.stores.is_empty() {}
             properties.description = web_game.summary.to_string();
 
-            for platform in web_game.platforms.iter() {
-                if platform.name == "steam" {}
+            for store in web_game.stores.iter() {
+                if store.name == "steam" {}
             }
 
             #[cfg(target_os = "linux")]

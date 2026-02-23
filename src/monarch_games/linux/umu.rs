@@ -126,7 +126,7 @@ pub fn install_umu() -> Result<()> {
 pub async fn umu_run(game: &MonarchGame) -> Result<()> {
     info!("Compatibility layer set: {}", game.compatibility);
 
-    let platform_arg = match game.get_store_name().as_str() {
+    let store_arg = match game.get_store_name().as_str() {
         "epic" => "egs".to_string(),
         _ => "none".to_string(),
     };
@@ -136,7 +136,7 @@ pub async fn umu_run(game: &MonarchGame) -> Result<()> {
     let env_vars: HashMap<String, String> = HashMap::from([
         ("PROTON_PATH".to_string(), game.compatibility.clone()),
         ("GAMEID".to_string(), gameid_arg),
-        ("STORE".to_string(), platform_arg),
+        ("STORE".to_string(), store_arg),
     ]);
 
     let umu: PathBuf = get_umu_exe();

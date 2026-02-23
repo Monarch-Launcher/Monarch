@@ -1,50 +1,26 @@
 use crate::gui::components::gamecard::container::GameCardContainer;
-use crate::gui::components::gamecard::drawer::GameDrawer;
 use crate::gui::components::gamecard::properties::PropertiesModal;
 use crate::gui::components::gamecard::GameCardMessage;
-use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiPlatform};
 use iced::widget::{container, stack, text};
 use iced::{alignment, Color, Element, Length};
 
 #[derive(Default, Debug, Clone)]
 pub struct GameBrowser {
     pub games: GameCardContainer,
-    drawer: GameDrawer,
-    selected_game: Option<MonarchGame>,
-    drawer_animation: f32,
     properties_modal: Option<PropertiesModal>,
 }
 
 impl GameBrowser {
     pub fn update(&mut self, msg: GameCardMessage) -> iced::Task<GameCardMessage> {
         match &msg {
-            GameCardMessage::GamePressed(id) => {
-                if let Some(game_card) = self.games.games.iter().find(|g| g.game.id == *id) {
-                    self.selected_game = Some(game_card.game.clone());
-                    // Start animation from current state (usually 0.0 if closed)
-                    self.drawer_animation = 0.0;
-                }
+            GameCardMessage::GamePressed(_) => {
+                // Now intercepted at the page level
             }
             GameCardMessage::Tick => {
-                // Simple slide-in for the main panel if selected
-                if self.selected_game.is_some() {
-                    let target = 1.0;
-                    if (self.drawer_animation - target).abs() > 0.001 {
-                        self.drawer_animation += (target - self.drawer_animation) * 0.2;
-                    } else {
-                        self.drawer_animation = target;
-                    }
-                } else {
-                    let target = 0.0;
-                    if (self.drawer_animation - target).abs() > 0.001 {
-                        self.drawer_animation += (target - self.drawer_animation) * 0.2;
-                    } else {
-                        self.drawer_animation = target;
-                    }
-                }
+                // No more drawer animation logic needed here
             }
             GameCardMessage::CloseDrawer => {
-                self.selected_game = None;
+                // No longer used
             }
             GameCardMessage::OpenStorePage(url) => {
                 #[cfg(target_os = "linux")]
@@ -115,57 +91,7 @@ impl GameBrowser {
     }
 
     pub fn view(&self) -> Element<'_, GameCardMessage> {
-        let content = if let Some(game) = &self.selected_game {
-            iced::widget::responsive(move |size| {
-                let drawer_width = size.width * 0.5;
-                let padding_left = size.width - (drawer_width * self.drawer_animation);
-                let platforms: Vec<MonarchWebApiPlatform> = game
-                    .stores
-                    .iter()
-                    .cloned()
-                    .map(MonarchWebApiPlatform::from)
-                    .collect();
-
-                let drawer_layer = container(self.drawer.view(game, platforms))
-                    .width(Length::Fixed(drawer_width))
-                    .height(Length::Fill);
-
-                let drawer_wrapper = container(drawer_layer)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .padding(iced::Padding::default().left(padding_left))
-                    .align_x(alignment::Horizontal::Left);
-
-                stack![
-                    self.view_grid(false),
-                    container(
-                        iced::widget::mouse_area(
-                            container(
-                                iced::widget::Space::new()
-                                    .width(Length::Fill)
-                                    .height(Length::Fill)
-                            )
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .style(move |_theme: &iced::Theme| container::Style {
-                                background: Some(
-                                    Color::from_rgba8(0, 0, 0, 0.5 * self.drawer_animation).into()
-                                ),
-                                ..Default::default()
-                            }),
-                        )
-                        .on_press(GameCardMessage::CloseDrawer),
-                    )
-                    .width(Length::Fill)
-                    .height(Length::Fill),
-                    drawer_wrapper
-                ]
-                .into()
-            })
-            .into()
-        } else {
-            self.view_grid(true)
-        };
+        let content = self.view_grid(true);
 
         if let Some(modal) = &self.properties_modal {
             stack![content, modal.view().map(GameCardMessage::Properties)].into()

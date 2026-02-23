@@ -9,8 +9,8 @@ pub trait StoreType: Send + Sync {
     async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()>;
     async fn uninstall_game(&self, game: &MonarchGame) -> Result<()>;
     async fn update_game(&self, game: &MonarchGame) -> Result<()>;
-    fn game_is_installed(&self, platform_id: &str) -> bool;
-    fn platform_enabled(&self) -> bool;
+    fn game_is_installed(&self, store_id: &str) -> bool;
+    fn store_enabled(&self) -> bool;
     async fn launch_game(&self, game: &MonarchGame) -> Result<()>;
 }
 
@@ -30,7 +30,7 @@ pub struct SearchFilter {
 
 impl Default for SearchFilter {
     fn default() -> Self {
-        Self { 
+        Self {
             steam: true,
             epic: true,
             gog: true,
@@ -38,17 +38,18 @@ impl Default for SearchFilter {
 
             monarch: true,
             steam_powered: false,
-            egs: false
-         }
+            egs: false,
+        }
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DownloadOptions {
     pub folder: String,
-    pub platform: String,
+    pub store: String,
     pub game_name: String,
-    pub game_platform: String,
-    pub game_platform_id: String,
+    pub game_store: String,
+    pub game_store_id: String,
     pub os: String,
+    pub compatibility: Option<String>,
 }
