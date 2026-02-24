@@ -8,7 +8,7 @@ use iced::{
 
 use crate::{
     gui::{
-        components::common::{input_field, primary_button, secondary_button},
+        components::common::{danger_button, input_field, primary_button, secondary_button},
         pages::settings::{Message, SettingsPage, SettingsTab},
         styles,
     },
@@ -136,11 +136,6 @@ impl SettingsPage {
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(10),
-            row![
-                Space::new().width(Length::Fill),
-                primary_button("Save", Some(Message::SaveLibraryFolder)),
-            ],
-            Space::new().height(10),
             text(format!("Current: {}", settings.monarch.game_folder))
                 .size(12)
                 .color([0.5, 0.5, 0.5]),
@@ -157,10 +152,7 @@ impl SettingsPage {
             row![
                 secondary_button("Open Logs", Some(Message::OpenLogs)),
                 Space::new().width(10),
-                button(text("Reset to Defaults").size(14))
-                    .on_press(Message::ResetDefaults)
-                    .padding(10)
-                    .style(styles::button::destructive),
+                danger_button("Reset to Defaults", Some(Message::ResetDefaults)),
             ]
             .spacing(10),
         ]

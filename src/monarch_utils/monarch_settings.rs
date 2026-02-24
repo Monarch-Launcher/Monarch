@@ -1,11 +1,12 @@
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use toml::Table;
-use tracing::error;
+use tracing::{error, info};
 
 use super::monarch_fs::{create_dir, generate_monarch_home, get_settings_path, path_exists};
 use crate::monarch_games::monarch_client::generate_default_folder;
@@ -43,6 +44,7 @@ pub struct QuicklaunchSettings {
 /// Struct for storing a persistent state of settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
+    pub settings_path: String,
     pub monarch: MonarchSettings,
     pub quicklaunch: QuicklaunchSettings,
     pub steam: LauncherSettings,
@@ -52,6 +54,7 @@ pub struct Settings {
 impl Settings {
     pub const fn new() -> Self {
         Self {
+            settings_path: String::new(),
             monarch: MonarchSettings {
                 game_folder: String::new(),
                 monarch_home: String::new(),
@@ -95,6 +98,7 @@ impl Default for Settings {
         let home_path_str = home_path.to_str().unwrap().to_string();
         let default_game_folder = generate_default_folder().unwrap();
         let default_game_folder_str = default_game_folder.to_str().unwrap().to_string();
+        let settings_path = get_settings_path().unwrap().to_str().unwrap().to_string();
 
         let monarch: MonarchSettings = MonarchSettings {
             monarch_home: home_path_str,
@@ -126,6 +130,7 @@ impl Default for Settings {
         };
 
         Self {
+            settings_path,
             monarch,
             quicklaunch,
             steam,
@@ -160,8 +165,8 @@ pub fn init() -> Result<()> {
         }
     }
 
-    if let Ok(settings) = read_settings() {
-        if !valid_settings(&settings) {
+    if let Ok(mut settings) = read_settings() {
+        if !valid_settings(&mut settings) {
             println!("Invalid settings detected in settings.toml!");
             bail!("monarch_settings::init() Invalid settings detected in settings.toml!")
         }
@@ -196,9 +201,11 @@ pub fn set_default_settings() -> Result<Settings> {
 /// Write settings to file where header is the "header" you want to change under,
 /// key is the name of the setting and value is the new value the setting should have.
 pub fn write_settings(settings: &Settings) -> Result<()> {
-    let path = get_settings_path().with_context(|| "monarch_settings::write_settings() -> {}")?;
-    write_toml_content(&path, settings.clone().into())
-        .with_context(|| "monarch_settings::write_settings() -> {}")?;
+    write_toml_content(
+        &PathBuf::from(&settings.settings_path),
+        settings.clone().into(),
+    )
+    .with_context(|| "monarch_settings::write_settings() -> {}")?;
     Ok(())
 }
 
@@ -251,7 +258,40 @@ fn parse_table(content: String) -> Result<Table> {
 
 /// Main function for verifying that Monarch settings are valid.
 /// TODO: Come back and implement tighter checks on settings.
-fn valid_settings(settings: &Table) -> bool {
+fn valid_settings(settings: &mut Table) -> bool {
+    match settings.get("settings_path") {
+        Some(settings_path) => {
+            let correct_path = get_settings_path().unwrap().to_str().unwrap().to_string();
+
+            if settings_path.as_str().unwrap() != correct_path {
+                error!("monarch_settings::valid_settings() Error while validating settings! | Err: settings_path does not match!");
+                info!(
+                    "monarch_settings::valid_settings() Setting correct path: {}",
+                    correct_path
+                );
+                settings.insert(
+                    "settings_path".to_string(),
+                    toml::Value::String(correct_path),
+                );
+                return false;
+            }
+        }
+        None => {
+            error!("monarch_settings::valid_settings() Error while validating settings! | Err: Missing settings_path!");
+            info!("monarch_settings::valid_settings() Attempting to add settings_path");
+
+            let correct_path = get_settings_path().unwrap().to_str().unwrap().to_string();
+            settings.insert(
+                "settings_path".to_string(),
+                toml::Value::String(correct_path.clone()),
+            );
+
+            if let Err(e) = write_toml_content(&PathBuf::from(correct_path), settings.clone()) {
+                error!("monarch_settings::valid_settings() Failed to write correct settings to settings.toml! | Err: {e}");
+                return false;
+            }
+        }
+    }
     // Validate one section of the settings at the time
     match settings.get("monarch") {
         Some(_monarch_settings) => {}
