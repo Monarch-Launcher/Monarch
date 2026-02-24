@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use tracing::{debug, info};
 use tracing_subscriber::{fmt, fmt::layer, layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::monarch_utils::monarch_fs::{self, create_dir, get_monarch_home, path_exists};
+use crate::monarch_utils::monarch_fs::{self, create_dir, path_exists};
 use crate::monarch_utils::monarch_settings::{self, Settings};
 
 /// Initializes logger to ensure logs are written when running app.

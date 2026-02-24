@@ -12,9 +12,7 @@ pub enum GameCardMessage {
     GamePressed(String),
     Tick,
     UpdateGames(Vec<MonarchGame>),
-    CloseDrawer,
     OpenStorePage(String),
-    NoOp,
 
     // Properties related
     Properties(properties::Message),

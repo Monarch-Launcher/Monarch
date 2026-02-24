@@ -47,7 +47,7 @@ pub fn get_library() -> Result<Vec<MonarchGame>, String> {
 }
 
 pub fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
-    match games_library::get_games() {
+    match get_library() {
         Ok(mut games) => {
             if games.len() > 4 {
                 games.shuffle(&mut rng());
@@ -57,10 +57,7 @@ pub fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
             }
         }
         Err(e) => {
-            error!(
-                "monarch_games::commands::get_library -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
+            error!("monarch_games::commands::get_home_recomendations() Failed to get recomendations! | Err: {e}");
             Err(String::from("Something went wrong getting library!"))
         }
     }
@@ -229,11 +226,7 @@ pub async fn download_game(opts: DownloadOptions) -> Result<Vec<MonarchGame>, St
 }
 
 /// Tells Monarch to download specified game
-pub async fn update_game(
-    name: String,
-    store: String,
-    store_id: String,
-) -> Result<(), String> {
+pub async fn update_game(name: String, store: String, store_id: String) -> Result<(), String> {
     info!("Updating: {name}");
     match monarch_client::update_game(&store, &store_id).await {
         Ok(_) => Ok(()),
@@ -248,11 +241,7 @@ pub async fn update_game(
 }
 
 /// Tells Monarch to remove specified game
-pub async fn remove_game(
-    name: String,
-    store: String,
-    store_id: String,
-) -> Result<(), String> {
+pub async fn remove_game(name: String, store: String, store_id: String) -> Result<(), String> {
     info!("Uninstalling: {name}");
     if let Err(e) = monarch_client::uninstall_game(&store, &store_id).await {
         error!(

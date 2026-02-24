@@ -171,6 +171,7 @@ impl App {
                     header::Message::HomePage => self.active_tab = PageTab::Home,
                     header::Message::LibraryPage => {
                         self.active_tab = PageTab::Library;
+
                         return self
                             .library_page
                             .update(library::Message::UpdateGameProperties)

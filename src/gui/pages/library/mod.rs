@@ -89,8 +89,12 @@ impl LibraryPage {
                     |mut gamecard| {
                         iced::Task::perform(
                             async move {
-                                monarch_games::commands::get_game_properties(&mut gamecard.game)
+                                if !gamecard.game.has_properties() {
+                                    monarch_games::commands::get_game_properties(
+                                        &mut gamecard.game,
+                                    )
                                     .await;
+                                }
                                 gamecard.game
                             },
                             Message::GameUpdated,

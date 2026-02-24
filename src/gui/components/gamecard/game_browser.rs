@@ -13,15 +13,6 @@ pub struct GameBrowser {
 impl GameBrowser {
     pub fn update(&mut self, msg: GameCardMessage) -> iced::Task<GameCardMessage> {
         match &msg {
-            GameCardMessage::GamePressed(_) => {
-                // Now intercepted at the page level
-            }
-            GameCardMessage::Tick => {
-                // No more drawer animation logic needed here
-            }
-            GameCardMessage::CloseDrawer => {
-                // No longer used
-            }
             GameCardMessage::OpenStorePage(url) => {
                 #[cfg(target_os = "linux")]
                 {
@@ -53,9 +44,6 @@ impl GameBrowser {
                         }
                     }
                 }
-            }
-            GameCardMessage::UpdateGames(_) => {
-                // Handled in container update, but we might want to reset selection?
             }
             _ => {}
         }

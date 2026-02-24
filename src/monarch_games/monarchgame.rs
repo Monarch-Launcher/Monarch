@@ -125,6 +125,10 @@ impl MonarchGame {
         false
     }
 
+    pub fn has_properties(&self) -> bool {
+        return self.properties != MonarchGameProperties::default();
+    }
+
     /// Convert MonarchWebGame to MonarchGame
     pub fn from(other: &MonarchWebApiGame) -> Self {
         Self {
@@ -339,7 +343,7 @@ impl MonarchWebApiGame {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MonarchGameProperties {
     pub install_dir: String,
     pub size_on_disk: u64,

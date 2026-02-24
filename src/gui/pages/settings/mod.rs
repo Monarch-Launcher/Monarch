@@ -25,7 +25,6 @@ pub enum Message {
     TabSelected(SettingsTab),
     ToggleQuickLaunch(bool),
     LibraryFolderChanged(String),
-    SaveLibraryFolder,
     BrowseLibraryFolder,
     ClearCache,
     OpenLogs,
@@ -48,7 +47,6 @@ impl Message {
         match self {
             Message::ToggleQuickLaunch(_)
             | Message::LibraryFolderChanged(_)
-            | Message::SaveLibraryFolder
             | Message::ResetDefaults
             | Message::ToggleSteam(_)
             | Message::SteamUsernameChanged(_)
@@ -104,9 +102,6 @@ impl SettingsPage {
             }
             Message::LibraryFolderChanged(folder) => {
                 self.change_library_folder(write_guard.unwrap(), &folder)
-            }
-            Message::SaveLibraryFolder => {
-                self.write_settings(&write_guard.unwrap());
             }
             Message::ToggleSteam(state) => self.toggle_steam(write_guard.unwrap(), state),
             Message::SteamUsernameChanged(u) => {

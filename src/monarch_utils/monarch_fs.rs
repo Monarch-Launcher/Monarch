@@ -2,15 +2,14 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
 use std::{fs, process::exit};
 use tracing::{error, info, warn};
 
 use crate::monarch_games::monarchgame::GameImageType;
-use crate::monarch_utils::monarch_settings::{self, read_settings};
+use crate::monarch_utils::monarch_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
-use super::monarch_settings::{get_settings, Settings};
+use super::monarch_settings::Settings;
 
 /*
 ---------- General functions for filesystem tasks ----------
