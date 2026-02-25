@@ -154,7 +154,7 @@ impl SettingsPage {
             row![
                 secondary_button("Open Logs", Some(Message::OpenLogs)),
                 Space::new().width(10),
-                danger_button("Reset to Defaults", Some(Message::ResetDefaults)),
+                danger_button("Reset to Defaults", Some(Message::RequestResetDefaults)),
             ]
             .spacing(10),
         ]

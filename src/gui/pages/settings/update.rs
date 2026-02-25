@@ -1,7 +1,7 @@
 use tracing::error;
 
 use crate::{
-    gui::{pages::settings::{Message, SettingsPage}, show_error},
+    gui::{AppMessage, pages::{self, settings::{Message, SettingsPage}}, show_confirm, show_error},
     monarch_utils::{self, monarch_settings::Settings},
 };
 
@@ -91,6 +91,10 @@ impl SettingsPage {
                 show_error("Failed to get cache size!");
             }
         }
+    }
+
+    pub fn ask_reset_settings(&self) {
+        show_confirm("Are you sure you want to reset to default settings?", AppMessage::Page(pages::Message::Settings(Message::ResetDefaults)));
     }
 
     pub fn reset_settings(&mut self, settings: &mut Settings) {

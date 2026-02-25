@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use serde_json::{json, value::Value};
+use serde_json::json;
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;

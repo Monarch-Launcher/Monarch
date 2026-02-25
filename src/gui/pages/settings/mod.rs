@@ -28,6 +28,7 @@ pub enum Message {
     BrowseLibraryFolder,
     ClearCache,
     OpenLogs,
+    RequestResetDefaults,
     ResetDefaults,
     ToggleSteam(bool),
     SteamUsernameChanged(String),
@@ -120,6 +121,7 @@ impl SettingsPage {
             Message::EpicUsernameChanged(u) => self.update_epic_username(&mut write_guard.unwrap(), &u),
             Message::EpicPasswordChanged(p) => self.update_epic_password(&mut write_guard.unwrap(), &p),
             Message::SaveEpicCredentials => self.write_settings(&write_guard.unwrap()),
+            Message::RequestResetDefaults => self.ask_reset_settings(),
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {
                 monarch_utils::commands::clear_cached_images();

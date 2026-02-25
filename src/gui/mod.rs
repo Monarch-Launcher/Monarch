@@ -44,6 +44,7 @@ pub enum AppMessage {
     OpenTerminalRaw(String, HashMap<String, String>),
     ShowModal(ModalState),
     CloseModal,
+    ConfirmModalAction(Box<AppMessage>),
     OpenLogs,
 }
 
@@ -312,6 +313,10 @@ impl App {
                 self.active_modal = None;
                 iced::Task::none()
             }
+            AppMessage::ConfirmModalAction(inner) => {
+                self.active_modal = None;
+                self.update(*inner)
+            }
             AppMessage::OpenLogs => {
                 let _ = crate::monarch_utils::commands::open_logs();
                 iced::Task::none()
@@ -390,7 +395,7 @@ impl App {
                         iced::widget::row![
                             components::common::primary_button(
                                 "Confirm",
-                                Some((**on_confirm).clone())
+                                Some(AppMessage::ConfirmModalAction(on_confirm.clone()))
                             ),
                             iced::widget::Space::new().width(Fill),
                             components::common::secondary_button(
