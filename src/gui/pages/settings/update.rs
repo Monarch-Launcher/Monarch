@@ -1,5 +1,3 @@
-use std::sync::RwLockWriteGuard;
-
 use tracing::error;
 
 use crate::{
@@ -10,7 +8,7 @@ use crate::{
 impl SettingsPage {
     pub fn toggle_quicklaunch(
         &mut self,
-        mut settings: RwLockWriteGuard<'_, Settings>,
+        settings: &mut Settings,
         state: bool,
     ) {
         settings.quicklaunch.enabled = state;
@@ -19,20 +17,21 @@ impl SettingsPage {
 
     pub fn change_library_folder(
         &mut self,
-        mut settings: RwLockWriteGuard<'_, Settings>,
+        settings: &mut Settings,
         folder: &str,
     ) {
         settings.monarch.game_folder = folder.to_string();
+        self.write_settings(&settings);
     }
 
-    pub fn toggle_steam(&mut self, mut settings: RwLockWriteGuard<'_, Settings>, state: bool) {
+    pub fn toggle_steam(&mut self, settings: &mut Settings, state: bool) {
         settings.steam.manage = state;
         self.write_settings(&settings);
     }
 
     pub fn update_steam_username(
         &mut self,
-        mut settings: RwLockWriteGuard<'_, Settings>,
+        settings: &mut Settings,
         username: &str,
     ) {
         settings.steam.username = username.to_string();
@@ -40,7 +39,7 @@ impl SettingsPage {
 
     pub fn update_steam_password(
         &mut self,
-        mut settings: RwLockWriteGuard<'_, Settings>,
+        settings: &mut Settings,
         password: &str,
     ) {
         let username: String = settings.steam.username.clone();
@@ -54,20 +53,20 @@ impl SettingsPage {
 
     pub fn update_steam_secret(
         &mut self,
-        mut settings: RwLockWriteGuard<'_, Settings>,
+        settings: &mut Settings,
         secret: &str,
     ) {
         let _ = monarch_utils::commands::set_secret("steam", &mut settings.steam, secret);
     }
 
-    pub fn toggle_epic(&mut self, mut settings: RwLockWriteGuard<'_, Settings>, state: bool) {
+    pub fn toggle_epic(&mut self, settings: &mut Settings, state: bool) {
         settings.epic.manage = state;
         self.write_settings(&settings);
     }
 
     pub fn update_epic_username(
         &mut self,
-        mut settings: RwLockWriteGuard<'_, Settings>,
+         settings: &mut Settings,
         username: &str,
     ) {
         settings.epic.username = username.to_string();
@@ -75,7 +74,7 @@ impl SettingsPage {
 
     pub fn update_epic_password(
         &mut self,
-        mut settings: RwLockWriteGuard<'_, Settings>,
+         settings: &mut Settings,
         password: &str,
     ) {
         let username: String = settings.epic.username.clone();
@@ -92,6 +91,11 @@ impl SettingsPage {
                 show_error("Failed to get cache size!");
             }
         }
+    }
+
+    pub fn reset_settings(&mut self, settings: &mut Settings) {
+        *settings = monarch_utils::monarch_settings::Settings::default();
+        self.write_settings(settings);
     }
 
     pub fn write_settings(&self, settings: &Settings) {

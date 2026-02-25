@@ -98,38 +98,28 @@ impl SettingsPage {
         match msg {
             Message::TabSelected(tab) => self.current_tab = tab,
             Message::ToggleQuickLaunch(state) => {
-                self.toggle_quicklaunch(write_guard.unwrap(), state)
+                self.toggle_quicklaunch(&mut write_guard.unwrap(), state)
             }
             Message::LibraryFolderChanged(folder) => {
-                self.change_library_folder(write_guard.unwrap(), &folder)
+                self.change_library_folder(&mut write_guard.unwrap(), &folder)
             }
-            Message::ToggleSteam(state) => self.toggle_steam(write_guard.unwrap(), state),
+            Message::ToggleSteam(state) => self.toggle_steam(&mut write_guard.unwrap(), state),
             Message::SteamUsernameChanged(u) => {
-                self.update_steam_username(write_guard.unwrap(), &u)
+                self.update_steam_username(&mut write_guard.unwrap(), &u)
             }
             Message::SteamPasswordChanged(p) => {
-                self.update_steam_password(write_guard.unwrap(), &p)
+                self.update_steam_password(&mut write_guard.unwrap(), &p)
             }
             Message::SaveSteamCredentials => self.write_settings(&write_guard.unwrap()),
             Message::SteamGuardSecretChanged(s) => {
-                self.update_steam_secret(write_guard.unwrap(), &s)
+                self.update_steam_secret(&mut write_guard.unwrap(), &s)
             }
             Message::SaveSteamSecret => self.write_settings(&write_guard.unwrap()),
-            Message::ToggleEpic(state) => self.toggle_epic(write_guard.unwrap(), state),
-            Message::EpicUsernameChanged(u) => self.update_epic_username(write_guard.unwrap(), &u),
-            Message::EpicPasswordChanged(p) => self.update_epic_password(write_guard.unwrap(), &p),
+            Message::ToggleEpic(state) => self.toggle_epic(&mut write_guard.unwrap(), state),
+            Message::EpicUsernameChanged(u) => self.update_epic_username(&mut write_guard.unwrap(), &u),
+            Message::EpicPasswordChanged(p) => self.update_epic_password(&mut write_guard.unwrap(), &p),
             Message::SaveEpicCredentials => self.write_settings(&write_guard.unwrap()),
-            Message::ResetDefaults => match monarch_utils::monarch_settings::set_default_settings()
-            {
-                Ok(settings) => {
-                    let mut guard = write_guard.unwrap();
-                    *guard = settings;
-                }
-                Err(e) => {
-                    error!("Failed to reset settings: {e}");
-                    show_error("Failed to reset settings!");
-                }
-            },
+            Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {
                 monarch_utils::commands::clear_cached_images();
                 self.refresh();
@@ -150,7 +140,7 @@ impl SettingsPage {
                 error!("gui::Settings::view() Failed to lock on shared_settings! | Err: {e}");
                 error_view(
                     "Settings Unavailable",
-                    "Failed to acquire a read lock on application settings. This might be due to a background process holding a write lock.",
+                    "Failed to acquire a read lock on application settings. Try reloading this page.",
                     Some(Message::Refresh),
                 )
             }
