@@ -51,7 +51,7 @@ impl StoreDetailsPage {
                 task.map(Message::DownloadModalMessage)
             }
             Message::DownloadModalMessage(m) => self.handle_download_modal_message(m),
-            Message::OpenStorePage(url) => self.open_store_page(url),
+            Message::OpenStorePage(url) => self.open_store_page(&url),
             Message::ArtworkDownloaded => {
                 self.artwork_loaded = true;
                 iced::Task::none()

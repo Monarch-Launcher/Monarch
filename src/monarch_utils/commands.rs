@@ -40,6 +40,20 @@ pub fn open_logs() -> Result<(), String> {
     }
 }
 
+pub fn open_external_link(url: &str) {
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("cmd.exe")
+            .arg("/C")
+            .arg(format!("start {}", url))
+            .spawn();
+    }
+}
+
 /// Returns settings read from settings.toml
 pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
     monarch_settings::get_settings()

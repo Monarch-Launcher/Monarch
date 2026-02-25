@@ -2,7 +2,9 @@ use std::sync::RwLockReadGuard;
 
 use iced::{
     alignment,
-    widget::{button, column, container, row, scrollable, svg, text, toggler, Space},
+    widget::{
+        button, column, container, rich_text, row, scrollable, span, svg, text, toggler, Space,
+    },
     Color, Element, Length, Theme,
 };
 
@@ -176,9 +178,13 @@ impl SettingsPage {
             text("Enter your Steam credentials to enable library synchronization and game downloads.")
                 .size(14)
                 .color([0.7, 0.7, 0.7]),
-            text("Read about authentication security")
-                .size(12)
-                .color([1.0, 0.4, 0.0]), // Orange-ish
+            rich_text([
+                span("Read about how Monarch handles Steam account security")
+                    .size(14)
+                    .color([1.0, 0.4, 0.0])
+                    .link("https://github.com/Monarch-Launcher/Monarch/blob/main/docs/steam_login.md")])
+                .on_link_click(Message::OpenLink)
+                .size(14),
             Space::new().height(15),
             input_field(
                 "Steam Username",
@@ -211,9 +217,6 @@ impl SettingsPage {
             text("If you use Steam Guard Mobile Authenticator, you can provide your shared secret here.")
                 .size(14)
                 .color([0.7, 0.7, 0.7]),
-            text("How to find your shared secret")
-                .size(12)
-                .color([1.0, 0.4, 0.0]),
             Space::new().height(15),
             input_field(
                 "Shared Secret",

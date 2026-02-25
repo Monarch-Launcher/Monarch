@@ -1,4 +1,4 @@
-use crate::gui::pages::store_details::{Message, StoreDetailsPage};
+use crate::{gui::pages::store_details::{Message, StoreDetailsPage}, monarch_utils};
 
 impl StoreDetailsPage {
     pub fn handle_download_modal_message(
@@ -36,18 +36,8 @@ impl StoreDetailsPage {
         }
     }
 
-    pub fn open_store_page(&mut self, url: String) -> iced::Task<Message> {
-        #[cfg(target_os = "linux")]
-        {
-            let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
-        }
-        #[cfg(target_os = "windows")]
-        {
-            let _ = std::process::Command::new("cmd.exe")
-                .arg("/C")
-                .arg(format!("start {}", url))
-                .spawn();
-        }
+    pub fn open_store_page(&mut self, url: &str) -> iced::Task<Message> {
+        monarch_utils::commands::open_external_link(&url);
         iced::Task::none()
     }
 }

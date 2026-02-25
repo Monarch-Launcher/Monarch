@@ -1,7 +1,7 @@
 use tracing::error;
 
 use crate::{
-    gui::{pages::settings::SettingsPage, show_error},
+    gui::{pages::settings::{Message, SettingsPage}, show_error},
     monarch_utils::{self, monarch_settings::Settings},
 };
 
@@ -103,5 +103,9 @@ impl SettingsPage {
             error!("Failed to write settings: {}", e);
             show_error("Failed to write settings! The change will be reverted on next launch.");
         }
+    }
+
+    pub fn open_link(&self, url: &str) {
+        monarch_utils::commands::open_external_link(url);
     }
 }

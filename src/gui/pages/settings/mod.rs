@@ -40,6 +40,7 @@ pub enum Message {
     EpicPasswordChanged(String),
     SaveEpicCredentials,
     Refresh,
+    OpenLink(&'static str),
 }
 
 impl Message {
@@ -128,6 +129,7 @@ impl SettingsPage {
             Message::OpenLogs => {
                 let _ = monarch_utils::commands::open_logs();
             }
+            Message::OpenLink(url) => self.open_link(url),
             _ => {}
         }
         iced::Task::none()
