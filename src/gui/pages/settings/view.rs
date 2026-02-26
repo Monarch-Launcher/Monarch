@@ -13,8 +13,7 @@ use crate::{
         components::common::{danger_button, input_field, primary_button, secondary_button},
         pages::settings::{Message, SettingsPage, SettingsTab},
         styles,
-    },
-    monarch_utils::monarch_settings::Settings,
+    }, monarch_games, monarch_utils::monarch_settings::Settings
 };
 
 impl SettingsPage {
@@ -164,6 +163,12 @@ impl SettingsPage {
 
     fn view_steam(&self, settings: RwLockReadGuard<'_, Settings>) -> Element<'_, Message, Theme> {
         let _tmp: &str = "";
+        let steamcmd_installed: &str = if monarch_games::commands::steamcmd_is_installed() {
+            "Installed"
+        } else {
+            "Not installed"
+        };
+
         column![
             self.section_header("Steam Integration"),
             row![
@@ -175,6 +180,15 @@ impl SettingsPage {
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(25),
+            
+            row![
+                text(format!("SteamCMD: {}", steamcmd_installed)).size(16).width(Length::Shrink),
+                Space::new().width(Length::Fill),
+                primary_button("Install SteamCMD", Some(Message::InstallSteamCMD)),
+            ]
+            .align_y(alignment::Vertical::Center),
+            Space::new().height(25),
+
             text("Enter your Steam credentials to enable library synchronization and game downloads.")
                 .size(14)
                 .color([0.7, 0.7, 0.7]),
@@ -186,25 +200,30 @@ impl SettingsPage {
                 .on_link_click(Message::OpenLink)
                 .size(14),
             Space::new().height(15),
+
             input_field(
                 "Steam Username",
                 _tmp,
                 Message::SteamUsernameChanged
             ),
             Space::new().height(10),
+
             input_field(
                 "Steam Password",
                 _tmp,
                 Message::SteamPasswordChanged
             ),
             Space::new().height(10),
+
             row![
                 Space::new().width(Length::Fill),
                 primary_button("Save Credentials", Some(Message::SaveSteamCredentials)),
             ],
             Space::new().height(10),
+            
             text("Status: Not logged in").size(14).color([0.5, 0.5, 0.5]),
             Space::new().height(40),
+
             container(column![])
                 .width(Length::Fill)
                 .height(Length::Fixed(1.0))
@@ -213,22 +232,26 @@ impl SettingsPage {
                     ..Default::default()
                 }),
             Space::new().height(40),
+
             self.section_header("Steam Guard (2FA)"),
             text("If you use Steam Guard Mobile Authenticator, you can provide your shared secret here.")
                 .size(14)
                 .color([0.7, 0.7, 0.7]),
             Space::new().height(15),
+
             input_field(
                 "Shared Secret",
                 _tmp,
                 Message::SteamGuardSecretChanged
             ),
             Space::new().height(10),
+
             row![
                 Space::new().width(Length::Fill),
                 primary_button("Save Secret", Some(Message::SaveSteamSecret)),
             ],
             Space::new().height(10),
+
             text("Status: Not configured").size(14).color([0.5, 0.5, 0.5]),
         ]
         .spacing(10)

@@ -42,6 +42,9 @@ pub enum Message {
     SaveEpicCredentials,
     Refresh,
     OpenLink(&'static str),
+    InstallSteamCMD,
+    InstallLegendary,
+    InstallUmu,
 }
 
 impl Message {
@@ -118,8 +121,12 @@ impl SettingsPage {
             }
             Message::SaveSteamSecret => self.write_settings(&write_guard.unwrap()),
             Message::ToggleEpic(state) => self.toggle_epic(&mut write_guard.unwrap(), state),
-            Message::EpicUsernameChanged(u) => self.update_epic_username(&mut write_guard.unwrap(), &u),
-            Message::EpicPasswordChanged(p) => self.update_epic_password(&mut write_guard.unwrap(), &p),
+            Message::EpicUsernameChanged(u) => {
+                self.update_epic_username(&mut write_guard.unwrap(), &u)
+            }
+            Message::EpicPasswordChanged(p) => {
+                self.update_epic_password(&mut write_guard.unwrap(), &p)
+            }
             Message::SaveEpicCredentials => self.write_settings(&write_guard.unwrap()),
             Message::RequestResetDefaults => self.ask_reset_settings(),
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
