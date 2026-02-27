@@ -40,7 +40,7 @@ pub enum Message {
     EpicUsernameChanged(String),
     EpicPasswordChanged(String),
     SaveEpicCredentials,
-    Refresh,
+    Refresh(()),
     OpenLink(&'static str),
     InstallSteamCMD,
     InstallLegendary,
@@ -134,11 +134,12 @@ impl SettingsPage {
                 monarch_utils::commands::clear_cached_images();
                 self.refresh();
             }
-            Message::Refresh => self.refresh(),
+            Message::Refresh(_) => self.refresh(),
             Message::OpenLogs => {
                 let _ = monarch_utils::commands::open_logs();
             }
             Message::OpenLink(url) => self.open_link(url),
+            Message::InstallSteamCMD => return self.install_steamcmd_task(),
             _ => {}
         }
         iced::Task::none()
@@ -152,7 +153,7 @@ impl SettingsPage {
                 error_view(
                     "Settings Unavailable",
                     "Failed to acquire a read lock on application settings. Try reloading this page.",
-                    Some(Message::Refresh),
+                    Some(Message::Refresh(())),
                 )
             }
         }

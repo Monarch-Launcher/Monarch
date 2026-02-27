@@ -1,25 +1,24 @@
 use tracing::error;
 
 use crate::{
-    gui::{AppMessage, pages::{self, settings::{Message, SettingsPage}}, show_confirm, show_error},
+    gui::{
+        pages::{
+            self,
+            settings::{Message, SettingsPage},
+        },
+        show_confirm, show_error, AppMessage,
+    },
+    monarch_games,
     monarch_utils::{self, monarch_settings::Settings},
 };
 
 impl SettingsPage {
-    pub fn toggle_quicklaunch(
-        &mut self,
-        settings: &mut Settings,
-        state: bool,
-    ) {
+    pub fn toggle_quicklaunch(&mut self, settings: &mut Settings, state: bool) {
         settings.quicklaunch.enabled = state;
         self.write_settings(&settings);
     }
 
-    pub fn change_library_folder(
-        &mut self,
-        settings: &mut Settings,
-        folder: &str,
-    ) {
+    pub fn change_library_folder(&mut self, settings: &mut Settings, folder: &str) {
         settings.monarch.game_folder = folder.to_string();
         self.write_settings(&settings);
     }
@@ -29,19 +28,11 @@ impl SettingsPage {
         self.write_settings(&settings);
     }
 
-    pub fn update_steam_username(
-        &mut self,
-        settings: &mut Settings,
-        username: &str,
-    ) {
+    pub fn update_steam_username(&mut self, settings: &mut Settings, username: &str) {
         settings.steam.username = username.to_string();
     }
 
-    pub fn update_steam_password(
-        &mut self,
-        settings: &mut Settings,
-        password: &str,
-    ) {
+    pub fn update_steam_password(&mut self, settings: &mut Settings, password: &str) {
         let username: String = settings.steam.username.clone();
         let _ = monarch_utils::commands::set_password(
             "steam",
@@ -51,11 +42,7 @@ impl SettingsPage {
         );
     }
 
-    pub fn update_steam_secret(
-        &mut self,
-        settings: &mut Settings,
-        secret: &str,
-    ) {
+    pub fn update_steam_secret(&mut self, settings: &mut Settings, secret: &str) {
         let _ = monarch_utils::commands::set_secret("steam", &mut settings.steam, secret);
     }
 
@@ -64,19 +51,11 @@ impl SettingsPage {
         self.write_settings(&settings);
     }
 
-    pub fn update_epic_username(
-        &mut self,
-         settings: &mut Settings,
-        username: &str,
-    ) {
+    pub fn update_epic_username(&mut self, settings: &mut Settings, username: &str) {
         settings.epic.username = username.to_string();
     }
 
-    pub fn update_epic_password(
-        &mut self,
-         settings: &mut Settings,
-        password: &str,
-    ) {
+    pub fn update_epic_password(&mut self, settings: &mut Settings, password: &str) {
         let username: String = settings.epic.username.clone();
         let _ =
             monarch_utils::commands::set_password("epic", &mut settings.epic, &username, password);
@@ -94,7 +73,10 @@ impl SettingsPage {
     }
 
     pub fn ask_reset_settings(&self) {
-        show_confirm("Are you sure you want to reset to default settings?", AppMessage::Page(pages::Message::Settings(Message::ResetDefaults)));
+        show_confirm(
+            "Are you sure you want to reset to default settings?",
+            AppMessage::Page(pages::Message::Settings(Message::ResetDefaults)),
+        );
     }
 
     pub fn reset_settings(&mut self, settings: &mut Settings) {
@@ -111,5 +93,14 @@ impl SettingsPage {
 
     pub fn open_link(&self, url: &str) {
         monarch_utils::commands::open_external_link(url);
+    }
+
+    pub fn install_steamcmd_task(&self) -> iced::Task<Message> {
+        iced::Task::perform(
+            async move {
+                let _ = monarch_games::commands::install_steamcmd().await;
+            },
+            Message::Refresh,
+        )
     }
 }

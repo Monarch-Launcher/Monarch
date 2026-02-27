@@ -1,12 +1,14 @@
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
 use crate::monarch_utils::monarch_fs::get_monarch_home;
+use crate::monarch_utils::monarch_terminal::spawn_terminal;
 use crate::monarch_utils::{
     monarch_fs::{create_dir, get_unix_home, path_exists},
     monarch_vdf,
 };
 use anyhow::{Context, Result};
 use flate2::read::GzDecoder;
+use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
@@ -82,15 +84,10 @@ pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let work_dir: PathBuf = get_steamcmd_dir();
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    /*
-       run_in_terminal(
-           &format!("./steamcmd.sh {}; sleep 3;", args_string),
-           None,
-           Some(&work_dir),
-       )
-       .await
-       .with_context(|| "linux::steam::steamcmd_command() -> ")?;
-    */
+    spawn_terminal(
+        format!("./steamcmd.sh {}; sleep 3;", args_string),
+        HashMap::new(),
+    );
 
     //info!("linux::steam::steamcmd_command() Result from steamcmd command {}: {}", format!("\"sh -c {} {}\"", path.display(), args_string), cmd_output);
     Ok(())
