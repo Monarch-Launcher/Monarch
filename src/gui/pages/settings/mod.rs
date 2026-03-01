@@ -54,15 +54,11 @@ impl Message {
             | Message::LibraryFolderChanged(_)
             | Message::ResetDefaults
             | Message::ToggleSteam(_)
-            | Message::SteamUsernameChanged(_)
-            | Message::SteamPasswordChanged(_)
             | Message::SaveSteamCredentials
-            | Message::SteamGuardSecretChanged(_)
             | Message::SaveSteamSecret
             | Message::ToggleEpic(_)
-            | Message::EpicUsernameChanged(_)
-            | Message::EpicPasswordChanged(_)
-            | Message::SaveEpicCredentials => true,
+            | Message::SaveEpicCredentials
+            | Message::InstallSteamCMD => true,
             _ => false,
         }
     }
@@ -72,14 +68,30 @@ pub struct SettingsPage {
     current_tab: SettingsTab,
     shared_settings: Arc<RwLock<Settings>>,
     cache_size: u64,
+    steam_username_tmp: String,
+    steam_password_tmp: String,
+    steam_secret_tmp: String,
+    epic_username_tmp: String,
+    epic_password_tmp: String,
 }
 
 impl Default for SettingsPage {
     fn default() -> Self {
+        let shared_settings = monarch_utils::commands::get_settings().unwrap_or_default();
+        let (steam_user, epic_user) = match shared_settings.read() {
+            Ok(s) => (s.steam.username.clone(), s.epic.username.clone()),
+            Err(_) => (String::new(), String::new()),
+        };
+
         Self {
             current_tab: SettingsTab::Monarch,
-            shared_settings: monarch_utils::commands::get_settings().unwrap_or_default(),
+            shared_settings,
             cache_size: monarch_utils::commands::get_cache_size().unwrap_or(0),
+            steam_username_tmp: steam_user,
+            steam_password_tmp: String::new(),
+            steam_secret_tmp: String::new(),
+            epic_username_tmp: epic_user,
+            epic_password_tmp: String::new(),
         }
     }
 }
@@ -109,25 +121,17 @@ impl SettingsPage {
                 self.change_library_folder(&mut write_guard.unwrap(), &folder)
             }
             Message::ToggleSteam(state) => self.toggle_steam(&mut write_guard.unwrap(), state),
-            Message::SteamUsernameChanged(u) => {
-                self.update_steam_username(&mut write_guard.unwrap(), &u)
+            Message::SteamUsernameChanged(u) => self.steam_username_tmp = u,
+            Message::SteamPasswordChanged(p) => self.steam_password_tmp = p,
+            Message::SaveSteamCredentials => {
+                self.update_steam_credentials(&mut write_guard.unwrap())
             }
-            Message::SteamPasswordChanged(p) => {
-                self.update_steam_password(&mut write_guard.unwrap(), &p)
-            }
-            Message::SaveSteamCredentials => self.write_settings(&write_guard.unwrap()),
-            Message::SteamGuardSecretChanged(s) => {
-                self.update_steam_secret(&mut write_guard.unwrap(), &s)
-            }
-            Message::SaveSteamSecret => self.write_settings(&write_guard.unwrap()),
+            Message::SteamGuardSecretChanged(s) => self.steam_secret_tmp = s,
+            Message::SaveSteamSecret => self.update_steam_secret(&mut write_guard.unwrap()),
             Message::ToggleEpic(state) => self.toggle_epic(&mut write_guard.unwrap(), state),
-            Message::EpicUsernameChanged(u) => {
-                self.update_epic_username(&mut write_guard.unwrap(), &u)
-            }
-            Message::EpicPasswordChanged(p) => {
-                self.update_epic_password(&mut write_guard.unwrap(), &p)
-            }
-            Message::SaveEpicCredentials => self.write_settings(&write_guard.unwrap()),
+            Message::EpicUsernameChanged(u) => self.epic_username_tmp = u,
+            Message::EpicPasswordChanged(p) => self.epic_password_tmp = p,
+            Message::SaveEpicCredentials => self.update_epic_credentials(&mut write_guard.unwrap()),
             Message::RequestResetDefaults => self.ask_reset_settings(),
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {
@@ -139,7 +143,8 @@ impl SettingsPage {
                 let _ = monarch_utils::commands::open_logs();
             }
             Message::OpenLink(url) => self.open_link(url),
-            Message::InstallSteamCMD => return self.install_steamcmd_task(),
+            Message::InstallSteamCMD => return self.install_steamcmd_task(&write_guard.unwrap()),
+            Message::InstallLegendary => self.install_legendary_task(),
             _ => {}
         }
         iced::Task::none()

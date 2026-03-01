@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Result};
 use reqwest;
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::{os::unix::fs::PermissionsExt, path::PathBuf};
 use tracing::info;
 
 use crate::monarch_utils::monarch_fs::get_monarch_home;
@@ -64,11 +64,11 @@ pub fn install_legendary() -> Result<()> {
     if release_data.assets.len() == 0 {
         bail!("linux::legendary::install_legendary() Failed to install legendary! | Err: No assets found in release.");
     }
+    let download_url: &str = &release_data.assets[0].browser_download_url;
 
     info!("Using release: {}", release_data.tag_name);
-    info!("Downloading legendary...");
+    info!("Downloading: {download_url}");
 
-    let download_url: &str = &release_data.assets[0].browser_download_url;
     let mut download_response = reqwest::blocking::get(download_url).with_context(|| {
         format!(
             "linux::legendary::install_legendary() Failed to get response from {} | Err: ",
@@ -90,6 +90,13 @@ pub fn install_legendary() -> Result<()> {
             get_legendary_dir().display()
         )
     })?;
+    dest.set_permissions(std::fs::Permissions::from_mode(0o755))
+        .with_context(|| {
+            format!(
+                "linux::legendary::install_legendary() Failed to set permissions for: {} | Err: ",
+                get_legendary_dir().display()
+            )
+        })?;
 
     info!("Writing legendary to: {}...", dest_path.display());
     std::io::copy(&mut download_response, &mut dest).with_context(|| {

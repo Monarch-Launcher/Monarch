@@ -41,7 +41,12 @@ pub enum AppMessage {
     CloseTerminal(Id),
     CloseWindow(Id),
     Terminal(iced_term::Event),
-    OpenTerminalRaw(String, HashMap<String, String>),
+    OpenTerminalRaw(
+        String,
+        HashMap<String, String>,
+        Option<String>,
+        std::sync::Arc<std::sync::Mutex<Option<futures::channel::oneshot::Sender<()>>>>,
+    ),
     ShowModal(ModalState),
     CloseModal,
     ConfirmModalAction(Box<AppMessage>),
@@ -294,14 +299,15 @@ impl App {
                     .values_mut()
                     .map(|term| term.update(event.clone())),
             ),
-            AppMessage::OpenTerminalRaw(command, env) => {
+            AppMessage::OpenTerminalRaw(command, env, workdir, tx) => {
                 let settings = window::Settings {
                     decorations: false,
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
 
-                let term = TermInstance::new(id, command, env);
+                let completion_tx = tx.lock().unwrap().take();
+                let term = TermInstance::new(id, command, env, workdir, completion_tx);
                 self.active_terminals.insert(id, term);
                 task.map(AppMessage::OpenTerminal)
             }

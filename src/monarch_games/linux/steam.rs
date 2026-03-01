@@ -81,15 +81,19 @@ pub async fn install_steamcmd() -> Result<()> {
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
 pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
-    let work_dir: PathBuf = get_steamcmd_dir();
+    let work_dir: String = get_steamcmd_dir().to_string_lossy().to_string();
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
-    spawn_terminal(
+    let rx = spawn_terminal(
         format!("./steamcmd.sh {}; sleep 3;", args_string),
         HashMap::new(),
+        Some(work_dir),
     );
 
-    //info!("linux::steam::steamcmd_command() Result from steamcmd command {}: {}", format!("\"sh -c {} {}\"", path.display(), args_string), cmd_output);
+    if let Err(e) = rx.await {
+        error!("linux::steam::steamcmd_command() Terminal command failed! | Err: {e}");
+    }
+
     Ok(())
 }
 

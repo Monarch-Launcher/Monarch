@@ -11,7 +11,7 @@ use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
 use crate::monarch_games::games::{GameType, SearchResult};
 use crate::monarch_games::legendary_client::{self, LegendaryClient};
-use crate::monarch_games::monarchgame::{MonarchGameProperties, MonarchWebApiGame};
+use crate::monarch_games::monarchgame::MonarchWebApiGame;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;

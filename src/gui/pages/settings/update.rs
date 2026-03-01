@@ -28,22 +28,24 @@ impl SettingsPage {
         self.write_settings(&settings);
     }
 
-    pub fn update_steam_username(&mut self, settings: &mut Settings, username: &str) {
-        settings.steam.username = username.to_string();
-    }
-
-    pub fn update_steam_password(&mut self, settings: &mut Settings, password: &str) {
-        let username: String = settings.steam.username.clone();
+    pub fn update_steam_credentials(&mut self, settings: &mut Settings) {
+        settings.steam.username = self.steam_username_tmp.clone();
         let _ = monarch_utils::commands::set_password(
             "steam",
             &mut settings.steam,
-            &username,
-            password,
+            &self.steam_username_tmp,
+            &self.steam_password_tmp,
         );
+        self.write_settings(settings);
     }
 
-    pub fn update_steam_secret(&mut self, settings: &mut Settings, secret: &str) {
-        let _ = monarch_utils::commands::set_secret("steam", &mut settings.steam, secret);
+    pub fn update_steam_secret(&mut self, settings: &mut Settings) {
+        let _ = monarch_utils::commands::set_secret(
+            "steam",
+            &mut settings.steam,
+            &self.steam_secret_tmp,
+        );
+        self.write_settings(settings);
     }
 
     pub fn toggle_epic(&mut self, settings: &mut Settings, state: bool) {
@@ -51,14 +53,15 @@ impl SettingsPage {
         self.write_settings(&settings);
     }
 
-    pub fn update_epic_username(&mut self, settings: &mut Settings, username: &str) {
-        settings.epic.username = username.to_string();
-    }
-
-    pub fn update_epic_password(&mut self, settings: &mut Settings, password: &str) {
-        let username: String = settings.epic.username.clone();
-        let _ =
-            monarch_utils::commands::set_password("epic", &mut settings.epic, &username, password);
+    pub fn update_epic_credentials(&mut self, settings: &mut Settings) {
+        settings.epic.username = self.epic_username_tmp.clone();
+        let _ = monarch_utils::commands::set_password(
+            "epic",
+            &mut settings.epic,
+            &self.epic_username_tmp,
+            &self.epic_password_tmp,
+        );
+        self.write_settings(settings);
     }
 
     pub fn refresh(&mut self) {
@@ -95,12 +98,23 @@ impl SettingsPage {
         monarch_utils::commands::open_external_link(url);
     }
 
-    pub fn install_steamcmd_task(&self) -> iced::Task<Message> {
+    pub fn install_steamcmd_task(&self, settings: &Settings) -> iced::Task<Message> {
+        if settings.steam.username.is_empty() {
+            show_error("No Steam username set. Please set your username at least.");
+            return iced::Task::none();
+        }
+
         iced::Task::perform(
             async move {
                 let _ = monarch_games::commands::install_steamcmd().await;
             },
             Message::Refresh,
         )
+    }
+
+    pub fn install_legendary_task(&self) {
+        if let Err(e) = monarch_games::commands::install_legendary() {
+            show_error(&e);
+        }
     }
 }

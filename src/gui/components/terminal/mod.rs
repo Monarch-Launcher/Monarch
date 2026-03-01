@@ -1,5 +1,5 @@
 use iced::window::Id;
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::gui::AppMessage;
 
@@ -9,17 +9,31 @@ pub struct TermInstance {
 
     command: String,
     env: HashMap<String, String>,
+    workdir: Option<String>,
     term: iced_term::Terminal,
+    completion_tx: Option<futures::channel::oneshot::Sender<()>>,
 }
 
 impl TermInstance {
-    pub fn new(id: Id, command: String, env: HashMap<String, String>) -> Self {
+    pub fn new(
+        id: Id,
+        command: String,
+        env: HashMap<String, String>,
+        workdir: Option<String>,
+        completion_tx: Option<futures::channel::oneshot::Sender<()>>,
+    ) -> Self {
         let shell = std::env::var("SHELL").unwrap();
+        let workdir_path: Option<PathBuf> = if let Some(wd) = &workdir {
+            Some(PathBuf::from(wd))
+        } else {
+            None
+        };
         let term_settings = iced_term::settings::Settings {
             backend: iced_term::settings::BackendSettings {
                 program: shell.to_string(),
                 args: vec!["-c".to_string(), command.clone()],
                 env: env.clone(),
+                working_directory: workdir_path,
                 ..Default::default()
             },
             ..Default::default()
@@ -32,7 +46,9 @@ impl TermInstance {
             id,
             command,
             env,
+            workdir,
             term,
+            completion_tx,
         }
     }
 
@@ -51,6 +67,9 @@ impl TermInstance {
                     let action = self.term.handle(iced_term::Command::ProxyToBackend(cmd));
                     match action {
                         iced_term::actions::Action::Shutdown => {
+                            if let Some(tx) = self.completion_tx.take() {
+                                let _ = tx.send(());
+                            }
                             let id = self.id;
                             return iced::Task::perform(
                                 async move { id },

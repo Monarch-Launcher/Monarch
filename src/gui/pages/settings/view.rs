@@ -203,14 +203,14 @@ impl SettingsPage {
 
             input_field(
                 "Steam Username",
-                _tmp,
+                &self.steam_username_tmp,
                 Message::SteamUsernameChanged
             ),
             Space::new().height(10),
 
             input_field(
                 "Steam Password",
-                _tmp,
+                &self.steam_password_tmp,
                 Message::SteamPasswordChanged
             ),
             Space::new().height(10),
@@ -241,7 +241,7 @@ impl SettingsPage {
 
             input_field(
                 "Shared Secret",
-                _tmp,
+                &self.steam_secret_tmp,
                 Message::SteamGuardSecretChanged
             ),
             Space::new().height(10),
@@ -260,6 +260,12 @@ impl SettingsPage {
 
     fn view_epic(&self, settings: RwLockReadGuard<'_, Settings>) -> Element<'_, Message, Theme> {
         let _tmp: &str = "";
+        let legendary_installed: &str = if monarch_games::commands::legendary_is_installed() {
+            "Installed"
+        } else {
+            "Not installed"
+        };
+
         column![
             self.section_header("Epic Games Integration"),
             row![
@@ -271,27 +277,40 @@ impl SettingsPage {
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(25),
+
+            row![
+                text(format!("Legendary: {}", legendary_installed)).size(16).width(Length::Shrink),
+                Space::new().width(Length::Fill),
+                primary_button("Install Legendary", Some(Message::InstallLegendary)),
+            ]
+            .align_y(alignment::Vertical::Center),
+            Space::new().height(25),
+
             text("Enter your Epic Games credentials to enable library synchronization and game downloads.")
                 .size(14)
                 .color([0.7, 0.7, 0.7]),
             Space::new().height(15),
+
             input_field(
                 "Epic Username / Email",
-                _tmp,
+                &self.epic_username_tmp,
                 Message::EpicUsernameChanged
             ),
             Space::new().height(10),
+
             input_field(
                 "Password",
-                _tmp,
+                &self.epic_password_tmp,
                 Message::EpicPasswordChanged
             ),
             Space::new().height(10),
+
             row![
                 Space::new().width(Length::Fill),
                 primary_button("Save Credentials", Some(Message::SaveEpicCredentials)),
             ],
             Space::new().height(10),
+
             text("Status: Not logged in").size(14).color([0.5, 0.5, 0.5]),
         ]
         .spacing(10)

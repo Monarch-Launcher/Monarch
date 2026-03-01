@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use tracing::{error, info};
@@ -8,8 +10,8 @@ use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::generate_cache_image_path;
 use crate::monarch_utils::monarch_settings::get_settings;
+use crate::monarch_utils::monarch_terminal::spawn_terminal;
 
-use super::games::GameType;
 use super::stores::StoreType;
 
 #[cfg(target_os = "linux")]
@@ -35,24 +37,22 @@ impl LegendaryClient {
     /// Abstraction for all legendary functions to run terminal commands.
     fn run_legendary_cmd(&self, command: String) -> Result<()> {
         // Start a new async thread launching the game
-        /*
-        tauri::async_runtime::spawn(async move {
-            if let Err(e) = run_in_terminal(&handle, &command, None, None).await {
-                error!("legendary_client::launch_game() -> {e}");
-                // TODO: Trigger an error dialog in frontend.
+        tokio::spawn(async move {
+            let rx = spawn_terminal(command, HashMap::new(), None);
+            if let Err(e) = rx.await {
+                error!("legendary_client::run_legendary_cmd() Terminal command failed! | Err: {e}");
             }
         });
-        */
         Ok(())
     }
 
     pub fn login(&self) -> Result<()> {
-        let login_cmd: String = format!("{} auth", self.cli_path);
+        let login_cmd: String = format!("{} auth; sleep 3;", self.cli_path);
 
-        info!("Loging in to Epic Games with Legendary...");
+        info!("Logging in to Epic Games with Legendary...");
         self.run_legendary_cmd(login_cmd)
             .with_context(|| "legendary_client::login() -> ")?;
-        info!("Logic complete!");
+        info!("Login complete!");
 
         Ok(())
     }
@@ -62,10 +62,8 @@ impl LegendaryClient {
 impl StoreType for LegendaryClient {
     async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
         let monarch_url: &'static str = std::env!("MONARCH_URL");
-        let search_term: String = format!(
-            "{}/api/games?search={}?store=epicgames",
-            monarch_url, name,
-        );
+        let search_term: String =
+            format!("{}/api/games?search={}?store=epicgames", monarch_url, name,);
 
         let response = match reqwest::get(search_term).await {
             Ok(resp) => resp,
@@ -135,7 +133,7 @@ impl StoreType for LegendaryClient {
         self.run_legendary_cmd(command)
     }
 
-    fn game_is_installed(&self, store_id: &str) -> bool {
+    fn game_is_installed(&self, _store_id: &str) -> bool {
         unimplemented!()
     }
 

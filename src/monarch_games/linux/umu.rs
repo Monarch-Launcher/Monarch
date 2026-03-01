@@ -3,7 +3,7 @@ use reqwest;
 use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf};
 use tar::Archive;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::{
     monarch_games::{games::GameType, monarchgame::MonarchGame},
@@ -153,6 +153,9 @@ pub async fn umu_run(game: &MonarchGame) -> Result<()> {
 
     info!("Env vars: {:?}", env_vars);
     info!("Launch command: {}", &full_command);
-    monarch_terminal::spawn_terminal(full_command, env_vars);
+    let rx = monarch_terminal::spawn_terminal(full_command, env_vars, None);
+    if let Err(e) = rx.await {
+        error!("linux::umu::umu_run() Terminal command failed! | Err: {e}");
+    }
     Ok(())
 }
