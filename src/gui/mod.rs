@@ -158,6 +158,8 @@ impl App {
                 .map(|_| AppMessage::Page(pages::Message::Search(pages::search::Message::Tick))),
             pages::PageTab::Library => iced::time::every(std::time::Duration::from_millis(16))
                 .map(|_| AppMessage::Page(pages::Message::Library(pages::library::Message::Tick))),
+            pages::PageTab::Home => iced::time::every(std::time::Duration::from_millis(16))
+                .map(|_| AppMessage::Page(pages::Message::Home(pages::home::Message::Tick))),
             _ => iced::Subscription::none(),
         };
         subscriptions.push(page_subscription);
@@ -174,7 +176,15 @@ impl App {
         match message {
             AppMessage::HeaderMessage(msg) => {
                 match msg {
-                    header::Message::HomePage => self.active_tab = PageTab::Home,
+                    header::Message::HomePage => {
+                        self.active_tab = PageTab::Home;
+                        if self.home_page.is_loading {
+                            return self
+                                .home_page
+                                .init()
+                                .map(|m| AppMessage::Page(pages::Message::Home(m)));
+                        }
+                    }
                     header::Message::LibraryPage => {
                         self.active_tab = PageTab::Library;
 
@@ -192,10 +202,14 @@ impl App {
                 iced::Task::none()
             }
             AppMessage::Page(page_msg) => match page_msg {
-                pages::Message::Home(msg) => self
-                    .home_page
-                    .update(msg)
-                    .map(|m| AppMessage::Page(pages::Message::Home(m))),
+                pages::Message::Home(msg) => {
+                    if let pages::home::Message::OpenGameDetails(game) = &msg {
+                        return iced::Task::done(AppMessage::OpenGameDetails(game.clone()));
+                    }
+                    self.home_page
+                        .update(msg)
+                        .map(|m| AppMessage::Page(pages::Message::Home(m)))
+                }
                 pages::Message::Library(msg) => {
                     // Check if it's OpenGameDetails
                     if let pages::library::Message::OpenGameDetails(game) = &msg {

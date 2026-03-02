@@ -12,7 +12,6 @@ pub enum GameCardMessage {
     GamePressed(String),
     Tick,
     UpdateGames(Vec<MonarchGame>),
-    OpenStorePage(String),
 
     // Properties related
     Properties(properties::Message),

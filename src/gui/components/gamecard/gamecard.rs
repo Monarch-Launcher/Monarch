@@ -35,7 +35,6 @@ impl GameCard {
                 }
                 iced::Task::none()
             }
-            GameCardMessage::GamePressed(_id) => iced::Task::none(),
             GameCardMessage::Tick => {
                 let speed = 0.3; // Animation speed (lerp factor)
 
@@ -55,7 +54,11 @@ impl GameCard {
     }
 
     pub fn view(&self, interactive: bool) -> Element<'_, GameCardMessage> {
-        let (base_width, base_height) = (240.0, 360.0);
+        self.view_scaled(interactive, 1.0)
+    }
+
+    pub fn view_scaled(&self, interactive: bool, size_scale: f32) -> Element<'_, GameCardMessage> {
+        let (base_width, base_height) = (240.0 * size_scale, 360.0 * size_scale);
         let scale = 1.0 + (self.hover_factor * 0.05);
         let (width, height) = (base_width * scale, base_height * scale);
 

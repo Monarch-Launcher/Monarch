@@ -13,24 +13,6 @@ pub struct GameBrowser {
 impl GameBrowser {
     pub fn update(&mut self, msg: GameCardMessage) -> iced::Task<GameCardMessage> {
         match &msg {
-            GameCardMessage::OpenStorePage(url) => {
-                #[cfg(target_os = "linux")]
-                {
-                    std::process::Command::new("xdg-open")
-                        .arg(url)
-                        .spawn()
-                        .unwrap();
-                }
-                #[cfg(target_os = "windows")]
-                {
-                    std::process::Command::new("cmd.exe")
-                        .arg("/C")
-                        .arg(format!("start {}", url))
-                        .spawn()
-                        .unwrap();
-                }
-                return iced::Task::none();
-            }
             GameCardMessage::Properties(prop_msg) => {
                 if let Some(modal) = &mut self.properties_modal {
                     match prop_msg {
