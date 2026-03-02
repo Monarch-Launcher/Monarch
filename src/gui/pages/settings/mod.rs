@@ -153,7 +153,7 @@ impl SettingsPage {
 
     pub fn view(&self) -> Element<'_, Message, Theme> {
         match self.shared_settings.read() {
-            Ok(settings) => self.view_settings_page(settings),
+            Ok(settings) => self.view_settings_page(&settings),
             Err(e) => {
                 error!("gui::Settings::view() Failed to lock on shared_settings! | Err: {e}");
                 error_view(

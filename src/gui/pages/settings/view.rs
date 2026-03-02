@@ -19,7 +19,7 @@ use crate::{
 impl SettingsPage {
     pub fn view_settings_page(
         &self,
-        settings: RwLockReadGuard<'_, Settings>,
+        settings: &Settings,
     ) -> Element<'_, Message, Theme> {
         let sidebar = column![
             self.tab_button(
@@ -107,7 +107,7 @@ impl SettingsPage {
         .into()
     }
 
-    fn view_monarch(&self, settings: RwLockReadGuard<'_, Settings>) -> Element<'_, Message, Theme> {
+    fn view_monarch(&self, settings: &Settings) -> Element<'_, Message, Theme> {
         let umu_installed: &str = if monarch_games::commands::umu_is_installed() {
             "Installed"
         } else {
@@ -187,12 +187,17 @@ impl SettingsPage {
         .into()
     }
 
-    fn view_steam(&self, settings: RwLockReadGuard<'_, Settings>) -> Element<'_, Message, Theme> {
+    fn view_steam(&self, settings: &Settings) -> Element<'_, Message, Theme> {
         let _tmp: &str = "";
         let steamcmd_installed: &str = if monarch_games::commands::steamcmd_is_installed() {
             "Installed"
         } else {
             "Not installed"
+        };
+        let steam_login: &str = if settings.steam.username.is_empty() {
+            ""
+        } else {
+            &settings.steam.username
         };
 
         column![
@@ -247,7 +252,7 @@ impl SettingsPage {
             ],
             Space::new().height(10),
             
-            text("Status: Not logged in").size(14).color([0.5, 0.5, 0.5]),
+            text(format!("Logged in as: {steam_login}")).size(14).color([0.5, 0.5, 0.5]),
             Space::new().height(40),
 
             container(column![])
@@ -284,12 +289,16 @@ impl SettingsPage {
         .into()
     }
 
-    fn view_epic(&self, settings: RwLockReadGuard<'_, Settings>) -> Element<'_, Message, Theme> {
-        let _tmp: &str = "";
+    fn view_epic(&self, settings: &Settings) -> Element<'_, Message, Theme> {
         let legendary_installed: &str = if monarch_games::commands::legendary_is_installed() {
             "Installed"
         } else {
             "Not installed"
+        };
+        let epic_login: &str = if settings.epic.username.is_empty() {
+            ""
+        } else {
+            &settings.epic.username
         };
 
         column![
@@ -337,7 +346,7 @@ impl SettingsPage {
             ],
             Space::new().height(10),
 
-            text("Status: Not logged in").size(14).color([0.5, 0.5, 0.5]),
+            text(format!("Logged in as: {epic_login}")).size(14).color([0.5, 0.5, 0.5]),
         ]
         .spacing(10)
         .into()

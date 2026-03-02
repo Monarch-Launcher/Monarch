@@ -30,12 +30,16 @@ impl SettingsPage {
 
     pub fn update_steam_credentials(&mut self, settings: &mut Settings) {
         settings.steam.username = self.steam_username_tmp.clone();
-        let _ = monarch_utils::commands::set_password(
-            "steam",
-            &mut settings.steam,
-            &self.steam_username_tmp,
-            &self.steam_password_tmp,
-        );
+
+        if !self.steam_password_tmp.is_empty() {
+            let _ = monarch_utils::commands::set_password(
+                "steam",
+                &mut settings.steam,
+                &self.steam_username_tmp,
+                &self.steam_password_tmp,
+            );
+        }
+
         self.write_settings(settings);
     }
 
@@ -55,12 +59,16 @@ impl SettingsPage {
 
     pub fn update_epic_credentials(&mut self, settings: &mut Settings) {
         settings.epic.username = self.epic_username_tmp.clone();
-        let _ = monarch_utils::commands::set_password(
-            "epic",
-            &mut settings.epic,
-            &self.epic_username_tmp,
-            &self.epic_password_tmp,
-        );
+
+        if !self.epic_password_tmp.is_empty() {
+            let _ = monarch_utils::commands::set_password(
+                "epic",
+                &mut settings.epic,
+                &self.epic_username_tmp,
+                &self.epic_password_tmp,
+            );
+        }
+
         self.write_settings(settings);
     }
 
