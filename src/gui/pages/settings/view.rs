@@ -1,5 +1,3 @@
-use std::sync::RwLockReadGuard;
-
 use iced::{
     alignment,
     widget::{
@@ -248,6 +246,8 @@ impl SettingsPage {
 
             row![
                 Space::new().width(Length::Fill),
+                danger_button("Delete Credentials", Some(Message::DeleteSteamCredentials)),
+                Space::new().width(10),
                 primary_button("Save Credentials", Some(Message::SaveSteamCredentials)),
             ],
             Space::new().height(10),
@@ -342,6 +342,8 @@ impl SettingsPage {
 
             row![
                 Space::new().width(Length::Fill),
+                danger_button("Delete Credentials", Some(Message::DeleteEpicCredentials)),
+                Space::new().width(10),
                 primary_button("Save Credentials", Some(Message::SaveEpicCredentials)),
             ],
             Space::new().height(10),

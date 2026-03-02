@@ -34,12 +34,14 @@ pub enum Message {
     SteamUsernameChanged(String),
     SteamPasswordChanged(String),
     SaveSteamCredentials,
+    DeleteSteamCredentials,
     SteamGuardSecretChanged(String),
     SaveSteamSecret,
     ToggleEpic(bool),
     EpicUsernameChanged(String),
     EpicPasswordChanged(String),
     SaveEpicCredentials,
+    DeleteEpicCredentials,
     Refresh(()),
     OpenLink(&'static str),
     InstallSteamCMD,
@@ -56,8 +58,10 @@ impl Message {
             | Message::ToggleSteam(_)
             | Message::SaveSteamCredentials
             | Message::SaveSteamSecret
+            | Message::DeleteSteamCredentials
             | Message::ToggleEpic(_)
             | Message::SaveEpicCredentials
+            | Message::DeleteEpicCredentials
             | Message::InstallSteamCMD => true,
             _ => false,
         }
@@ -126,12 +130,18 @@ impl SettingsPage {
             Message::SaveSteamCredentials => {
                 self.update_steam_credentials(&mut write_guard.unwrap())
             }
+            Message::DeleteSteamCredentials => {
+                self.delete_steam_credentials(&mut write_guard.unwrap())
+            }
             Message::SteamGuardSecretChanged(s) => self.steam_secret_tmp = s,
             Message::SaveSteamSecret => self.update_steam_secret(&mut write_guard.unwrap()),
             Message::ToggleEpic(state) => self.toggle_epic(&mut write_guard.unwrap(), state),
             Message::EpicUsernameChanged(u) => self.epic_username_tmp = u,
             Message::EpicPasswordChanged(p) => self.epic_password_tmp = p,
             Message::SaveEpicCredentials => self.update_epic_credentials(&mut write_guard.unwrap()),
+            Message::DeleteEpicCredentials => {
+                self.delete_epic_credentials(&mut write_guard.unwrap())
+            }
             Message::RequestResetDefaults => self.ask_reset_settings(),
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {

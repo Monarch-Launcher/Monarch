@@ -43,6 +43,16 @@ impl SettingsPage {
         self.write_settings(settings);
     }
 
+    pub fn delete_steam_credentials(&mut self, settings: &mut Settings) {
+        settings.steam.username = "".to_string();
+        if let Err(e) = monarch_utils::commands::delete_password("steam", &mut settings.steam) {
+            error!("Failed to delete Steam credentials: {}", e);
+            show_error("Failed to delete Steam credentials!");
+            return;
+        }
+        self.write_settings(settings);
+    }
+
     pub fn update_steam_secret(&mut self, settings: &mut Settings) {
         let _ = monarch_utils::commands::set_secret(
             "steam",
@@ -69,6 +79,16 @@ impl SettingsPage {
             );
         }
 
+        self.write_settings(settings);
+    }
+
+    pub fn delete_epic_credentials(&mut self, settings: &mut Settings) {
+        settings.epic.username = "".to_string();
+        if let Err(e) = monarch_utils::commands::delete_password("epic", &mut settings.epic) {
+            error!("Failed to delete Epic credentials: {}", e);
+            show_error("Failed to delete Epic credentials!");
+            return;
+        }
         self.write_settings(settings);
     }
 
