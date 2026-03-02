@@ -307,9 +307,11 @@ impl App {
                 let (id, task) = window::open(settings);
 
                 let completion_tx = tx.lock().unwrap().take();
-                let term = TermInstance::new(id, command, env, workdir, completion_tx);
-                self.active_terminals.insert(id, term);
-                task.map(AppMessage::OpenTerminal)
+                if let Ok(term) = TermInstance::new(id, command, env, workdir, completion_tx) {
+                    self.active_terminals.insert(id, term);
+                    return task.map(AppMessage::OpenTerminal);
+                }
+                iced::Task::none()
             }
             AppMessage::ShowModal(state) => {
                 self.active_modal = Some(state);

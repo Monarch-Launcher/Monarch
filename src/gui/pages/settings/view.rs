@@ -48,12 +48,15 @@ impl SettingsPage {
         .spacing(10)
         .padding(20);
 
-        let content = container(scrollable(match self.current_tab {
-            SettingsTab::Monarch => self.view_monarch(settings),
-            SettingsTab::Steam => self.view_steam(settings),
-            SettingsTab::EpicGames => self.view_epic(settings),
-            SettingsTab::Gog | SettingsTab::ItchIo => self.view_coming_soon(),
-        }))
+        let content = container(scrollable(
+            container(match self.current_tab {
+                SettingsTab::Monarch => self.view_monarch(settings),
+                SettingsTab::Steam => self.view_steam(settings),
+                SettingsTab::EpicGames => self.view_epic(settings),
+                SettingsTab::Gog | SettingsTab::ItchIo => self.view_coming_soon(),
+            })
+            .padding(iced::Padding::new(0.0).right(20.0)),
+        ))
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(40);
@@ -105,6 +108,12 @@ impl SettingsPage {
     }
 
     fn view_monarch(&self, settings: RwLockReadGuard<'_, Settings>) -> Element<'_, Message, Theme> {
+        let umu_installed: &str = if monarch_games::commands::umu_is_installed() {
+            "Installed"
+        } else {
+            "Not installed"
+        };
+
         column![
             self.section_header("General"),
             Space::new().height(20),
@@ -112,8 +121,17 @@ impl SettingsPage {
                 .size(20)
                 .color([0.7, 0.7, 0.7]),
             Space::new().height(20),
+
             row![
-                text("Quicklaunch (Requires restart. Shortcut: Ctrl+Enter)")
+                text(format!("UMU Launcher: {}", umu_installed)).size(16).width(Length::Shrink),
+                Space::new().width(Length::Fill),
+                primary_button("Install UMU Launcher", Some(Message::InstallUmu)),
+            ]
+            .align_y(alignment::Vertical::Center),
+            Space::new().height(25),
+
+            row![
+                text("Quicklaunch (Requires restart. Shortcut: Ctrl+Enter) (NOT IMPLEMENTED - WIP)")
                     .size(16)
                     .width(Length::Shrink),
                 Space::new().width(10),
@@ -121,11 +139,13 @@ impl SettingsPage {
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(40),
+
             self.section_header("Game Library Folder"),
             text("Set the default folder where Monarch will download new games.")
                 .size(14)
                 .color([0.7, 0.7, 0.7]),
             Space::new().height(15),
+
             row![
                 input_field(
                     "Path to game folder",
@@ -133,26 +153,32 @@ impl SettingsPage {
                     Message::LibraryFolderChanged
                 ),
                 Space::new().width(10),
+
                 secondary_button("Browse", Some(Message::BrowseLibraryFolder)),
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(10),
+
             text(format!("Current: {}", settings.monarch.game_folder))
                 .size(12)
                 .color([0.5, 0.5, 0.5]),
             Space::new().height(40),
+
             self.section_header("Storage & Cache"),
             row![
                 text(format!("Cached images: {}", self.format_cache())).size(14),
                 Space::new().width(Length::Fill),
+
                 secondary_button("Clear cache", Some(Message::ClearCache)),
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(40),
+
             self.section_header("System"),
             row![
                 secondary_button("Open Logs", Some(Message::OpenLogs)),
                 Space::new().width(10),
+
                 danger_button("Reset to Defaults", Some(Message::RequestResetDefaults)),
             ]
             .spacing(10),

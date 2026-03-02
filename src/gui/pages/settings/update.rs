@@ -98,6 +98,12 @@ impl SettingsPage {
         monarch_utils::commands::open_external_link(url);
     }
 
+    pub fn install_umu_task(&self) {
+        if let Err(e) = monarch_games::commands::install_umu() {
+            show_error(&e);
+        }
+    }
+
     pub fn install_steamcmd_task(&self, settings: &Settings) -> iced::Task<Message> {
         if settings.steam.username.is_empty() {
             show_error("No Steam username set. Please set your username at least.");

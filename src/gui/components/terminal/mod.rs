@@ -1,15 +1,17 @@
+use anyhow::{bail, Result};
 use iced::window::Id;
 use std::{collections::HashMap, path::PathBuf};
+use tracing::error;
 
-use crate::gui::AppMessage;
+use crate::gui::{show_error, AppMessage};
 
 pub struct TermInstance {
-    title: String,
+    _title: String,
     id: Id,
 
-    command: String,
-    env: HashMap<String, String>,
-    workdir: Option<String>,
+    _command: String,
+    _env: HashMap<String, String>,
+    _workdir: Option<String>,
     term: iced_term::Terminal,
     completion_tx: Option<futures::channel::oneshot::Sender<()>>,
 }
@@ -21,13 +23,22 @@ impl TermInstance {
         env: HashMap<String, String>,
         workdir: Option<String>,
         completion_tx: Option<futures::channel::oneshot::Sender<()>>,
-    ) -> Self {
-        let shell = std::env::var("SHELL").unwrap();
+    ) -> Result<Self> {
+        let shell = match std::env::var("SHELL") {
+            Ok(sh) => sh,
+            Err(e) => {
+                error!("TermInstance::new() Failed to get $SHELL var! | Err: {e}");
+                show_error("Failed to open terminal! Could not detect OS shell.");
+                bail!("Failed to create terminal!")
+            }
+        };
+
         let workdir_path: Option<PathBuf> = if let Some(wd) = &workdir {
             Some(PathBuf::from(wd))
         } else {
             None
         };
+
         let term_settings = iced_term::settings::Settings {
             backend: iced_term::settings::BackendSettings {
                 program: shell.to_string(),
@@ -38,17 +49,22 @@ impl TermInstance {
             },
             ..Default::default()
         };
-        let term = iced_term::Terminal::new(id.to_string().parse::<u64>().unwrap(), term_settings)
-            .unwrap();
 
-        Self {
-            title: "Monarch Terminal".to_string(),
-            id,
-            command,
-            env,
-            workdir,
-            term,
-            completion_tx,
+        match iced_term::Terminal::new(id.to_string().parse::<u64>().unwrap(), term_settings) {
+            Ok(term) => Ok(Self {
+                _title: "Monarch Terminal".to_string(),
+                id,
+                _command: command,
+                _env: env,
+                _workdir: workdir,
+                term,
+                completion_tx,
+            }),
+            Err(e) => {
+                error!("TermInstance::new() iced_term::Terminal::new() failed to create new Terminal instance! | Err: {e}");
+                show_error("Failed to open terminal! Could not detect OS shell.");
+                bail!("Failed to create terminal!");
+            }
         }
     }
 

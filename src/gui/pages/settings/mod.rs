@@ -143,6 +143,7 @@ impl SettingsPage {
                 let _ = monarch_utils::commands::open_logs();
             }
             Message::OpenLink(url) => self.open_link(url),
+            Message::InstallUmu => self.install_umu_task(),
             Message::InstallSteamCMD => return self.install_steamcmd_task(&write_guard.unwrap()),
             Message::InstallLegendary => self.install_legendary_task(),
             _ => {}
