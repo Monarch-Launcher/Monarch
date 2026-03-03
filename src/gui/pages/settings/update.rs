@@ -151,4 +151,22 @@ impl SettingsPage {
             show_error(&e);
         }
     }
+
+    pub fn remove_umu(&self) {
+        if let Err(e) = monarch_games::commands::remove_umu() {
+            show_error(e);
+        }
+    }
+
+    pub fn remove_steamcmd(&self) {
+        if let Err(e) = monarch_games::commands::remove_steamcmd() {
+            show_error(e);
+        }
+    }
+
+    pub fn remove_legendary(&self) {
+        if let Err(e) = monarch_games::commands::remvoe_legendary() {
+            show_error(e);
+        }
+    }
 }

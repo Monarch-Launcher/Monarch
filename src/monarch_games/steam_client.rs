@@ -199,6 +199,15 @@ pub async fn install_steamcmd() -> Result<()> {
     Ok(())
 }
 
+pub fn remove_steamcmd() -> Result<()> {
+    if !steamcmd_is_installed() {
+        warn!("SteamCMD not found!");
+        bail!("SteamCMD not found!")
+    }
+
+    std::fs::remove_dir_all(&get_steamcmd_dir()).with_context(|| "steam_client::remove_steamcmd() Failed to remove_dir_all() | Err: ")
+}
+
 /// Returns games installed by Steam Client.
 pub async fn get_library() -> Vec<MonarchGame> {
     steam::get_library().await

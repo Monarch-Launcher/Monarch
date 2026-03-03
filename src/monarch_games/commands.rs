@@ -12,6 +12,7 @@ use super::stores::{SearchFilter, StoreType};
 use crate::monarch_games::games::{GameType, SearchResult};
 use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::MonarchWebApiGame;
+use crate::monarch_games::steam_client;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_library::{self, games_library};
 use crate::monarch_utils::monarch_fs;
@@ -27,6 +28,9 @@ use super::macos::steam;
 
 #[cfg(target_os = "linux")]
 use super::linux::steam;
+#[cfg(target_os = "linux")]
+use super::linux::umu;
+
 
 /*
 ---------- General game related functions ----------
@@ -538,5 +542,39 @@ pub fn install_legendary() -> Result<(), String> {
         return Err(String::from("Failed to login to Legendary!"));
     }
 
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+pub fn remove_umu() -> Result<(), String> {
+    if let Err(e) = umu::remove_umu() {
+        error!(
+            "monarch_games::commands::remove_umu() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to remove Umu launcher!"));
+    }
+    Ok(())
+}
+
+pub fn remove_steamcmd() -> Result<(), String> {
+    if let Err(e) = steam_client::remove_steamcmd() {
+        error!(
+            "monarch_games::commands::remove_steamcmd() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to remove SteamCMD!"));
+    }
+    Ok(())
+}
+
+pub fn remvoe_legendary() -> Result<(), String> {
+    if let Err(e) = legendary_client::remvoe_legendary() {
+        error!(
+            "monarch_games::commands::remove_steamcmd() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to remove Legendary!"));
+    }
     Ok(())
 }

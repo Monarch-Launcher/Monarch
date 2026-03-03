@@ -7,7 +7,7 @@ use tracing::{error, info, warn};
 
 use crate::{
     monarch_games::{games::GameType, monarchgame::MonarchGame},
-    monarch_utils::{monarch_fs::get_monarch_home, monarch_terminal},
+    monarch_utils::{monarch_fs::{self, get_monarch_home}, monarch_terminal},
 };
 
 #[derive(Debug, Deserialize)]
@@ -40,6 +40,15 @@ pub fn umu_is_installed() -> bool {
         return false;
     }
     get_umu_exe().exists()
+}
+
+pub fn remove_umu() -> Result<()> {
+    if !umu_is_installed() {
+        warn!("linux::remove_umu() Umu not found!");
+        bail!("Umu not found!")
+    }
+
+    std::fs::remove_dir_all(&get_umu_dir()).with_context(|| "linux::remove_umu() Failed to remove_dir_all() | Err: ")
 }
 
 /// Installs the umu-launcher by downloading the binary to $MONARCH_HOME/umu/umu-run

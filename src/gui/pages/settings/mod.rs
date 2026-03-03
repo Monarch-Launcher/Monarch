@@ -47,6 +47,9 @@ pub enum Message {
     InstallSteamCMD,
     InstallLegendary,
     InstallUmu,
+    RemoveSteamCMD,
+    RemoveLegendary,
+    RemoveUmu
 }
 
 impl Message {
@@ -156,6 +159,9 @@ impl SettingsPage {
             Message::InstallUmu => self.install_umu_task(),
             Message::InstallSteamCMD => return self.install_steamcmd_task(&write_guard.unwrap()),
             Message::InstallLegendary => self.install_legendary_task(),
+            Message::RemoveUmu => self.remove_umu(),
+            Message::RemoveSteamCMD => self.remove_steamcmd(),
+            Message::RemoveLegendary => self.remove_legendary(),
             _ => {}
         }
         iced::Task::none()

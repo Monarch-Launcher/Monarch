@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use reqwest;
 use serde::Deserialize;
 use std::{os::unix::fs::PermissionsExt, path::PathBuf};
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::monarch_utils::monarch_fs::get_monarch_home;
 
@@ -18,7 +18,7 @@ struct Asset {
 }
 
 /// Returns path to directory where Monarch stores its copy of the umu-launcher binary.
-fn get_legendary_dir() -> PathBuf {
+pub fn get_legendary_dir() -> PathBuf {
     let path = get_monarch_home();
     path.join("legendary")
 }

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
@@ -174,4 +174,13 @@ pub fn legendary_is_installed() -> bool {
 
 pub fn install_legendary() -> Result<()> {
     legendary::install_legendary().with_context(|| "legendary_client::install_legendary() -> ")
+}
+
+pub fn remvoe_legendary() -> Result<()> {
+    if !legendary_is_installed() {
+        warn!("linux::remove_legendary() Umu not found!");
+        bail!("Umu not found!")
+    }
+
+    std::fs::remove_dir_all(&legendary::get_legendary_dir()).with_context(|| "linux::remove_umu() Failed to remove_dir_all() | Err: ")
 }

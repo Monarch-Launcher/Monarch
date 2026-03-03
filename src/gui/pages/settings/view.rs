@@ -124,6 +124,8 @@ impl SettingsPage {
                 text(format!("UMU Launcher: {}", umu_installed)).size(16).width(Length::Shrink),
                 Space::new().width(Length::Fill),
                 primary_button("Install UMU Launcher", Some(Message::InstallUmu)),
+                Space::new().width(10),
+                danger_button("Remove UMU Launcher", Some(Message::RemoveUmu)),
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(25),
@@ -214,6 +216,8 @@ impl SettingsPage {
                 text(format!("SteamCMD: {}", steamcmd_installed)).size(16).width(Length::Shrink),
                 Space::new().width(Length::Fill),
                 primary_button("Install SteamCMD", Some(Message::InstallSteamCMD)),
+                Space::new().width(10),
+                danger_button("Remove SteamCMD", Some(Message::RemoveSteamCMD)),
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(25),
@@ -317,6 +321,8 @@ impl SettingsPage {
                 text(format!("Legendary: {}", legendary_installed)).size(16).width(Length::Shrink),
                 Space::new().width(Length::Fill),
                 primary_button("Install Legendary", Some(Message::InstallLegendary)),
+                Space::new().width(10),
+                danger_button("Remove Legendary", Some(Message::RemoveLegendary)),
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(25),
