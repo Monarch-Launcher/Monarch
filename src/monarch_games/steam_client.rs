@@ -192,7 +192,7 @@ pub async fn install_steamcmd() -> Result<()> {
             .with_context(|| "steam_client::install_steamcmd() -> ")?
     };
 
-    steam::steamcmd_command(vec![&login_arg, "-globaluser", "+quit"])
+    steam::steamcmd_command(vec!["-globaluser", &login_arg, "+quit"])
         .await
         .with_context(|| "steam_client::install_steamcmd() -> ")?;
 
@@ -450,12 +450,10 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
     };
 
     // Login argument
-    let mut login_arg = String::from("+login ");
-    login_arg.push_str(username);
+    let mut login_arg = format!("+login {username}");
 
     if !password.is_empty() {
-        login_arg.push(' ');
-        login_arg.push_str(&password);
+        login_arg.push_str(&format!(" {password}"));
     }
 
     // Current solution is to store the secret in keystore, which essentially
@@ -466,8 +464,7 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
             if !secret.is_empty() {
                 info!("Steam TOTP detected in Monarch!");
                 let totp = generate(&secret).unwrap();
-                login_arg.push(' ');
-                login_arg.push_str(&totp);
+                login_arg.push_str(&format!(" {totp}"));
             } else {
                 warn!("Steam TOTP was found! However the string was empty.");
             }

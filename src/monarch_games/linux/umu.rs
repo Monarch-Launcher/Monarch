@@ -74,7 +74,7 @@ pub fn install_umu() -> Result<()> {
         .ok_or("No matching asset found")
         .unwrap();
 
-    info!("Downloading asset: {}...", asset.name);
+    info!("Downloading : {}", &asset.browser_download_url);
 
     let mut download_response =
         reqwest::blocking::get(&asset.browser_download_url).with_context(|| {
