@@ -1,6 +1,7 @@
 use crate::gui::components::gamecard::container::GameCardContainer;
 use crate::gui::components::gamecard::properties::PropertiesModal;
 use crate::gui::components::gamecard::GameCardMessage;
+use crate::gui::styles;
 use iced::widget::{container, stack, text};
 use iced::{alignment, Color, Element, Length};
 
@@ -35,18 +36,12 @@ impl GameBrowser {
 
     fn view_grid(&self, interactive: bool) -> Element<'_, GameCardMessage> {
         if self.games.is_empty() {
-            container(
-                text("No games found")
-                    .size(32)
-                    .style(|_theme: &iced::Theme| text::Style {
-                        color: Some(Color::from_rgb8(100, 100, 100)),
-                    }),
-            )
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(alignment::Horizontal::Center)
-            .align_y(alignment::Vertical::Center)
-            .into()
+            container(text("No games found").size(32).font(styles::fonts::REGULAR))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_x(alignment::Horizontal::Center)
+                .align_y(alignment::Vertical::Center)
+                .into()
         } else {
             container(iced::widget::scrollable(
                 container(self.games.view(interactive))

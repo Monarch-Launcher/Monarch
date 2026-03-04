@@ -166,11 +166,9 @@ impl LibraryPage {
         let games_content: Element<'_, Message> = if self.is_refreshing {
             let dots = ".".repeat(self.dot_count as usize);
             container(
-                column![text(format!("Looking for games{dots}")).size(32).style(
-                    |_theme: &iced::Theme| text::Style {
-                        color: Some(Color::from_rgb8(255, 127, 0)),
-                    }
-                )]
+                column![text(format!("Looking for games{dots}"))
+                    .size(32)
+                    .font(crate::gui::styles::fonts::REGULAR)]
                 .spacing(20)
                 .align_x(alignment::Horizontal::Center),
             )

@@ -97,20 +97,14 @@ impl GameDetailsPage {
         let title = text(game.name.clone())
             .size(42)
             .color(Color::WHITE)
-            .font(iced::Font {
-                weight: iced::font::Weight::Bold,
-                ..Default::default()
-            });
+            .font(crate::gui::styles::fonts::REGULAR);
 
         // Store info
         let store_badge = container(
             text(game.get_store_name().to_uppercase())
                 .size(14)
                 .color(Color::WHITE)
-                .font(iced::Font {
-                    weight: iced::font::Weight::Semibold,
-                    ..Default::default()
-                }),
+                .font(crate::gui::styles::fonts::REGULAR),
         )
         .padding(iced::Padding::from([6, 12]))
         .style(|_theme: &Theme| container::Style {
@@ -126,10 +120,7 @@ impl GameDetailsPage {
         let description_title = text("About")
             .size(20)
             .color(Color::from_rgb8(200, 200, 200))
-            .font(iced::Font {
-                weight: iced::font::Weight::Semibold,
-                ..Default::default()
-            });
+            .font(crate::gui::styles::fonts::REGULAR);
 
         let description_text = text(if game.summary.is_empty() {
             "No description available.".to_string()
@@ -172,10 +163,7 @@ impl GameDetailsPage {
                     text(install_size_display)
                         .size(14)
                         .color(Color::from_rgb8(220, 220, 220))
-                        .font(iced::Font {
-                            weight: iced::font::Weight::Medium,
-                            ..Default::default()
-                        }),
+                        .font(crate::gui::styles::fonts::MEDIUM),
                 ]
                 .spacing(4),
                 column![
@@ -185,10 +173,7 @@ impl GameDetailsPage {
                     text(version_display)
                         .size(14)
                         .color(Color::from_rgb8(220, 220, 220))
-                        .font(iced::Font {
-                            weight: iced::font::Weight::Medium,
-                            ..Default::default()
-                        }),
+                        .font(crate::gui::styles::fonts::MEDIUM),
                 ]
                 .spacing(4),
                 column![
@@ -198,10 +183,7 @@ impl GameDetailsPage {
                     text(play_time_display)
                         .size(14)
                         .color(Color::from_rgb8(220, 220, 220))
-                        .font(iced::Font {
-                            weight: iced::font::Weight::Medium,
-                            ..Default::default()
-                        }),
+                        .font(crate::gui::styles::fonts::MEDIUM),
                 ]
                 .spacing(4),
                 column![
@@ -211,10 +193,7 @@ impl GameDetailsPage {
                     text(last_played_display)
                         .size(14)
                         .color(Color::from_rgb8(220, 220, 220))
-                        .font(iced::Font {
-                            weight: iced::font::Weight::Medium,
-                            ..Default::default()
-                        }),
+                        .font(crate::gui::styles::fonts::MEDIUM),
                 ]
                 .spacing(4),
             ]
@@ -238,10 +217,7 @@ impl GameDetailsPage {
         let properties_title = text("Properties")
             .size(20)
             .color(Color::from_rgb8(200, 200, 200))
-            .font(iced::Font {
-                weight: iced::font::Weight::Semibold,
-                ..Default::default()
-            });
+            .font(crate::gui::styles::fonts::SEMIBOLD);
 
         let property_item = |label: String, value: String| -> Element<'_, Message> {
             column![

@@ -34,10 +34,9 @@ where
     }
 
     pub fn view(self) -> Element<'a, Message, Theme> {
-        let title = text(self.title).size(24).font(iced::Font {
-            weight: iced::font::Weight::Bold,
-            ..Default::default()
-        });
+        let title = text(self.title)
+            .size(24)
+            .font(crate::gui::styles::fonts::BOLD);
 
         let mut header = row![title].spacing(20).align_y(alignment::Vertical::Center);
 

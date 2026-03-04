@@ -96,19 +96,13 @@ impl StoreDetailsPage {
         let title = text(game.name.clone())
             .size(42)
             .color(Color::WHITE)
-            .font(iced::Font {
-                weight: iced::font::Weight::Bold,
-                ..Default::default()
-            });
+            .font(crate::gui::styles::fonts::REGULAR);
 
         // Description section
         let description_title = text("About")
             .size(20)
             .color(Color::from_rgb8(200, 200, 200))
-            .font(iced::Font {
-                weight: iced::font::Weight::Semibold,
-                ..Default::default()
-            });
+            .font(crate::gui::styles::fonts::SEMIBOLD);
 
         let description_text = text(if game.summary.is_empty() {
             "No description available.".to_string()
@@ -123,10 +117,7 @@ impl StoreDetailsPage {
         let stores_title = text("Available Stores")
             .size(24)
             .color(Color::WHITE)
-            .font(iced::Font {
-                weight: iced::font::Weight::Bold,
-                ..Default::default()
-            });
+            .font(crate::gui::styles::fonts::BOLD);
 
         let stores_list = column(
             game.stores

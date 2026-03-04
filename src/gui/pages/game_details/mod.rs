@@ -7,6 +7,7 @@ use iced::widget::{container, stack, text};
 use iced::{alignment, Color, Element, Length, Theme};
 
 use crate::gui::components::gamecard::properties::{self, PropertiesModal};
+use crate::gui::styles;
 use crate::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Clone, Debug)]
@@ -63,9 +64,7 @@ impl GameDetailsPage {
             container(
                 text("No game selected")
                     .size(32)
-                    .style(|_theme: &Theme| text::Style {
-                        color: Some(Color::from_rgb8(100, 100, 100)),
-                    }),
+                    .font(styles::fonts::REGULAR),
             )
             .width(Length::Fill)
             .height(Length::Fill)
