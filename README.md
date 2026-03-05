@@ -1,6 +1,6 @@
 # Monarch Launcher
 
-![alt text](icons/Square310x310Logo.png)
+![alt text](icons/Logo/Square310x310Logo.png)
 
 ## What is it?
 

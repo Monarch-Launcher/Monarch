@@ -43,11 +43,11 @@ fn create_config() -> ConfigBuilder {
         .identifier("com.monarchlauncher.monarch")
         .binaries(vec![monarch_bin])
         .icons(vec![
-            "icons/32x32.png".to_string(),
-            "icons/128x128.png".to_string(),
-            "icons/128x128@2x.png".to_string(),
-            "icons/icon.icns".to_string(),
-            "icons/icon.ico".to_string(),
+            "icons/Logo/32x32.png".to_string(),
+            "icons/Logo/128x128.png".to_string(),
+            "icons/Logo/128x128@2x.png".to_string(),
+            "icons/Logo/icon.icns".to_string(),
+            "icons/Logo/icon.ico".to_string(),
         ])
         .formats(
             PackageFormat::platform_default()
