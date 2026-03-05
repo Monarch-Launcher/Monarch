@@ -159,7 +159,7 @@ impl HomePage {
                     .content_fit(iced::ContentFit::Cover)
                     .into()
             } else {
-                image(crate::gui::resources::ICON.clone())
+                image(crate::gui::resources::LOGO_LARGE.clone())
                     .width(Length::Fixed(200.0))
                     .height(Length::Fixed(280.0))
                     .content_fit(iced::ContentFit::Cover)

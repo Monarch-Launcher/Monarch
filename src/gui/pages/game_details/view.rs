@@ -73,7 +73,7 @@ impl GameDetailsPage {
                 .height(Length::Fixed(450.0))
                 .content_fit(iced::ContentFit::Cover)
         } else {
-            image(crate::gui::resources::ICON.clone())
+            image(crate::gui::resources::LOGO_LARGE.clone())
                 .width(Length::Fixed(300.0))
                 .height(Length::Fixed(450.0))
                 .content_fit(iced::ContentFit::Cover)

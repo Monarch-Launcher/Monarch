@@ -64,7 +64,7 @@ impl GameCard {
 
         let image_widget: Element<'_, GameCardMessage> = if self.game.thumbnail_path.is_empty() {
             container(
-                image(crate::gui::resources::ICON.clone())
+                image(crate::gui::resources::LOGO_LARGE.clone())
                     .width(Length::Fixed(width))
                     .height(Length::Fixed(height))
                     .content_fit(iced::ContentFit::Cover),

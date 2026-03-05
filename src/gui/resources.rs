@@ -2,12 +2,12 @@ use iced::widget::{image, svg};
 use std::sync::LazyLock;
 
 pub static LOGO: LazyLock<image::Handle> = LazyLock::new(|| {
-    let bytes = include_bytes!("../../icons/Logo/monarch.svg");
+    let bytes = include_bytes!("../../icons/Logo/Square71x71Logo.png");
     image::Handle::from_bytes(bytes.to_vec())
 });
 
-pub static ICON: LazyLock<image::Handle> = LazyLock::new(|| {
-    let bytes = include_bytes!("../../icons/Logo/monarch.svg");
+pub static LOGO_LARGE: LazyLock<image::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Logo/Square310x310Logo.png");
     image::Handle::from_bytes(bytes.to_vec())
 });
 
