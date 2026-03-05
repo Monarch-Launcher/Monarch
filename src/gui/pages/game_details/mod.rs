@@ -4,7 +4,7 @@ mod view;
 use std::sync::{Arc, Mutex};
 
 use iced::widget::{container, stack, text};
-use iced::{alignment, Color, Element, Length, Theme};
+use iced::{alignment, Element, Length};
 
 use crate::gui::components::gamecard::properties::{self, PropertiesModal};
 use crate::gui::styles;

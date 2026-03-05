@@ -1,6 +1,6 @@
 use iced::widget::{column, container, mouse_area, text};
 use iced::Length::{self, Fill};
-use iced::{alignment, Color, Element};
+use iced::{alignment, Element};
 use tracing::{error, info};
 
 use crate::gui::components::common::scanner_button;

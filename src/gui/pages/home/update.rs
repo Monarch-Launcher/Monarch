@@ -1,6 +1,7 @@
 use super::{HomePage, Message};
 use crate::gui::components::gamecard::gamecard::GameCard;
 use crate::gui::components::gamecard::GameCardMessage;
+use crate::monarch_games;
 
 impl HomePage {
     pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
@@ -32,13 +33,40 @@ impl HomePage {
                 for card in &mut self.recommended_games {
                     let _ = card.update(gc_msg.clone());
                 }
+
+                // Trigger download tasks
+                let update_tasks = iced::Task::batch(self.recommended_games.iter().cloned().map(
+                    |mut gamecard| {
+                        iced::Task::perform(
+                            async move {
+                                if !gamecard.game.has_properties() {
+                                    monarch_games::commands::get_game_properties(
+                                        &mut gamecard.game,
+                                    )
+                                    .await;
+                                }
+                                gamecard.game
+                            },
+                            Message::GameUpdated,
+                        )
+                    },
+                ));
+
+                update_tasks
+            }
+
+            Message::GameUpdated(game) => {
+                if let Some(card) = self
+                    .recommended_games
+                    .iter_mut()
+                    .find(|c| c.game.id == game.id)
+                {
+                    card.game = game;
+                }
                 iced::Task::none()
             }
 
-            Message::OpenGameDetails(_) => {
-                // Bubbled up to the parent App
-                iced::Task::none()
-            }
+            Message::OpenGameDetails(_) => iced::Task::none(),
 
             Message::LaunchGame(game) => iced::Task::perform(
                 async move {

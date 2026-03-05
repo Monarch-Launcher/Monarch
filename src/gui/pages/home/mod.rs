@@ -8,6 +8,7 @@ mod view;
 #[derive(Clone, Debug)]
 pub enum Message {
     UpdateRecommendations(Vec<MonarchGame>),
+    GameUpdated(MonarchGame),
     GameCard(GameCardMessage),
     OpenGameDetails(MonarchGame),
     LaunchGame(MonarchGame),
@@ -31,11 +32,5 @@ impl Default for HomePage {
             current_deal_index: 0,
             is_loading: true,
         }
-    }
-}
-
-impl HomePage {
-    pub fn new() -> Self {
-        Self::default()
     }
 }

@@ -29,7 +29,7 @@ pub const MEDIUM: Font = Font {
     style: Style::Normal,
 };
 
-pub const MONOSPACE: Font = Font {
+pub const _MONOSPACE: Font = Font {
     family: Family::Monospace,
     weight: Weight::Normal,
     stretch: Stretch::Normal,

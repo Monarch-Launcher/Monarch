@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use iced::widget::{container, text};
-use iced::{alignment, Color, Element, Length, Theme};
+use iced::{alignment, Element, Length};
 
 use crate::gui::styles;
 use crate::monarch_games::monarchgame::MonarchGame;

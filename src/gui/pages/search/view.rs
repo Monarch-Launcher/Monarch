@@ -1,7 +1,7 @@
 use iced::widget::text_input;
 use iced::widget::{button, column, container, row, text};
 use iced::Element;
-use iced::{alignment, Color, Length};
+use iced::{alignment, Length};
 
 use crate::gui::pages::search::{Message, SearchPage};
 

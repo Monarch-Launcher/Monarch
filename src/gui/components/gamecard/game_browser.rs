@@ -3,7 +3,7 @@ use crate::gui::components::gamecard::properties::PropertiesModal;
 use crate::gui::components::gamecard::GameCardMessage;
 use crate::gui::styles;
 use iced::widget::{container, stack, text};
-use iced::{alignment, Color, Element, Length};
+use iced::{alignment, Element, Length};
 
 #[derive(Default, Debug, Clone)]
 pub struct GameBrowser {
