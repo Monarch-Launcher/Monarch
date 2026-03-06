@@ -17,6 +17,7 @@ pub enum Message {
     DownloadModalMessage(download_modal::Message),
     OpenStorePage(String),
     ArtworkDownloaded,
+    PropertiesLoaded,
 }
 
 pub struct StoreDetailsPage {
@@ -34,10 +35,27 @@ impl StoreDetailsPage {
         }
     }
 
-    pub fn set_game(&mut self, game: Arc<Mutex<MonarchGame>>) {
-        self.game = Some(game);
+    pub fn set_game(&mut self, game: Arc<Mutex<MonarchGame>>) -> iced::Task<Message> {
+        self.game = Some(game.clone());
         self.artwork_loaded = false;
         self.download_modal = None;
+
+        let game_clone = game.clone();
+        iced::Task::perform(
+            async move {
+                let (mut game_copy, has_props) = {
+                    let game_lock = game_clone.lock().unwrap();
+                    (game_lock.clone(), game_lock.has_properties())
+                };
+
+                if !has_props {
+                    crate::monarch_games::commands::get_game_properties(&mut game_copy).await;
+                    let mut game_lock = game_clone.lock().unwrap();
+                    *game_lock = game_copy;
+                }
+            },
+            |_| Message::PropertiesLoaded,
+        )
     }
 
     pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
@@ -55,6 +73,10 @@ impl StoreDetailsPage {
             Message::OpenStorePage(url) => self.open_store_page(&url),
             Message::ArtworkDownloaded => {
                 self.artwork_loaded = true;
+                iced::Task::none()
+            }
+            Message::PropertiesLoaded => {
+                // Properties are updated in the background task because game is Arc<Mutex<MonarchGame>>
                 iced::Task::none()
             }
         }

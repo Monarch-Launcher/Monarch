@@ -272,11 +272,14 @@ impl App {
             }
             AppMessage::OpenStoreDetails(game) => {
                 self.previous_tab = self.active_tab;
-                self.store_details_page
-                    .set_game(Arc::new(Mutex::new(game.clone())));
+                let props_task = self
+                    .store_details_page
+                    .set_game(Arc::new(Mutex::new(game.clone())))
+                    .map(|m| AppMessage::Page(pages::Message::StoreDetails(m)));
+
                 self.active_tab = PageTab::StoreDetails;
 
-                iced::Task::perform(
+                let artwork_task = iced::Task::perform(
                     async move {
                         let artwork_path = game.artwork_path.clone();
                         if !artwork_path.is_empty() && std::path::Path::new(&artwork_path).exists()
@@ -290,7 +293,9 @@ impl App {
                             pages::store_details::Message::ArtworkDownloaded,
                         ))
                     },
-                )
+                );
+
+                iced::Task::batch(vec![props_task, artwork_task])
             }
             AppMessage::OpenTerminal(_id) => {
                 // ID already inserted in LaunchGame

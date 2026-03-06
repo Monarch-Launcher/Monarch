@@ -175,11 +175,72 @@ impl StoreDetailsPage {
 
         let header_panel = column![title].spacing(12);
 
+        // ProtonDB Rating (Linux only)
+        #[cfg(target_os = "linux")]
+        let protondb_panel = if game.properties.protondb_rating != "N/A"
+            && !game.properties.protondb_rating.is_empty()
+        {
+            let rating = game.properties.protondb_rating.clone();
+            let rating_url = game.properties.protondb_url.clone();
+
+            let rating_color = match rating.to_lowercase().as_str() {
+                "platinum" => Color::from_rgb8(180, 199, 231),
+                "gold" => Color::from_rgb8(255, 215, 0),
+                "silver" => Color::from_rgb8(192, 192, 192),
+                "bronze" => Color::from_rgb8(205, 127, 50),
+                "borked" => Color::from_rgb8(255, 0, 0),
+                _ => Color::from_rgb8(200, 200, 200),
+            };
+
+            // Capitalize first letter of rating
+            let display_rating = if !rating.is_empty() {
+                let mut c = rating.chars();
+                match c.next() {
+                    None => String::new(),
+                    Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                }
+            } else {
+                rating.clone()
+            };
+
+            let rating_text = text(display_rating)
+                .size(24)
+                .color(rating_color)
+                .font(crate::gui::styles::fonts::BOLD);
+
+            let protondb_btn = if !rating_url.is_empty() {
+                container(secondary_button(
+                    "View on ProtonDB",
+                    Some(Message::OpenStorePage(rating_url)),
+                ))
+            } else {
+                container(iced::widget::Space::new())
+            };
+
+            column![
+                text("ProtonDB Rating")
+                    .size(20)
+                    .color(Color::from_rgb8(200, 200, 200))
+                    .font(crate::gui::styles::fonts::SEMIBOLD),
+                row![rating_text, protondb_btn]
+                    .spacing(20)
+                    .align_y(alignment::Vertical::Center),
+                container(text("")).height(Length::Fixed(20.0)), // Spacer
+            ]
+            .spacing(8)
+        } else {
+            column![]
+        };
+
+        #[cfg(not(target_os = "linux"))]
+        let protondb_panel = column![];
+
         // Right side content (info panel)
         let info_panel = column![
             description_title,
             description_text,
             container(text("")).height(Length::Fixed(20.0)), // Spacer
+            protondb_panel,
             stores_panel,
         ]
         .spacing(12)
