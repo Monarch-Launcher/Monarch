@@ -19,17 +19,18 @@ where
         .into()
 }
 
-pub fn scanner_button<'a, Message>(
+pub fn other_primary_button<'a, Message>(
     label: &str,
     on_press: Option<Message>,
     is_hovered: bool,
+    icon: svg::Handle,
 ) -> Element<'a, Message, Theme>
 where
     Message: Clone + 'a,
 {
     button(
         row![
-            svg(REFRESH.clone())
+            svg(icon)
                 .width(20)
                 .height(20)
                 .style(move |_theme: &Theme, _status| {
@@ -153,7 +154,6 @@ where
 {
     text_input(placeholder, value)
         .on_input(on_change)
-        .style(styles::text_input::default)
         .padding(10)
         .width(Length::Fill)
         .into()

@@ -1,14 +1,18 @@
-use iced::widget::{column, container, mouse_area, text};
+use iced::widget::{column, container, mouse_area, row, text};
 use iced::Length::{self, Fill};
 use iced::{alignment, Element};
 use tracing::{error, info};
 
-use crate::gui::components::common::scanner_button;
+use crate::gui::components::common::other_primary_button;
 use crate::gui::components::gamecard;
 use crate::gui::components::gamecard::game_browser::GameBrowser;
+use crate::gui::resources::{ADD_FOLDER, REFRESH};
 use crate::gui::show_error;
 use crate::monarch_games;
 use crate::monarch_games::monarchgame::MonarchGame;
+
+mod add_game;
+use add_game::AddGameModal;
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -20,6 +24,11 @@ pub enum Message {
     OpenGameDetails(MonarchGame),
     Tick,
     ScannerHovered(bool),
+    AddGameHovered(bool),
+    OpenAddModal,
+    CloseAddModal,
+    AddModal(add_game::Message),
+    AddGame(MonarchGame),
 }
 
 #[derive(Debug, Clone)]
@@ -29,6 +38,8 @@ pub struct LibraryPage {
     dot_count: u8,
     tick_counter: u8,
     is_scanner_hovered: bool,
+    is_add_hovered: bool,
+    add_game_modal: Option<AddGameModal>,
 }
 
 impl LibraryPage {
@@ -143,25 +154,104 @@ impl LibraryPage {
                     }
                 }
 
-                self.browser
+                let mut tasks = vec![self
+                    .browser
                     .update(gamecard::GameCardMessage::Tick)
-                    .map(Message::GameCard)
+                    .map(Message::GameCard)];
+
+                if let Some(modal) = &mut self.add_game_modal {
+                    tasks.push(modal.update(add_game::Message::Tick).map(Message::AddModal));
+                }
+
+                iced::Task::batch(tasks)
             }
             Message::ScannerHovered(hovered) => {
                 self.is_scanner_hovered = hovered;
                 iced::Task::none()
             }
+            Message::AddGameHovered(hovered) => {
+                self.is_add_hovered = hovered;
+                iced::Task::none()
+            }
+            Message::OpenAddModal => {
+                self.add_game_modal = Some(AddGameModal::default());
+                iced::Task::none()
+            }
+            Message::CloseAddModal => {
+                self.add_game_modal = None;
+                iced::Task::none()
+            }
+            Message::AddModal(modal_msg) => {
+                if let Some(modal) = &mut self.add_game_modal {
+                    match modal_msg {
+                        add_game::Message::Cancel => {
+                            self.add_game_modal = None;
+                            iced::Task::none()
+                        }
+                        add_game::Message::AddGame => {
+                            let game = MonarchGame::new(
+                                &modal.name,
+                                0,
+                                "monarch",
+                                "",
+                                "",
+                                &modal.exec_path,
+                                &modal.thumb_path,
+                            );
+                            self.add_game_modal = None;
+                            iced::Task::done(Message::AddGame(game))
+                        }
+                        _ => modal.update(modal_msg).map(Message::AddModal),
+                    }
+                } else {
+                    iced::Task::none()
+                }
+            }
+            Message::AddGame(game) => {
+                iced::Task::perform(
+                    async move { monarch_games::commands::manual_add_game(game).await },
+                    |res| match res {
+                        Ok(_) => Message::RefreshLibrary,
+                        Err(e) => {
+                            show_error(&format!("Failed to add game: {}", e));
+                            Message::Tick // Dummy message
+                        }
+                    },
+                )
+            }
         }
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let refresh_btn = mouse_area(scanner_button(
-            "Scan for games",
-            Some(Message::RefreshLibrary),
-            self.is_scanner_hovered,
-        ))
-        .on_enter(Message::ScannerHovered(true))
-        .on_exit(Message::ScannerHovered(false));
+        let modal_active = self.add_game_modal.is_some();
+
+        let refresh_btn = if modal_active {
+            other_primary_button("Scan for games", None, false, REFRESH.clone())
+        } else {
+            mouse_area(other_primary_button(
+                "Scan for games",
+                Some(Message::RefreshLibrary),
+                self.is_scanner_hovered,
+                REFRESH.clone(),
+            ))
+            .on_enter(Message::ScannerHovered(true))
+            .on_exit(Message::ScannerHovered(false))
+            .into()
+        };
+
+        let add_btn = if modal_active {
+            other_primary_button("Add game manually", None, false, ADD_FOLDER.clone())
+        } else {
+            mouse_area(other_primary_button(
+                "Add game manually",
+                Some(Message::OpenAddModal),
+                self.is_add_hovered,
+                ADD_FOLDER.clone(),
+            ))
+            .on_enter(Message::AddGameHovered(true))
+            .on_exit(Message::AddGameHovered(false))
+            .into()
+        };
 
         let games_content: Element<'_, Message> = if self.is_refreshing {
             let dots = ".".repeat(self.dot_count as usize);
@@ -179,12 +269,12 @@ impl LibraryPage {
             .align_y(alignment::Vertical::Center)
             .into()
         } else {
-            self.browser.view().map(Message::GameCard)
+            self.browser.view(!modal_active).map(Message::GameCard)
         };
 
-        container(
+        let base_content = container(
             column![
-                container(refresh_btn)
+                container(row![refresh_btn, add_btn].spacing(10))
                     .width(Fill)
                     .padding(30)
                     .align_x(alignment::Horizontal::Left)
@@ -194,8 +284,13 @@ impl LibraryPage {
             .align_x(alignment::Horizontal::Center),
         )
         .width(Length::Fill)
-        .height(Length::Fill)
-        .into()
+        .height(Length::Fill);
+
+        if let Some(modal) = &self.add_game_modal {
+            iced::widget::stack![base_content, modal.view().map(Message::AddModal)].into()
+        } else {
+            base_content.into()
+        }
     }
 }
 
@@ -219,6 +314,8 @@ impl Default for LibraryPage {
             dot_count: 3,
             tick_counter: 0,
             is_scanner_hovered: false,
+            is_add_hovered: false,
+            add_game_modal: None,
         }
     }
 }

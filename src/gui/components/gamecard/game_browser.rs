@@ -55,8 +55,9 @@ impl GameBrowser {
         }
     }
 
-    pub fn view(&self) -> Element<'_, GameCardMessage> {
-        let content = self.view_grid(true);
+    pub fn view(&self, interactive: bool) -> Element<'_, GameCardMessage> {
+        let is_modal_open = self.properties_modal.is_some();
+        let content = self.view_grid(interactive && !is_modal_open);
 
         if let Some(modal) = &self.properties_modal {
             stack![content, modal.view().map(GameCardMessage::Properties)].into()

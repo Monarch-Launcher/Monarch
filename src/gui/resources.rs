@@ -45,3 +45,18 @@ pub static REFRESH: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/refresh.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });
+
+pub static ADD_FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/folder-plus-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static SEARCH_FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/folder-search-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/folder-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});

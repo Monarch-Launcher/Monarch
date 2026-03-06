@@ -40,7 +40,7 @@ impl SearchPage {
             .align_y(alignment::Vertical::Center)
             .into()
         } else {
-            self.browser.view().map(Message::GameCard)
+            self.browser.view(true).map(Message::GameCard)
         };
 
         let content = container(
