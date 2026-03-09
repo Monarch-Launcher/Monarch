@@ -240,9 +240,18 @@ impl GameDetailsPage {
                     .align_y(alignment::Vertical::Center),
                 container(
                     column![
-                        property_item("Executable".to_string(), game.executable_path.clone()),
-                        property_item("Compatibility".to_string(), game.compatibility.clone()),
-                        property_item("Launch Arguments".to_string(), game.launch_args.clone()),
+                        property_item(
+                            "Executable".to_string(),
+                            game.executable_path.unwrap_or_default()
+                        ),
+                        property_item(
+                            "Compatibility".to_string(),
+                            game.compatibility.unwrap_or_default()
+                        ),
+                        property_item(
+                            "Launch Arguments".to_string(),
+                            game.launch_args.unwrap_or_default()
+                        ),
                     ]
                     .spacing(16)
                 )

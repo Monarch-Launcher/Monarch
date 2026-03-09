@@ -9,10 +9,11 @@ use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
-use crate::monarch_utils::monarch_vdf;
+use crate::monarch_utils::{monarch_terminal, monarch_vdf};
 use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{error, info, warn};
 
@@ -158,21 +159,21 @@ pub async fn launch_game(frontend_game: &MonarchGame) -> Result<()> {
 
     // Check if game should be launched with exectutable, such as
     // the game binary or Proton executable
-    if !game.executable_path.is_empty() {
-        info!(
-            "Launching game with executable path: {}",
-            game.executable_path
-        );
+    if let Some(path) = &game.executable_path {
+        info!("Launching game with executable path: {}", path);
 
         // Reformat the launch command to work on the store
         if cfg!(target_os = "windows") {
-            game.executable_path = format!(r#"Start-Process "{}""#, game.executable_path);
+            game.executable_path = Some(format!(
+                r#"Start-Process "{}""#,
+                game.executable_path.unwrap()
+            ));
         } else {
-            game.executable_path = game.executable_path.replace(" ", "\\ ");
+            game.executable_path = Some(game.executable_path.unwrap().replace(" ", "\\ "));
         }
 
         // Run with compatibility layer
-        if !game.compatibility.is_empty() {
+        if game.compatibility.is_some() {
             if cfg!(not(target_os = "linux")) {
                 bail!("monarch_client::launch_game() User tried launching a game using compatibility layer on OS other than Linux! | Err: Cannot use compatibility layer under anything other than Linux!")
             }
@@ -185,21 +186,31 @@ pub async fn launch_game(frontend_game: &MonarchGame) -> Result<()> {
         }
 
         // Run without compatibility layer
-        let launch_command: String = format!("{}", game.executable_path);
+        let launch_command: String = format!("{}", game.executable_path.unwrap_or_default());
 
         // Order launch args and command in proper order
-        let _full_command: String = if game.launch_args.find("%command%").is_some() {
+        let full_command: String = if game
+            .launch_args
+            .clone()
+            .unwrap_or_default()
+            .find("%command%")
+            .is_some()
+        {
             warn!("Using Steam %command% style launch arguments!");
-            game.launch_args.replace("%command%", &launch_command)
+            game.launch_args
+                .unwrap()
+                .replace("%command%", &launch_command)
         } else {
-            format!("{} {}", launch_command, game.launch_args)
+            format!(
+                "{} {}",
+                launch_command,
+                game.launch_args.unwrap_or_default()
+            )
         };
 
-        /*
-               return run_in_terminal(&full_command, None, None)
-                   .await
-                   .with_context(|| "monarch_client::launch_game() -> ");
-        */
+        let rx = monarch_terminal::spawn_terminal(full_command, HashMap::new(), None);
+        let _ = rx.await;
+
         return Ok(());
     }
 

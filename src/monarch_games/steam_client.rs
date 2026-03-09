@@ -205,7 +205,8 @@ pub fn remove_steamcmd() -> Result<()> {
         bail!("SteamCMD not found!")
     }
 
-    std::fs::remove_dir_all(&get_steamcmd_dir()).with_context(|| "steam_client::remove_steamcmd() Failed to remove_dir_all() | Err: ")
+    std::fs::remove_dir_all(&get_steamcmd_dir())
+        .with_context(|| "steam_client::remove_steamcmd() Failed to remove_dir_all() | Err: ")
 }
 
 /// Returns games installed by Steam Client.
@@ -255,7 +256,7 @@ pub async fn launch_cmd_game(game: &MonarchGame) -> Result<()> {
         &login_arg,
         "+app_launch",
         &id,
-        &game.launch_args,
+        game.launch_args.as_deref().unwrap_or_default(),
     ];
 
     steam::steamcmd_command(args)

@@ -42,11 +42,7 @@ impl PropertiesModal {
         let (launch_args, current_executable, _) = {
             let game_lock = game.lock().unwrap();
             let launch_args = game_lock.launch_args.clone();
-            let current_executable = if game_lock.executable_path.is_empty() {
-                None
-            } else {
-                Some(game_lock.executable_path.clone())
-            };
+            let current_executable = game_lock.executable_path.clone();
             (
                 launch_args,
                 current_executable,
@@ -68,7 +64,7 @@ impl PropertiesModal {
             }],
             selected_compatibility: None,
 
-            launch_args,
+            launch_args: launch_args.unwrap_or_default(),
         };
 
         (
@@ -127,8 +123,7 @@ impl PropertiesModal {
                 self.compatibility_list.append(&mut versions);
                 self.compatibility_layers = combo_box::State::new(self.compatibility_list.clone());
 
-                if !self.game.lock().unwrap().compatibility.is_empty() {
-                    let game_compat = self.game.lock().unwrap().compatibility.clone();
+                if let Some(game_compat) = self.game.lock().unwrap().compatibility.clone() {
                     self.selected_compatibility = self
                         .compatibility_list
                         .iter()
@@ -139,7 +134,7 @@ impl PropertiesModal {
                 Task::none()
             }
             Message::ExecutableSelected(exe) => {
-                self.selected_executable = Some(exe);
+                self.selected_executable = if exe == "None" { None } else { Some(exe) };
                 self.hovered_executable = None;
                 Task::none()
             }
@@ -157,13 +152,18 @@ impl PropertiesModal {
             }
             Message::Save => {
                 let mut game = self.game.lock().unwrap();
-                if let Some(exe) = &self.selected_executable {
-                    game.executable_path = exe.clone();
+                game.executable_path = self.selected_executable.clone();
+
+                match &self.selected_compatibility {
+                    Some(compat) => game.compatibility = Some(compat.path.clone()),
+                    None => game.compatibility = None,
                 }
-                if let Some(compat) = &self.selected_compatibility {
-                    game.compatibility = compat.name.clone();
-                }
-                game.launch_args = self.launch_args.clone();
+
+                game.launch_args = if self.launch_args.is_empty() {
+                    None
+                } else {
+                    Some(self.launch_args.clone())
+                };
 
                 let game_clone = game.clone();
                 Task::perform(

@@ -7,7 +7,10 @@ use tracing::{error, info, warn};
 
 use crate::{
     monarch_games::{games::GameType, monarchgame::MonarchGame},
-    monarch_utils::{monarch_fs::{self, get_monarch_home}, monarch_terminal},
+    monarch_utils::{
+        monarch_fs::{self, get_monarch_home},
+        monarch_terminal,
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -48,7 +51,8 @@ pub fn remove_umu() -> Result<()> {
         bail!("Umu not found!")
     }
 
-    std::fs::remove_dir_all(&get_umu_dir()).with_context(|| "linux::remove_umu() Failed to remove_dir_all() | Err: ")
+    std::fs::remove_dir_all(&get_umu_dir())
+        .with_context(|| "linux::remove_umu() Failed to remove_dir_all() | Err: ")
 }
 
 /// Installs the umu-launcher by downloading the binary to $MONARCH_HOME/umu/umu-run
@@ -133,7 +137,10 @@ pub fn install_umu() -> Result<()> {
 
 /// Executes the game using umu-launcher to run in proton.
 pub async fn umu_run(game: &MonarchGame) -> Result<()> {
-    info!("Compatibility layer set: {}", game.compatibility);
+    info!(
+        "Compatibility layer set: {}",
+        game.compatibility.as_ref().unwrap()
+    );
 
     let store_arg = match game.get_store_name().as_str() {
         "epic" => "egs".to_string(),
@@ -143,21 +150,43 @@ pub async fn umu_run(game: &MonarchGame) -> Result<()> {
     let gameid_arg = format!("umu-{}", game.get_store_id());
 
     let env_vars: HashMap<String, String> = HashMap::from([
-        ("PROTON_PATH".to_string(), game.compatibility.clone()),
+        (
+            "PROTON_PATH".to_string(),
+            game.compatibility.as_ref().unwrap().clone(),
+        ),
         ("GAMEID".to_string(), gameid_arg),
         ("STORE".to_string(), store_arg),
     ]);
 
     let umu: PathBuf = get_umu_exe();
-    let launch_command: String = format!("{} '{}'", umu.display(), game.executable_path);
+    let launch_command: String = format!(
+        "{} '{}'",
+        umu.display(),
+        game.executable_path.as_ref().unwrap()
+    );
 
     // Order launch args and command in proper order
-    info!("Launch args: {}", game.launch_args);
-    let full_command: String = if game.launch_args.contains("%command%") {
+    info!(
+        "Launch args: {}",
+        game.launch_args.as_deref().unwrap_or_default()
+    );
+    let full_command: String = if game
+        .launch_args
+        .as_deref()
+        .unwrap_or_default()
+        .contains("%command%")
+    {
         warn!("Using Steam %command% style launch arguments!");
-        game.launch_args.replace("%command%", &launch_command)
+        game.launch_args
+            .as_deref()
+            .unwrap()
+            .replace("%command%", &launch_command)
     } else {
-        format!("{} {}", launch_command, game.launch_args)
+        format!(
+            "{} {}",
+            launch_command,
+            game.launch_args.as_deref().unwrap()
+        )
     };
 
     info!("Env vars: {:?}", env_vars);
