@@ -1,8 +1,10 @@
-use crate::gui::resources::{PLAY, REFRESH};
+use crate::gui::resources::PLAY;
 use crate::gui::styles;
 use iced::widget::{button, pick_list, row, svg, text_editor, text_input, Text};
 use iced::{alignment, Color, Element, Length, Theme};
+use rfd::FileHandle;
 use std::borrow::Cow;
+use std::future::Future;
 
 pub fn primary_button<'a, Message>(
     label: &str,
@@ -226,4 +228,15 @@ where
     .center_y(Length::Fill)
     .padding(40)
     .into()
+}
+
+pub async fn open_file_dialog(filter_name: &str, filter_extensions: &[&str]) -> Option<FileHandle> {
+    rfd::AsyncFileDialog::new()
+        .add_filter(filter_name, filter_extensions)
+        .pick_file()
+        .await
+}
+
+pub async fn open_folder_dialog() -> Option<FileHandle> {
+    rfd::AsyncFileDialog::new().pick_folder().await
 }

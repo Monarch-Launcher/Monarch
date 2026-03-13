@@ -1,7 +1,9 @@
+use iced::Task;
 use tracing::error;
 
 use crate::{
     gui::{
+        components::common::open_folder_dialog,
         pages::{
             self,
             settings::{Message, SettingsPage},
@@ -168,5 +170,14 @@ impl SettingsPage {
         if let Err(e) = monarch_games::commands::remvoe_legendary() {
             show_error(e);
         }
+    }
+
+    pub fn pick_default_monarch_folder(&self) -> iced::Task<Message> {
+        Task::future(open_folder_dialog()).then(|handle| match handle {
+            Some(file_handle) => Task::done(Message::LibraryFolderChanged(
+                file_handle.path().to_string_lossy().to_string(),
+            )),
+            None => iced::Task::none(),
+        })
     }
 }

@@ -42,6 +42,7 @@ flate2 = "1.1.2"
 fs_extra = "1.3.0"
 async-trait = "0.1.89"
 chrono = "0.4.43"
+rfd = "0.17.2"
 
 [workspace]
 members = ["package"]
