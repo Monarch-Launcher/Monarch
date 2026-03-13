@@ -225,7 +225,7 @@ impl LibraryPage {
     pub fn view(&self) -> Element<'_, Message> {
         let modal_active = self.add_game_modal.is_some();
 
-        let refresh_rotation = if self.is_refreshing && !self.browser.games.is_empty() {
+        let refresh_rotation = if self.is_refreshing {
             -(self.tick_counter as f32 / 60.0) * std::f32::consts::TAU
         } else {
             0.0
