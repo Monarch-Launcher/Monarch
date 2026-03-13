@@ -148,8 +148,8 @@ impl LibraryPage {
             }
             Message::Tick => {
                 if self.is_refreshing {
-                    self.tick_counter = self.tick_counter.wrapping_add(1);
-                    if self.tick_counter % 60 == 0 {
+                    self.tick_counter = (self.tick_counter + 1) % 60;
+                    if self.tick_counter == 0 {
                         self.dot_count = (self.dot_count % 3) + 1;
                     }
                 }
@@ -225,14 +225,21 @@ impl LibraryPage {
     pub fn view(&self) -> Element<'_, Message> {
         let modal_active = self.add_game_modal.is_some();
 
+        let refresh_rotation = if self.is_refreshing && !self.browser.games.is_empty() {
+            -(self.tick_counter as f32 / 60.0) * std::f32::consts::TAU
+        } else {
+            0.0
+        };
+
         let refresh_btn = if modal_active {
-            other_primary_button("Scan for games", None, false, REFRESH.clone())
+            other_primary_button("Scan for games", None, false, REFRESH.clone(), 0.0)
         } else {
             mouse_area(other_primary_button(
                 "Scan for games",
                 Some(Message::RefreshLibrary),
                 self.is_scanner_hovered,
                 REFRESH.clone(),
+                refresh_rotation,
             ))
             .on_enter(Message::ScannerHovered(true))
             .on_exit(Message::ScannerHovered(false))
@@ -240,37 +247,39 @@ impl LibraryPage {
         };
 
         let add_btn = if modal_active {
-            other_primary_button("Add game manually", None, false, ADD_FOLDER.clone())
+            other_primary_button("Add game manually", None, false, ADD_FOLDER.clone(), 0.0)
         } else {
             mouse_area(other_primary_button(
                 "Add game manually",
                 Some(Message::OpenAddModal),
                 self.is_add_hovered,
                 ADD_FOLDER.clone(),
+                0.0,
             ))
             .on_enter(Message::AddGameHovered(true))
             .on_exit(Message::AddGameHovered(false))
             .into()
         };
 
-        let games_content: Element<'_, Message> = if self.is_refreshing {
-            let dots = ".".repeat(self.dot_count as usize);
-            container(
-                column![text(format!("Looking for games{dots}"))
-                    .size(32)
-                    .font(crate::gui::styles::fonts::REGULAR)]
-                .spacing(20)
-                .align_x(alignment::Horizontal::Center),
-            )
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(100)
-            .align_x(alignment::Horizontal::Center)
-            .align_y(alignment::Vertical::Center)
-            .into()
-        } else {
-            self.browser.view(!modal_active).map(Message::GameCard)
-        };
+        let games_content: Element<'_, Message> =
+            if self.is_refreshing && self.browser.games.is_empty() {
+                let dots = ".".repeat(self.dot_count as usize);
+                container(
+                    column![text(format!("Looking for games{dots}"))
+                        .size(32)
+                        .font(crate::gui::styles::fonts::REGULAR)]
+                    .spacing(20)
+                    .align_x(alignment::Horizontal::Center),
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(100)
+                .align_x(alignment::Horizontal::Center)
+                .align_y(alignment::Vertical::Center)
+                .into()
+            } else {
+                self.browser.view(!modal_active).map(Message::GameCard)
+            };
 
         let base_content = container(
             column![

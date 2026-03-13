@@ -26,6 +26,7 @@ pub fn other_primary_button<'a, Message>(
     on_press: Option<Message>,
     is_hovered: bool,
     icon: svg::Handle,
+    rotation: f32, // Radians
 ) -> Element<'a, Message, Theme>
 where
     Message: Clone + 'a,
@@ -35,6 +36,7 @@ where
             svg(icon)
                 .width(20)
                 .height(20)
+                .rotation(iced::Rotation::Floating(iced::Radians(rotation)))
                 .style(move |_theme: &Theme, _status| {
                     iced::widget::svg::Style {
                         color: Some(if is_hovered {
