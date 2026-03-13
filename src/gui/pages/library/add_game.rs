@@ -1,4 +1,6 @@
-use crate::gui::components::common::{input_field, primary_button, secondary_button};
+use crate::gui::components::common::{
+    input_field, open_file_dialog, primary_button, secondary_button,
+};
 use crate::gui::components::gamecard::game_browser::GameBrowser;
 use crate::gui::components::gamecard::{self, GameCardMessage};
 use crate::gui::components::modal::Modal;
@@ -15,6 +17,7 @@ use tracing::error;
 pub enum Message {
     NameChanged(String),
     ExecPathChanged(String),
+    ExecPathDialog,
     ThumbPathChanged(String),
     SearchQueryChanged(String),
     PerformSearch,
@@ -64,6 +67,16 @@ impl AddGameModal {
                 self.exec_path = path;
                 iced::Task::none()
             }
+            Message::ExecPathDialog => iced::Task::future(open_file_dialog(
+                "Executables",
+                &["exe", "app", "sh", "bin", "run", "x86_64"],
+            ))
+            .then(|handle| match handle {
+                Some(file_handle) => iced::Task::done(Message::ExecPathChanged(
+                    file_handle.path().to_string_lossy().to_string(),
+                )),
+                None => iced::Task::none(),
+            }),
             Message::ThumbPathChanged(path) => {
                 self.thumb_path = path;
                 iced::Task::none()
@@ -174,11 +187,15 @@ impl AddGameModal {
                 text("Game Name").size(16),
                 input_field("Enter game name", &self.name, Message::NameChanged),
                 text("Executable Path").size(16),
-                input_field(
-                    "Path to game executable",
-                    &self.exec_path,
-                    Message::ExecPathChanged
-                ),
+                row![
+                    input_field(
+                        "Path to game executable",
+                        &self.exec_path,
+                        Message::ExecPathChanged
+                    ),
+                    secondary_button("Browse", Some(Message::ExecPathDialog))
+                ]
+                .spacing(10),
                 text("Thumbnail Path / URL").size(16),
                 input_field(
                     "Path or URL to game thumbnail",

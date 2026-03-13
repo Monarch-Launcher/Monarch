@@ -159,11 +159,6 @@ impl SettingsPage {
             .align_y(alignment::Vertical::Center),
             Space::new().height(10),
 
-            text(format!("Current: {}", settings.monarch.game_folder))
-                .size(12)
-                .color([0.5, 0.5, 0.5]),
-            Space::new().height(40),
-
             self.section_header("Storage & Cache"),
             row![
                 text(format!("Cached images: {}", self.format_cache())).size(14),
