@@ -212,6 +212,7 @@ impl GameDetailsPage {
 
         let launch_btn = launch_button("Launch", Some(Message::LaunchGame));
         let edit_btn = secondary_button("Edit", Some(Message::OpenProperties));
+        let actions_button = secondary_button("More Actions", Some(Message::OpenActions));
 
         // Properties section
         let properties_title = text("Properties")
@@ -290,6 +291,7 @@ impl GameDetailsPage {
             row![launch_btn]
                 .spacing(10)
                 .align_y(alignment::Vertical::Center),
+            actions_button,
             row![info_panel, properties_panel].spacing(40),
         ]
         .spacing(40);

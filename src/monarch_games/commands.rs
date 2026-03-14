@@ -31,7 +31,6 @@ use super::linux::steam;
 #[cfg(target_os = "linux")]
 use super::linux::umu;
 
-
 /*
 ---------- General game related functions ----------
 */
@@ -450,10 +449,10 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
     monarch_client::get_game_properties(game).await
 }
 
-pub async fn manual_remove_game(game: MonarchGame) -> Result<(), String> {
+pub fn manual_remove_game(game: &MonarchGame) -> Result<(), String> {
     info!("User removing game binary: {:?}", game);
 
-    if let Err(e) = monarch_library::games_library::remove_game(&game) {
+    if let Err(e) = monarch_library::games_library::remove_game(game) {
         error!(
             "monarch_games::commands::manual_remove_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

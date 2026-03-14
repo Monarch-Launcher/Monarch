@@ -5,11 +5,11 @@ use iced::{
 };
 
 use super::{HomePage, Message};
-use crate::gui::components::gamecard::GameCardMessage;
 use crate::gui::{
     components::common::{launch_button, secondary_button},
     styles,
 };
+use crate::{gui::components::gamecard::GameCardMessage, monarch_games::games::GameType};
 
 impl HomePage {
     pub fn view(&self) -> Element<'_, Message> {
@@ -202,7 +202,7 @@ impl HomePage {
             let store_name = if game.stores.is_empty() {
                 "—".to_string()
             } else {
-                game.stores[0].name.to_uppercase()
+                game.get_store_name().to_uppercase()
             };
             let store_badge = container(text(store_name).size(12).font(styles::fonts::REGULAR))
                 .padding(iced::Padding::from([4, 10]))

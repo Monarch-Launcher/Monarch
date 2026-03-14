@@ -7,7 +7,7 @@ use crate::gui::components::modal::Modal;
 use crate::gui::styles;
 use crate::monarch_games;
 use crate::monarch_games::games::SearchResult;
-use crate::monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame};
+use crate::monarch_games::monarchgame::MonarchWebApiGame;
 use crate::monarch_games::stores::SearchFilter;
 use iced::widget::{button, column, container, row, text, Space};
 use iced::{alignment, Element, Length};
@@ -18,7 +18,10 @@ pub enum Message {
     NameChanged(String),
     ExecPathChanged(String),
     ExecPathDialog,
+    CoverDialog,
+    ArtworkDialog,
     ThumbPathChanged(String),
+    ArtworkPathChanged(String),
     SearchQueryChanged(String),
     PerformSearch,
     UpdateSearchResults(Vec<MonarchWebApiGame>),
@@ -34,6 +37,7 @@ pub struct AddGameModal {
     pub name: String,
     pub exec_path: String,
     pub thumb_path: String,
+    pub artwork_path: String,
     pub search_query: String,
     pub browser: GameBrowser,
     pub is_searching: bool,
@@ -47,6 +51,7 @@ impl Default for AddGameModal {
             name: String::new(),
             exec_path: String::new(),
             thumb_path: String::new(),
+            artwork_path: String::new(),
             search_query: String::new(),
             browser: GameBrowser::default(),
             is_searching: false,
@@ -77,8 +82,32 @@ impl AddGameModal {
                 )),
                 None => iced::Task::none(),
             }),
+            Message::CoverDialog => {
+                iced::Task::future(open_file_dialog("Images", &[".png", ".jpg", ".jpeg"])).then(
+                    |handle| match handle {
+                        Some(file_handle) => iced::Task::done(Message::ThumbPathChanged(
+                            file_handle.path().to_string_lossy().to_string(),
+                        )),
+                        None => iced::Task::none(),
+                    },
+                )
+            }
+            Message::ArtworkDialog => {
+                iced::Task::future(open_file_dialog("Images", &[".png", ".jpg", ".jpeg"])).then(
+                    |handle| match handle {
+                        Some(file_handle) => iced::Task::done(Message::ArtworkPathChanged(
+                            file_handle.path().to_string_lossy().to_string(),
+                        )),
+                        None => iced::Task::none(),
+                    },
+                )
+            }
             Message::ThumbPathChanged(path) => {
                 self.thumb_path = path;
+                iced::Task::none()
+            }
+            Message::ArtworkPathChanged(path) => {
+                self.artwork_path = path;
                 iced::Task::none()
             }
             Message::SearchQueryChanged(query) => {
@@ -106,6 +135,7 @@ impl AddGameModal {
                     if let Some(card) = self.browser.games.games.iter().find(|g| g.game.id == *id) {
                         self.name = card.game.name.clone();
                         self.thumb_path = card.game.thumbnail_path.clone();
+                        self.artwork_path = card.game.artwork_path.clone();
                         // We don't have exec path from search results obviously
                     }
                 }
@@ -147,6 +177,7 @@ impl AddGameModal {
                     {
                         error!("Failed to download thumbnail for game {}: {}", game.id, e);
                     }
+
                     game
                 },
                 Message::GameImgLoaded,
@@ -172,7 +203,7 @@ impl AddGameModal {
             .iter_mut()
             .find(|c| c.game.id == game.id)
         {
-            card.game.thumbnail_path = game.thumbnail_path.clone();
+            card.game = game.into_monarchgame();
         }
         iced::Task::none()
     }
@@ -197,11 +228,25 @@ impl AddGameModal {
                 ]
                 .spacing(10),
                 text("Thumbnail Path / URL").size(16),
-                input_field(
-                    "Path or URL to game thumbnail",
-                    &self.thumb_path,
-                    Message::ThumbPathChanged
-                ),
+                row![
+                    input_field(
+                        "Path or URL to game thumbnail",
+                        &self.thumb_path,
+                        Message::ThumbPathChanged
+                    ),
+                    secondary_button("Browse", Some(Message::CoverDialog))
+                ]
+                .spacing(10),
+                text("Artwork Path / URL").size(16),
+                row![
+                    input_field(
+                        "Path or URL to game thumbnail",
+                        &self.artwork_path,
+                        Message::ArtworkPathChanged
+                    ),
+                    secondary_button("Browse", Some(Message::ArtworkDialog))
+                ]
+                .spacing(10),
             ]
             .spacing(10),
             Space::new().height(20),
