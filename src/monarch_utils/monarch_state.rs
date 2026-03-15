@@ -47,11 +47,8 @@ impl MonarchState {
 
     /// For setting known library games.
     /// Should probably only be run when refreshing library.
-    pub fn set_library_games(&mut self, games: &[MonarchGame]) -> Result<()> {
+    pub fn set_library_games(&mut self, games: &[MonarchGame]) {
         self.library_games = games.to_vec();
-        write_games(&self.library_games)
-            .with_context(|| "monarch_state::set_library_games() -> ")?;
-        return Ok(());
     }
 
     /// Update a game.

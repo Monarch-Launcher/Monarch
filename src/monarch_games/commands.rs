@@ -567,7 +567,7 @@ pub fn remove_steamcmd() -> Result<(), String> {
     Ok(())
 }
 
-pub fn remvoe_legendary() -> Result<(), String> {
+pub fn remove_legendary() -> Result<(), String> {
     if let Err(e) = legendary_client::remvoe_legendary() {
         error!(
             "monarch_games::commands::remove_steamcmd() -> {}",

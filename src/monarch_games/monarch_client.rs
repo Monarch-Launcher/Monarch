@@ -312,9 +312,7 @@ pub async fn uninstall_game(store: &str, store_id: &str) -> Result<()> {
 
                     match MONARCH_STATE.write() {
                         Ok(mut state) => {
-                            state
-                                .set_library_games(&monarch_games)
-                                .with_context(|| "monarch_client::uninstall_game() -> ")?;
+                            state.set_library_games(&monarch_games);
 
                             // Replace games with the updated list of library games
                             monarch_games = state.get_library_games();
@@ -386,12 +384,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
 
     match MONARCH_STATE.write() {
         Ok(mut state) => {
-            if let Err(e) = state.set_library_games(&games) {
-                error!(
-                    "monarch_client::refresh_library() -> {}",
-                    e.chain().map(|e| e.to_string()).collect::<String>()
-                )
-            }
+            state.set_library_games(&games);
             // Replace games with the updated list of library games
             games = state.get_library_games();
         }

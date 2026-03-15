@@ -167,7 +167,7 @@ impl SettingsPage {
     }
 
     pub fn remove_legendary(&self) {
-        if let Err(e) = monarch_games::commands::remvoe_legendary() {
+        if let Err(e) = monarch_games::commands::remove_legendary() {
             show_error(e);
         }
     }

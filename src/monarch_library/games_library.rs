@@ -116,12 +116,7 @@ pub fn add_game(game: &MonarchGame) -> Result<()> {
         Ok(mut state) => {
             games = state.get_library_games();
             games.push(game.clone());
-            if let Err(e) = state.set_library_games(&games) {
-                error!(
-                    "games_library::add_game() -> {}",
-                    e.chain().map(|e| e.to_string()).collect::<String>()
-                );
-            }
+            state.set_library_games(&games);
         }
         Err(e) => {
             error!(
@@ -147,12 +142,7 @@ pub fn remove_game(game: &MonarchGame) -> Result<()> {
                 }
             }
 
-            if let Err(e) = state.set_library_games(&games) {
-                error!(
-                    "games_library::remove_game() -> {}",
-                    e.chain().map(|e| e.to_string()).collect::<String>()
-                );
-            }
+            state.set_library_games(&games);
         }
         Err(e) => {
             error!(
