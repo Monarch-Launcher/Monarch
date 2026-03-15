@@ -14,7 +14,7 @@ impl StoreDetailsPage {
                     }
                     iced::Task::perform(
                         async move {
-                            let _ = crate::monarch_games::commands::download_game(opts).await;
+                            let _ = crate::monarch_games::commands::download_game(&mut opts).await;
                         },
                         |_| Message::BackPressed, // Redirect on download init or just stay
                     )

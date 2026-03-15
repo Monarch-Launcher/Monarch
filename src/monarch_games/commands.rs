@@ -1,6 +1,6 @@
 use super::monarch_client;
 use super::monarchgame::MonarchGame;
-use anyhow::Result;
+use anyhow::{Result, bail};
 use rand::rng;
 use rand::seq::SliceRandom;
 use std::path::PathBuf;
@@ -9,6 +9,7 @@ use tracing::{error, info, warn};
 use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
+use crate::gui::show_error;
 use crate::monarch_games::games::{GameType, SearchResult};
 use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::MonarchWebApiGame;
@@ -179,10 +180,30 @@ pub async fn launch_game(game: &MonarchGame) -> Result<(), String> {
 }
 
 /// Tells Monarch to download specified game
-pub async fn download_game(opts: DownloadOptions) -> Result<Vec<MonarchGame>, String> {
+pub async fn download_game(opts: &mut DownloadOptions) -> Result<Vec<MonarchGame>, String> {
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
     info!("Installing: {}", opts.game_name);
+
+    if opts.folder.is_empty() {
+        match MONARCH_STATE.read() {
+            Ok(state) => {
+                match state.get_settings_ptr().read() {
+                    Ok(settings) => {
+                        opts.folder = settings.monarch.game_folder.clone();
+                    }
+                    Err(e) => {
+                        error!("monarch_games::commands::download_game() Failed to lock on settings | Err: {e}");
+                        return Err(String::from("Failed to read settings"))
+                    }
+                }
+            }
+            Err(e) => {
+                error!("monarch_games::commands::download_game() Failed to lock on MONARCH_STATE | Err: {e}");
+                return Err(String::from("Failed to read app state!"))
+            }
+        }
+    }
 
     let game = MonarchGame::new(
         &opts.game_name,
@@ -568,7 +589,7 @@ pub fn remove_steamcmd() -> Result<(), String> {
 }
 
 pub fn remove_legendary() -> Result<(), String> {
-    if let Err(e) = legendary_client::remvoe_legendary() {
+    if let Err(e) = legendary_client::remove_legendary() {
         error!(
             "monarch_games::commands::remove_steamcmd() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

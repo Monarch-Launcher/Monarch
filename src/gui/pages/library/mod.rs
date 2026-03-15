@@ -313,7 +313,6 @@ impl Default for LibraryPage {
             }
             Err(e) => {
                 error!("Failed to get library: {}", e);
-                show_error("Failed to get library!");
             }
         }
 

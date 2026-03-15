@@ -154,6 +154,7 @@ impl SettingsPage {
         }
     }
 
+    #[cfg(target_os = "linux")]
     pub fn remove_umu(&self) {
         if let Err(e) = monarch_games::commands::remove_umu() {
             show_error(e);

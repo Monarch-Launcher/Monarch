@@ -116,7 +116,7 @@ impl StoreType for LegendaryClient {
 
     async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()> {
         let command: String = format!(
-            "{} install {} --game-folder {} --store {}",
+            "{} install {} --game-folder {} --store {}; sleep 5",
             self.cli_path, &game.name, opts.folder, opts.os
         );
 
@@ -176,7 +176,7 @@ pub fn install_legendary() -> Result<()> {
     legendary::install_legendary().with_context(|| "legendary_client::install_legendary() -> ")
 }
 
-pub fn remvoe_legendary() -> Result<()> {
+pub fn remove_legendary() -> Result<()> {
     if !legendary_is_installed() {
         warn!("linux::remove_legendary() Umu not found!");
         bail!("Umu not found!")

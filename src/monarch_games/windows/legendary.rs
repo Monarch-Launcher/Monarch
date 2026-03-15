@@ -18,7 +18,7 @@ struct Asset {
 }
 
 /// Returns path to directory where Monarch stores its copy of the legendary launcher binary.
-fn get_legendary_dir() -> PathBuf {
+pub(crate) fn get_legendary_dir() -> PathBuf {
     let path = get_monarch_home();
     path.join("legendary")
 }

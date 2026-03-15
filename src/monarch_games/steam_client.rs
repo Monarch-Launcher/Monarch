@@ -86,7 +86,7 @@ impl StoreType for SteamClient {
             .with_context(|| "steam_client::update_game() -> ")
     }
 
-    fn game_is_installed(&self, store_id: &str) -> bool {
+    fn game_is_installed(&self, _store_id: &str) -> bool {
         unimplemented!()
     }
 

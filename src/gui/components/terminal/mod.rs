@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use iced::window::Id;
 use std::{collections::HashMap, path::PathBuf};
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::gui::{show_error, AppMessage};
 
@@ -24,14 +24,26 @@ impl TermInstance {
         workdir: Option<String>,
         completion_tx: Option<futures::channel::oneshot::Sender<()>>,
     ) -> Result<Self> {
-        let shell = match std::env::var("SHELL") {
+        let mut shell: String = match std::env::var("SHELL") {
             Ok(sh) => sh,
             Err(e) => {
-                error!("TermInstance::new() Failed to get $SHELL var! | Err: {e}");
-                show_error("Failed to open terminal! Could not detect OS shell.");
-                bail!("Failed to create terminal!")
+                warn!("TermInstance::new() Failed to get $SHELL var! | Err: {e}");
+                "".to_string()
             }
         };
+
+        // Just try your best if $SHELL variable isn't set
+        if shell.is_empty() {
+            #[cfg(target_os = "windows")]
+            {
+                shell = "powershell.exe".to_string()
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                shell = "/bin/sh".to_string()
+            }
+        }
 
         let workdir_path: Option<PathBuf> = if let Some(wd) = &workdir {
             Some(PathBuf::from(wd))
