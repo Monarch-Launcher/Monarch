@@ -1,13 +1,17 @@
 use cargo_packager::{
-    config::{Binary, ConfigBuilder},
-    Config, PackageFormat,
+    Config, PackageFormat, config::{Binary, ConfigBuilder, NsisConfig, WixConfig}
 };
 use std::path::PathBuf;
 
+#[cfg(not(target_os = "windows"))]
 const MONARCH_BIN_PATH: &'static str = "target/release/monarch";
+
+#[cfg(target_os = "windows")]
+const MONARCH_BIN_PATH: &'static str = "target\\release\\monarch.exe";
 
 fn main() {
     // Prevents 'strip' errors on Arch Linux for AppImage packaging
+    #[cfg(target_os = "linux")]
     std::env::set_var("NO_STRIP", "true");
 
     println!("Packaging Monarch...");
@@ -33,8 +37,8 @@ fn main() {
 
 fn create_config() -> ConfigBuilder {
     // We hardcode the version here or read it from ../Cargo.toml if we want to be dynamic.
-    // For now, let's just use "0.1.2" to match the current app version.
-    let version = "0.1.2";
+    // For now, let's just use "0.2.0" to match the current app version.
+    let version = "0.2.0";
     let monarch_bin = Binary::new(MONARCH_BIN_PATH).main(true);
 
     cargo_packager::config::ConfigBuilder::new()
@@ -63,6 +67,8 @@ fn config_windows(mut config_builder: ConfigBuilder) -> ConfigBuilder {
     let windows_config = cargo_packager::config::WindowsConfig::new();
 
     config_builder = config_builder.windows(windows_config);
+    config_builder = config_builder.nsis(NsisConfig::new());
+    config_builder = config_builder.wix(WixConfig::new());
 
     config_builder
 }
