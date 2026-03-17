@@ -1,15 +1,12 @@
 use super::monarch_client;
 use super::monarchgame::MonarchGame;
-use anyhow::{Result, bail};
-use rand::rng;
-use rand::seq::SliceRandom;
+use anyhow::Result;
 use std::path::PathBuf;
 use tracing::{error, info, warn};
 
 use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
-use crate::gui::show_error;
 use crate::monarch_games::games::{GameType, SearchResult};
 use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::MonarchWebApiGame;
@@ -35,37 +32,6 @@ use super::linux::umu;
 /*
 ---------- General game related functions ----------
 */
-
-/// Returns MonarchGames from library.json
-pub fn get_library() -> Result<Vec<MonarchGame>, String> {
-    match games_library::get_games() {
-        Ok(games) => Ok(games),
-        Err(e) => {
-            error!(
-                "monarch_games::commands::get_library -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from("Something went wrong getting library!"))
-        }
-    }
-}
-
-pub fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
-    match get_library() {
-        Ok(mut games) => {
-            if games.len() > 4 {
-                games.shuffle(&mut rng());
-                Ok(games[0..4].to_vec())
-            } else {
-                return Ok(games);
-            }
-        }
-        Err(e) => {
-            error!("monarch_games::commands::get_home_recomendations() Failed to get recomendations! | Err: {e}");
-            Err(String::from("Something went wrong getting library!"))
-        }
-    }
-}
 
 /// Search for games on Monarch, currently only support Steam search
 pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebApiGame> {
@@ -187,20 +153,18 @@ pub async fn download_game(opts: &mut DownloadOptions) -> Result<Vec<MonarchGame
 
     if opts.folder.is_empty() {
         match MONARCH_STATE.read() {
-            Ok(state) => {
-                match state.get_settings_ptr().read() {
-                    Ok(settings) => {
-                        opts.folder = settings.monarch.game_folder.clone();
-                    }
-                    Err(e) => {
-                        error!("monarch_games::commands::download_game() Failed to lock on settings | Err: {e}");
-                        return Err(String::from("Failed to read settings"))
-                    }
+            Ok(state) => match state.get_settings_ptr().read() {
+                Ok(settings) => {
+                    opts.folder = settings.monarch.game_folder.clone();
                 }
-            }
+                Err(e) => {
+                    error!("monarch_games::commands::download_game() Failed to lock on settings | Err: {e}");
+                    return Err(String::from("Failed to read settings"));
+                }
+            },
             Err(e) => {
                 error!("monarch_games::commands::download_game() Failed to lock on MONARCH_STATE | Err: {e}");
-                return Err(String::from("Failed to read app state!"))
+                return Err(String::from("Failed to read app state!"));
             }
         }
     }

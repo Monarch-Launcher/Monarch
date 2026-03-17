@@ -1,7 +1,7 @@
 use super::{HomePage, Message};
 use crate::gui::components::gamecard::gamecard::GameCard;
 use crate::gui::components::gamecard::GameCardMessage;
-use crate::monarch_games;
+use crate::{monarch_games, monarch_library};
 
 impl HomePage {
     pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
@@ -105,7 +105,7 @@ impl HomePage {
     pub fn init(&self) -> iced::Task<Message> {
         iced::Task::perform(
             async {
-                match crate::monarch_games::commands::get_home_recomendations() {
+                match monarch_library::commands::get_home_recomendations().await {
                     Ok(games) => games,
                     Err(_) => Vec::new(),
                 }

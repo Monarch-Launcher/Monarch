@@ -8,8 +8,8 @@ use crate::gui::components::gamecard;
 use crate::gui::components::gamecard::game_browser::GameBrowser;
 use crate::gui::resources::{ADD_FOLDER, REFRESH};
 use crate::gui::show_error;
-use crate::monarch_games;
 use crate::monarch_games::monarchgame::MonarchGame;
+use crate::{monarch_games, monarch_library};
 
 mod add_game;
 use add_game::AddGameModal;
@@ -307,7 +307,7 @@ impl Default for LibraryPage {
     fn default() -> Self {
         let mut browser: GameBrowser = GameBrowser::default();
 
-        match monarch_games::commands::get_library() {
+        match monarch_library::commands::get_library() {
             Ok(games) => {
                 let _ = browser.update(gamecard::GameCardMessage::UpdateGames(games));
             }
