@@ -44,27 +44,39 @@ jobs:
         if: matrix.platform == 'ubuntu-24.04' # This must match the platform value defined above.
         run: |
           sudo apt-get update
-
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-0=2.44.0-2 \
-            libwebkit2gtk-4.1-dev=2.44.0-2 \
-            libjavascriptcoregtk-4.1-0=2.44.0-2 \
-            libjavascriptcoregtk-4.1-dev=2.44.0-2 \
-            gir1.2-javascriptcoregtk-4.1=2.44.0-2 \
-            gir1.2-webkit2-4.1=2.44.0-2;
-
           sudo apt-get install -y libappindicator3-dev librsvg2-dev patchelf
 
-      - name: install frontend dependencies
-        run: yarn install
-
       # If tagName and releaseId are omitted tauri-action will only build the app and won't try to upload any assets.
-      - uses: tauri-apps/tauri-action@v0
+      - name: build
         env:
           MONARCH_URL: https://monarch-launcher.com
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run:
+          cargo build --release ${{ matrix.args }}
+
+      - name: determine artifact name
+        id: artifact_name
+        run: |
+          if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
+            echo "name=monarch-${{ github.event.inputs.version }}-macos-${{ matrix.args == '--target aarch64-apple-darwin' && 'arm64' || 'x64' }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.platform }}" == "ubuntu-24.04" ]]; then
+            echo "name=monarch-${{ github.event.inputs.version }}-linux-x64" >> $GITHUB_OUTPUT
+          else
+            echo "name=monarch-${{ github.event.inputs.version }}-windows-x64" >> $GITHUB_OUTPUT
+          fi
+
+      - name: upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          tagName: monarch-v__VERSION__
-          releaseName: 'Monarch v__VERSION__'
-          releaseDraft: true
-          args: ${{ matrix.args }}
+          name: ${{ steps.artifact_name.outputs.name }}
+          path: target/${{ matrix.args && 'aarch64-apple-darwin/' || '' }}release/
+
+      - name: create release
+        if: matrix.platform == 'ubuntu-24.04'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: monarch-v__VERSION__
+          name: 'Monarch v__VERSION__'
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
