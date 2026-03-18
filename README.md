@@ -1,6 +1,6 @@
 # Monarch Launcher
 
-![alt text](src-tauri/icons/Square310x310Logo.png)
+![alt text](icons/Logo/Square310x310Logo.png)
 
 ## What is it?
 
@@ -11,7 +11,6 @@ As stated above, Monarch is still in development (not even an alpha); therefore,
 ## Current state
 
 I (an0nymoos3) feel the need to preface that Monarch is currently being developed. This means that if you are simply here to try Monarch out, you are going to be disappointed. While we will be working as fast as possible to get Monarch ready, we have other obligations, such as studying or working. Therefore, you are welcome to join the Discord server in the meantime to follow our progress. If you still want to give Monarch a spin, you can do so by following the instructions on how to compile it under **How do I get it?**.
-
 
 ## Features
 
@@ -37,7 +36,9 @@ These are some of the features we want to include in Monarch and their developme
 
 ### Blazingly fast!
 
-There's a meme that anything written in [Rust](<https://en.wikipedia.org/wiki/Rust_(programming_language)>) is "blazing fast." However, in Monarch's case, there's a grain of truth to it. Thanks to the use of [Tauri](https://tauri.app/) and [Rust](<https://en.wikipedia.org/wiki/Rust_(programming_language)>) Monarch uses less RAM and CPU than its competitors. It also doesn't slow you down by forcing you to wait while Monarch looks for updates before actually starting.
+There's a meme that anything written in [Rust](<https://en.wikipedia.org/wiki/Rust_(programming_language)>) is "blazing fast." However, in Monarch's case, there's a grain of truth to it.
+[Rust](<https://en.wikipedia.org/wiki/Rust_(programming_language)>) is a very fast and efficient language, enabling Monarch to both have a small memory footprint and run very fast.
+On top of that we don't build in bloated telemetry or unnecessary API calls to some remote server.
 
 ### Open-source
 
@@ -59,16 +60,9 @@ There are two ways of getting Monarch:
 
 2. Compile it yourself. It's as easy as 1,2,3:
    1. Download the source code via the green **code** button.
-   2. Make sure you have both [Rust/Cargo](https://www.rust-lang.org/) and [Yarn](https://yarnpkg.com/) installed.
-   3. Open a terminal in the project folder and first run `yarn`. Once that's completed run `yarn build`.
-
-Then you run the installer that you either downloaded or built youself. If you built it yourself you'll find it in the project folder under `src-tauri/target/release/bundle/`.
-
-## Who are we?
-
-We started out as two university students doing this in our free time. Due to time constraints and growing complexity, we are currently expanding the team working on Monarch. If you would like to be part of this journey, feel free to reach out to an0nymoos3 on Discord.
-
-Feel free to join our [Discord server](https://discord.gg/YjvJPPdbCw).
+   2. Make sure you have both [Rust/Cargo](https://www.rust-lang.org/) installed.
+   3. Open a terminal in the project folder and run `cargo build --release`.
+      Then you run the installer that you either downloaded or built youself. If you built it yourself you'll find it in the project folder under `target/release/`.
 
 ## How can I contribute?
 
