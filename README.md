@@ -4,17 +4,17 @@
 
 ## What is it?
 
-Monarch Launcher was created in response to the number of launchers needed to play PC games in 2023. Monarch is still in development, but it has the goal of simplifying the gaming experience by removing the need to use so many launchers. With Monarch, you no longer need to remember what platform you have for each game; instead, Monarch keeps track of all of them in one place.
+Monarch Launcher was created in response to the number of launchers needed to play PC games. Monarch is still in development, but it has the goal of simplifying the gaming experience by removing the need to use so many launchers. With Monarch, you no longer need to remember what platform and launcher you have for each game; instead, Monarch keeps track of all of them in one place.
 
 As stated above, Monarch is still in development (not even an alpha); therefore, the features mentioned below are subject to change. But the core goal of Monarch will still be to become the only launcher you need. We are planning on not only managing games already installed on your system but also helping you download new ones through Monarch.
 
 ## Current state
 
-I (an0nymoos3) feel the need to preface that Monarch is currently being developed. This means that if you are simply here to try Monarch out, you are going to be disappointed. While we will be working as fast as possible to get Monarch ready, we have other obligations, such as studying or working. Therefore, you are welcome to join the Discord server in the meantime to follow our progress. If you still want to give Monarch a spin, you can do so by following the instructions on how to compile it under **How do I get it?**.
+I (an0nymoos3) feel the need to preface that Monarch is currently being developed. This means that if you are simply here to try Monarch out, you are going to be disappointed. While we will be working as fast as possible to get Monarch ready, we have other obligations, such as studying or working. Therefore, you are welcome to join the Discord server in the meantime to follow our progress. If you still want to give Monarch a spin, you can do so by following the instructions on how to compile it under ["How do I get it?"](#how-do-i-get-it).
 
 ## Features
 
-These are some of the features we want to include in Monarch and their development status. Not all are going to be developed in the order below, and not all will be in the first official release of Monarch, but the core features planned for the first release are **game management**, **quicklaunch**, **game collections**, and some **quality of life** features.
+These are some of the features we want to include in Monarch and their development status. Not all are going to be developed in the order below, and not all will be in the first official release of Monarch, but the core features planned for the first release are **game aggregation**, **intall/uninstall**, **game stats**, **quicklaunch** and some **quality of life** features.
 
 | Feature                  | Status        |
 | ------------------------ | ------------- |
@@ -22,10 +22,10 @@ These are some of the features we want to include in Monarch and their developme
 | View store pages         | 🟢 Done       |
 | Launch games             | 🟡 Steam only |
 | Manage Steam games       | 🟡 Limited    |
-| Manage Epic games        | 🟡 Developing |
+| Manage Epic games        | 🟡 Limited    |
 | Game collections/folders | 🟢 Done       |
-| Quicklaunch              | 🟢 Prototype  |
-| Find/buy new games       | 🟡 Developing |
+| Quicklaunch              | 🟡 Reworking  |
+| Find/buy new games       | 🟡 Limited    |
 | Launch arguments         | 🟡 Limited    |
 | Download scripting       | 🔴 Planned    |
 | User stats               | 🔴 Planned    |
@@ -50,7 +50,7 @@ One of our goals with Monarch is to make the gaming experience as easy as possib
 
 ### Cross-platform
 
-Tauri allows us to build Monarch cross-platform, meaning that you can download Monarch on Windows, MacOS, and Linux. Given that the majority of gamers use Windows, they will likely have the latest and greatest features first, as it makes the most sense to build for Windows first. However, we still aim to fully support MacOS and Linux.
+[Iced](https://iced.rs/) allows us to build Monarch cross-platform, meaning that you can download Monarch on Windows, MacOS, and Linux. Given that the majority of gamers use Windows, we will be focusing on Windows together with Linux, which is my (an0nymoos3's) primary gaming platform. Monarch does technically compile for MacOS, but will not get active development for the time being.
 
 ## How do I get it?
 
@@ -61,8 +61,8 @@ There are two ways of getting Monarch:
 2. Compile it yourself. It's as easy as 1,2,3:
    1. Download the source code via the green **code** button.
    2. Make sure you have both [Rust/Cargo](https://www.rust-lang.org/) installed.
-   3. Open a terminal in the project folder and run `cargo build --release`.
-      Then you run the installer that you either downloaded or built youself. If you built it yourself you'll find it in the project folder under `target/release/`.
+   3. Open a terminal in the project folder and run `cargo build --release && cargo run -p monarch-packager`.
+      Then you run the installer that you either downloaded or built youself. If you built it yourself.
 
 ## How can I contribute?
 
