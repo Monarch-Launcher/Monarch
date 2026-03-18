@@ -41,37 +41,60 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libappindicator3-dev librsvg2-dev patchelf
 
-      # If tagName and releaseId are omitted tauri-action will only build the app and won't try to upload any assets.
       - name: build
         env:
           MONARCH_URL: https://api.monarch-launcher.com
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo build --release ${{ matrix.args }}
 
-      - name: determine artifact name
-        id: artifact_name
+      - name: prepare artifact
+        id: prepare
         shell: bash
         run: |
+          VERSION="${{ github.event.inputs.version }}"
           if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
-            echo "name=monarch-${{ github.event.inputs.version }}-macos-${{ matrix.args == '--target aarch64-apple-darwin' && 'arm64' || 'x64' }}" >> $GITHUB_OUTPUT
+            ARCH="${{ matrix.args == '--target aarch64-apple-darwin' && 'arm64' || 'x64' }}"
+            NAME="monarch-${VERSION}-macos-${ARCH}"
+            BINARY="target/${{ matrix.args == '--target aarch64-apple-darwin' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}/release/monarch"
           elif [[ "${{ matrix.platform }}" == "ubuntu-24.04" ]]; then
-            echo "name=monarch-${{ github.event.inputs.version }}-linux-x64" >> $GITHUB_OUTPUT
+            NAME="monarch-${VERSION}-linux-x64"
+            BINARY="target/release/monarch"
           else
-            echo "name=monarch-${{ github.event.inputs.version }}-windows-x64" >> $GITHUB_OUTPUT
+            NAME="monarch-${VERSION}-windows-x64"
+            BINARY="target/release/monarch.exe"
           fi
+          
+          if [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
+            cp "$BINARY" "$NAME.exe"
+            echo "path=$NAME.exe" >> $GITHUB_OUTPUT
+          else
+            cp "$BINARY" "$NAME"
+            echo "path=$NAME" >> $GITHUB_OUTPUT
+          fi
+          echo "name=$NAME" >> $GITHUB_OUTPUT
 
       - name: upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.artifact_name.outputs.name }}
-          path: target/${{ matrix.args && 'aarch64-apple-darwin/' || '' }}release/
+          name: ${{ steps.prepare.outputs.name }}
+          path: ${{ steps.prepare.outputs.path }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
 
       - name: create release
-        if: matrix.platform == 'ubuntu-24.04'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: monarch-v__VERSION__
-          name: "Monarch v__VERSION__"
+          tag_name: monarch-${{ github.event.inputs.version }}
+          name: "Monarch ${{ github.event.inputs.version }}"
           draft: true
+          files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
