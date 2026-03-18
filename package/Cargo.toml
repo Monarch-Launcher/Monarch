@@ -1,0 +1,9 @@
+[package]
+name = "monarch-packager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cargo-packager = { version = "0.11.8", default-features = false, features = [
+    "rustls-tls",
+] }
