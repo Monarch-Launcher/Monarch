@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., v1.2.3)'
+        description: "Release version (e.g., v1.2.3)"
         required: true
 
 permissions:
@@ -16,14 +16,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # for Arm based macs (M1 and above).
-            args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest' # for Intel based macs.
-            args: '--target x86_64-apple-darwin'
-          - platform: 'ubuntu-24.04'
-            args: ''
-          - platform: 'windows-latest'
-            args: ''
+          - platform: "macos-latest" # for Arm based macs (M1 and above).
+            args: "--target aarch64-apple-darwin"
+          - platform: "macos-latest" # for Intel based macs.
+            args: "--target x86_64-apple-darwin"
+          - platform: "ubuntu-24.04"
+            args: ""
+          - platform: "windows-latest"
+            args: ""
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -44,13 +44,13 @@ jobs:
       # If tagName and releaseId are omitted tauri-action will only build the app and won't try to upload any assets.
       - name: build
         env:
-          MONARCH_URL: https://monarch-launcher.com
+          MONARCH_URL: https://api.monarch-launcher.com
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run:
-          cargo build --release ${{ matrix.args }}
+        run: cargo build --release ${{ matrix.args }}
 
       - name: determine artifact name
         id: artifact_name
+        shell: bash
         run: |
           if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
             echo "name=monarch-${{ github.event.inputs.version }}-macos-${{ matrix.args == '--target aarch64-apple-darwin' && 'arm64' || 'x64' }}" >> $GITHUB_OUTPUT
@@ -71,7 +71,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: monarch-v__VERSION__
-          name: 'Monarch v__VERSION__'
+          name: "Monarch v__VERSION__"
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
