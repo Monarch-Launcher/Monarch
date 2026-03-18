@@ -1,5 +1,6 @@
 use cargo_packager::{
-    Config, PackageFormat, config::{Binary, ConfigBuilder, NsisConfig, WixConfig}
+    config::{Binary, ConfigBuilder, NsisConfig, WixConfig},
+    Config, PackageFormat,
 };
 use std::path::PathBuf;
 
@@ -38,8 +39,10 @@ fn main() {
 fn create_config() -> ConfigBuilder {
     // We hardcode the version here or read it from ../Cargo.toml if we want to be dynamic.
     // For now, let's just use "0.2.0" to match the current app version.
-    let version = "0.2.0";
-    let monarch_bin = Binary::new(MONARCH_BIN_PATH).main(true);
+    let version = std::env::var("MONARCH_VERSION").unwrap_or_else(|_| "0.2.0".to_string());
+    let bin_path =
+        std::env::var("MONARCH_BIN_PATH").unwrap_or_else(|_| MONARCH_BIN_PATH.to_string());
+    let monarch_bin = Binary::new(bin_path).main(true);
 
     cargo_packager::config::ConfigBuilder::new()
         .product_name("Monarch")

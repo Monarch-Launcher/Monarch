@@ -63,7 +63,7 @@ jobs:
             NAME="monarch-${VERSION}-windows-x64"
             BINARY="target/release/monarch.exe"
           fi
-          
+
           if [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
             cp "$BINARY" "$NAME.exe"
             echo "path=$NAME.exe" >> $GITHUB_OUTPUT
@@ -71,13 +71,28 @@ jobs:
             cp "$BINARY" "$NAME"
             echo "path=$NAME" >> $GITHUB_OUTPUT
           fi
+          echo "binary_path=$BINARY" >> $GITHUB_OUTPUT
           echo "name=$NAME" >> $GITHUB_OUTPUT
+
+      - name: run packager
+        env:
+          MONARCH_VERSION: ${{ github.event.inputs.version }}
+          MONARCH_BIN_PATH: ${{ steps.prepare.outputs.binary_path }}
+        run: cargo run -p monarch-packager
 
       - name: upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.prepare.outputs.name }}
-          path: ${{ steps.prepare.outputs.path }}
+          path: |
+            ${{ steps.prepare.outputs.path }}
+            *.deb
+            *.AppImage
+            *.dmg
+            *.msi
+            *setup.exe
+            PKGBUILD*
+            *.pkg.tar.zst
 
   release:
     needs: build
