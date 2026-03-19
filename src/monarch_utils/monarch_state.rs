@@ -1,4 +1,5 @@
 use crate::monarch_games::monarch_client::get_library;
+use crate::monarch_utils::commands::write_settings;
 use crate::monarch_utils::monarch_settings;
 use crate::{
     monarch_games::monarchgame::MonarchGame, monarch_library::games_library::write_games,
@@ -7,6 +8,7 @@ use crate::{
 use anyhow::{bail, Context, Result};
 use std::sync::RwLock;
 use std::sync::{Arc, LazyLock};
+use tracing::error;
 
 /// Global app state of app logic.
 /// Initialises a blank MonarchState to avoid RwLock deadlock on init.
@@ -38,6 +40,21 @@ impl MonarchState {
                 .try_into()
                 .expect("monarch_state::init() -> Failed to convert into Settings"),
         ));
+
+        match self.settings.write() {
+            Ok(mut settings) => {
+                if settings.fix_settings() {
+                    if let Err(e) = write_settings(&settings) {
+                        error!("monarch_state::init() -> {e}")
+                    }
+                }
+            }
+            Err(e) => {
+                error!(
+                    "monarch_state::init() Failed to lock on setting when verifying! | Err: {e}"
+                );
+            }
+        }
     }
 
     /// Returns what the backend thinks is the users library.

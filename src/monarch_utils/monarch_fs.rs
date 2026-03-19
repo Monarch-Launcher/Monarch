@@ -210,6 +210,44 @@ pub fn get_executables(path: &Path) -> Result<Vec<PathBuf>> {
     Ok(executables)
 }
 
+pub fn find_linux_binary(binary_name: &str) -> Option<PathBuf> {
+    let path: String = match std::env::var("PATH") {
+        Ok(p) => p,
+        Err(e) => {
+            error!("monarch_fs::linux_binary_installed() Failed to read $PATH! | Err: {e}");
+            return None;
+        }
+    };
+
+    let paths: Vec<&str> = path.split(":").collect();
+
+    for p in paths {
+        match std::fs::read_dir(p) {
+            Ok(rd) => {
+                for entry in rd {
+                    match entry {
+                        Ok(de) => {
+                            if de.file_name() == binary_name {
+                                return Some(de.path());
+                            }
+                        }
+                        Err(e) => {
+                            error!("monarch_fs::linux_binary_installed() Failed to entry in: {p} | Err: {e}");
+                            return None;
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                error!("monarch_fs::linux_binary_installed() Failed to read: {p} | Err: {e}");
+                return None;
+            }
+        }
+    }
+
+    return None;
+}
+
 /*
 ---------- Functions related to storing in resources dir ----------
 */

@@ -91,6 +91,11 @@ pub async fn install_steamcmd() -> Result<()> {
     Ok(())
 }
 
+/// Returns path to the SteamCMD binary used in SteamCMD commands
+pub fn get_steamcmd_exe() -> PathBuf {
+    get_steamcmd_dir().join("steamcmd").join("steamcmd.exe")
+}
+
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
 pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
@@ -100,15 +105,15 @@ pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
     /*
-    run_in_terminal(
-        handle,
-        &format!("{} {}", path.display(), args_string),
-        None,
-        None,
-    )
-    .await
-    .with_context(|| "windows::steam::steamcmd_command() -> ")?;
- */
+       run_in_terminal(
+           handle,
+           &format!("{} {}", path.display(), args_string),
+           None,
+           None,
+       )
+       .await
+       .with_context(|| "windows::steam::steamcmd_command() -> ")?;
+    */
 
     Ok(())
 }

@@ -9,7 +9,11 @@ use tracing::{error, info};
 
 use super::monarch_fs::{create_dir, generate_monarch_home, get_settings_path, path_exists};
 use crate::monarch_games::monarch_client::generate_default_folder;
+use crate::monarch_games::{legendary_client, steam_client};
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
+
+#[cfg(target_os = "linux")]
+use crate::monarch_games::linux::umu;
 
 /*
 * ----- Settings related structs ------
@@ -30,6 +34,15 @@ pub struct MonarchSettings {
     pub run_on_startup: bool,
     pub send_logs: bool,
     pub start_minimized: bool,
+
+    #[serde(default)]
+    pub umu_bin: String,
+
+    #[serde(default)]
+    pub steamcmd_bin: String,
+
+    #[serde(default)]
+    pub legendary_bin: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +73,9 @@ impl Settings {
                 run_on_startup: false,
                 send_logs: false,
                 start_minimized: false,
+                umu_bin: String::new(),
+                steamcmd_bin: String::new(),
+                legendary_bin: String::new(),
             },
             quicklaunch: QuicklaunchSettings {
                 close_shortcut: String::new(),
@@ -81,6 +97,41 @@ impl Settings {
             },
         }
     }
+
+    /// Verifies some settings and returns whether or not settings were changed
+    pub fn fix_settings(&mut self) -> bool {
+        let mut settings_changed: bool = false;
+
+        if self.settings_path.is_empty() {
+            self.settings_path = get_settings_path().unwrap().to_string_lossy().to_string();
+            settings_changed = true;
+        }
+        if self.monarch.game_folder.is_empty() {
+            self.monarch.game_folder = generate_default_folder()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+            settings_changed = true;
+        }
+        if cfg!(target_os = "linux") && self.monarch.umu_bin.is_empty() {
+            self.monarch.umu_bin = umu::get_umu_exe().to_string_lossy().to_string();
+            settings_changed = true;
+        }
+        if self.monarch.steamcmd_bin.is_empty() {
+            self.monarch.steamcmd_bin = steam_client::get_steamcmd_exe()
+                .to_string_lossy()
+                .to_string();
+            settings_changed = true;
+        }
+        if self.monarch.legendary_bin.is_empty() {
+            self.monarch.legendary_bin = legendary_client::get_legendary_exe()
+                .to_string_lossy()
+                .to_string();
+            settings_changed = true;
+        }
+
+        settings_changed
+    }
 }
 
 // TODO: Redo this implementation to make sure it doesn't panic
@@ -99,12 +150,28 @@ impl Default for Settings {
         let default_game_folder_str = default_game_folder.to_str().unwrap().to_string();
         let settings_path = get_settings_path().unwrap().to_str().unwrap().to_string();
 
+        let umu_bin: String = if cfg!(target_os = "linux") {
+            umu::get_umu_exe().to_string_lossy().to_string()
+        } else {
+            String::new()
+        };
+
+        let steamcmd_bin: String = steam_client::get_steamcmd_exe()
+            .to_string_lossy()
+            .to_string();
+        let legendary_bin: String = legendary_client::get_legendary_exe()
+            .to_string_lossy()
+            .to_string();
+
         let monarch: MonarchSettings = MonarchSettings {
             monarch_home: home_path_str,
             game_folder: default_game_folder_str,
             run_on_startup: false,
             send_logs: false,
             start_minimized: false,
+            umu_bin,
+            steamcmd_bin,
+            legendary_bin,
         };
 
         let quicklaunch: QuicklaunchSettings = QuicklaunchSettings {

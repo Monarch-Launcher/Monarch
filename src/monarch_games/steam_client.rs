@@ -19,6 +19,7 @@ use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library;
 use crate::monarch_utils::monarch_credentials::get_password;
+use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
 };
@@ -116,8 +117,10 @@ impl StoreType for SteamClient {
 
 /// Returns if SteamCMD is installed on system or not.
 pub fn steamcmd_is_installed() -> bool {
-    let path: PathBuf = get_steamcmd_dir();
-    path.exists()
+    if monarch_fs::find_linux_binary("steamcmd").is_some() {
+        return true;
+    }
+    get_steamcmd_dir().exists()
 }
 
 /// Downloads and installs SteamCMD on users computer.
@@ -415,6 +418,10 @@ pub async fn update_game(id: &str) -> Result<()> {
 pub fn get_steamcmd_dir() -> PathBuf {
     let path: PathBuf = get_monarch_home();
     path.join("SteamCMD")
+}
+
+pub fn get_steamcmd_exe() -> PathBuf {
+    steam::get_steamcmd_exe()
 }
 
 /// Converts SteamApp ids into MonarchGames.

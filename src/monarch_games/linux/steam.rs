@@ -1,6 +1,6 @@
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
-use crate::monarch_utils::monarch_fs::get_monarch_home;
+use crate::monarch_utils::monarch_fs::{self, get_monarch_home};
 use crate::monarch_utils::monarch_terminal::spawn_terminal;
 use crate::monarch_utils::{
     monarch_fs::{create_dir, get_unix_home, path_exists},
@@ -75,6 +75,14 @@ pub async fn install_steamcmd() -> Result<()> {
     })?;
 
     Ok(())
+}
+
+/// Returns path to the SteamCMD binary used in SteamCMD commands
+pub fn get_steamcmd_exe() -> PathBuf {
+    if let Some(p) = monarch_fs::find_linux_binary("steamcmd") {
+        return p;
+    }
+    get_steamcmd_dir().join("steamcmd.sh")
 }
 
 /// Runs specified command via SteamCMD
