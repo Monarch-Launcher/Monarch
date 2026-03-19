@@ -8,7 +8,7 @@ use tracing::{error, info, warn};
 use crate::{
     monarch_games::{games::GameType, monarchgame::MonarchGame},
     monarch_utils::{
-        monarch_fs::{self, get_monarch_home},
+        monarch_fs::{self, get_monarch_bins_path, get_monarch_home},
         monarch_terminal,
     },
 };
@@ -27,8 +27,9 @@ struct Asset {
 
 /// Returns path to directory where Monarch stores its copy of the umu-launcher binary.
 fn get_umu_dir() -> PathBuf {
-    let path = get_monarch_home();
-    path.join("umu")
+    get_monarch_bins_path()
+        .expect("Don't expect to crash")
+        .join("umu")
 }
 
 /// Returns path to umu-launcher binary.

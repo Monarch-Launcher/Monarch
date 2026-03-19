@@ -99,38 +99,29 @@ impl Settings {
     }
 
     /// Verifies some settings and returns whether or not settings were changed
-    pub fn fix_settings(&mut self) -> bool {
-        let mut settings_changed: bool = false;
-
+    pub fn fix_settings(&mut self) {
         if self.settings_path.is_empty() {
             self.settings_path = get_settings_path().unwrap().to_string_lossy().to_string();
-            settings_changed = true;
         }
         if self.monarch.game_folder.is_empty() {
             self.monarch.game_folder = generate_default_folder()
                 .unwrap()
                 .to_string_lossy()
                 .to_string();
-            settings_changed = true;
         }
-        if cfg!(target_os = "linux") && self.monarch.umu_bin.is_empty() {
+        if cfg!(target_os = "linux") {
             self.monarch.umu_bin = umu::get_umu_exe().to_string_lossy().to_string();
-            settings_changed = true;
         }
-        if self.monarch.steamcmd_bin.is_empty() {
-            self.monarch.steamcmd_bin = steam_client::get_steamcmd_exe()
-                .to_string_lossy()
-                .to_string();
-            settings_changed = true;
-        }
-        if self.monarch.legendary_bin.is_empty() {
-            self.monarch.legendary_bin = legendary_client::get_legendary_exe()
-                .to_string_lossy()
-                .to_string();
-            settings_changed = true;
-        }
+        self.monarch.steamcmd_bin = steam_client::get_steamcmd_exe()
+            .to_string_lossy()
+            .to_string();
+        self.monarch.legendary_bin = legendary_client::get_legendary_exe()
+            .to_string_lossy()
+            .to_string();
 
-        settings_changed
+        if let Err(e) = write_settings(&self) {
+            error!("monarch_settings::fix_settings() Failed to write settings! | Err: {e}")
+        }
     }
 }
 

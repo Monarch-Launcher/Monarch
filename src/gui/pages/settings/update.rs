@@ -50,7 +50,10 @@ impl SettingsPage {
         if let Err(e) = monarch_utils::commands::delete_password("steam", &mut settings.steam) {
             error!("Failed to delete Steam credentials: {}", e);
             show_error("Failed to delete Steam credentials!");
-            return;
+        }
+        if let Err(e) = monarch_utils::commands::delete_secret("steam", &mut settings.steam) {
+            error!("Failed to delete Steam secret: {}", e);
+            show_error("Failed to delete Steam secret!");
         }
         self.write_settings(settings);
     }
@@ -62,6 +65,13 @@ impl SettingsPage {
             &self.steam_secret_tmp,
         );
         self.write_settings(settings);
+    }
+
+    pub fn delete_steam_secret(&mut self, settings: &mut Settings) {
+        if let Err(e) = monarch_utils::commands::delete_secret("steam", &mut settings.steam) {
+            error!("Failed to delete Steam secret: {}", e);
+            show_error("Failed to delete Steam secret!");
+        }
     }
 
     pub fn toggle_epic(&mut self, settings: &mut Settings, state: bool) {

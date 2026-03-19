@@ -2,9 +2,9 @@ use anyhow::{bail, Context, Result};
 use reqwest;
 use serde::Deserialize;
 use std::{os::unix::fs::PermissionsExt, path::PathBuf};
-use tracing::{info, warn};
+use tracing::info;
 
-use crate::monarch_utils::monarch_fs::{self, get_monarch_home};
+use crate::monarch_utils::monarch_fs::{self, get_monarch_bins_path};
 
 #[derive(Debug, Deserialize)]
 struct Release {
@@ -19,8 +19,7 @@ struct Asset {
 
 /// Returns path to directory where Monarch stores its copy of the umu-launcher binary.
 pub fn get_legendary_dir() -> PathBuf {
-    let path = get_monarch_home();
-    path.join("legendary")
+    get_monarch_bins_path().expect("Don't expect to crash")
 }
 
 /// Returns path to umu-launcher binary.
@@ -28,19 +27,11 @@ pub fn get_legendary_exe() -> PathBuf {
     if let Some(p) = monarch_fs::find_linux_binary("legendary") {
         return p;
     }
-    get_legendary_dir().join("legendary")
+    PathBuf::new()
 }
 
 /// For now a simple check to verify that umu-launcher exists.
 pub fn legendary_is_installed() -> bool {
-    if monarch_fs::find_linux_binary("legendary").is_some() {
-        return true;
-    }
-
-    let umu_path = get_legendary_dir();
-    if !umu_path.exists() {
-        return false;
-    }
     get_legendary_exe().exists()
 }
 

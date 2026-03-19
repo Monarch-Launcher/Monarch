@@ -1,5 +1,4 @@
 use crate::monarch_games::monarch_client::get_library;
-use crate::monarch_utils::commands::write_settings;
 use crate::monarch_utils::monarch_settings;
 use crate::{
     monarch_games::monarchgame::MonarchGame, monarch_library::games_library::write_games,
@@ -43,11 +42,7 @@ impl MonarchState {
 
         match self.settings.write() {
             Ok(mut settings) => {
-                if settings.fix_settings() {
-                    if let Err(e) = write_settings(&settings) {
-                        error!("monarch_state::init() -> {e}")
-                    }
-                }
+                settings.fix_settings();
             }
             Err(e) => {
                 error!(

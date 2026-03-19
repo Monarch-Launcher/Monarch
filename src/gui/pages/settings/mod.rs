@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock, RwLockWriteGuard};
 use tracing::error;
 
 use crate::gui::components::common::error_view;
-use crate::gui::show_error;
+use crate::gui::{self, show_confirm, show_error, AppMessage};
 use crate::monarch_utils;
 use crate::monarch_utils::monarch_settings::Settings;
 
@@ -37,6 +37,7 @@ pub enum Message {
     DeleteSteamCredentials,
     SteamGuardSecretChanged(String),
     SaveSteamSecret,
+    DeleteSteamSecret,
     ToggleEpic(bool),
     EpicUsernameChanged(String),
     EpicPasswordChanged(String),
@@ -45,6 +46,7 @@ pub enum Message {
     Refresh(()),
     OpenLink(&'static str),
     InstallSteamCMD,
+    InstallSteamCMDLinuxWarning,
     InstallLegendary,
     InstallUmu,
     RemoveSteamCMD,
@@ -61,6 +63,7 @@ impl Message {
             | Message::ToggleSteam(_)
             | Message::SaveSteamCredentials
             | Message::SaveSteamSecret
+            | Message::DeleteSteamSecret
             | Message::DeleteSteamCredentials
             | Message::ToggleEpic(_)
             | Message::SaveEpicCredentials
@@ -138,6 +141,7 @@ impl SettingsPage {
             }
             Message::SteamGuardSecretChanged(s) => self.steam_secret_tmp = s,
             Message::SaveSteamSecret => self.update_steam_secret(&mut write_guard.unwrap()),
+            Message::DeleteSteamSecret => self.delete_steam_secret(&mut write_guard.unwrap()),
             Message::ToggleEpic(state) => self.toggle_epic(&mut write_guard.unwrap(), state),
             Message::EpicUsernameChanged(u) => self.epic_username_tmp = u,
             Message::EpicPasswordChanged(p) => self.epic_password_tmp = p,
@@ -158,13 +162,13 @@ impl SettingsPage {
             Message::OpenLink(url) => self.open_link(url),
             Message::InstallUmu => self.install_umu_task(),
             Message::InstallSteamCMD => return self.install_steamcmd_task(&write_guard.unwrap()),
+            Message::InstallSteamCMDLinuxWarning => show_confirm("Working with SteamCMD is a pain in the ass. That's why it's recommended to download and manage SteamCMD from you package manager.", AppMessage::Page(gui::pages::Message::Settings(Message::InstallSteamCMD))),
             Message::InstallLegendary => self.install_legendary_task(),
             Message::RemoveSteamCMD => self.remove_steamcmd(),
             Message::RemoveLegendary => self.remove_legendary(),
             Message::BrowseLibraryFolder => return self.pick_default_monarch_folder(),
             #[cfg(target_os = "linux")]
             Message::RemoveUmu => self.remove_umu(),
-            _ => {}
         }
         iced::Task::none()
     }

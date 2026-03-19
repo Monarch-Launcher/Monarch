@@ -1,6 +1,6 @@
 use super::super::monarchgame::MonarchGame;
-use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
-use crate::monarch_utils::monarch_fs::{self, get_monarch_home};
+use crate::monarch_games::steam_client::parse_steam_ids;
+use crate::monarch_utils::monarch_fs::{self, get_monarch_bins_path, get_monarch_home};
 use crate::monarch_utils::monarch_terminal::spawn_terminal;
 use crate::monarch_utils::{
     monarch_fs::{create_dir, get_unix_home, path_exists},
@@ -24,7 +24,7 @@ use tracing::{error, info};
 /// Installs SteamCMD for user in .monarch
 pub async fn install_steamcmd() -> Result<()> {
     let tar_dest: PathBuf = get_monarch_home().join("steamcmd.tar.gz");
-    let dest_path: PathBuf = get_steamcmd_dir();
+    let dest_path: PathBuf = get_monarch_home().join("steamcmd");
 
     if !path_exists(&dest_path) {
         create_dir(&dest_path).with_context(|| "linux::steam::install_steamcmd() -> ")?;
@@ -74,6 +74,79 @@ pub async fn install_steamcmd() -> Result<()> {
         )
     })?;
 
+    // Copy files to correct locations
+    let bin_path: PathBuf = get_monarch_bins_path().expect("Don't expect to crash");
+    let lib_path: PathBuf = get_unix_home().unwrap().join(".local").join("lib");
+
+    if !(lib_path.join("steamcmd").join("linux32").exists()) {
+        info!("Creating required directories.");
+        std::fs::create_dir_all(lib_path.join("steamcmd").join("linux32"))?;
+    }
+
+    let mut from = dest_path.join("steamcmd.sh");
+    let mut to = lib_path.join("steamcmd").join("steamcmd.sh");
+    info!("Copying {} -> {}", from.display(), to.display());
+    std::fs::copy(from, to)
+        .with_context(|| "linux::steam::install_steamcmd() Failed to copy steamcmd.sh | Err: ")?;
+
+    from = dest_path.join("linux32").join("crashhandler.so");
+    to = lib_path
+        .join("steamcmd")
+        .join("linux32")
+        .join("crashhandler.so");
+    info!("Copying {} -> {}", from.display(), to.display());
+    std::fs::copy(from, to).with_context(|| {
+        "linux::steam::install_steamcmd() Failed to copy crashhandler.so | Err: "
+    })?;
+
+    from = dest_path.join("linux32").join("libstdc++.so.6");
+    to = lib_path
+        .join("steamcmd")
+        .join("linux32")
+        .join("libstdc++.so.6");
+    info!("Copying {} -> {}", from.display(), to.display());
+    std::fs::copy(from, to).with_context(|| {
+        "linux::steam::install_steamcmd() Failed to copy libstdc++.so.6 | Err: "
+    })?;
+
+    from = dest_path.join("linux32").join("steamcmd");
+    to = lib_path.join("steamcmd").join("linux32").join("steamcmd");
+    info!("Copying {} -> {}", from.display(), to.display());
+    std::fs::copy(from, to).with_context(|| {
+        "linux::steam::install_steamcmd() Failed to copy linux32/steamcmd| Err: "
+    })?;
+
+    from = dest_path.join("linux32").join("steamerrorreporter");
+    to = lib_path
+        .join("steamcmd")
+        .join("linux32")
+        .join("steamerrorreporter");
+    info!("Copying {} -> {}", from.display(), to.display());
+    std::fs::copy(from, to).with_context(|| {
+        "linux::steam::install_steamcmd() Failed to copy steamerrorreporter | Err: "
+    })?;
+
+    from = dest_path.join("linux32").join("steamcmd");
+    to = bin_path.join("steamcmd");
+    info!("Symlinking {} -> {}", from.display(), to.display());
+
+    std::os::unix::fs::symlink(&from, &to).with_context(|| {
+        format!(
+            "linux::steam::install_steamcmd() Failed to symlink: {} -> {} | Err: ",
+            from.display(),
+            to.display()
+        )
+    })?;
+
+    // Remove steamcmd folder
+    info!("Removing: {}", dest_path.display());
+    std::fs::remove_dir_all(&dest_path).with_context(|| {
+        format!(
+            "linux::steam::install_steamcmd() Failed to remove {} | Err: ",
+            dest_path.display()
+        )
+    })?;
+
     Ok(())
 }
 
@@ -82,20 +155,27 @@ pub fn get_steamcmd_exe() -> PathBuf {
     if let Some(p) = monarch_fs::find_linux_binary("steamcmd") {
         return p;
     }
-    get_steamcmd_dir().join("steamcmd.sh")
+    PathBuf::new()
 }
 
 /// Runs specified command via SteamCMD
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
 pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
-    let work_dir: String = get_steamcmd_dir().to_string_lossy().to_string();
+    let steamcmd_path: String = get_steamcmd_exe().to_string_lossy().to_string();
+    let workdir: String = get_unix_home()
+        .unwrap()
+        .join(".local")
+        .join("lib")
+        .join("steamcmd")
+        .to_string_lossy()
+        .to_string();
     let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
     let rx = spawn_terminal(
-        format!("./steamcmd.sh {}; sleep 3;", args_string),
+        format!("{steamcmd_path} {args_string}; sleep 3;"),
         HashMap::new(),
-        Some(work_dir),
+        Some(workdir),
     );
 
     if let Err(e) = rx.await {
@@ -113,19 +193,7 @@ pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
 
 /// Returns whether or not Steam launcher is installed
 pub fn steam_is_installed() -> bool {
-    if let Ok(result) = Command::new("find")
-        .arg("/usr/bin")
-        .arg("-name")
-        .arg("steam")
-        .output()
-    {
-        // (for now) Assume that non-empty result means Steam is installed on System
-        if !result.stdout.is_empty() {
-            return true;
-        }
-    }
-
-    false
+    monarch_fs::find_linux_binary("steam").is_some()
 }
 
 /// Finds local steam library installed on current system

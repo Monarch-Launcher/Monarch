@@ -187,6 +187,6 @@ pub fn remove_legendary() -> Result<()> {
         bail!("Umu not found!")
     }
 
-    std::fs::remove_dir_all(&legendary::get_legendary_dir())
+    std::fs::remove_file(&legendary::get_legendary_exe())
         .with_context(|| "linux::remove_umu() Failed to remove_dir_all() | Err: ")
 }

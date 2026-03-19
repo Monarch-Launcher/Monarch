@@ -11,7 +11,7 @@ use crate::{
         components::common::{danger_button, input_field, primary_button, secondary_button},
         pages::settings::{Message, SettingsPage, SettingsTab},
         styles,
-    }, monarch_games, monarch_utils::monarch_settings::Settings
+    }, monarch_games, monarch_utils::{self, monarch_settings::Settings}
 };
 
 impl SettingsPage {
@@ -188,7 +188,6 @@ impl SettingsPage {
     }
 
     fn view_steam(&self, settings: &Settings) -> Element<'_, Message, Theme> {
-        let _tmp: &str = "";
         let steamcmd_bin: String;
         let steamcmd_installed: &str = if monarch_games::commands::steamcmd_is_installed() {
             steamcmd_bin = format!("Using steamcmd located at: {}", settings.monarch.steamcmd_bin);
@@ -202,6 +201,17 @@ impl SettingsPage {
         } else {
             &settings.steam.username
         };
+        let secret_status: &str = if monarch_utils::commands::secret_is_set("steam", &settings.steam) {
+            "Status: Saved"
+        } else {
+            "Status: Not Saved"
+        };
+
+        #[cfg(target_os = "linux")]
+        let install_steamcmd_msg: Option<Message> = Some(Message::InstallSteamCMDLinuxWarning);
+
+        #[cfg(not(target_os = "linux"))]
+        let install_steamcmd_msg: Option<Message> = Some(Message::InstallSteamCMD);
 
         column![
             self.section_header("Steam Integration"),
@@ -218,7 +228,7 @@ impl SettingsPage {
             row![
                 text(format!("SteamCMD: {}", steamcmd_installed)).size(16).width(Length::Shrink),
                 Space::new().width(Length::Fill),
-                primary_button("Install SteamCMD", Some(Message::InstallSteamCMD)),
+                primary_button("Install SteamCMD", install_steamcmd_msg),
                 Space::new().width(10),
                 danger_button("Remove SteamCMD", Some(Message::RemoveSteamCMD)),
             ]
@@ -288,10 +298,12 @@ impl SettingsPage {
             row![
                 Space::new().width(Length::Fill),
                 primary_button("Save Secret", Some(Message::SaveSteamSecret)),
+                Space::new().width(10),
+                danger_button("Delete Secret", Some(Message::DeleteSteamSecret)),
             ],
             Space::new().height(10),
 
-            text("Status: Not configured").size(14).color([0.5, 0.5, 0.5]),
+            text(secret_status).size(14).color([0.5, 0.5, 0.5]),
         ]
         .spacing(10)
         .into()
