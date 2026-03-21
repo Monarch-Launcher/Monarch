@@ -30,11 +30,6 @@ jobs:
       - name: do Rust cache
         uses: Swatinem/rust-cache@v2
 
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
-        run: |
-          apt-get update
-
       - name: build
         env:
           MONARCH_URL: https://api.monarch-launcher.com
