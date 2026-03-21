@@ -400,58 +400,54 @@ impl App {
 
         let app_content: Element<'_, AppMessage> = main_content.into();
 
-        if let Some(modal_state) = &self.active_modal {
-            let modal_element = match modal_state {
-                ModalState::Error(error) => components::modal::Modal::new(
-                    "Error",
-                    iced::widget::column![
-                        text(error.clone()),
-                        iced::widget::row![
-                            components::common::secondary_button(
-                                "Open Logs",
-                                Some(AppMessage::OpenLogs)
-                            ),
-                            iced::widget::Space::new().width(Fill),
-                            components::common::primary_button(
-                                "Close",
-                                Some(AppMessage::CloseModal)
-                            ),
-                        ]
-                        .width(Fill)
-                        .spacing(10)
+        let Some(modal_state) = &self.active_modal else {
+            return app_content;
+        };
+        let modal_element = match modal_state {
+            ModalState::Error(error) => components::modal::Modal::new(
+                "Error",
+                iced::widget::column![
+                    text(error.clone()),
+                    iced::widget::row![
+                        components::common::secondary_button(
+                            "Open Logs",
+                            Some(AppMessage::OpenLogs)
+                        ),
+                        iced::widget::Space::new().width(Fill),
+                        components::common::primary_button("Close", Some(AppMessage::CloseModal)),
                     ]
-                    .spacing(20),
-                )
-                .on_close(AppMessage::CloseModal)
-                .view(),
-                ModalState::Confirm(msg, on_confirm) => components::modal::Modal::new(
-                    "Confirm",
-                    iced::widget::column![
-                        text(msg.clone()),
-                        iced::widget::row![
-                            components::common::primary_button(
-                                "Confirm",
-                                Some(AppMessage::ConfirmModalAction(on_confirm.clone()))
-                            ),
-                            iced::widget::Space::new().width(Fill),
-                            components::common::secondary_button(
-                                "Cancel",
-                                Some(AppMessage::CloseModal)
-                            ),
-                        ]
-                        .width(Fill)
-                        .spacing(10)
+                    .width(Fill)
+                    .spacing(10)
+                ]
+                .spacing(20),
+            )
+            .on_close(AppMessage::CloseModal)
+            .view(),
+            ModalState::Confirm(msg, on_confirm) => components::modal::Modal::new(
+                "Confirm",
+                iced::widget::column![
+                    text(msg.clone()),
+                    iced::widget::row![
+                        components::common::primary_button(
+                            "Confirm",
+                            Some(AppMessage::ConfirmModalAction(on_confirm.clone()))
+                        ),
+                        iced::widget::Space::new().width(Fill),
+                        components::common::secondary_button(
+                            "Cancel",
+                            Some(AppMessage::CloseModal)
+                        ),
                     ]
-                    .spacing(20),
-                )
-                .on_close(AppMessage::CloseModal)
-                .view(),
-            };
+                    .width(Fill)
+                    .spacing(10)
+                ]
+                .spacing(20),
+            )
+            .on_close(AppMessage::CloseModal)
+            .view(),
+        };
 
-            iced::widget::stack![app_content, modal_element].into()
-        } else {
-            app_content
-        }
+        iced::widget::stack![app_content, modal_element].into()
     }
 }
 
