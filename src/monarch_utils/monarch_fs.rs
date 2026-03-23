@@ -270,14 +270,12 @@ pub fn find_linux_binary(binary_name: &str) -> Option<PathBuf> {
                         }
                         Err(e) => {
                             error!("monarch_fs::linux_binary_installed() Failed to entry in: {p} | Err: {e}");
-                            return None;
                         }
                     }
                 }
             }
             Err(e) => {
                 error!("monarch_fs::linux_binary_installed() Failed to read: {p} | Err: {e}");
-                return None;
             }
         }
     }
