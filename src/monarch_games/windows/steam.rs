@@ -96,6 +96,12 @@ pub fn get_steamcmd_exe() -> PathBuf {
     get_steamcmd_dir().join("steamcmd").join("steamcmd.exe")
 }
 
+/// Returns whether or not SteamCMD is installed
+pub fn steamcmd_is_installed() -> bool {
+    todo!()
+}
+
+
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
 pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {

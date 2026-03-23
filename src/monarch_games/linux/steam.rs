@@ -158,6 +158,12 @@ pub fn get_steamcmd_exe() -> PathBuf {
     PathBuf::new()
 }
 
+/// Returns whether or not SteamCMD is installed
+pub fn steamcmd_is_installed() -> bool {
+    monarch_fs::find_linux_binary("steamcmd").is_some()
+}
+
+
 /// Runs specified command via SteamCMD
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD

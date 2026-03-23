@@ -117,7 +117,7 @@ impl StoreType for SteamClient {
 
 /// Returns if SteamCMD is installed on system or not.
 pub fn steamcmd_is_installed() -> bool {
-    monarch_fs::find_linux_binary("steamcmd").is_some()
+    steam::steamcmd_is_installed()
 }
 
 /// Downloads and installs SteamCMD on users computer.
