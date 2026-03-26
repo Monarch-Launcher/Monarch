@@ -7,22 +7,21 @@ use tracing::error;
 
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame};
 use crate::monarch_utils::monarch_fs::{
-    generate_library_image_path, get_library_json_path, get_monarch_games_path, path_exists,
-    write_json_content,
+    generate_library_image_path, get_library_db_path, get_monarch_games_path, path_exists,
 };
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 /// Overwrites library.json
 pub fn write_games(games: &[MonarchGame]) -> Result<()> {
-    let path: PathBuf = get_library_json_path();
-    write_json_content(json!(games), &path).with_context(|| "games_library::write_games() -> ")
+    let path: PathBuf = get_library_db_path();
+    todo!()
 }
 
 /// Overwrites list of games found in monarch_games.json
 /// Use with caution
 pub fn write_monarch_games(games: &[MonarchGame]) -> Result<()> {
     let path: PathBuf = get_monarch_games_path();
-    write_json_content(json!(games), &path).with_context(|| "games_library::write_games() -> ")
+    todo!()
 }
 
 /// Writes new games to monarch_games.json for Monarch to track what games it installed itself.
@@ -51,13 +50,13 @@ pub fn write_monarchgame(game: &MonarchGame) -> Result<()> {
     }
 
     games.push(game.clone());
-    write_json_content(json!(games), &path)
-        .with_context(|| "games_library::write_monarchgame() -> ")
+
+    todo!()
 }
 
 /// Returns JSON of games from library
 pub fn get_games() -> Result<Vec<MonarchGame>> {
-    let path: PathBuf = get_library_json_path();
+    let path: PathBuf = get_library_db_path();
 
     let file: File = fs::File::open(&path).with_context(|| -> String {
         format!(

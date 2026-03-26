@@ -149,15 +149,9 @@ pub fn get_monarch_games_path() -> PathBuf {
 }
 
 /// Returns path to library.json
-pub fn get_library_json_path() -> PathBuf {
+pub fn get_library_db_path() -> PathBuf {
     let path: PathBuf = get_monarch_home();
-    path.join("library.json")
-}
-
-/// Returns path to collections.json
-pub fn get_collections_json_path() -> PathBuf {
-    let path: PathBuf = get_monarch_home();
-    path.join("collections.json")
+    path.join("library.db3")
 }
 
 /// Write JSON to file

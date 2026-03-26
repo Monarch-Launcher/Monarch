@@ -5,12 +5,12 @@ use crate::monarch_games::monarchgame::{
     GameImageType, MonarchGameProperties, MonarchWebApiGame, StoreInfo,
 };
 use crate::monarch_games::stores::SearchFilter;
-use crate::monarch_library::games_library::write_monarch_games;
+use crate::monarch_library::library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::{monarch_terminal, monarch_vdf};
-use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
+use crate::{monarch_library::library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -289,7 +289,7 @@ pub async fn download_game(name: &str, store: &str, store_id: &str) -> Result<Ve
         &_ => bail!("monarch_client::download_game() Invalid store!"),
     };
 
-    games_library::add_game(&new_game).with_context(|| "monarch_client::download_game() -> ")?;
+    library::add_game(&new_game).with_context(|| "monarch_client::download_game() -> ")?;
 
     Ok(get_library()) // Return new library
 }
@@ -303,7 +303,7 @@ pub async fn uninstall_game(store: &str, store_id: &str) -> Result<()> {
                 .await
                 .with_context(|| "monarch_client::uninstall_game() -> ")?;
 
-            let mut monarch_games = games_library::get_monarchgames()
+            let mut monarch_games = library::get_monarchgames()
                 .with_context(|| "monarch_client::uninstall_game() -> ")?;
 
             for (i, game) in monarch_games.clone().iter().enumerate() {
@@ -352,7 +352,7 @@ pub async fn update_game(store: &str, store_id: &str) -> Result<()> {
 /// Returns games found in library.json
 pub fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
-    match games_library::get_games() {
+    match library::get_games() {
         Ok(library) => {
             games = library;
         }
@@ -369,7 +369,7 @@ pub async fn refresh_library() -> Vec<MonarchGame> {
     info!("Manual refresh of library requested. Refreshing...");
     let mut games: Vec<MonarchGame> = Vec::new();
 
-    if let Ok(mut monarch_games) = games_library::get_monarchgames() {
+    if let Ok(mut monarch_games) = library::get_monarchgames() {
         games.append(&mut monarch_games);
     }
 

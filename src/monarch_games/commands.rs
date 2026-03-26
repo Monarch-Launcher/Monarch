@@ -12,7 +12,7 @@ use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::MonarchWebApiGame;
 use crate::monarch_games::steam_client;
 use crate::monarch_games::stores::DownloadOptions;
-use crate::monarch_library::{self, games_library};
+use crate::monarch_library::{self, library};
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_fs::path_exists;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
@@ -300,7 +300,7 @@ pub async fn open_store(url: String) -> Result<(), String> {
 /// Updates the properties of a game in the library.
 pub async fn update_game_properties(game: &MonarchGame) -> Result<(), String> {
     info!("Updating properties for: {}", game.name);
-    match games_library::update_game_properties(game) {
+    match library::update_game_properties(game) {
         Ok(_) => Ok(()),
         Err(e) => {
             error!(
@@ -369,7 +369,7 @@ pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
         }
     }
 
-    if let Err(e) = monarch_library::games_library::add_game(&game) {
+    if let Err(e) = monarch_library::library::add_game(&game) {
         error!(
             "monarch_games::commands::manual_add_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -437,7 +437,7 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
 pub fn manual_remove_game(game: &MonarchGame) -> Result<(), String> {
     info!("User removing game binary: {:?}", game);
 
-    if let Err(e) = monarch_library::games_library::remove_game(game) {
+    if let Err(e) = monarch_library::library::remove_game(game) {
         error!(
             "monarch_games::commands::manual_remove_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
