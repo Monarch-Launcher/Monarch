@@ -176,7 +176,6 @@ pub async fn download_game(opts: &mut DownloadOptions) -> Result<Vec<MonarchGame
         &opts.game_store_id,
         "",
         "",
-        "",
     );
 
     let result: Result<(), String> = match opts.game_store.as_str() {
@@ -269,33 +268,6 @@ pub async fn move_game_to_monarch(
     info!("Finished moving {name} to Monarch");
     Ok(())
 }
-
-/*
-/// Open "Purchase window" for a game
-pub async fn open_store(url: String) -> Result<(), String> {
-    let window: MiniWindow = MiniWindow::new("store", &url, 1280.0, 720.0);
-    if let Err(e) = window.build_window(&handle).await {
-        error!(
-            "monarch_games::commands::open_store() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-        return Err(String::from(
-            "Something went wrong while opening store page!",
-        ));
-    }
-
-    if let Err(e) = window.show_window(&handle) {
-        error!(
-            "monarch_games::commands::open_store() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-        return Err(String::from(
-            "Something went wrong while opening store page!",
-        ));
-    }
-    Ok(())
-}
- */
 
 /// Updates the properties of a game in the library.
 pub async fn update_game_properties(game: &MonarchGame) -> Result<(), String> {

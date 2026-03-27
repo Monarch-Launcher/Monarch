@@ -641,7 +641,7 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
         )
     };
     let mut monarch_game =
-        MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
+        MonarchGame::new(&name, -1, "steam", &id, "", &thumbnail_path);
     monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
 }
