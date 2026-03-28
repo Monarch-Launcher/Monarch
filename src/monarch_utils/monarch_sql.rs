@@ -1,7 +1,17 @@
 use anyhow::{Context, Result};
 use sqlx::{Decode, Encode, FromRow, SqlitePool};
 
-use crate::{monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo}};
+use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo};
+
+const MONARCH_GAME_FIELDS: &'static str = "(name, id, executable_path, thumbnail_path, thumbnail_url, launch_args, compatibilty, summary, artwork_path, artwork_url, imported)";
+const TYPED_MONARCH_GAME_FIELDS: &'static str = "(name TEXT, id TEXT, executable_path TEXT, thumbnail_path TEXT, thumbnail_url TEXT, launch_args TEXT, compatibilty TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported TEXT)";
+
+const STORE_INFO_FIELDS: &'static str = "(monarch_game_id, name, store_id, store_url)";
+const TYPED_STORE_INFO_FIELDS: &'static str =
+    "(monarch_game_id TEXT, name TEXT, store_id TEXT, store_url TEXT)";
+
+const MONARCH_GAME_PROPERTIES_FIELDS: &'static str = "(monarch_game_id, install_dir, size_on_disk, last_played, time_played, description, version, protondb_rating, protondb_url)";
+const TYPED_MONARCH_GAME_PROPERTIES_FIELDS: &'static str = "(monarch_game_id TEXT, install_dir TEXT, size_on_disk TEXT, last_played TEXT, time_played TEXT, description TEXT, version TEXT, protondb_rating TEXT, protondb_url TEXT)";
 
 #[derive(Debug, FromRow, Encode, Decode)]
 struct MonarchGameRecord {
@@ -41,8 +51,13 @@ struct MonarchGamePropertiesRecord {
 }
 
 impl MonarchGame {
-    fn from_sql(game_record: MonarchGameRecord, store_records: Vec<StoreInfoRecord>, properties_record: MonarchGamePropertiesRecord) -> Self {
-        let stores: Vec<StoreInfo> = store_records.into_iter()
+    fn from_sql(
+        game_record: MonarchGameRecord,
+        store_records: Vec<StoreInfoRecord>,
+        properties_record: MonarchGamePropertiesRecord,
+    ) -> Self {
+        let stores: Vec<StoreInfo> = store_records
+            .into_iter()
             .map(|sir| sir.into())
             .collect::<Vec<StoreInfo>>();
 
@@ -61,7 +76,7 @@ impl MonarchGame {
             artwork_path: game_record.artwork_path,
             artwork_url: game_record.artwork_url,
             properties,
-            imported: game_record.imported
+            imported: game_record.imported,
         }
     }
 }
@@ -71,7 +86,7 @@ impl From<StoreInfoRecord> for StoreInfo {
         Self {
             name: record.name,
             store_id: record.store_id,
-            store_url: record.store_url
+            store_url: record.store_url,
         }
     }
 }
@@ -86,34 +101,50 @@ impl From<MonarchGamePropertiesRecord> for MonarchGameProperties {
             description: record.description,
             version: record.version,
             protondb_rating: record.protondb_rating,
-            protondb_url: record.protondb_url
+            protondb_url: record.protondb_url,
         }
     }
 }
 
-/// Fetch all games stores in db, including their properties and storefronts 
+/// Fetch all games stores in db, including their properties and storefronts
 pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
     // Using the macro enables compile-time stuff
 
     // TODO: Redo stores and propeties with batched request?
 
-    let game_records: Vec<MonarchGameRecord> = sqlx::query_as::<_, MonarchGameRecord>("SELECT * FROM library")
-        .fetch_all(pool)
-        .await
-        .with_context(|| "monarch_sql::get_library() Failed to fetch_all() MonarchGameRecords! | Err: ")?;
+    let game_records: Vec<MonarchGameRecord> =
+        sqlx::query_as::<_, MonarchGameRecord>("SELECT * FROM library")
+            .fetch_all(pool)
+            .await
+            .with_context(|| {
+                "monarch_sql::get_library() Failed to fetch_all() MonarchGameRecords! | Err: "
+            })?;
 
     let mut games: Vec<MonarchGame> = Vec::new();
     for game in game_records {
-        let stores: Vec<StoreInfoRecord> = sqlx::query_as("SELECT * FROM stores WHERE monarch_game_id = ?")
-            .bind(&game.id).fetch_all(pool)
-            .await
-            .with_context(|| format!("monarch_sql::get_library() Failed to query StoreInfo for {} | Err: ", &game.name))?;
+        let stores: Vec<StoreInfoRecord> =
+            sqlx::query_as("SELECT * FROM stores WHERE monarch_game_id = ?")
+                .bind(&game.id)
+                .fetch_all(pool)
+                .await
+                .with_context(|| {
+                    format!(
+                        "monarch_sql::get_library() Failed to query StoreInfo for {} | Err: ",
+                        &game.name
+                    )
+                })?;
 
-        let properties: MonarchGamePropertiesRecord = sqlx::query_as("SELECT * FROM properties WHERE monarch_game_id = ?")
-            .bind(&game.id)
-            .fetch_one(pool)
-            .await
-            .with_context(|| format!("monarch_sql::get_library() Failed to query MonarchGameProperties for {} | Err: ", &game.name))?;
+        let properties: MonarchGamePropertiesRecord =
+            sqlx::query_as("SELECT * FROM properties WHERE monarch_game_id = ?")
+                .bind(&game.id)
+                .fetch_one(pool)
+                .await
+                .with_context(|| {
+                    format!(
+                "monarch_sql::get_library() Failed to query MonarchGameProperties for {} | Err: ",
+                &game.name
+            )
+                })?;
 
         games.push(MonarchGame::from_sql(game, stores, properties));
     }
@@ -122,11 +153,12 @@ pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
 }
 
 pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
-    let mut tx = pool.begin()
+    let mut tx = pool
+        .begin()
         .await
         .with_context(|| "monarch_sql::insert_game() Failed to start new transaction! | Err: ")?;
 
-    sqlx::query("INSERT INTO library (name, id, executable_path, thumbnail_path, thumbnail_url, launch_args, compatibilty, summary, artwork_path, artwork_url, imported)")
+    sqlx::query(&format!("INSERT INTO library {}", MONARCH_GAME_FIELDS))
         .bind(&game.name)
         .bind(&game.id)
         .bind(&game.executable_path)
@@ -140,26 +172,34 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(game.imported)
         .execute(&mut *tx)
         .await
-        .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
+        .with_context(|| {
+            "monarch_sql::insert_game() Failed to insert game into library! | Err: "
+        })?;
 
-    sqlx::query("INSERT INTO stores ()")
+    sqlx::query(&format!("INSERT INTO stores {}", STORE_INFO_FIELDS))
         .execute(&mut *tx)
         .await
-        .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
+        .with_context(|| {
+            "monarch_sql::insert_game() Failed to insert game into library! | Err: "
+        })?;
 
-    sqlx::query("INSERT INTO properties ()")
-        .execute(&mut *tx)
-        .await
-        .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
+    sqlx::query(&format!(
+        "INSERT INTO properties {}",
+        MONARCH_GAME_PROPERTIES_FIELDS
+    ))
+    .execute(&mut *tx)
+    .await
+    .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
 
-   tx.commit()
+    tx.commit()
         .await
         .with_context(|| "monarch_sql::insert_game() Failed to commit transaction! | Err: ")
 }
 
 /// Remove all records of a game, including its properties and storefronts
 pub async fn remove_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
-    let mut tx = pool.begin()
+    let mut tx = pool
+        .begin()
         .await
         .with_context(|| "monarch_sql::remove_game() Failed to start new transaction! | Err: ")?;
 
@@ -167,35 +207,80 @@ pub async fn remove_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.id)
         .execute(&mut *tx)
         .await
-        .with_context(|| format!("monarch_sql::remove_game() Failed to remove {} from library table! | Err: ", &game.name))?;
+        .with_context(|| {
+            format!(
+                "monarch_sql::remove_game() Failed to remove {} from library table! | Err: ",
+                &game.name
+            )
+        })?;
 
     sqlx::query("DELETE FROM stores WHERE monarch_game_id = ?")
         .bind(&game.id)
         .execute(&mut *tx)
         .await
-        .with_context(|| format!("monarch_sql::remove_game() Failed to remove {} from stores table! | Err: ", &game.name))?;
+        .with_context(|| {
+            format!(
+                "monarch_sql::remove_game() Failed to remove {} from stores table! | Err: ",
+                &game.name
+            )
+        })?;
 
     sqlx::query("DELETE FROM properties WHERE monarch_game_id = ?")
         .bind(&game.id)
         .execute(&mut *tx)
         .await
-        .with_context(|| format!("monarch_sql::remove_game() Failed to remove {} from properties table! | Err: ", &game.name))?;
+        .with_context(|| {
+            format!(
+                "monarch_sql::remove_game() Failed to remove {} from properties table! | Err: ",
+                &game.name
+            )
+        })?;
 
     tx.commit()
         .await
         .with_context(|| "monarch_sql::remove_game() Failed to commit transaction! | Err: ")
 }
 
-/// Update game in db. 
-/// For now this uses a lazy approach where the game is first removed, then 
-/// insert a new record in its place.
+/// Update game in db.
 pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
-    remove_game(pool, game).await.with_context(|| "monarch_sql::update_game() -> ")?;
-    insert_game(pool, game).await.with_context(|| "monarch_sql::update_game() -> ")
+    // TODO: Write logic for handling inserting or upserting
+    // Likely using something akin to INSERT [...] ON CONFLICT [...]
+    Ok(())
 }
 
-/// Initiates db, which ensures all tables exist or are created 
+/// Initiates db, which ensures all tables exist or are created
 /// on application launch.
-pub async fn init_db() -> Result<()> {
-    Ok(())
+pub async fn init_db(pool: &SqlitePool) -> Result<()> {
+    let mut tx = pool
+        .begin()
+        .await
+        .with_context(|| "monarch_sql::init_db() Failed to start transaction! | Err: ")?;
+
+    sqlx::query(&format!(
+        "CREATE TABLE IF NOT EXISTS library {}",
+        TYPED_MONARCH_GAME_FIELDS
+    ))
+    .execute(&mut *tx)
+    .await
+    .with_context(|| "monarch_sql::init_db() Failed to verify library table! | Err: ")?;
+
+    sqlx::query(&format!(
+        "CREATE TABLE IF NOT EXISTS stores {}",
+        TYPED_STORE_INFO_FIELDS
+    ))
+    .execute(&mut *tx)
+    .await
+    .with_context(|| "monarch_sql::init_db() Failed to verify stores table! | Err: ")?;
+
+    sqlx::query(&format!(
+        "CREATE TABLE IF NOT EXISTS properties {}",
+        TYPED_MONARCH_GAME_PROPERTIES_FIELDS
+    ))
+    .execute(&mut *tx)
+    .await
+    .with_context(|| "monarch_sql::init_db() Failed to verify properties table! | Err: ")?;
+
+    tx.commit()
+        .await
+        .with_context(|| "monarch_sql::init_db() Failed to commit transaction | Err: ")
 }
