@@ -1,11 +1,10 @@
-use crate::monarch_games::monarch_client::get_library;
 use crate::monarch_utils::monarch_fs::get_library_db_path;
-use crate::monarch_utils::monarch_settings;
+use crate::monarch_utils::{monarch_settings, monarch_sql};
 use crate::{
-    monarch_games::monarchgame::MonarchGame, monarch_library::library::write_games,
+    monarch_games::monarchgame::MonarchGame,
     monarch_utils::monarch_settings::Settings,
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use sqlx::SqlitePool;
 use sqlx::sqlite::SqliteConnectOptions;
 use std::sync::RwLock;
@@ -42,8 +41,7 @@ impl MonarchState {
         }
     }
 
-    pub fn init(&mut self) {
-        self.library_games = get_library();
+    pub async fn init(&mut self) {
         self.settings = Arc::new(RwLock::new(
             monarch_settings::read_settings()
                 .expect("monarch_state::init() -> Failed to read settings from disk")
@@ -54,6 +52,8 @@ impl MonarchState {
                 SqliteConnectOptions::new()
                     .filename(get_library_db_path())
                     .create_if_missing(true)));
+
+        self.library_games = monarch_sql::get_library(&self.library_conn.as_ref().unwrap()).await.unwrap();
     }
 
     /// Returns what the backend thinks is the users library.
@@ -67,15 +67,23 @@ impl MonarchState {
         self.library_games = games.to_vec();
     }
 
+    /// Simple abstraction for pushing new game into MONARCH_STATE
+    pub fn push_game(&mut self, game: MonarchGame) {
+        self.library_games.push(game);
+    }
+
+    /// Simple abstraction for removing a game at index
+    pub fn remove_game(&mut self, index: usize) {
+        self.library_games.remove(index);
+    }
+
     /// Update a game.
     /// Useful when updating game properties and want to let
     /// the backend state know of it.
-    pub fn update_game(&mut self, game: &MonarchGame) -> Result<()> {
+    pub fn update_game(&mut self, game: MonarchGame) -> Result<()> {
         for (i, self_game) in self.library_games.iter_mut().enumerate() {
             if self_game.id == game.id {
-                self.library_games[i] = game.clone();
-                write_games(&self.library_games)
-                    .with_context(|| "monarch_state::update_game() -> ")?;
+                self.library_games[i] = game;
                 return Ok(());
             }
         }

@@ -5,7 +5,6 @@ use crate::monarch_games::monarchgame::{
     GameImageType, MonarchGameProperties, MonarchWebApiGame, StoreInfo,
 };
 use crate::monarch_games::stores::SearchFilter;
-use crate::monarch_library::library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
@@ -349,10 +348,10 @@ pub async fn update_game(store: &str, store_id: &str) -> Result<()> {
     }
 }
 
-/// Returns games found in library.json
-pub fn get_library() -> Vec<MonarchGame> {
+/// Returns games found in library.db3
+pub async fn get_library() -> Vec<MonarchGame> {
     let mut games: Vec<MonarchGame> = Vec::new();
-    match library::get_games() {
+    match library::get_games().await {
         Ok(library) => {
             games = library;
         }

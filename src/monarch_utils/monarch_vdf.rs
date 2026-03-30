@@ -218,7 +218,7 @@ pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Res
 
             match MONARCH_STATE.write() {
                 Ok(mut state) => {
-                    if let Err(e) = state.update_game(&game) {
+                    if let Err(e) = state.update_game(game.clone()) {
                         error!(
                             "monarch_vdf::set_install_dir() -> {}",
                             e.chain().map(|e| e.to_string()).collect::<String>()

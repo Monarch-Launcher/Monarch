@@ -109,9 +109,7 @@ impl From<MonarchGamePropertiesRecord> for MonarchGameProperties {
 
 /// Fetch all games stores in db, including their properties and storefronts
 pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
-    // Using the macro enables compile-time stuff
-
-    // TODO: Redo stores and propeties with batched request?
+    // TODO: Use macros for compile-time checks of types/queries?
 
     let game_records: Vec<MonarchGameRecord> =
         sqlx::query_as::<_, MonarchGameRecord>("SELECT * FROM library")
@@ -153,6 +151,7 @@ pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
     Ok(games)
 }
 
+/// Insert a single game into the database
 pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     let mut tx = pool
         .begin()
@@ -247,6 +246,92 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     // TODO: Write logic for handling inserting or upserting
     // Likely using something akin to INSERT [...] ON CONFLICT [...]
     Ok(())
+}
+
+/// Overwrite all games and it's record in the database.
+/// Currently done by dropping and refilling all tables.
+pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result<()> {
+    let mut tx = pool.begin()
+        .await
+        .with_context(|| "monarch_sql::overwrite_games() Failed to start transaction! | Err: ")?;
+
+    sqlx::query("DROP TABLE library")
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::overwrite_gams() Failed to drop library! | Err: ")?;
+
+    sqlx::query("DROP TABLE stores")
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::overwrite_gams() Failed to drop stores! | Err: ")?;
+
+    sqlx::query("DROP TABLE properties")
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::overwrite_gams() Failed to drop properties! | Err: ")?;
+
+    sqlx::query(&format!(
+        "CREATE TABLE IF NOT EXISTS library {}",
+        TYPED_MONARCH_GAME_FIELDS
+    ))
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::init_db() Failed to verify library table! | Err: ")?;
+
+    sqlx::query(&format!(
+        "CREATE TABLE IF NOT EXISTS stores {}",
+        TYPED_STORE_INFO_FIELDS
+    ))
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::init_db() Failed to verify stores table! | Err: ")?;
+    
+    sqlx::query(&format!(
+        "CREATE TABLE IF NOT EXISTS properties {}",
+        TYPED_MONARCH_GAME_PROPERTIES_FIELDS
+    ))
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::init_db() Failed to verify properties table! | Err: ")?;
+
+    for game in games {
+        sqlx::query(&format!("INSERT INTO library {}", MONARCH_GAME_FIELDS))
+            .bind(&game.name)
+            .bind(&game.id)
+            .bind(&game.executable_path)
+            .bind(&game.thumbnail_path)
+            .bind(&game.thumbnail_url)
+            .bind(&game.launch_args)
+            .bind(&game.compatibility)
+            .bind(&game.summary)
+            .bind(&game.artwork_path)
+            .bind(&game.artwork_url)
+            .bind(game.imported)
+            .execute(&mut *tx)
+            .await
+            .with_context(|| {
+                "monarch_sql::insert_game() Failed to insert game into library! | Err: "
+            })?;
+
+        sqlx::query(&format!("INSERT INTO stores {}", STORE_INFO_FIELDS))
+            .execute(&mut *tx)
+            .await
+            .with_context(|| {
+                "monarch_sql::insert_game() Failed to insert game into library! | Err: "
+            })?;
+
+        sqlx::query(&format!(
+            "INSERT INTO properties {}",
+            MONARCH_GAME_PROPERTIES_FIELDS
+        ))
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
+    }
+
+    tx.commit()
+        .await
+        .with_context(|| "monarch_sql::overwrite_games() Failed to commit transaction! | Err: ")
 }
 
 /// Initiates db, which ensures all tables exist or are created

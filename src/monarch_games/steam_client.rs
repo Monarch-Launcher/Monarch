@@ -61,7 +61,9 @@ impl StoreType for SteamClient {
         let game: MonarchGame = download_game(&game.name, &game.get_store_id())
             .await
             .with_context(|| "steam_client::install_game() -> ")?;
-        library::add_game(&game).with_context(|| "steam_client::install_game() -> ")
+        library::add_game(&game)
+            .await
+            .with_context(|| "steam_client::install_game() -> ")
     }
 
     async fn uninstall_game(&self, game: &MonarchGame) -> Result<()> {

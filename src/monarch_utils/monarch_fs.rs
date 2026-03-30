@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use regex::Regex;
-use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::{fs, process::exit};
 use tracing::{error, info, warn};
@@ -152,13 +151,6 @@ pub fn get_monarch_games_path() -> PathBuf {
 pub fn get_library_db_path() -> PathBuf {
     let path: PathBuf = get_monarch_home();
     path.join("library.db3")
-}
-
-/// Write JSON to file
-pub fn write_json_content(content: Value, path: &Path) -> Result<()> {
-    fs::write(path, serde_json::to_string_pretty(&content).unwrap()) // TODO: Remove unwrap for better error handling
-        .with_context(|| format!("monarch_fs::write_json_content() Something went wrong trying to write new library to: {file} | Err: ", file = path.display()))?;
-    Ok(())
 }
 
 /// Abstraction to check whether a given path exists already or not

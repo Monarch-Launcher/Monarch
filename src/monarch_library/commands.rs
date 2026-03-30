@@ -3,17 +3,14 @@ use crate::{
     monarch_library::library::get_games,
 };
 
-use super::collections;
 use core::result::Result;
 use futures::future::join_all;
 use std::cmp::Ordering;
-// Using different Result type for sending to frontend.
-use serde_json::Value;
 use tracing::error;
 
 /// Returns MonarchGames from library.json
-pub fn get_library() -> Result<Vec<MonarchGame>, String> {
-    match get_games() {
+pub async fn get_library() -> Result<Vec<MonarchGame>, String> {
+    match get_games().await {
         Ok(games) => Ok(games),
         Err(e) => {
             error!(
@@ -25,8 +22,10 @@ pub fn get_library() -> Result<Vec<MonarchGame>, String> {
     }
 }
 
+/// Simple function for generating suggested games on homescreen, based on
+/// recent playtime.
 pub async fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
-    match get_library() {
+    match get_library().await {
         Ok(mut games) => {
             let mut properties_tasks = vec![];
             for game in games.iter_mut() {
@@ -57,22 +56,24 @@ pub async fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
     }
 }
 
-/// Creates a new collection and writes to JSON
+/* 
+/// Creates a new collection
 pub async fn create_collection(collection_name: String, game_ids: Vec<String>) {
     todo!()
 }
 
-/// Updates a collection and JSON file
+/// Updates a collection
 pub async fn update_collection(id: String, new_name: String, game_ids: Vec<String>) {
     todo!()
 }
 
-/// Deletes a collection and writes to JSON
+/// Deletes a collection
 pub async fn delete_collection(id: String) {
     todo!()
 }
 
-/// Reads collections from JSON
+/// Reads collections
 pub async fn get_collections() {
     todo!()
 }
+*/
