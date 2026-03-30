@@ -7,6 +7,7 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use sqlx::SqlitePool;
+use sqlx::sqlite::SqliteConnectOptions;
 use std::sync::RwLock;
 use std::sync::{Arc, LazyLock};
 
@@ -23,12 +24,12 @@ pub struct MonarchState {
     library_games: Vec<MonarchGame>,
     settings: Arc<RwLock<Settings>>,
 
-    library_conn: SqlitePool,
+    library_conn: Option<SqlitePool>,
 }
 
 impl Drop for MonarchState {
     fn drop(&mut self) {
-        self.library_conn.close();
+        //self.library_conn.close();
     }
 }
 
@@ -37,8 +38,7 @@ impl MonarchState {
         Self {
             library_games: Vec::new(),
             settings: Arc::new(RwLock::new(Settings::new())),
-            library_conn: SqlitePool::connect_lazy(get_library_db_path().to_str().unwrap())
-                .unwrap(),
+            library_conn: None,
         }
     }
 
@@ -50,6 +50,10 @@ impl MonarchState {
                 .try_into()
                 .expect("monarch_state::init() -> Failed to convert into Settings"),
         ));
+        self.library_conn = Some(SqlitePool::connect_lazy_with(
+                SqliteConnectOptions::new()
+                    .filename(get_library_db_path())
+                    .create_if_missing(true)));
     }
 
     /// Returns what the backend thinks is the users library.
@@ -103,5 +107,9 @@ impl MonarchState {
     /// Get a copy of the Arc<RwLock<Settings>> contained in MONARCH_STATE
     pub fn get_settings_ptr(&self) -> Arc<RwLock<Settings>> {
         self.settings.clone()
+    }
+
+    pub fn get_db_pool_ref(&self) -> &SqlitePool {
+        self.library_conn.as_ref().unwrap()
     }
 }

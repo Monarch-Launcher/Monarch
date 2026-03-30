@@ -194,7 +194,6 @@ impl LibraryPage {
                                 0,
                                 "monarch",
                                 "",
-                                "",
                                 &modal.exec_path,
                                 &modal.thumb_path,
                             );

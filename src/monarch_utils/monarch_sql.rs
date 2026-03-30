@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use sqlx::{Decode, Encode, FromRow, SqlitePool};
+use tracing::warn;
 
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo};
 
@@ -256,31 +257,54 @@ pub async fn init_db(pool: &SqlitePool) -> Result<()> {
         .await
         .with_context(|| "monarch_sql::init_db() Failed to start transaction! | Err: ")?;
 
-    sqlx::query(&format!(
-        "CREATE TABLE IF NOT EXISTS library {}",
-        TYPED_MONARCH_GAME_FIELDS
-    ))
-    .execute(&mut *tx)
-    .await
-    .with_context(|| "monarch_sql::init_db() Failed to verify library table! | Err: ")?;
+    if !table_exists(pool, "library").await.with_context(|| "monarch_sql::init_db() -> ")? {
+        warn!("'library' table not found! Creating new...");
 
-    sqlx::query(&format!(
-        "CREATE TABLE IF NOT EXISTS stores {}",
-        TYPED_STORE_INFO_FIELDS
-    ))
-    .execute(&mut *tx)
-    .await
-    .with_context(|| "monarch_sql::init_db() Failed to verify stores table! | Err: ")?;
+        sqlx::query(&format!(
+            "CREATE TABLE IF NOT EXISTS library {}",
+            TYPED_MONARCH_GAME_FIELDS
+        ))
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::init_db() Failed to verify library table! | Err: ")?;
+    }
 
-    sqlx::query(&format!(
-        "CREATE TABLE IF NOT EXISTS properties {}",
-        TYPED_MONARCH_GAME_PROPERTIES_FIELDS
-    ))
-    .execute(&mut *tx)
-    .await
-    .with_context(|| "monarch_sql::init_db() Failed to verify properties table! | Err: ")?;
+    if !table_exists(pool, "stores").await.with_context(|| "monarch_sql::init_db() -> ")? {
+        warn!("'stores' table not found! Creating new...");
+
+        sqlx::query(&format!(
+            "CREATE TABLE IF NOT EXISTS stores {}",
+            TYPED_STORE_INFO_FIELDS
+        ))
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::init_db() Failed to verify stores table! | Err: ")?;
+    }
+
+    if !table_exists(pool, "properties").await.with_context(|| "monarch_sql::init_db() -> ")? {
+        warn!("'properties' table not found! Creating new...");
+
+        sqlx::query(&format!(
+            "CREATE TABLE IF NOT EXISTS properties {}",
+            TYPED_MONARCH_GAME_PROPERTIES_FIELDS
+        ))
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::init_db() Failed to verify properties table! | Err: ")?;
+    }
 
     tx.commit()
         .await
         .with_context(|| "monarch_sql::init_db() Failed to commit transaction | Err: ")
+}
+
+/// Helper function for checking if a tables exists or needs to be created
+async fn table_exists(pool: &SqlitePool, name: &str) -> Result<bool> {
+    let tables = sqlx::query("SELECT name FROM sqlite_master WHERE type='table' AND name = ? ")
+        .bind(name)
+        .fetch_all(pool)
+        .await
+        .with_context(|| format!("monarch_sql::table_exists() Failed to query SQLite for table: {} | Err: ", name))?;
+
+    Ok(tables.len() != 0)
 }

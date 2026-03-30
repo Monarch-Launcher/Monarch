@@ -10,18 +10,17 @@ mod monarch_utils;
 use crate::{
     gui::App,
     monarch_utils::{
-        housekeeping, monarch_fs::verify_monarch_folders, monarch_logger::init_logger,
-        monarch_settings, monarch_state::MONARCH_STATE,
+        housekeeping, monarch_fs::verify_monarch_folders, monarch_logger::init_logger, monarch_settings, monarch_sql::init_db, monarch_state::MONARCH_STATE
     },
 };
 
-use tracing::debug;
+use tracing::{debug, error};
 
 #[cfg(target_os = "macos")]
 #[macro_use]
 extern crate objc;
 
-fn init() {
+async fn init() {
     if let Err(e) = monarch_settings::init() {
         // Crash program if this fails
         panic!("Error during settings initialization! | Err: {e}");
@@ -38,11 +37,23 @@ fn init() {
 
     verify_monarch_folders(); // Checks that directories are as Monarch expects
 
+    match MONARCH_STATE.read() {
+        Ok(state) => {
+            let pool = state.get_db_pool_ref();
+            init_db(pool).await.expect("Failed to run init_db()!"); // Verify database tables exist
+        }
+        Err(e) => {
+            error!("Failed to acquire read lock on MONARCH_STATE! | Err: {e}");
+            panic!("Failed to acquire read lock on MONARCH_STATE! | Err: {e}")
+        }
+    }
+
     housekeeping::start(); // Starts housekeeping loop
 }
 
-fn main() {
-    init();
+#[tokio::main]
+async fn main() {
+    init().await;
 
     // Run Monarch
     App::run();
