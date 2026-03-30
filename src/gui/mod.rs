@@ -188,6 +188,13 @@ impl App {
                     header::Message::LibraryPage => {
                         self.active_tab = PageTab::Library;
 
+                        if !self.library_page.games_loaded {
+                            return self
+                                .library_page
+                                .load_games()
+                                .map(|m| AppMessage::Page(pages::Message::Library(m)));
+                        }
+
                         return self
                             .library_page
                             .update(library::Message::UpdateGameProperties)
