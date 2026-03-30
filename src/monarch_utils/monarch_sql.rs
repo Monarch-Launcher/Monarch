@@ -4,15 +4,15 @@ use tracing::warn;
 
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo};
 
-const MONARCH_GAME_FIELDS: &'static str = "(name, id, executable_path, thumbnail_path, thumbnail_url, launch_args, compatibilty, summary, artwork_path, artwork_url, imported)";
-const TYPED_MONARCH_GAME_FIELDS: &'static str = "(name TEXT, id TEXT, executable_path TEXT, thumbnail_path TEXT, thumbnail_url TEXT, launch_args TEXT, compatibilty TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported TEXT)";
+const MONARCH_GAME_FIELDS: &'static str = "(name, id, executable_path, thumbnail_path, thumbnail_url, launch_args, compatibility, summary, artwork_path, artwork_url, imported)";
+const TYPED_MONARCH_GAME_FIELDS: &'static str = "(name TEXT, id TEXT, executable_path TEXT, thumbnail_path TEXT, thumbnail_url TEXT, launch_args TEXT, compatibility TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN)";
 
 const STORE_INFO_FIELDS: &'static str = "(monarch_game_id, name, store_id, store_url)";
 const TYPED_STORE_INFO_FIELDS: &'static str =
     "(monarch_game_id TEXT, name TEXT, store_id TEXT, store_url TEXT)";
 
 const MONARCH_GAME_PROPERTIES_FIELDS: &'static str = "(monarch_game_id, install_dir, size_on_disk, last_played, time_played, description, version, protondb_rating, protondb_url)";
-const TYPED_MONARCH_GAME_PROPERTIES_FIELDS: &'static str = "(monarch_game_id TEXT, install_dir TEXT, size_on_disk TEXT, last_played TEXT, time_played TEXT, description TEXT, version TEXT, protondb_rating TEXT, protondb_url TEXT)";
+const TYPED_MONARCH_GAME_PROPERTIES_FIELDS: &'static str = "(monarch_game_id TEXT, install_dir TEXT, size_on_disk INTEGER, last_played TEXT, time_played TEXT, description TEXT, version TEXT, protondb_rating TEXT, protondb_url TEXT)";
 
 #[derive(Debug, FromRow, Encode, Decode)]
 struct MonarchGameRecord {
@@ -158,35 +158,54 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .await
         .with_context(|| "monarch_sql::insert_game() Failed to start new transaction! | Err: ")?;
 
-    sqlx::query(&format!("INSERT INTO library {}", MONARCH_GAME_FIELDS))
-        .bind(&game.name)
-        .bind(&game.id)
-        .bind(&game.executable_path)
-        .bind(&game.thumbnail_path)
-        .bind(&game.thumbnail_url)
-        .bind(&game.launch_args)
-        .bind(&game.compatibility)
-        .bind(&game.summary)
-        .bind(&game.artwork_path)
-        .bind(&game.artwork_url)
-        .bind(game.imported)
-        .execute(&mut *tx)
-        .await
-        .with_context(|| {
-            "monarch_sql::insert_game() Failed to insert game into library! | Err: "
-        })?;
+    sqlx::query(&format!(
+        "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        MONARCH_GAME_FIELDS
+    ))
+    .bind(&game.name)
+    .bind(&game.id)
+    .bind(&game.executable_path)
+    .bind(&game.thumbnail_path)
+    .bind(&game.thumbnail_url)
+    .bind(&game.launch_args)
+    .bind(&game.compatibility)
+    .bind(&game.summary)
+    .bind(&game.artwork_path)
+    .bind(&game.artwork_url)
+    .bind(game.imported)
+    .execute(&mut *tx)
+    .await
+    .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
 
-    sqlx::query(&format!("INSERT INTO stores {}", STORE_INFO_FIELDS))
+    for store in game.stores.iter() {
+        sqlx::query(&format!(
+            "INSERT INTO stores {} VALUES (?,?,?,?)",
+            STORE_INFO_FIELDS
+        ))
+        .bind(&game.id)
+        .bind(&store.name)
+        .bind(&store.store_id)
+        .bind(&store.store_url)
         .execute(&mut *tx)
         .await
         .with_context(|| {
             "monarch_sql::insert_game() Failed to insert game into library! | Err: "
         })?;
+    }
 
     sqlx::query(&format!(
-        "INSERT INTO properties {}",
+        "INSERT INTO properties {} VALUES (?,?,?,?,?,?,?,?,?)",
         MONARCH_GAME_PROPERTIES_FIELDS
     ))
+    .bind(&game.id)
+    .bind(&game.properties.install_dir)
+    .bind(&(game.properties.size_on_disk as u32))
+    .bind(&game.properties.last_played)
+    .bind(&game.properties.time_played)
+    .bind(&game.properties.description)
+    .bind(&game.properties.version)
+    .bind(&game.properties.protondb_rating)
+    .bind(&game.properties.protondb_url)
     .execute(&mut *tx)
     .await
     .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
@@ -251,82 +270,109 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
 /// Overwrite all games and it's record in the database.
 /// Currently done by dropping and refilling all tables.
 pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result<()> {
-    let mut tx = pool.begin()
+    let mut tx = pool
+        .begin()
         .await
         .with_context(|| "monarch_sql::overwrite_games() Failed to start transaction! | Err: ")?;
 
     sqlx::query("DROP TABLE library")
         .execute(&mut *tx)
         .await
-        .with_context(|| "monarch_sql::overwrite_gams() Failed to drop library! | Err: ")?;
+        .with_context(|| "monarch_sql::overwrite_games() Failed to drop library! | Err: ")?;
 
     sqlx::query("DROP TABLE stores")
         .execute(&mut *tx)
         .await
-        .with_context(|| "monarch_sql::overwrite_gams() Failed to drop stores! | Err: ")?;
+        .with_context(|| "monarch_sql::overwrite_games() Failed to drop stores! | Err: ")?;
 
     sqlx::query("DROP TABLE properties")
         .execute(&mut *tx)
         .await
-        .with_context(|| "monarch_sql::overwrite_gams() Failed to drop properties! | Err: ")?;
+        .with_context(|| "monarch_sql::overwrite_games() Failed to drop properties! | Err: ")?;
 
     sqlx::query(&format!(
         "CREATE TABLE IF NOT EXISTS library {}",
         TYPED_MONARCH_GAME_FIELDS
     ))
-        .execute(&mut *tx)
-        .await
-        .with_context(|| "monarch_sql::init_db() Failed to verify library table! | Err: ")?;
+    .execute(&mut *tx)
+    .await
+    .with_context(|| "monarch_sql::overwrite_games() Failed to verify library table! | Err: ")?;
 
     sqlx::query(&format!(
         "CREATE TABLE IF NOT EXISTS stores {}",
         TYPED_STORE_INFO_FIELDS
     ))
-        .execute(&mut *tx)
-        .await
-        .with_context(|| "monarch_sql::init_db() Failed to verify stores table! | Err: ")?;
-    
+    .execute(&mut *tx)
+    .await
+    .with_context(|| "monarch_sql::overwrite_games() Failed to verify stores table! | Err: ")?;
+
     sqlx::query(&format!(
         "CREATE TABLE IF NOT EXISTS properties {}",
         TYPED_MONARCH_GAME_PROPERTIES_FIELDS
     ))
-        .execute(&mut *tx)
-        .await
-        .with_context(|| "monarch_sql::init_db() Failed to verify properties table! | Err: ")?;
+    .execute(&mut *tx)
+    .await
+    .with_context(|| "monarch_sql::overwrite_games() Failed to verify properties table! | Err: ")?;
 
     for game in games {
-        sqlx::query(&format!("INSERT INTO library {}", MONARCH_GAME_FIELDS))
-            .bind(&game.name)
-            .bind(&game.id)
-            .bind(&game.executable_path)
-            .bind(&game.thumbnail_path)
-            .bind(&game.thumbnail_url)
-            .bind(&game.launch_args)
-            .bind(&game.compatibility)
-            .bind(&game.summary)
-            .bind(&game.artwork_path)
-            .bind(&game.artwork_url)
-            .bind(game.imported)
-            .execute(&mut *tx)
-            .await
-            .with_context(|| {
-                "monarch_sql::insert_game() Failed to insert game into library! | Err: "
-            })?;
-
-        sqlx::query(&format!("INSERT INTO stores {}", STORE_INFO_FIELDS))
-            .execute(&mut *tx)
-            .await
-            .with_context(|| {
-                "monarch_sql::insert_game() Failed to insert game into library! | Err: "
-            })?;
-
         sqlx::query(&format!(
-            "INSERT INTO properties {}",
-            MONARCH_GAME_PROPERTIES_FIELDS
+            "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            MONARCH_GAME_FIELDS
         ))
+        .bind(&game.name)
+        .bind(&game.id)
+        .bind(&game.executable_path)
+        .bind(&game.thumbnail_path)
+        .bind(&game.thumbnail_url)
+        .bind(&game.launch_args)
+        .bind(&game.compatibility)
+        .bind(&game.summary)
+        .bind(&game.artwork_path)
+        .bind(&game.artwork_url)
+        .bind(game.imported)
         .execute(&mut *tx)
         .await
-        .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
+        .with_context(|| {
+            format!(
+                "monarch_sql::overwrite_games() Failed to insert {} into library! | Err: ",
+                game.name
+            )
+        })?;
+
+        for store in game.stores.iter() {
+            sqlx::query(&format!(
+                "INSERT INTO stores {} VALUES (?,?,?,?)",
+                STORE_INFO_FIELDS
+            ))
+            .bind(&game.id)
+            .bind(&store.name)
+            .bind(&store.store_id)
+            .bind(&store.store_url)
+            .execute(&mut *tx)
+            .await
+            .with_context(|| {
+                "monarch_sql::overwrite_games() Failed to insert game store into stores! | Err: "
+            })?;
+        }
+
+        sqlx::query(&format!(
+            "INSERT INTO properties {} VALUES (?,?,?,?,?,?,?,?,?)",
+            MONARCH_GAME_PROPERTIES_FIELDS
+        ))
+        .bind(&game.id)
+        .bind(&game.properties.install_dir)
+        .bind(&(game.properties.size_on_disk as u32))
+        .bind(&game.properties.last_played)
+        .bind(&game.properties.time_played)
+        .bind(&game.properties.description)
+        .bind(&game.properties.version)
+        .bind(&game.properties.protondb_rating)
+        .bind(&game.properties.protondb_url)
+        .execute(&mut *tx)
+        .await
+        .with_context(|| {
+            "monarch_sql::overwrite_games() Failed to insert game properties into properties! | Err: "
+        })?;
     }
 
     tx.commit()
@@ -342,7 +388,10 @@ pub async fn init_db(pool: &SqlitePool) -> Result<()> {
         .await
         .with_context(|| "monarch_sql::init_db() Failed to start transaction! | Err: ")?;
 
-    if !table_exists(pool, "library").await.with_context(|| "monarch_sql::init_db() -> ")? {
+    if !table_exists(pool, "library")
+        .await
+        .with_context(|| "monarch_sql::init_db() -> ")?
+    {
         warn!("'library' table not found! Creating new...");
 
         sqlx::query(&format!(
@@ -354,7 +403,10 @@ pub async fn init_db(pool: &SqlitePool) -> Result<()> {
         .with_context(|| "monarch_sql::init_db() Failed to verify library table! | Err: ")?;
     }
 
-    if !table_exists(pool, "stores").await.with_context(|| "monarch_sql::init_db() -> ")? {
+    if !table_exists(pool, "stores")
+        .await
+        .with_context(|| "monarch_sql::init_db() -> ")?
+    {
         warn!("'stores' table not found! Creating new...");
 
         sqlx::query(&format!(
@@ -366,7 +418,10 @@ pub async fn init_db(pool: &SqlitePool) -> Result<()> {
         .with_context(|| "monarch_sql::init_db() Failed to verify stores table! | Err: ")?;
     }
 
-    if !table_exists(pool, "properties").await.with_context(|| "monarch_sql::init_db() -> ")? {
+    if !table_exists(pool, "properties")
+        .await
+        .with_context(|| "monarch_sql::init_db() -> ")?
+    {
         warn!("'properties' table not found! Creating new...");
 
         sqlx::query(&format!(
@@ -389,7 +444,12 @@ async fn table_exists(pool: &SqlitePool, name: &str) -> Result<bool> {
         .bind(name)
         .fetch_all(pool)
         .await
-        .with_context(|| format!("monarch_sql::table_exists() Failed to query SQLite for table: {} | Err: ", name))?;
+        .with_context(|| {
+            format!(
+                "monarch_sql::table_exists() Failed to query SQLite for table: {} | Err: ",
+                name
+            )
+        })?;
 
     Ok(tables.len() != 0)
 }

@@ -9,8 +9,10 @@ mod monarch_utils;
 
 use crate::{
     gui::App,
+    monarch_library::library,
     monarch_utils::{
-        housekeeping, monarch_fs::verify_monarch_folders, monarch_logger::init_logger, monarch_settings, monarch_sql::init_db, monarch_state::MONARCH_STATE
+        housekeeping, monarch_fs::verify_monarch_folders, monarch_logger::init_logger,
+        monarch_settings, monarch_sql::init_db, monarch_state::MONARCH_STATE,
     },
 };
 
@@ -31,7 +33,8 @@ async fn init() {
     MONARCH_STATE
         .write()
         .expect("Failed to aquire write lock on MONARCH_STATE")
-        .init();
+        .init()
+        .await;
 
     debug!("Initialised with MONARCH_STATE: {:?}", MONARCH_STATE);
 
@@ -39,8 +42,8 @@ async fn init() {
 
     match MONARCH_STATE.read() {
         Ok(state) => {
-            let pool = state.get_db_pool_ref();
-            init_db(pool).await.expect("Failed to run init_db()!"); // Verify database tables exist
+            let pool = state.get_db_pool_arc();
+            init_db(&pool).await.expect("Failed to run init_db()!"); // Verify database tables exist
         }
         Err(e) => {
             error!("Failed to acquire read lock on MONARCH_STATE! | Err: {e}");
@@ -48,12 +51,17 @@ async fn init() {
         }
     }
 
+    let games = library::get_games().await.expect("Didn't expect to fail!");
+    MONARCH_STATE
+        .write()
+        .expect("Failed to aquire write lock on MONARCH_STATE")
+        .set_library_games(&games);
+
     housekeeping::start(); // Starts housekeeping loop
 }
 
-#[tokio::main]
-async fn main() {
-    init().await;
+fn main() {
+    futures::executor::block_on(init());
 
     // Run Monarch
     App::run();

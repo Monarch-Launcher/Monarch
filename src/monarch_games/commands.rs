@@ -75,8 +75,17 @@ pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebA
 }
 
 /// Manually refreshes the entire Monarch library, currently only supports Steam & Epic Games (kinda) still WIP
-pub async fn refresh_library() -> Vec<MonarchGame> {
-    monarch_client::refresh_library().await
+pub async fn refresh_library() -> Result<Vec<MonarchGame>, String> {
+    match monarch_client::refresh_library().await {
+        Ok(games) => Ok(games),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::refresh_library() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from("Failed to refresh library!"))
+        }
+    }
 }
 
 /// Tell backend to download cover/thumbnail for game.
@@ -272,7 +281,7 @@ pub async fn move_game_to_monarch(
 /// Updates the properties of a game in the library.
 pub async fn update_game_properties(game: &MonarchGame) -> Result<(), String> {
     info!("Updating properties for: {}", game.name);
-    match library::update_game_properties(game) {
+    match library::update_game_properties(game).await {
         Ok(_) => Ok(()),
         Err(e) => {
             error!(
@@ -341,7 +350,7 @@ pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
         }
     }
 
-    if let Err(e) = monarch_library::library::add_game(&game) {
+    if let Err(e) = monarch_library::library::add_game(&game).await {
         error!(
             "monarch_games::commands::manual_add_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -406,10 +415,10 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
     monarch_client::get_game_properties(game).await
 }
 
-pub fn manual_remove_game(game: &MonarchGame) -> Result<(), String> {
+pub async fn manual_remove_game(game: MonarchGame) -> Result<(), String> {
     info!("User removing game binary: {:?}", game);
 
-    if let Err(e) = monarch_library::library::remove_game(game) {
+    if let Err(e) = monarch_library::library::remove_game(&game).await {
         error!(
             "monarch_games::commands::manual_remove_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

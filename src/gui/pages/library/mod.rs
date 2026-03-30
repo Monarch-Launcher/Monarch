@@ -50,7 +50,15 @@ impl LibraryPage {
                 self.dot_count = 3;
                 self.tick_counter = 0;
                 iced::Task::perform(
-                    async move { monarch_games::commands::refresh_library().await },
+                    async move {
+                        match monarch_games::commands::refresh_library().await {
+                            Ok(games) => games,
+                            Err(e) => {
+                                show_error(e);
+                                Vec::new()
+                            }
+                        }
+                    },
                     Message::UpdateGames,
                 )
             }
@@ -304,16 +312,18 @@ impl LibraryPage {
 
 impl Default for LibraryPage {
     fn default() -> Self {
-        let mut browser: GameBrowser = GameBrowser::default();
+        let browser: GameBrowser = GameBrowser::default();
 
-        match monarch_library::commands::get_library() {
-            Ok(games) => {
-                let _ = browser.update(gamecard::GameCardMessage::UpdateGames(games));
-            }
-            Err(e) => {
-                error!("Failed to get library: {}", e);
-            }
-        }
+        /*
+               match monarch_library::commands::get_library() {
+                   Ok(games) => {
+                       let _ = browser.update(gamecard::GameCardMessage::UpdateGames(games));
+                   }
+                   Err(e) => {
+                       show_error(e);
+                   }
+               }
+        */
 
         Self {
             browser: browser,

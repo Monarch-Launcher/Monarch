@@ -47,7 +47,7 @@ sqlx = { version = "0.8", features = [
   "sqlite",
   "macros",
   "derive",
-  "runtime-tokio"
+  "runtime-async-std",
 ], default-features = false }
 
 [workspace]

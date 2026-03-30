@@ -7,10 +7,7 @@ use tracing::{error, info, warn};
 
 use crate::{
     monarch_games::{games::GameType, monarchgame::MonarchGame},
-    monarch_utils::{
-        monarch_fs::{self, get_monarch_home},
-        monarch_terminal,
-    },
+    monarch_utils::{monarch_fs::get_monarch_home, monarch_terminal},
 };
 
 #[derive(Debug, Deserialize)]

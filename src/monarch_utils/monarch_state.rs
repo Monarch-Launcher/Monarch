@@ -1,12 +1,9 @@
 use crate::monarch_utils::monarch_fs::get_library_db_path;
-use crate::monarch_utils::{monarch_settings, monarch_sql};
-use crate::{
-    monarch_games::monarchgame::MonarchGame,
-    monarch_utils::monarch_settings::Settings,
-};
+use crate::monarch_utils::monarch_settings;
+use crate::{monarch_games::monarchgame::MonarchGame, monarch_utils::monarch_settings::Settings};
 use anyhow::{bail, Result};
-use sqlx::SqlitePool;
 use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::SqlitePool;
 use std::sync::RwLock;
 use std::sync::{Arc, LazyLock};
 
@@ -23,12 +20,12 @@ pub struct MonarchState {
     library_games: Vec<MonarchGame>,
     settings: Arc<RwLock<Settings>>,
 
-    library_conn: Option<SqlitePool>,
+    library_conn: Option<Arc<SqlitePool>>, // Using Arc<> allows for copying the 'ptr' across async threads
 }
 
 impl Drop for MonarchState {
     fn drop(&mut self) {
-        //self.library_conn.close();
+        futures::executor::block_on(self.library_conn.as_ref().unwrap().close());
     }
 }
 
@@ -48,12 +45,11 @@ impl MonarchState {
                 .try_into()
                 .expect("monarch_state::init() -> Failed to convert into Settings"),
         ));
-        self.library_conn = Some(SqlitePool::connect_lazy_with(
-                SqliteConnectOptions::new()
-                    .filename(get_library_db_path())
-                    .create_if_missing(true)));
-
-        self.library_games = monarch_sql::get_library(&self.library_conn.as_ref().unwrap()).await.unwrap();
+        self.library_conn = Some(Arc::new(SqlitePool::connect_lazy_with(
+            SqliteConnectOptions::new()
+                .filename(get_library_db_path())
+                .create_if_missing(true),
+        )));
     }
 
     /// Returns what the backend thinks is the users library.
@@ -117,7 +113,7 @@ impl MonarchState {
         self.settings.clone()
     }
 
-    pub fn get_db_pool_ref(&self) -> &SqlitePool {
-        self.library_conn.as_ref().unwrap()
+    pub fn get_db_pool_arc(&self) -> Arc<SqlitePool> {
+        self.library_conn.as_ref().unwrap().clone()
     }
 }

@@ -66,7 +66,6 @@ pub fn get_monarch_home() -> PathBuf {
     // Fallback to manually reading settings file
     if let Ok(settings_table) = monarch_settings::read_settings() {
         if let Ok(settings) = settings_table.try_into::<Settings>() {
-            println!("got settings: {:?}", settings.monarch.monarch_home);
             return PathBuf::from(settings.monarch.monarch_home.clone());
         }
     }
@@ -139,12 +138,6 @@ pub fn get_settings_path() -> Result<PathBuf> {
         .join(".config")
         .join("monarch")
         .join("settings.toml"))
-}
-
-/// Returns path of games installed specifically by Monarch.
-pub fn get_monarch_games_path() -> PathBuf {
-    let path: PathBuf = get_monarch_home();
-    path.join("monarch_games.json")
 }
 
 /// Returns path to library.json
