@@ -167,6 +167,8 @@ impl SettingsPage {
             Message::BrowseLibraryFolder => return self.pick_default_monarch_folder(),
             #[cfg(target_os = "linux")]
             Message::RemoveUmu => self.remove_umu(),
+            #[cfg(not(target_os = "linux"))]
+            Message::RemoveUmu => {}, // Do nothing
         }
         iced::Task::none()
     }

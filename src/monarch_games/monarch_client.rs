@@ -375,11 +375,7 @@ pub async fn refresh_library() -> Result<Vec<MonarchGame>> {
         .await
         .with_context(|| "monarch_client::refresh_library() -> ")?;
 
-    debug!("Games: {:?}", games);
-
     let mut steam_games: Vec<MonarchGame> = steam_client::get_library().await;
-
-    debug!("Steam games: {:?}", steam_games);
 
     // Filter out removed games
     games = games
@@ -397,8 +393,6 @@ pub async fn refresh_library() -> Result<Vec<MonarchGame>> {
 
     // Append all steam_games
     games.append(&mut steam_games);
-
-    debug!("Appended games: {:?}", games);
 
     library::overwrite_games(&games)
         .await
