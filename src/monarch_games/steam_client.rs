@@ -648,6 +648,7 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
 }
 
 #[derive(Deserialize)]
+#[allow(unused)]
 struct ProtonDbResults {
     #[serde(rename = "bestReportedTier")]
     best_reported_tier: String,

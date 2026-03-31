@@ -26,7 +26,6 @@ pub enum Message {
     ScannerHovered(bool),
     AddGameHovered(bool),
     OpenAddModal,
-    CloseAddModal,
     AddModal(add_game::Message),
     AddGame(MonarchGame),
 }
@@ -183,10 +182,6 @@ impl LibraryPage {
             }
             Message::OpenAddModal => {
                 self.add_game_modal = Some(AddGameModal::default());
-                iced::Task::none()
-            }
-            Message::CloseAddModal => {
-                self.add_game_modal = None;
                 iced::Task::none()
             }
             Message::AddModal(modal_msg) => {
