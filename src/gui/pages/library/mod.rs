@@ -34,7 +34,6 @@ pub enum Message {
 #[derive(Debug, Clone)]
 pub struct LibraryPage {
     browser: GameBrowser,
-    pub games_loaded: bool,
     is_refreshing: bool,
     dot_count: u8,
     tick_counter: u8,
@@ -65,7 +64,6 @@ impl LibraryPage {
             }
             Message::UpdateGames(games) => {
                 self.is_refreshing = false;
-                self.games_loaded = true;
 
                 let processed_games: Vec<MonarchGame> = games
                     .iter()
@@ -157,7 +155,7 @@ impl LibraryPage {
                 iced::Task::none()
             }
             Message::Tick => {
-                if self.is_refreshing || !self.games_loaded {
+                if self.is_refreshing {
                     self.tick_counter = (self.tick_counter + 1) % 60;
                     if self.tick_counter == 0 {
                         self.dot_count = (self.dot_count % 3) + 1;
@@ -310,22 +308,23 @@ impl LibraryPage {
             base_content.into()
         }
     }
-
-    pub fn load_games(&mut self) -> iced::Task<Message> {
-        iced::Task::perform(
-            async { monarch_library::commands::get_library().await.unwrap() },
-            Message::UpdateGames,
-        )
-    }
 }
 
 impl Default for LibraryPage {
     fn default() -> Self {
-        let browser: GameBrowser = GameBrowser::default();
+        let mut browser: GameBrowser = GameBrowser::default();
+
+        match monarch_library::commands::get_library() {
+            Ok(games) => {
+                let _ = browser.update(gamecard::GameCardMessage::UpdateGames(games));
+            }
+            Err(e) => {
+                show_error(e);
+            }
+        }
 
         Self {
             browser,
-            games_loaded: false,
             is_refreshing: false,
             dot_count: 3,
             tick_counter: 0,

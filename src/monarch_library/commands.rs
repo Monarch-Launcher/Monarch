@@ -1,6 +1,6 @@
 use crate::{
     monarch_games::{commands::get_game_properties, monarchgame::MonarchGame},
-    monarch_library::library::get_games,
+    monarch_utils::monarch_state::MONARCH_STATE,
 };
 
 use core::result::Result;
@@ -9,15 +9,12 @@ use std::cmp::Ordering;
 use tracing::error;
 
 /// Returns MonarchGames from library.json
-pub async fn get_library() -> Result<Vec<MonarchGame>, String> {
-    match get_games().await {
-        Ok(games) => Ok(games),
+pub fn get_library() -> Result<Vec<MonarchGame>, String> {
+    match MONARCH_STATE.read() {
+        Ok(state) => Ok(state.get_library_games()),
         Err(e) => {
-            error!(
-                "monarch_games::commands::get_library -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from("Something went wrong getting library!"))
+            error!("monarch_games::commands::get_library() Failed to acquire read lock on MONARCH_STATE | Err: {e}");
+            Err(String::from("Failed to read library!"))
         }
     }
 }
@@ -25,7 +22,7 @@ pub async fn get_library() -> Result<Vec<MonarchGame>, String> {
 /// Simple function for generating suggested games on homescreen, based on
 /// recent playtime.
 pub async fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
-    match get_library().await {
+    match get_library() {
         Ok(mut games) => {
             let mut properties_tasks = vec![];
             for game in games.iter_mut() {
@@ -56,7 +53,7 @@ pub async fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
     }
 }
 
-/* 
+/*
 /// Creates a new collection
 pub async fn create_collection(collection_name: String, game_ids: Vec<String>) {
     todo!()
