@@ -5,7 +5,7 @@ use iced::widget::{button, column, combo_box, container, row, text, text_input, 
 use iced::{alignment, border, Element, Length, Task};
 use tracing::error;
 
-use crate::gui::styles;
+use crate::gui::{show_error, styles};
 use crate::monarch_games::commands::{get_executables, proton_versions, update_game_properties};
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_vdf::ProtonVersion;
@@ -170,7 +170,7 @@ impl PropertiesModal {
                     async move { update_game_properties(&game_clone).await },
                     |res| {
                         if let Err(e) = res {
-                            error!("Failed to save properties: {}", e);
+                            show_error(e);
                         }
                         Message::Cancel
                     },

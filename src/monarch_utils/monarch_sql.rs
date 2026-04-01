@@ -5,14 +5,14 @@ use tracing::warn;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo};
 
 const MONARCH_GAME_FIELDS: &'static str = "(name, id, executable_path, thumbnail_path, thumbnail_url, launch_args, compatibility, summary, artwork_path, artwork_url, imported)";
-const TYPED_MONARCH_GAME_FIELDS: &'static str = "(name TEXT, id TEXT, executable_path TEXT, thumbnail_path TEXT, thumbnail_url TEXT, launch_args TEXT, compatibility TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN)";
+const TYPED_MONARCH_GAME_FIELDS: &'static str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, thumbnail_path TEXT, thumbnail_url TEXT, launch_args TEXT, compatibility TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN)";
 
 const STORE_INFO_FIELDS: &'static str = "(monarch_game_id, name, store_id, store_url)";
 const TYPED_STORE_INFO_FIELDS: &'static str =
-    "(monarch_game_id TEXT, name TEXT, store_id TEXT, store_url TEXT)";
+    "(monarch_game_id TEXT PRIMARY KEY, name TEXT, store_id TEXT, store_url TEXT)";
 
 const MONARCH_GAME_PROPERTIES_FIELDS: &'static str = "(monarch_game_id, install_dir, size_on_disk, last_played, time_played, description, version, protondb_rating, protondb_url)";
-const TYPED_MONARCH_GAME_PROPERTIES_FIELDS: &'static str = "(monarch_game_id TEXT, install_dir TEXT, size_on_disk INTEGER, last_played TEXT, time_played TEXT, description TEXT, version TEXT, protondb_rating TEXT, protondb_url TEXT)";
+const TYPED_MONARCH_GAME_PROPERTIES_FIELDS: &'static str = "(monarch_game_id TEXT PRIMARY KEY, install_dir TEXT, size_on_disk INTEGER, last_played TEXT, time_played TEXT, description TEXT, version TEXT, protondb_rating TEXT, protondb_url TEXT)";
 
 #[derive(Debug, FromRow, Encode, Decode)]
 struct MonarchGameRecord {
@@ -260,11 +260,111 @@ pub async fn remove_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .with_context(|| "monarch_sql::remove_game() Failed to commit transaction! | Err: ")
 }
 
-/// Update game in db.
+/// Update game in db, using Sqlite upserting
 pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
-    // TODO: Write logic for handling inserting or upserting
-    // Likely using something akin to INSERT [...] ON CONFLICT [...]
-    Ok(())
+    let sql_library_query: String = format!(r#"INSERT INTO library{} 
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(id) DO UPDATE SET
+        name = ?,
+        executable_path = ?,
+        thumbnail_path = ?,
+        thumbnail_url = ?,
+        launch_args = ?,
+        compatibility = ?,
+        summary = ?,
+        artwork_path = ?,
+        artwork_url = ?,
+        imported = ?"#, MONARCH_GAME_FIELDS);
+
+    let sql_stores_query: String = format!(r#"INSERT INTO stores{} 
+    VALUES (?,?,?,?)
+    ON CONFLICT(monarch_game_id) DO UPDATE SET
+        name = ?,
+        store_id = ?,
+        store_url = ?
+        "#, STORE_INFO_FIELDS);
+        
+    let sql_properties_query: String = format!(r#"INSERT INTO properties{} 
+    VALUES (?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(monarch_game_id) DO UPDATE SET
+        install_dir = ?,
+        size_on_disk = ?,
+        last_played = ?,
+        time_played = ?,
+        description = ?,
+        version = ?,
+        protondb_rating = ?,
+        protondb_url = ?"#, MONARCH_GAME_PROPERTIES_FIELDS);
+
+    let mut tx = pool.begin().await.with_context(|| "monarch_sql::update_game() Failed to start transaction! | Err: ")?;
+
+    sqlx::query(&sql_library_query)
+        .bind(&game.name)
+        .bind(&game.id)
+        .bind(&game.executable_path)
+        .bind(&game.thumbnail_path)
+        .bind(&game.thumbnail_url)
+        .bind(&game.launch_args)
+        .bind(&game.compatibility)
+        .bind(&game.summary)
+        .bind(&game.artwork_path)
+        .bind(&game.artwork_url)
+        .bind(game.imported)
+        .bind(&game.name)
+        .bind(&game.executable_path)
+        .bind(&game.thumbnail_path)
+        .bind(&game.thumbnail_url)
+        .bind(&game.launch_args)
+        .bind(&game.compatibility)
+        .bind(&game.summary)
+        .bind(&game.artwork_path)
+        .bind(&game.artwork_url)
+        .bind(game.imported)
+        .execute(&mut *tx)
+        .await
+        .with_context(|| format!("monarch_sql::update_game() Failed to upsert {} | Err: ", game.name))?;
+
+    for store in game.stores.iter() {
+        sqlx::query(&sql_stores_query)
+        .bind(&game.id)
+        .bind(&store.name)
+        .bind(&store.store_id)
+        .bind(&store.store_url)
+        .bind(&store.name)
+        .bind(&store.store_id)
+        .bind(&store.store_url)
+        .execute(&mut *tx)
+        .await
+        .with_context(|| {
+            format!("monarch_sql::update_game() Failed to upsert {} store! | Err: ", game.name)
+        })?;
+    }
+
+    sqlx::query(&sql_properties_query)
+    .bind(&game.id)
+    .bind(&game.properties.install_dir)
+    .bind(&(game.properties.size_on_disk as u32))
+    .bind(&game.properties.last_played)
+    .bind(&game.properties.time_played)
+    .bind(&game.properties.description)
+    .bind(&game.properties.version)
+    .bind(&game.properties.protondb_rating)
+    .bind(&game.properties.protondb_url)
+    .bind(&game.properties.install_dir)
+    .bind(&(game.properties.size_on_disk as u32))
+    .bind(&game.properties.last_played)
+    .bind(&game.properties.time_played)
+    .bind(&game.properties.description)
+    .bind(&game.properties.version)
+    .bind(&game.properties.protondb_rating)
+    .bind(&game.properties.protondb_url)
+    .execute(&mut *tx)
+    .await
+    .with_context(|| format!("monarch_sql::update_game() Failed to upsert {} properties! | Err: ", game.name))?;
+
+    tx.commit()
+        .await
+        .with_context(|| "monarch_sql::update_game() Failed to commit transaction! | Err: ")
 }
 
 /// Overwrite all games and it's record in the database.
