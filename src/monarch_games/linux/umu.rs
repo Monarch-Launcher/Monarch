@@ -11,6 +11,7 @@ use crate::{
         monarch_fs::{self, get_monarch_bins_path, get_monarch_home},
         monarch_terminal,
     },
+    monarch_utils::{monarch_fs::get_monarch_home, monarch_terminal},
 };
 
 #[derive(Debug, Deserialize)]

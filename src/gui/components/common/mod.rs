@@ -4,7 +4,6 @@ use iced::widget::{button, pick_list, row, svg, text_editor, text_input, Text};
 use iced::{alignment, Color, Element, Length, Theme};
 use rfd::FileHandle;
 use std::borrow::Cow;
-use std::future::Future;
 
 pub fn primary_button<'a, Message>(
     label: &str,

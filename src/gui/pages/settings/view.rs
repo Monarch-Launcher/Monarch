@@ -201,17 +201,18 @@ impl SettingsPage {
         } else {
             &settings.steam.username
         };
-        let secret_status: &str = if monarch_utils::commands::secret_is_set("steam", &settings.steam) {
-            "Status: Saved"
-        } else {
-            "Status: Not Saved"
-        };
 
         #[cfg(target_os = "linux")]
         let install_steamcmd_msg: Option<Message> = Some(Message::InstallSteamCMDLinuxWarning);
 
         #[cfg(not(target_os = "linux"))]
         let install_steamcmd_msg: Option<Message> = Some(Message::InstallSteamCMD);
+
+        let steam_secret: &str = if settings.steam.twofa {
+            "Status: Saved"
+        } else {
+            "Status: Not saved"
+        };
 
         column![
             self.section_header("Steam Integration"),
@@ -303,7 +304,7 @@ impl SettingsPage {
             ],
             Space::new().height(10),
 
-            text(secret_status).size(14).color([0.5, 0.5, 0.5]),
+            text(steam_secret).size(14).color([0.5, 0.5, 0.5]),
         ]
         .spacing(10)
         .into()

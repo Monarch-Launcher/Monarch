@@ -19,6 +19,7 @@ use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::games_library;
 use crate::monarch_utils::commands::write_settings;
+use crate::monarch_library::library;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
@@ -62,7 +63,9 @@ impl StoreType for SteamClient {
         let game: MonarchGame = download_game(&game.name, &game.get_store_id())
             .await
             .with_context(|| "steam_client::install_game() -> ")?;
-        games_library::add_game(&game).with_context(|| "steam_client::install_game() -> ")
+        library::add_game(&game)
+            .await
+            .with_context(|| "steam_client::install_game() -> ")
     }
 
     async fn uninstall_game(&self, game: &MonarchGame) -> Result<()> {
@@ -665,13 +668,13 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
                 .unwrap(),
         )
     };
-    let mut monarch_game =
-        MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
+    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, "", &thumbnail_path);
     monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
 }
 
 #[derive(Deserialize)]
+#[allow(unused)]
 struct ProtonDbResults {
     #[serde(rename = "bestReportedTier")]
     best_reported_tier: String,

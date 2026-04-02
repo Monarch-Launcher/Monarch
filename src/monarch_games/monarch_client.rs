@@ -5,17 +5,16 @@ use crate::monarch_games::monarchgame::{
     GameImageType, MonarchGameProperties, MonarchWebApiGame, StoreInfo,
 };
 use crate::monarch_games::stores::SearchFilter;
-use crate::monarch_library::games_library::write_monarch_games;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::{monarch_terminal, monarch_vdf};
-use crate::{monarch_library::games_library, monarch_utils::monarch_fs};
+use crate::{monarch_library::library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 pub struct MonarchClient {}
 
@@ -289,9 +288,11 @@ pub async fn download_game(name: &str, store: &str, store_id: &str) -> Result<Ve
         &_ => bail!("monarch_client::download_game() Invalid store!"),
     };
 
-    games_library::add_game(&new_game).with_context(|| "monarch_client::download_game() -> ")?;
+    library::add_game(&new_game)
+        .await
+        .with_context(|| "monarch_client::download_game() -> ")?;
 
-    Ok(get_library()) // Return new library
+    Ok(library::get_games().await.unwrap()) // Return new library
 }
 
 /// Remove an installed game
@@ -303,9 +304,7 @@ pub async fn uninstall_game(store: &str, store_id: &str) -> Result<()> {
                 .await
                 .with_context(|| "monarch_client::uninstall_game() -> ")?;
 
-            let mut monarch_games = games_library::get_monarchgames()
-                .with_context(|| "monarch_client::uninstall_game() -> ")?;
-
+            /*
             for (i, game) in monarch_games.clone().iter().enumerate() {
                 if game.get_store_name() == store && game.get_store_id() == store_id {
                     monarch_games.remove(i);
@@ -324,8 +323,28 @@ pub async fn uninstall_game(store: &str, store_id: &str) -> Result<()> {
                     return write_monarch_games(&monarch_games)
                         .with_context(|| "monarch_client::uninstall_game() -> ");
                 }
+                */
+
+            let games: Vec<MonarchGame>;
+            match MONARCH_STATE.read() {
+                Ok(state) => {
+                    games = state.get_library_games();
+                }
+                Err(e) => {
+                    bail!(
+                        "monarch_client::uninstall_game() Failed to lock on MONARCH_STATE! | Err: {e}"
+                    )
+                }
             }
-            bail!("monarch_client::update_game() | Err: Game: {store_id} uninstalled, not removed from monarch_games.json, due to not found!")
+
+            for game in games.iter() {
+                if game.get_store_name() == store && game.get_store_id() == store_id {
+                    return library::remove_game(game)
+                        .await
+                        .with_context(|| "monarch_client::uninstall_game() -> ");
+                }
+            }
+            bail!("monarch_client::uninstall_game() Failed to remove game from library! | Err: Not found!")
         }
 
         &_ => bail!(
@@ -349,54 +368,37 @@ pub async fn update_game(store: &str, store_id: &str) -> Result<()> {
     }
 }
 
-/// Returns games found in library.json
-pub fn get_library() -> Vec<MonarchGame> {
-    let mut games: Vec<MonarchGame> = Vec::new();
-    match games_library::get_games() {
-        Ok(library) => {
-            games = library;
-        }
-        Err(e) => {
-            error!("monarch_client::get_library() -> {e}");
-        }
-    }
-
-    games
-}
-
 /// Returns autodetected games according to Monarch
-pub async fn refresh_library() -> Vec<MonarchGame> {
+pub async fn refresh_library() -> Result<Vec<MonarchGame>> {
     info!("Manual refresh of library requested. Refreshing...");
-    let mut games: Vec<MonarchGame> = Vec::new();
-
-    if let Ok(mut monarch_games) = games_library::get_monarchgames() {
-        games.append(&mut monarch_games);
-    }
+    let mut games: Vec<MonarchGame> = library::get_games()
+        .await
+        .with_context(|| "monarch_client::refresh_library() -> ")?;
 
     let mut steam_games: Vec<MonarchGame> = steam_client::get_library().await;
-    steam_games = steam_games
-        .iter()
-        .filter(|game| !games.contains(game))
-        .cloned()
-        .collect();
 
+    // Filter out removed games
+    games = games
+        .into_iter()
+        .filter(|g1| {
+            for g2 in steam_games.iter() {
+                if *g1 == *g2 {
+                    debug!("TRUE: {:?} == {:?}", g1, g2);
+                    return true;
+                }
+            }
+            false
+        })
+        .collect::<Vec<MonarchGame>>();
+
+    // Append all steam_games
     games.append(&mut steam_games);
 
-    match MONARCH_STATE.write() {
-        Ok(mut state) => {
-            state.set_library_games(&games);
-            // Replace games with the updated list of library games
-            games = state.get_library_games();
-        }
-        Err(e) => {
-            error!(
-                "monarch_client::refresh_library() Failed to lock on MONARCH_STATE | Err: {}",
-                e
-            );
-        }
-    }
+    library::overwrite_games(&games)
+        .await
+        .with_context(|| "monarch_client::refresh_library() -> ")?;
 
-    games
+    Ok(games)
 }
 
 /// Search for the name of a game and return the results.

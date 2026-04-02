@@ -137,13 +137,16 @@ pub fn secret_is_set(launcher: &str, launcher_settings: &LauncherSettings) -> bo
 }
 
 /// Delete secret in secure store
-pub fn delete_secret(launcher: &str, launcher_settings: &mut LauncherSettings) -> Result<()> {
+pub fn delete_secret(
+    launcher: &str,
+    launcher_settings: &mut LauncherSettings,
+) -> Result<(), String> {
     if let Err(e) = delete_credentials(&format!("{launcher}-secret"), &launcher_settings.username) {
         error!(
             "monarch_utils::commands::delete_secret() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        bail!("Something went wrong while deleting secret!");
+        return Err(String::from("Something went wrong while deleting secret!"));
     }
     Ok(())
 }

@@ -14,8 +14,12 @@ fn verify_env_vars() {
         std::process::exit(1);
     }
 
+    if let Ok(var) = std::env::var("DATABASE_URL") {
+        println!("cargo:rustc-env=DATABASE_URL={var}")
+    }
+
     // This line makes the variable available to `env!` macros
-    println!("cargo:rustc-env=MONARCH_URL={}", monarch_url);
+    println!("cargo:rustc-env=MONARCH_URL={monarch_url}");
 
     if let Err(e) = std::env::var("CARGO_PKG_VERSION") {
         eprintln!("CARGO_PKG_VERSION not set | Err: {}", e);

@@ -64,6 +64,15 @@ impl SettingsPage {
             &mut settings.steam,
             &self.steam_secret_tmp,
         );
+        settings.steam.twofa = true;
+        self.write_settings(settings);
+    }
+
+    pub fn remove_steam_secret(&mut self, settings: &mut Settings) {
+        if let Err(e) = monarch_utils::commands::delete_secret("steam", &mut settings.steam) {
+            show_error(e);
+        }
+        settings.steam.twofa = false;
         self.write_settings(settings);
     }
 

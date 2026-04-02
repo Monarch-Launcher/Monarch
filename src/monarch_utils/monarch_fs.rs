@@ -1,6 +1,5 @@
 use anyhow::{bail, Context, Result};
 use regex::Regex;
-use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::{fs, process::exit};
 use tracing::{error, info, warn};
@@ -67,7 +66,6 @@ pub fn get_monarch_home() -> PathBuf {
     // Fallback to manually reading settings file
     if let Ok(settings_table) = monarch_settings::read_settings() {
         if let Ok(settings) = settings_table.try_into::<Settings>() {
-            println!("got settings: {:?}", settings.monarch.monarch_home);
             return PathBuf::from(settings.monarch.monarch_home.clone());
         }
     }
@@ -168,29 +166,10 @@ pub fn get_settings_path() -> Result<PathBuf> {
         .join("settings.toml"))
 }
 
-/// Returns path of games installed specifically by Monarch.
-pub fn get_monarch_games_path() -> PathBuf {
-    let path: PathBuf = get_monarch_home();
-    path.join("monarch_games.json")
-}
-
 /// Returns path to library.json
-pub fn get_library_json_path() -> PathBuf {
+pub fn get_library_db_path() -> PathBuf {
     let path: PathBuf = get_monarch_home();
-    path.join("library.json")
-}
-
-/// Returns path to collections.json
-pub fn get_collections_json_path() -> PathBuf {
-    let path: PathBuf = get_monarch_home();
-    path.join("collections.json")
-}
-
-/// Write JSON to file
-pub fn write_json_content(content: Value, path: &Path) -> Result<()> {
-    fs::write(path, serde_json::to_string_pretty(&content).unwrap()) // TODO: Remove unwrap for better error handling
-        .with_context(|| format!("monarch_fs::write_json_content() Something went wrong trying to write new library to: {file} | Err: ", file = path.display()))?;
-    Ok(())
+    path.join("library.db3")
 }
 
 /// Abstraction to check whether a given path exists already or not
