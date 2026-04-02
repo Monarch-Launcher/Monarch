@@ -17,7 +17,6 @@ use crate::monarch_games::monarchgame::GameImageType;
 use crate::monarch_games::monarchgame::StoreInfo;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
-use crate::monarch_library::games_library;
 use crate::monarch_utils::commands::write_settings;
 use crate::monarch_library::library;
 use crate::monarch_utils::monarch_credentials::get_password;
