@@ -259,7 +259,6 @@ impl App {
                             .update(pages::game_details::Message::Actions(a_msg))
                             .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
                         pages::game_details::Message::Nop(_) => iced::Task::none(),
-                        _ => todo!(),
                     }
                 }
                 pages::Message::StoreDetails(msg) => match msg {

@@ -194,6 +194,11 @@ impl SettingsPage {
         } else {
             &settings.steam.username
         };
+        let steam_secret: &str = if settings.steam.twofa {
+            "Status: Saved"
+        } else {
+            "Status: Not saved"
+        };
 
         column![
             self.section_header("Steam Integration"),
@@ -279,10 +284,12 @@ impl SettingsPage {
             row![
                 Space::new().width(Length::Fill),
                 primary_button("Save Secret", Some(Message::SaveSteamSecret)),
+                Space::new().width(10),
+                danger_button("Delete Secret", Some(Message::DeleteSteamSecret)),
             ],
             Space::new().height(10),
 
-            text("Status: Not configured").size(14).color([0.5, 0.5, 0.5]),
+            text(steam_secret).size(14).color([0.5, 0.5, 0.5]),
         ]
         .spacing(10)
         .into()

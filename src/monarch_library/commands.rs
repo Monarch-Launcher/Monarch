@@ -1,30 +1,26 @@
 use crate::{
     monarch_games::{commands::get_game_properties, monarchgame::MonarchGame},
-    monarch_library::games_library::get_games,
+    monarch_utils::monarch_state::MONARCH_STATE,
 };
 
-use super::collections;
 use core::result::Result;
 use futures::future::join_all;
 use std::cmp::Ordering;
-// Using different Result type for sending to frontend.
-use serde_json::Value;
 use tracing::error;
 
 /// Returns MonarchGames from library.json
 pub fn get_library() -> Result<Vec<MonarchGame>, String> {
-    match get_games() {
-        Ok(games) => Ok(games),
+    match MONARCH_STATE.read() {
+        Ok(state) => Ok(state.get_library_games()),
         Err(e) => {
-            error!(
-                "monarch_games::commands::get_library -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from("Something went wrong getting library!"))
+            error!("monarch_games::commands::get_library() Failed to acquire read lock on MONARCH_STATE | Err: {e}");
+            Err(String::from("Failed to read library!"))
         }
     }
 }
 
+/// Simple function for generating suggested games on homescreen, based on
+/// recent playtime.
 pub async fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
     match get_library() {
         Ok(mut games) => {
@@ -57,73 +53,24 @@ pub async fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
     }
 }
 
-/// Creates a new collection and writes to JSON
-pub async fn create_collection(
-    collection_name: String,
-    game_ids: Vec<String>,
-) -> Result<Value, String> {
-    match collections::new_collection(collection_name, game_ids) {
-        Ok(result) => Ok(result),
-        Err(e) => {
-            error!(
-                "monarch_library::commands::create_collection() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from(
-                "Something went wrong while creating a new collection!",
-            ))
-        }
-    }
+/*
+/// Creates a new collection
+pub async fn create_collection(collection_name: String, game_ids: Vec<String>) {
+    todo!()
 }
 
-/// Updates a collection and JSON file
-pub async fn update_collection(
-    id: String,
-    new_name: String,
-    game_ids: Vec<String>,
-) -> Result<Value, String> {
-    match collections::update_collections(&id, &new_name, game_ids) {
-        Ok(result) => Ok(result),
-        Err(e) => {
-            error!(
-                "monarch_library::commands::update_collection() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from(
-                "Something went wrong while updating collection!",
-            ))
-        }
-    }
+/// Updates a collection
+pub async fn update_collection(id: String, new_name: String, game_ids: Vec<String>) {
+    todo!()
 }
 
-/// Deletes a collection and writes to JSON
-pub async fn delete_collection(id: String) -> Result<Value, String> {
-    match collections::delete_collections(&id) {
-        Ok(result) => Ok(result),
-        Err(e) => {
-            error!(
-                "monarch_library::commands::delete_collection() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from(
-                "Something went wrong while deleting collection!",
-            ))
-        }
-    }
+/// Deletes a collection
+pub async fn delete_collection(id: String) {
+    todo!()
 }
 
-/// Reads collections from JSON
-pub async fn get_collections() -> Result<Value, String> {
-    match collections::get_collections() {
-        Ok(result) => Ok(result),
-        Err(e) => {
-            error!(
-                "monarch_library::commands::get_collections() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from(
-                "Something went wrong while getting collections!",
-            ))
-        }
-    }
+/// Reads collections
+pub async fn get_collections() {
+    todo!()
 }
+*/

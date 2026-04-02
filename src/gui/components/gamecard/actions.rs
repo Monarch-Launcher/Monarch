@@ -33,9 +33,15 @@ impl ActionsModal {
             Message::Uninstall => match self.game.lock() {
                 Ok(game) => {
                     if &game.get_store_name() == "monarch" {
-                        if let Err(e) = monarch_games::commands::manual_remove_game(&game) {
-                            show_error(e);
-                        }
+                        return iced::Task::future(monarch_games::commands::manual_remove_game(
+                            game.clone(),
+                        ))
+                        .then(|out| {
+                            if let Err(e) = out {
+                                show_error(e);
+                            }
+                            iced::Task::none()
+                        });
                     } else {
                         return iced::Task::future(monarch_games::commands::remove_game(
                             game.name.clone(),

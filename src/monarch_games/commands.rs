@@ -12,7 +12,7 @@ use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::MonarchWebApiGame;
 use crate::monarch_games::steam_client;
 use crate::monarch_games::stores::DownloadOptions;
-use crate::monarch_library::{self, games_library};
+use crate::monarch_library::{self, library};
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_fs::path_exists;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
@@ -75,8 +75,17 @@ pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebA
 }
 
 /// Manually refreshes the entire Monarch library, currently only supports Steam & Epic Games (kinda) still WIP
-pub async fn refresh_library() -> Vec<MonarchGame> {
-    monarch_client::refresh_library().await
+pub async fn refresh_library() -> Result<Vec<MonarchGame>, String> {
+    match monarch_client::refresh_library().await {
+        Ok(games) => Ok(games),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::refresh_library() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err(String::from("Failed to refresh library!"))
+        }
+    }
 }
 
 /// Tell backend to download cover/thumbnail for game.
@@ -176,7 +185,6 @@ pub async fn download_game(opts: &mut DownloadOptions) -> Result<Vec<MonarchGame
         &opts.game_store_id,
         "",
         "",
-        "",
     );
 
     let result: Result<(), String> = match opts.game_store.as_str() {
@@ -270,37 +278,10 @@ pub async fn move_game_to_monarch(
     Ok(())
 }
 
-/*
-/// Open "Purchase window" for a game
-pub async fn open_store(url: String) -> Result<(), String> {
-    let window: MiniWindow = MiniWindow::new("store", &url, 1280.0, 720.0);
-    if let Err(e) = window.build_window(&handle).await {
-        error!(
-            "monarch_games::commands::open_store() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-        return Err(String::from(
-            "Something went wrong while opening store page!",
-        ));
-    }
-
-    if let Err(e) = window.show_window(&handle) {
-        error!(
-            "monarch_games::commands::open_store() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-        return Err(String::from(
-            "Something went wrong while opening store page!",
-        ));
-    }
-    Ok(())
-}
- */
-
 /// Updates the properties of a game in the library.
 pub async fn update_game_properties(game: &MonarchGame) -> Result<(), String> {
     info!("Updating properties for: {}", game.name);
-    match games_library::update_game_properties(game) {
+    match library::update_game_properties(game).await {
         Ok(_) => Ok(()),
         Err(e) => {
             error!(
@@ -369,7 +350,7 @@ pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
         }
     }
 
-    if let Err(e) = monarch_library::games_library::add_game(&game) {
+    if let Err(e) = monarch_library::library::add_game(&game).await {
         error!(
             "monarch_games::commands::manual_add_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -434,10 +415,10 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
     monarch_client::get_game_properties(game).await
 }
 
-pub fn manual_remove_game(game: &MonarchGame) -> Result<(), String> {
+pub async fn manual_remove_game(game: MonarchGame) -> Result<(), String> {
     info!("User removing game binary: {:?}", game);
 
-    if let Err(e) = monarch_library::games_library::remove_game(game) {
+    if let Err(e) = monarch_library::library::remove_game(&game).await {
         error!(
             "monarch_games::commands::manual_remove_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

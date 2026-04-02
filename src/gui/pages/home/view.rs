@@ -1,15 +1,14 @@
 use iced::{
     alignment,
-    widget::{button, column, container, image, row, scrollable, text, Space},
-    Color, Element, Length, Theme,
+    widget::{column, container, row, scrollable, text, Space},
+    Element, Length,
 };
 
 use super::{HomePage, Message};
 use crate::gui::{
-    components::common::{launch_button, secondary_button},
+    components::common::launch_button,
     styles,
 };
-use crate::{gui::components::gamecard::GameCardMessage, monarch_games::games::GameType};
 
 impl HomePage {
     pub fn view(&self) -> Element<'_, Message> {

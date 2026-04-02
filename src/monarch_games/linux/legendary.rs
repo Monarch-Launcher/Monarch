@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use reqwest;
 use serde::Deserialize;
 use std::{os::unix::fs::PermissionsExt, path::PathBuf};
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::monarch_utils::monarch_fs::get_monarch_home;
 

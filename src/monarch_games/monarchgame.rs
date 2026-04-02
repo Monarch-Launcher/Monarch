@@ -27,7 +27,6 @@ pub struct MonarchGame {
     pub thumbnail_url: String,
     pub launch_args: Option<String>,
     pub compatibility: Option<String>,
-    pub store_page: String,
 
     #[serde(default)]
     pub summary: String,
@@ -38,6 +37,9 @@ pub struct MonarchGame {
 
     #[serde(default)]
     pub properties: MonarchGameProperties,
+
+    #[serde(default)]
+    pub imported: bool,
 }
 
 impl MonarchGame {
@@ -46,7 +48,6 @@ impl MonarchGame {
         id: i32,
         store: &str,
         store_id: &str,
-        store_page: &str,
         exec_path: &str,
         thumbnail_path: &str,
     ) -> Self {
@@ -69,11 +70,11 @@ impl MonarchGame {
             thumbnail_url: String::new(),
             launch_args: None,
             compatibility: None,
-            store_page: store_page.to_string(),
             summary: String::new(),
             artwork_url: String::new(),
             artwork_path: String::new(),
             properties: MonarchGameProperties::default(),
+            imported: false,
         }
     }
 
@@ -146,7 +147,6 @@ impl MonarchGame {
             thumbnail_url: other.cover_url.to_string(),
             launch_args: None,
             compatibility: None,
-            store_page: "".to_string(),
             summary: other.summary.clone(),
             artwork_url: other.artwork_url.clone(),
             artwork_path: crate::monarch_utils::monarch_fs::generate_cache_image_path(
@@ -154,8 +154,9 @@ impl MonarchGame {
                 GameImageType::Artwork,
             )
             .to_string_lossy()
-            .into_owned(),
+            .to_string(),
             properties: MonarchGameProperties::default(),
+            imported: false,
         }
     }
 }
