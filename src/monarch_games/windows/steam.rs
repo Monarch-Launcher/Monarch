@@ -9,8 +9,8 @@ use tracing::{error, info};
 use zip::ZipArchive;
 
 use crate::monarch_games::monarchgame::MonarchGame;
-use crate::monarch_games::steam_client::{get_steamcmd_dir, parse_steam_ids};
-use crate::monarch_utils::monarch_fs::{create_dir, path_exists};
+use crate::monarch_games::steam_client::parse_steam_ids;
+use crate::monarch_utils::monarch_fs::{create_dir, get_monarch_home, path_exists};
 use crate::monarch_utils::monarch_vdf;
 use crate::monarch_utils::monarch_winreg::is_installed;
 
@@ -20,7 +20,7 @@ use crate::monarch_utils::monarch_winreg::is_installed;
 * Monarchs way of handling steam games managed by Monarch itself.
 */
 
-/// Installs SteamCMD for user in .monarch
+/// Installs SteamCMD for user in \%appdata%\monarch\
 pub async fn install_steamcmd() -> Result<()> {
     let steamcmd_path: PathBuf = get_steamcmd_dir();
 
@@ -91,6 +91,11 @@ pub async fn install_steamcmd() -> Result<()> {
     Ok(())
 }
 
+/// Windows specific function for creating path to \%appdata%\Monarch\SteamCMD\
+fn get_steamcmd_dir() -> PathBuf {
+    get_monarch_home().join("SteamCMD")
+}
+
 /// Returns path to the SteamCMD binary used in SteamCMD commands
 pub fn get_steamcmd_exe() -> PathBuf {
     get_steamcmd_dir().join("steamcmd").join("steamcmd.exe")
@@ -98,9 +103,8 @@ pub fn get_steamcmd_exe() -> PathBuf {
 
 /// Returns whether or not SteamCMD is installed
 pub fn steamcmd_is_installed() -> bool {
-    todo!()
+    get_steamcmd_exe().exists()
 }
-
 
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
