@@ -109,7 +109,8 @@ impl Settings {
                 .to_string_lossy()
                 .to_string();
         }
-        if cfg!(target_os = "linux") {
+        #[cfg(target_os = "linux")]
+        {
             self.monarch.umu_bin = umu::get_umu_exe().to_string_lossy().to_string();
         }
         self.monarch.steamcmd_bin = steam_client::get_steamcmd_exe()
@@ -141,11 +142,12 @@ impl Default for Settings {
         let default_game_folder_str = default_game_folder.to_str().unwrap().to_string();
         let settings_path = get_settings_path().unwrap().to_str().unwrap().to_string();
 
-        let umu_bin: String = if cfg!(target_os = "linux") {
-            umu::get_umu_exe().to_string_lossy().to_string()
-        } else {
-            String::new()
-        };
+        #[cfg(target_os = "linux")]
+        let umu_bin: String = umu::get_umu_exe().to_string_lossy().to_string();
+
+        #[cfg(not(target_os = "linux"))]
+        let umu_bin: String = String::new();
+
 
         let steamcmd_bin: String = steam_client::get_steamcmd_exe()
             .to_string_lossy()
