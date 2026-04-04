@@ -18,11 +18,10 @@ pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     bail!("monarch_games::macos::steamcmd_command() MacOS not currently supported!");
 }
 
-pub async fn get_steamcmd_exe(args: Vec<&str>) -> PathBuf {
+pub fn get_steamcmd_exe(args: Vec<&str>) -> PathBuf {
     error!("monarch_games::macos::get_steamcmd_exe() MacOS not currently supported!");
     PathBuf::new()
 }
-
 
 pub fn steamcmd_is_installed() -> bool {
     error!("monarch_games::macos::steamcmd_is_installed() MacOS not currently supported!");
