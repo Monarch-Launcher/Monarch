@@ -148,12 +148,22 @@ impl SettingsPage {
     }
 
     pub fn install_umu_task(&self) {
+        if monarch_games::commands::umu_is_installed() {
+            show_error("umu-run already detected on system! Cannot install another version.");
+            return;
+        }
+
         if let Err(e) = monarch_games::commands::install_umu() {
             show_error(&e);
         }
     }
 
     pub fn install_steamcmd_task(&self, settings: &Settings) -> iced::Task<Message> {
+        if monarch_games::commands::steamcmd_is_installed() {
+            show_error("steamcmd already detected on system! Cannot install another version.");
+            return iced::Task::none();
+        }
+
         if settings.steam.username.is_empty() {
             show_error("No Steam username set. Please set your username at least.");
             return iced::Task::none();
@@ -168,6 +178,11 @@ impl SettingsPage {
     }
 
     pub fn install_legendary_task(&self) {
+        if monarch_games::commands::legendary_is_installed() {
+            show_error("legendary already detected on system! Cannot install another version.");
+            return;
+        }
+
         if let Err(e) = monarch_games::commands::install_legendary() {
             show_error(&e);
         }
