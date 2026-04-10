@@ -6,7 +6,7 @@ use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::SqlitePool;
 use std::sync::RwLock;
 use std::sync::{Arc, LazyLock};
-use tracing::error;
+use tracing::{error, warn};
 
 /// Global app state of app logic.
 /// Initialises a blank MonarchState to avoid RwLock deadlock on init.
@@ -127,5 +127,18 @@ impl MonarchState {
 
     pub fn get_db_pool_arc(&self) -> Arc<SqlitePool> {
         self.library_conn.as_ref().unwrap().clone()
+    }
+
+    /// Attempt to fix RwLock of Settings if error occurs
+    /// Could be useful in future
+    pub fn _clear_settings_poison(&self) {
+        if self.settings.is_poisoned() {
+            warn!(
+                "monarch_state::clear_settings_poison() detected poisoned state for settings lock! Clearing poison."
+            );
+            self.settings.clear_poison();
+        } else {
+            error!("monarch_state::clear_settings_poison() Settings is not poisoned! Nothing to clear.")
+        }
     }
 }

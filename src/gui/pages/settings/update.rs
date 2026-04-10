@@ -113,7 +113,10 @@ impl SettingsPage {
         self.write_settings(settings);
     }
 
-    pub fn refresh(&mut self) {
+    pub fn refresh(&mut self, settings: &mut Settings) {
+        // Get updated paths and shit
+        settings.fix_settings();
+
         match monarch_utils::commands::get_cache_size() {
             Ok(size) => self.cache_size = size,
             Err(e) => {
@@ -165,7 +168,7 @@ impl SettingsPage {
         }
 
         if settings.steam.username.is_empty() {
-            show_error("No Steam username set. Please set your username at least.");
+            show_error("No Steam username set. Please set your username.");
             return iced::Task::none();
         }
 

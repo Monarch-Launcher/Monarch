@@ -68,7 +68,9 @@ impl Message {
             | Message::ToggleEpic(_)
             | Message::SaveEpicCredentials
             | Message::DeleteEpicCredentials
-            | Message::InstallSteamCMD => true,
+            | Message::InstallSteamCMD
+            | Message::Refresh(_)
+            | Message::ClearCache => true,
             _ => false,
         }
     }
@@ -76,7 +78,7 @@ impl Message {
 
 pub struct SettingsPage {
     current_tab: SettingsTab,
-    shared_settings: Arc<RwLock<Settings>>,
+    pub shared_settings: Arc<RwLock<Settings>>,
     cache_size: u64,
     steam_username_tmp: String,
     steam_password_tmp: String,
@@ -153,9 +155,9 @@ impl SettingsPage {
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {
                 monarch_utils::commands::clear_cached_images();
-                self.refresh();
+                self.refresh(&mut write_guard.unwrap());
             }
-            Message::Refresh(_) => self.refresh(),
+            Message::Refresh(_) => self.refresh(&mut write_guard.unwrap()),
             Message::OpenLogs => {
                 let _ = monarch_utils::commands::open_logs();
             }

@@ -21,7 +21,7 @@ use tracing::{error, info};
 * Monarchs way of handling steam games managed by Monarch itself.
 */
 
-/// Installs SteamCMD for user in .monarch
+/// Installs SteamCMD for user in .local/share/monarch/steamcmd
 pub async fn install_steamcmd() -> Result<()> {
     let tar_dest: PathBuf = get_monarch_home().join("steamcmd.tar.gz");
     let dest_path: PathBuf = get_monarch_home().join("steamcmd");
@@ -73,6 +73,11 @@ pub async fn install_steamcmd() -> Result<()> {
             tar_dest.display()
         )
     })?;
+
+    Ok(())
+
+    /*
+    // --------------- Failed attempt att putting steamcmd in .local/bin and .local/lib ---------------
 
     // Copy files to correct locations
     let bin_path: PathBuf = get_monarch_bins_path().expect("Don't expect to crash");
@@ -138,16 +143,7 @@ pub async fn install_steamcmd() -> Result<()> {
         )
     })?;
 
-    // Remove steamcmd folder
-    info!("Removing: {}", dest_path.display());
-    std::fs::remove_dir_all(&dest_path).with_context(|| {
-        format!(
-            "linux::steam::install_steamcmd() Failed to remove {} | Err: ",
-            dest_path.display()
-        )
-    })?;
-
-    Ok(())
+    */
 }
 
 /// Returns path to the SteamCMD binary used in SteamCMD commands
@@ -155,6 +151,13 @@ pub fn get_steamcmd_exe() -> PathBuf {
     if let Some(p) = monarch_fs::find_linux_binary("steamcmd") {
         return p;
     }
+
+    // Fallback to .local/share/monarch/steamcmd/steamcmd.sh
+    let fallback_path: PathBuf = get_monarch_home().join("steamcmd").join("steamcmd.sh");
+    if fallback_path.exists() {
+        return fallback_path;
+    }
+
     PathBuf::new()
 }
 
@@ -162,7 +165,6 @@ pub fn get_steamcmd_exe() -> PathBuf {
 pub fn steamcmd_is_installed() -> bool {
     monarch_fs::find_linux_binary("steamcmd").is_some()
 }
-
 
 /// Runs specified command via SteamCMD
 /// Is currently async to work with Windows version

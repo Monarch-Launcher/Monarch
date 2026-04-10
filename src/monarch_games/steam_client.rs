@@ -17,8 +17,8 @@ use crate::monarch_games::monarchgame::GameImageType;
 use crate::monarch_games::monarchgame::StoreInfo;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
-use crate::monarch_utils::commands::write_settings;
 use crate::monarch_library::library;
+use crate::monarch_utils::commands::write_settings;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
@@ -136,16 +136,23 @@ pub async fn install_steamcmd() -> Result<()> {
     // Symlink files needed for SteamCMD globaluser
     #[cfg(target_os = "linux")]
     {
-        use crate::{monarch_games::linux::steam, monarch_utils::monarch_fs::get_unix_home};
+        use crate::{monarch_games::linux::steam, monarch_utils::monarch_fs::get_monarch_home};
 
         let src_path: PathBuf = steam::get_default_location()
             .with_context(|| "steam_client::install_steamcmd() -> ")?;
+
+        /*
+        -------- Use this when figuring out how to put steamcmd in .local/bin and .local/lib --------
+
         let dest_path: PathBuf = get_unix_home()
             .unwrap()
             .join(".local")
             .join("lib")
             .join("steamcmd")
             .join("linux32");
+        */
+
+        let dest_path: PathBuf = get_monarch_home().join("steamcmd").join("linux32");
 
         let reaper_src: PathBuf = src_path.join("ubuntu12_32").join("reaper");
         let wrapper_src: PathBuf = src_path.join("ubuntu12_32").join("steam-launch-wrapper");
@@ -202,27 +209,6 @@ pub async fn install_steamcmd() -> Result<()> {
     steam::steamcmd_command(vec!["-globaluser", &login_arg, "+quit"])
         .await
         .with_context(|| "steam_client::install_steamcmd() -> ")?;
-
-    // Set correct path in settings
-    match MONARCH_STATE.write() {
-        Ok(state) => match state.get_settings_ptr().write() {
-            Ok(mut settings) => {
-                settings.monarch.steamcmd_bin = monarch_fs::find_linux_binary("steamcmd")
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
-                if let Err(e) = write_settings(&settings) {
-                    error!("steam_client::install_steamcmd() -> {e}");
-                }
-            }
-            Err(e) => {
-                error!("steam_client::install_steamcmd() Failed to get settings lock! | Err: {e}");
-            }
-        },
-        Err(e) => {
-            error!("steam_client::install_steamcmd() Failed to get MONARCH_LOCK lock! | Err: {e}");
-        }
-    }
 
     Ok(())
 }

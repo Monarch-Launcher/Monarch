@@ -196,7 +196,10 @@ impl App {
                     header::Message::SearchPage => self.active_tab = PageTab::Search,
                     header::Message::SettingsPage => {
                         self.active_tab = PageTab::Settings;
-                        self.settings_page.refresh();
+                        if let Ok(mut settings) = self.settings_page.shared_settings.clone().write()
+                        {
+                            self.settings_page.refresh(&mut settings);
+                        }
                     }
                 }
                 iced::Task::none()
