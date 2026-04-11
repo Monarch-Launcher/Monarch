@@ -371,34 +371,33 @@ pub async fn update_game(store: &str, store_id: &str) -> Result<()> {
 /// Returns autodetected games according to Monarch
 pub async fn refresh_library() -> Result<Vec<MonarchGame>> {
     info!("Manual refresh of library requested. Refreshing...");
-    let mut games: Vec<MonarchGame> = library::get_games()
+    let games: Vec<MonarchGame> = library::get_games()
         .await
         .with_context(|| "monarch_client::refresh_library() -> ")?;
 
-    let mut steam_games: Vec<MonarchGame> = steam_client::get_library().await;
+    let steam_games: Vec<MonarchGame> = steam_client::get_library().await;
 
-    // Filter out removed games
-    games = games
-        .into_iter()
-        .filter(|g1| {
-            for g2 in steam_games.iter() {
-                if *g1 == *g2 {
-                    debug!("TRUE: {:?} == {:?}", g1, g2);
-                    return true;
-                }
-            }
-            false
-        })
-        .collect::<Vec<MonarchGame>>();
+    // Filter out removed games while keeping imported ones.
+    // Prefer library version of the game to preserve properties like last_played.
+    let mut final_games: Vec<MonarchGame> = Vec::new();
+    for lg in games {
+        if lg.imported || steam_games.iter().any(|sg| *sg == lg) {
+            final_games.push(lg);
+        }
+    }
 
-    // Append all steam_games
-    games.append(&mut steam_games);
+    // Add new games from steam that aren't already in our list
+    for sg in steam_games {
+        if !final_games.iter().any(|fg| *fg == sg) {
+            final_games.push(sg);
+        }
+    }
 
-    library::overwrite_games(&games)
+    library::overwrite_games(&final_games)
         .await
         .with_context(|| "monarch_client::refresh_library() -> ")?;
 
-    Ok(games)
+    Ok(final_games)
 }
 
 /// Search for the name of a game and return the results.
