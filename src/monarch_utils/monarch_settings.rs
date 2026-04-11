@@ -148,7 +148,6 @@ impl Default for Settings {
         #[cfg(not(target_os = "linux"))]
         let umu_bin: String = String::new();
 
-
         let steamcmd_bin: String = steam_client::get_steamcmd_exe()
             .to_string_lossy()
             .to_string();

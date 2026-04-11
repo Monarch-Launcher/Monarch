@@ -51,7 +51,7 @@ pub fn get_unix_home() -> Result<PathBuf> {
 pub fn get_monarch_home() -> PathBuf {
     match MONARCH_STATE.try_read() {
         Ok(state) => {
-            match state.get_settings_ptr().read() {
+            match state.get_settings_ptr().try_read() {
                 Ok(settings) => return PathBuf::from(settings.monarch.monarch_home.clone()),
                 Err(e) => {
                     error!("monarch_fs::get_monarch_home() Failed to get read lock on Settings | Err: {e}");
