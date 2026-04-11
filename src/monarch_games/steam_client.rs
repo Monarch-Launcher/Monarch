@@ -8,7 +8,7 @@ use serde_json::Value;
 use simple_steam_totp::generate;
 use std::path::PathBuf;
 use tokio::task;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use super::monarchgame::{MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::games::GameType;
@@ -18,11 +18,12 @@ use crate::monarch_games::monarchgame::StoreInfo;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::library;
+use crate::monarch_utils::commands::write_settings;
 use crate::monarch_utils::monarch_credentials::get_password;
-use crate::monarch_utils::monarch_fs::{
-    generate_cache_image_path, generate_library_image_path, get_monarch_home,
-};
+use crate::monarch_utils::monarch_fs;
+use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
 use crate::monarch_utils::monarch_settings::{get_settings, LauncherSettings};
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -118,8 +119,7 @@ impl StoreType for SteamClient {
 
 /// Returns if SteamCMD is installed on system or not.
 pub fn steamcmd_is_installed() -> bool {
-    let path: PathBuf = get_steamcmd_dir();
-    path.exists()
+    steam::steamcmd_is_installed()
 }
 
 /// Downloads and installs SteamCMD on users computer.
@@ -136,19 +136,31 @@ pub async fn install_steamcmd() -> Result<()> {
     // Symlink files needed for SteamCMD globaluser
     #[cfg(target_os = "linux")]
     {
-        use crate::monarch_games::linux::steam;
+        use crate::{monarch_games::linux::steam, monarch_utils::monarch_fs::get_monarch_home};
 
         let src_path: PathBuf = steam::get_default_location()
             .with_context(|| "steam_client::install_steamcmd() -> ")?;
-        let dest_path: PathBuf = get_steamcmd_dir();
+
+        /*
+        -------- Use this when figuring out how to put steamcmd in .local/bin and .local/lib --------
+
+        let dest_path: PathBuf = get_unix_home()
+            .unwrap()
+            .join(".local")
+            .join("lib")
+            .join("steamcmd")
+            .join("linux32");
+        */
+
+        let dest_path: PathBuf = get_monarch_home().join("steamcmd").join("linux32");
 
         let reaper_src: PathBuf = src_path.join("ubuntu12_32").join("reaper");
         let wrapper_src: PathBuf = src_path.join("ubuntu12_32").join("steam-launch-wrapper");
         let steamservice_src: PathBuf = src_path.join("ubuntu12_32").join("steamservice.so");
 
-        let reaper_dest: PathBuf = dest_path.join("linux32").join("reaper");
-        let wrapper_dest: PathBuf = dest_path.join("linux32").join("steam-launch-wrapper");
-        let steamservice_dest: PathBuf = dest_path.join("linux32").join("steamservice.so");
+        let reaper_dest: PathBuf = dest_path.join("reaper");
+        let wrapper_dest: PathBuf = dest_path.join("steam-launch-wrapper");
+        let steamservice_dest: PathBuf = dest_path.join("steamservice.so");
 
         std::os::unix::fs::symlink(&reaper_src, &reaper_dest).with_context(|| {
             format!(
@@ -207,8 +219,8 @@ pub fn remove_steamcmd() -> Result<()> {
         bail!("SteamCMD not found!")
     }
 
-    std::fs::remove_dir_all(&get_steamcmd_dir())
-        .with_context(|| "steam_client::remove_steamcmd() Failed to remove_dir_all() | Err: ")
+    // TODO: Remove SteamCMD
+    Ok(())
 }
 
 /// Returns games installed by Steam Client.
@@ -413,10 +425,8 @@ pub async fn update_game(id: &str) -> Result<()> {
         .with_context(|| "steam_client::update_game() -> ")
 }
 
-/// Returns path to Monarchs installed version of SteamCMD
-pub fn get_steamcmd_dir() -> PathBuf {
-    let path: PathBuf = get_monarch_home();
-    path.join("SteamCMD")
+pub fn get_steamcmd_exe() -> PathBuf {
+    steam::get_steamcmd_exe()
 }
 
 /// Converts SteamApp ids into MonarchGames.
@@ -473,6 +483,7 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
     // TODO: Look into other possible solutions for Steamgaurd.
     match get_password("steam-secret", username) {
         Ok(secret) => {
+            debug!("Found secret: {secret}");
             if !secret.is_empty() {
                 info!("Steam TOTP detected in Monarch!");
                 let totp = generate(&secret).unwrap();

@@ -7,6 +7,7 @@ use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{LauncherSettings, Settings};
+use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::{monarch_fs, monarch_settings};
 
 /*
@@ -125,6 +126,14 @@ pub fn set_secret(
         bail!("Something went wrong setting new secret!")
     }
     Ok(())
+}
+
+/// Helper for checking if a secert has been set
+pub fn secret_is_set(launcher: &str, launcher_settings: &LauncherSettings) -> bool {
+    if let Ok(secret) = get_password(&format!("{launcher}-secret"), &launcher_settings.username) {
+        return !secret.is_empty();
+    }
+    false
 }
 
 /// Delete secret in secure store

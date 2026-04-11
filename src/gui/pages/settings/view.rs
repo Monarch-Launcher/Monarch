@@ -11,7 +11,7 @@ use crate::{
         components::common::{danger_button, input_field, primary_button, secondary_button},
         pages::settings::{Message, SettingsPage, SettingsTab},
         styles,
-    }, monarch_games, monarch_utils::monarch_settings::Settings
+    }, monarch_games, monarch_utils::{self, monarch_settings::Settings}
 };
 
 impl SettingsPage {
@@ -106,11 +106,15 @@ impl SettingsPage {
     }
 
     fn view_monarch(&self, settings: &Settings) -> Element<'_, Message, Theme> {
+        let umu_bin: String;
         let umu_installed: &str = if monarch_games::commands::umu_is_installed() {
+            umu_bin = format!("Using umu-run located at: {}", settings.monarch.umu_bin);
             "Installed"
         } else {
+            umu_bin = "".to_string();
             "Not installed"
         };
+
 
         column![
             self.section_header("General"),
@@ -128,6 +132,7 @@ impl SettingsPage {
                 danger_button("Remove UMU Launcher", Some(Message::RemoveUmu)),
             ]
             .align_y(alignment::Vertical::Center),
+            text(umu_bin).size(14).color([0.5, 0.5, 0.5]),
             Space::new().height(25),
 
             row![
@@ -183,10 +188,12 @@ impl SettingsPage {
     }
 
     fn view_steam(&self, settings: &Settings) -> Element<'_, Message, Theme> {
-        let _tmp: &str = "";
+        let steamcmd_bin: String;
         let steamcmd_installed: &str = if monarch_games::commands::steamcmd_is_installed() {
+            steamcmd_bin = format!("Using steamcmd located at: {}", settings.monarch.steamcmd_bin);
             "Installed"
         } else {
+            steamcmd_bin = "".to_string();
             "Not installed"
         };
         let steam_login: &str = if settings.steam.username.is_empty() {
@@ -194,6 +201,13 @@ impl SettingsPage {
         } else {
             &settings.steam.username
         };
+
+        #[cfg(target_os = "linux")]
+        let install_steamcmd_msg: Option<Message> = Some(Message::InstallSteamCMDLinuxWarning);
+
+        #[cfg(not(target_os = "linux"))]
+        let install_steamcmd_msg: Option<Message> = Some(Message::InstallSteamCMD);
+
         let steam_secret: &str = if settings.steam.twofa {
             "Status: Saved"
         } else {
@@ -215,11 +229,12 @@ impl SettingsPage {
             row![
                 text(format!("SteamCMD: {}", steamcmd_installed)).size(16).width(Length::Shrink),
                 Space::new().width(Length::Fill),
-                primary_button("Install SteamCMD", Some(Message::InstallSteamCMD)),
+                primary_button("Install SteamCMD", install_steamcmd_msg),
                 Space::new().width(10),
                 danger_button("Remove SteamCMD", Some(Message::RemoveSteamCMD)),
             ]
             .align_y(alignment::Vertical::Center),
+            text(steamcmd_bin).size(14).color([0.5, 0.5, 0.5]),
             Space::new().height(25),
 
             text("Enter your Steam credentials to enable library synchronization and game downloads.")
@@ -296,9 +311,12 @@ impl SettingsPage {
     }
 
     fn view_epic(&self, settings: &Settings) -> Element<'_, Message, Theme> {
+        let legendary_bin: String; 
         let legendary_installed: &str = if monarch_games::commands::legendary_is_installed() {
+            legendary_bin = format!("Using legendary located at: {}", settings.monarch.legendary_bin);
             "Installed"
         } else {
+            legendary_bin = "".to_string();
             "Not installed"
         };
         let epic_login: &str = if settings.epic.username.is_empty() {
@@ -327,6 +345,7 @@ impl SettingsPage {
                 danger_button("Remove Legendary", Some(Message::RemoveLegendary)),
             ]
             .align_y(alignment::Vertical::Center),
+            text(legendary_bin).size(14).color([0.5, 0.5, 0.5]),
             Space::new().height(25),
 
             text("Enter your Epic Games credentials to enable library synchronization and game downloads.")

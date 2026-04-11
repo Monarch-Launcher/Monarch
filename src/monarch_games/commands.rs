@@ -7,7 +7,7 @@ use tracing::{error, info, warn};
 use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
-use crate::monarch_games::games::{GameType, SearchResult};
+use crate::monarch_games::games::GameType;
 use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::MonarchWebApiGame;
 use crate::monarch_games::steam_client;
@@ -132,10 +132,6 @@ pub async fn download_artwork(game: &MonarchGame) -> Result<(), String> {
         return Err(String::from("Failed to download artwork"));
     }
     Ok(())
-}
-
-pub async fn search_page_download_thumbnail(game: MonarchWebApiGame) -> Result<(), String> {
-    download_thumbnail(&game.into_monarchgame()).await
 }
 
 /// Launch a game

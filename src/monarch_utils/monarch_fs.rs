@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use regex::Regex;
 use std::path::{Path, PathBuf};
 use std::{fs, process::exit};
@@ -51,7 +51,7 @@ pub fn get_unix_home() -> Result<PathBuf> {
 pub fn get_monarch_home() -> PathBuf {
     match MONARCH_STATE.try_read() {
         Ok(state) => {
-            match state.get_settings_ptr().read() {
+            match state.get_settings_ptr().try_read() {
                 Ok(settings) => return PathBuf::from(settings.monarch.monarch_home.clone()),
                 Err(e) => {
                     error!("monarch_fs::get_monarch_home() Failed to get read lock on Settings | Err: {e}");
@@ -114,6 +114,32 @@ pub fn generate_monarch_home() -> Result<PathBuf> {
         .join(".local")
         .join("share")
         .join("monarch"))
+}
+
+/// This function returns where Monarch should place standalone binaries it downloads.
+/// For Linux it'll follow XDG_BIN_HOME convention and for Windows it'll be under
+/// %appdata%\Monarch\bin\
+pub fn get_monarch_bins_path() -> Result<PathBuf> {
+    if cfg!(target_os = "linux") {
+        match std::env::var("XDG_BIN_HOME") {
+            Ok(p) => return Ok(PathBuf::from(p)),
+            Err(e) => {
+                error!("monarch_fs::get_monarch_bins_path() $XDG_BIN_HOME not set! | Err: {e}");
+                warn!("monarch_fs::get_monarch_bins_path() $XDG_BIN_HOME manually selecting ~/.local/bin/");
+
+                let home_path: String = std::env::var("HOME").with_context(|| {
+                    "monarch_fs::generate_monarch_bins_path() Could not find envoirment variable 'HOME' | Err: "
+                })?;
+                return Ok(PathBuf::from(home_path).join(".local").join("bin"));
+            }
+        }
+    } else if cfg!(target_os = "windows") {
+        let path =
+            generate_monarch_home().with_context(|| "monarch_fs::get_monarch_bins_path() -> ")?;
+        return Ok(path.join("bin"));
+    }
+
+    bail!("Failed to get location for standalone binaies! Unknown OS!")
 }
 
 #[cfg(not(windows))]
@@ -187,6 +213,53 @@ pub fn get_executables(path: &Path) -> Result<Vec<PathBuf>> {
     }
 
     Ok(executables)
+}
+
+pub fn find_linux_binary(binary_name: &str) -> Option<PathBuf> {
+    let path: String = match std::env::var("PATH") {
+        Ok(p) => p,
+        Err(e) => {
+            error!("monarch_fs::linux_binary_installed() Failed to read $PATH! | Err: {e}");
+            return None;
+        }
+    };
+
+    let mut paths: Vec<&str> = path.split(":").collect();
+
+    // Check locally installed binaries as well
+    let xdg_bin_local: &str = &get_unix_home()
+        .unwrap()
+        .join(".local")
+        .join("bin")
+        .to_string_lossy()
+        .to_string();
+    if !paths.contains(&xdg_bin_local) {
+        paths.push(xdg_bin_local);
+    }
+
+    for p in paths {
+        match std::fs::read_dir(p) {
+            Ok(rd) => {
+                for entry in rd {
+                    match entry {
+                        Ok(de) => {
+                            if de.file_name() == binary_name {
+                                return Some(de.path());
+                            }
+                        }
+                        Err(e) => {
+                            error!("monarch_fs::linux_binary_installed() Failed to entry in: {p} | Err: {e}");
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                error!("monarch_fs::linux_binary_installed() Failed to read: {p} | Err: {e}");
+            }
+        }
+    }
+
+    return None;
 }
 
 /*
