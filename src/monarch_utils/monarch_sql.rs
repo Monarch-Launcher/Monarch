@@ -400,44 +400,21 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
         .await
         .with_context(|| "monarch_sql::overwrite_games() Failed to start transaction! | Err: ")?;
 
-    sqlx::query("DROP TABLE library")
-        .execute(&mut *tx)
-        .await
-        .with_context(|| "monarch_sql::overwrite_games() Failed to drop library! | Err: ")?;
-
-    sqlx::query("DROP TABLE stores")
+    sqlx::query("DELETE FROM stores")
         .execute(&mut *tx)
         .await
         .with_context(|| "monarch_sql::overwrite_games() Failed to drop stores! | Err: ")?;
 
-    sqlx::query("DROP TABLE properties")
+    sqlx::query("DELETE FROM properties")
         .execute(&mut *tx)
         .await
         .with_context(|| "monarch_sql::overwrite_games() Failed to drop properties! | Err: ")?;
 
-    sqlx::query(&format!(
-        "CREATE TABLE IF NOT EXISTS library {}",
-        TYPED_MONARCH_GAME_FIELDS
-    ))
-    .execute(&mut *tx)
-    .await
-    .with_context(|| "monarch_sql::overwrite_games() Failed to verify library table! | Err: ")?;
-
-    sqlx::query(&format!(
-        "CREATE TABLE IF NOT EXISTS stores {}",
-        TYPED_STORE_INFO_FIELDS
-    ))
-    .execute(&mut *tx)
-    .await
-    .with_context(|| "monarch_sql::overwrite_games() Failed to verify stores table! | Err: ")?;
-
-    sqlx::query(&format!(
-        "CREATE TABLE IF NOT EXISTS properties {}",
-        TYPED_MONARCH_GAME_PROPERTIES_FIELDS
-    ))
-    .execute(&mut *tx)
-    .await
-    .with_context(|| "monarch_sql::overwrite_games() Failed to verify properties table! | Err: ")?;
+    // Have to drop library last due to game.id constraint
+    sqlx::query("DELETE FROM library")
+        .execute(&mut *tx)
+        .await
+        .with_context(|| "monarch_sql::overwrite_games() Failed to drop library! | Err: ")?;
 
     for game in games {
         sqlx::query(&format!(
@@ -576,5 +553,5 @@ async fn table_exists(pool: &SqlitePool, name: &str) -> Result<bool> {
             )
         })?;
 
-    Ok(tables.is_empty())
+    Ok(!tables.is_empty())
 }
