@@ -163,7 +163,7 @@ pub fn get_steamcmd_exe() -> PathBuf {
 
 /// Returns whether or not SteamCMD is installed
 pub fn steamcmd_is_installed() -> bool {
-    monarch_fs::find_linux_binary("steamcmd").is_some()
+    get_steamcmd_exe().exists()
 }
 
 /// Runs specified command via SteamCMD

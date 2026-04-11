@@ -78,7 +78,7 @@ impl Message {
 
 pub struct SettingsPage {
     current_tab: SettingsTab,
-    pub shared_settings: Arc<RwLock<Settings>>,
+    shared_settings: Arc<RwLock<Settings>>,
     cache_size: u64,
     steam_username_tmp: String,
     steam_password_tmp: String,
