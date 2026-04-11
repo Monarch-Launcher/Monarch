@@ -7,7 +7,10 @@ use tracing::{error, info, warn};
 
 use crate::{
     monarch_games::{games::GameType, monarchgame::MonarchGame},
-    monarch_utils::{monarch_fs::get_monarch_home, monarch_terminal},
+    monarch_utils::{
+        monarch_fs::{self, get_monarch_bins_path, get_monarch_home},
+        monarch_terminal,
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -24,17 +27,25 @@ struct Asset {
 
 /// Returns path to directory where Monarch stores its copy of the umu-launcher binary.
 fn get_umu_dir() -> PathBuf {
-    let path = get_monarch_home();
-    path.join("umu")
+    get_monarch_bins_path()
+        .expect("Don't expect to crash")
+        .join("umu")
 }
 
 /// Returns path to umu-launcher binary.
 pub fn get_umu_exe() -> PathBuf {
+    if let Some(p) = monarch_fs::find_linux_binary("umu-run") {
+        return p;
+    }
     get_umu_dir().join("umu-run")
 }
 
 /// For now a simple check to verify that umu-launcher exists.
 pub fn umu_is_installed() -> bool {
+    if monarch_fs::find_linux_binary("umu-run").is_some() {
+        return true;
+    }
+
     let umu_path = get_umu_dir();
     if !umu_path.exists() {
         return false;

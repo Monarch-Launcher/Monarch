@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock, RwLockWriteGuard};
 use tracing::error;
 
 use crate::gui::components::common::error_view;
-use crate::gui::show_error;
+use crate::gui::{self, show_confirm, show_error, AppMessage};
 use crate::monarch_utils;
 use crate::monarch_utils::monarch_settings::Settings;
 
@@ -46,6 +46,7 @@ pub enum Message {
     Refresh(()),
     OpenLink(&'static str),
     InstallSteamCMD,
+    InstallSteamCMDLinuxWarning,
     InstallLegendary,
     InstallUmu,
     RemoveSteamCMD,
@@ -67,7 +68,9 @@ impl Message {
             | Message::ToggleEpic(_)
             | Message::SaveEpicCredentials
             | Message::DeleteEpicCredentials
-            | Message::InstallSteamCMD => true,
+            | Message::InstallSteamCMD
+            | Message::Refresh(_)
+            | Message::ClearCache => true,
             _ => false,
         }
     }
@@ -152,15 +155,16 @@ impl SettingsPage {
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {
                 monarch_utils::commands::clear_cached_images();
-                self.refresh();
+                self.refresh(&mut write_guard.unwrap());
             }
-            Message::Refresh(_) => self.refresh(),
+            Message::Refresh(_) => self.refresh(&mut write_guard.unwrap()),
             Message::OpenLogs => {
                 let _ = monarch_utils::commands::open_logs();
             }
             Message::OpenLink(url) => self.open_link(url),
             Message::InstallUmu => self.install_umu_task(),
             Message::InstallSteamCMD => return self.install_steamcmd_task(&write_guard.unwrap()),
+            Message::InstallSteamCMDLinuxWarning => show_confirm("Working with SteamCMD is a pain in the ass. That's why it's recommended to download and manage SteamCMD from you package manager.", AppMessage::Page(gui::pages::Message::Settings(Message::InstallSteamCMD))),
             Message::InstallLegendary => self.install_legendary_task(),
             Message::RemoveSteamCMD => self.remove_steamcmd(),
             Message::RemoveLegendary => self.remove_legendary(),

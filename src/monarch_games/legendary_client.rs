@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use tracing::{error, info, warn};
 
@@ -172,6 +173,10 @@ pub fn legendary_is_installed() -> bool {
     legendary::legendary_is_installed()
 }
 
+pub fn get_legendary_exe() -> PathBuf {
+    legendary::get_legendary_exe()
+}
+
 pub fn install_legendary() -> Result<()> {
     legendary::install_legendary().with_context(|| "legendary_client::install_legendary() -> ")
 }
@@ -182,5 +187,6 @@ pub fn remove_legendary() -> Result<()> {
         bail!("Umu not found!")
     }
 
-    std::fs::remove_dir_all(&legendary::get_legendary_dir()).with_context(|| "linux::remove_umu() Failed to remove_dir_all() | Err: ")
+    std::fs::remove_file(&legendary::get_legendary_exe())
+        .with_context(|| "linux::remove_umu() Failed to remove_dir_all() | Err: ")
 }
