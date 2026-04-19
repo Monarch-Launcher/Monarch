@@ -155,8 +155,32 @@ pub fn input_field<'a, Message>(
 where
     Message: Clone + 'a,
 {
+    _text_input(placeholder, value, false, on_change)
+}
+
+pub fn secure_input_field<'a, Message>(
+    placeholder: &str,
+    value: &str,
+    on_change: impl Fn(String) -> Message + 'a,
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
+    _text_input(placeholder, value, true, on_change)
+}
+
+fn _text_input<'a, Message>(
+    placeholder: &str,
+    value: &str,
+    secure: bool,
+    on_change: impl Fn(String) -> Message + 'a,
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
     text_input(placeholder, value)
         .on_input(on_change)
+        .secure(secure)
         .padding(10)
         .width(Length::Fill)
         .into()
