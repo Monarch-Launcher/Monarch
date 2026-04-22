@@ -69,29 +69,20 @@ where
     Message: Clone + 'a,
 {
     button(
-        row![
-            svg(icon)
-                .width(20)
-                .height(20)
-                .rotation(iced::Rotation::Floating(iced::Radians(rotation)))
-                .style(move |_theme: &Theme, _status| {
-                    iced::widget::svg::Style {
-                        color: Some(if is_hovered {
-                            Color::BLACK
-                        } else {
-                            Color::from_rgb8(255, 127, 0)
-                        }),
-                    }
-                }),
-            Text::new(label.to_owned())
-                .align_x(alignment::Horizontal::Center)
-                .size(16)
-        ]
+        row![svg(icon)
+            .width(20)
+            .height(20)
+            .rotation(iced::Rotation::Floating(iced::Radians(rotation)))
+            .style(move |_theme: &Theme, _status| {
+                iced::widget::svg::Style {
+                    color: Some(Color::from_rgb8(255, 127, 0)),
+                }
+            }),]
         .spacing(10)
         .align_y(alignment::Vertical::Center),
     )
     .on_press_maybe(on_press)
-    .style(styles::button::scanner)
+    .style(styles::button::transparent)
     .padding(12)
     .into()
 }

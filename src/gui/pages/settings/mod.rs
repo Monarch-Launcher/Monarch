@@ -52,6 +52,8 @@ pub enum Message {
     RemoveSteamCMD,
     RemoveLegendary,
     RemoveUmu,
+    ToggleSteamHiddenPassword,
+    ToggleEpicHiddenPassword,
 }
 
 impl Message {
@@ -177,6 +179,12 @@ impl SettingsPage {
             Message::RemoveUmu => self.remove_umu(),
             #[cfg(not(target_os = "linux"))]
             Message::RemoveUmu => {}, // Do nothing
+            Message::ToggleSteamHiddenPassword => {
+                self.view_steam_password = !self.view_steam_password
+            },
+            Message::ToggleEpicHiddenPassword => {
+                self.view_epic_password = !self.view_epic_password
+            },
         }
         iced::Task::none()
     }
