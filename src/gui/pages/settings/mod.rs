@@ -52,6 +52,8 @@ pub enum Message {
     RemoveSteamCMD,
     RemoveLegendary,
     RemoveUmu,
+    ToggleSteamHiddenPassword,
+    ToggleEpicHiddenPassword,
 }
 
 impl Message {
@@ -82,9 +84,11 @@ pub struct SettingsPage {
     cache_size: u64,
     steam_username_tmp: String,
     steam_password_tmp: String,
+    view_steam_password: bool,
     steam_secret_tmp: String,
     epic_username_tmp: String,
     epic_password_tmp: String,
+    view_epic_password: bool,
 }
 
 impl Default for SettingsPage {
@@ -101,9 +105,11 @@ impl Default for SettingsPage {
             cache_size: monarch_utils::commands::get_cache_size().unwrap_or(0),
             steam_username_tmp: steam_user,
             steam_password_tmp: String::new(),
+            view_steam_password: false,
             steam_secret_tmp: String::new(),
             epic_username_tmp: epic_user,
             epic_password_tmp: String::new(),
+            view_epic_password: false,
         }
     }
 }
@@ -173,6 +179,12 @@ impl SettingsPage {
             Message::RemoveUmu => self.remove_umu(),
             #[cfg(not(target_os = "linux"))]
             Message::RemoveUmu => {}, // Do nothing
+            Message::ToggleSteamHiddenPassword => {
+                self.view_steam_password = !self.view_steam_password
+            },
+            Message::ToggleEpicHiddenPassword => {
+                self.view_epic_password = !self.view_epic_password
+            },
         }
         iced::Task::none()
     }

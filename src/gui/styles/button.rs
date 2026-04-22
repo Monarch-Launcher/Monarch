@@ -277,3 +277,58 @@ pub fn scanner(_theme: &Theme, status: button::Status) -> button::Style {
         },
     }
 }
+
+pub fn transparent(_theme: &Theme, status: button::Status) -> button::Style {
+    let accent = Color::from_rgb8(255, 127, 0); // Monarch Orange
+
+    match status {
+        button::Status::Active => button::Style {
+            background: Some(Background::Color(Color::from_rgba8(0, 0, 0, 0.0))),
+            text_color: accent,
+            border: Border {
+                radius: 4.0.into(),
+                width: 1.0,
+                color: Color {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 0.0,
+                },
+            },
+            ..button::Style::default()
+        },
+        button::Status::Hovered => button::Style {
+            background: Some(Background::Color(Color { a: 0.2, ..accent })),
+            text_color: Color::BLACK,
+            border: Border {
+                radius: 4.0.into(),
+                width: 1.0,
+                color: Color {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 0.0,
+                },
+            },
+            ..button::Style::default()
+        },
+        button::Status::Pressed => button::Style {
+            background: Some(Background::Color(Color { a: 0.2, ..accent })),
+            text_color: Color::BLACK,
+            border: Border {
+                radius: 4.0.into(),
+                width: 1.0,
+                color: Color {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 0.0,
+                },
+            },
+            ..button::Style::default()
+        },
+        button::Status::Disabled => button::Style {
+            ..button::Style::default()
+        },
+    }
+}

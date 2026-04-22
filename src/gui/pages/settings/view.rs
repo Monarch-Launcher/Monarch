@@ -8,10 +8,8 @@ use iced::{
 
 use crate::{
     gui::{
-        components::common::{danger_button, input_field, primary_button, secondary_button, secure_input_field},
-        pages::settings::{Message, SettingsPage, SettingsTab},
-        styles,
-    }, monarch_games, monarch_utils::{self, monarch_settings::Settings}
+        components::common::{danger_button, icon_button, input_field, other_primary_button, primary_button, secondary_button, secure_input_field}, pages::settings::{Message, SettingsPage, SettingsTab}, resources::{HIDE, VIEW}, styles
+    }, monarch_games, monarch_utils::monarch_settings::Settings
 };
 
 impl SettingsPage {
@@ -256,11 +254,23 @@ impl SettingsPage {
             ),
             Space::new().height(10),
 
-            secure_input_field(
-                "Steam Password",
-                &self.steam_password_tmp,
-                Message::SteamPasswordChanged
-            ),
+            if self.view_steam_password {
+                row![
+                    input_field("Steam Password", &self.steam_password_tmp, Message::SteamPasswordChanged),
+                    Space::new().width(10),
+                    icon_button(Some(Message::ToggleSteamHiddenPassword), false, VIEW.clone(), 0.0),
+                ]
+            } else {
+                row![
+                    secure_input_field(
+                        "Steam Password",
+                        &self.steam_password_tmp,
+                        Message::SteamPasswordChanged
+                    ),
+                    Space::new().width(10),
+                    icon_button(Some(Message::ToggleSteamHiddenPassword), false, HIDE.clone(), 0.0),
+                ]
+            },
             Space::new().height(10),
 
             row![
@@ -360,11 +370,24 @@ impl SettingsPage {
             ),
             Space::new().height(10),
 
-            secure_input_field(
-                "Password",
-                &self.epic_password_tmp,
-                Message::EpicPasswordChanged
-            ),
+            
+            if self.view_epic_password {
+                row![
+                    input_field("Epic Password", &self.epic_password_tmp, Message::EpicPasswordChanged),
+                    Space::new().width(10),
+                    icon_button(Some(Message::ToggleEpicHiddenPassword), false, VIEW.clone(), 0.0),
+                ]
+            } else {
+                row![
+                    secure_input_field(
+                        "Steam Password",
+                        &self.epic_password_tmp,
+                        Message::EpicPasswordChanged
+                    ),
+                    Space::new().width(10),
+                    icon_button(Some(Message::ToggleEpicHiddenPassword), false, HIDE.clone(), 0.0),
+                ]
+            },
             Space::new().height(10),
 
             row![
