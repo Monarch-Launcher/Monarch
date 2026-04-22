@@ -1,5 +1,6 @@
 use crate::gui::resources::PLAY;
 use crate::gui::styles;
+use iced::widget::text::LineHeight;
 use iced::widget::{button, pick_list, row, svg, text_editor, text_input, Text};
 use iced::{alignment, Color, Element, Length, Theme};
 use rfd::FileHandle;
@@ -22,6 +23,43 @@ where
 
 pub fn other_primary_button<'a, Message>(
     label: &str,
+    on_press: Option<Message>,
+    is_hovered: bool,
+    icon: svg::Handle,
+    rotation: f32, // Radians
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
+    button(
+        row![
+            svg(icon)
+                .width(20)
+                .height(20)
+                .rotation(iced::Rotation::Floating(iced::Radians(rotation)))
+                .style(move |_theme: &Theme, _status| {
+                    iced::widget::svg::Style {
+                        color: Some(if is_hovered {
+                            Color::BLACK
+                        } else {
+                            Color::from_rgb8(255, 127, 0)
+                        }),
+                    }
+                }),
+            Text::new(label.to_owned())
+                .align_x(alignment::Horizontal::Center)
+                .size(16)
+        ]
+        .spacing(10)
+        .align_y(alignment::Vertical::Center),
+    )
+    .on_press_maybe(on_press)
+    .style(styles::button::scanner)
+    .padding(12)
+    .into()
+}
+
+pub fn icon_button<'a, Message>(
     on_press: Option<Message>,
     is_hovered: bool,
     icon: svg::Handle,
@@ -182,6 +220,7 @@ where
         .on_input(on_change)
         .secure(secure)
         .padding(10)
+        .line_height(LineHeight::Relative(1.5))
         .width(Length::Fill)
         .into()
 }
