@@ -1,8 +1,8 @@
 [package]
 name = "monarch"
-version = "0.2.0"
+version = "0.2.1"
 description = "A FOSS game launcher/manager."
-authors = ["an0nymoos3", "Dre-Van-den-Hooff"]
+authors = ["an0nymoos3", "sermuns"]
 license = "GPL-3.0-or-later"
 repository = "https://github.com/Monarch-Launcher/Monarch"
 edition = "2021"
