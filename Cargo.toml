@@ -1,8 +1,8 @@
 [package]
 name = "monarch"
-version = "0.2.0"
+version = "0.2.1"
 description = "A FOSS game launcher/manager."
-authors = ["an0nymoos3", "Dre-Van-den-Hooff"]
+authors = ["an0nymoos3", "sermuns"]
 license = "GPL-3.0-or-later"
 repository = "https://github.com/Monarch-Launcher/Monarch"
 edition = "2021"
@@ -43,6 +43,12 @@ fs_extra = "1.3.0"
 async-trait = "0.1.89"
 chrono = "0.4.43"
 rfd = "0.17.2"
+sqlx = { version = "0.8", features = [
+  "sqlite",
+  "macros",
+  "derive",
+  "runtime-async-std",
+], default-features = false }
 
 [workspace]
 members = ["package"]
@@ -52,3 +58,6 @@ objc = { version = "0.2.7", features = ["exception"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52.0"
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3

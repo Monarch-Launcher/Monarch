@@ -26,7 +26,6 @@ pub enum Message {
     ScannerHovered(bool),
     AddGameHovered(bool),
     OpenAddModal,
-    CloseAddModal,
     AddModal(add_game::Message),
     AddGame(MonarchGame),
 }
@@ -50,7 +49,15 @@ impl LibraryPage {
                 self.dot_count = 3;
                 self.tick_counter = 0;
                 iced::Task::perform(
-                    async move { monarch_games::commands::refresh_library().await },
+                    async move {
+                        match monarch_games::commands::refresh_library().await {
+                            Ok(games) => games,
+                            Err(e) => {
+                                show_error(e);
+                                Vec::new()
+                            }
+                        }
+                    },
                     Message::UpdateGames,
                 )
             }
@@ -177,10 +184,6 @@ impl LibraryPage {
                 self.add_game_modal = Some(AddGameModal::default());
                 iced::Task::none()
             }
-            Message::CloseAddModal => {
-                self.add_game_modal = None;
-                iced::Task::none()
-            }
             Message::AddModal(modal_msg) => {
                 if let Some(modal) = &mut self.add_game_modal {
                     match modal_msg {
@@ -193,7 +196,6 @@ impl LibraryPage {
                                 &modal.name,
                                 0,
                                 "monarch",
-                                "",
                                 "",
                                 &modal.exec_path,
                                 &modal.thumb_path,
@@ -312,12 +314,12 @@ impl Default for LibraryPage {
                 let _ = browser.update(gamecard::GameCardMessage::UpdateGames(games));
             }
             Err(e) => {
-                error!("Failed to get library: {}", e);
+                show_error(e);
             }
         }
 
         Self {
-            browser: browser,
+            browser,
             is_refreshing: false,
             dot_count: 3,
             tick_counter: 0,

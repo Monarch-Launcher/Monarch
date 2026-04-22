@@ -1,10 +1,10 @@
 use crate::gui::resources::PLAY;
 use crate::gui::styles;
+use iced::widget::text::LineHeight;
 use iced::widget::{button, pick_list, row, svg, text_editor, text_input, Text};
 use iced::{alignment, Color, Element, Length, Theme};
 use rfd::FileHandle;
 use std::borrow::Cow;
-use std::future::Future;
 
 pub fn primary_button<'a, Message>(
     label: &str,
@@ -55,6 +55,34 @@ where
     )
     .on_press_maybe(on_press)
     .style(styles::button::scanner)
+    .padding(12)
+    .into()
+}
+
+pub fn icon_button<'a, Message>(
+    on_press: Option<Message>,
+    is_hovered: bool,
+    icon: svg::Handle,
+    rotation: f32, // Radians
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
+    button(
+        row![svg(icon)
+            .width(20)
+            .height(20)
+            .rotation(iced::Rotation::Floating(iced::Radians(rotation)))
+            .style(move |_theme: &Theme, _status| {
+                iced::widget::svg::Style {
+                    color: Some(Color::from_rgb8(255, 127, 0)),
+                }
+            }),]
+        .spacing(10)
+        .align_y(alignment::Vertical::Center),
+    )
+    .on_press_maybe(on_press)
+    .style(styles::button::transparent)
     .padding(12)
     .into()
 }
@@ -156,9 +184,34 @@ pub fn input_field<'a, Message>(
 where
     Message: Clone + 'a,
 {
+    _text_input(placeholder, value, false, on_change)
+}
+
+pub fn secure_input_field<'a, Message>(
+    placeholder: &str,
+    value: &str,
+    on_change: impl Fn(String) -> Message + 'a,
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
+    _text_input(placeholder, value, true, on_change)
+}
+
+fn _text_input<'a, Message>(
+    placeholder: &str,
+    value: &str,
+    secure: bool,
+    on_change: impl Fn(String) -> Message + 'a,
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
     text_input(placeholder, value)
         .on_input(on_change)
+        .secure(secure)
         .padding(10)
+        .line_height(LineHeight::Relative(1.5))
         .width(Length::Fill)
         .into()
 }

@@ -50,7 +50,10 @@ impl SettingsPage {
         if let Err(e) = monarch_utils::commands::delete_password("steam", &mut settings.steam) {
             error!("Failed to delete Steam credentials: {}", e);
             show_error("Failed to delete Steam credentials!");
-            return;
+        }
+        if let Err(e) = monarch_utils::commands::delete_secret("steam", &mut settings.steam) {
+            error!("Failed to delete Steam secret: {}", e);
+            show_error("Failed to delete Steam secret!");
         }
         self.write_settings(settings);
     }
@@ -61,7 +64,23 @@ impl SettingsPage {
             &mut settings.steam,
             &self.steam_secret_tmp,
         );
+        settings.steam.twofa = true;
         self.write_settings(settings);
+    }
+
+    pub fn remove_steam_secret(&mut self, settings: &mut Settings) {
+        if let Err(e) = monarch_utils::commands::delete_secret("steam", &mut settings.steam) {
+            show_error(e);
+        }
+        settings.steam.twofa = false;
+        self.write_settings(settings);
+    }
+
+    pub fn delete_steam_secret(&mut self, settings: &mut Settings) {
+        if let Err(e) = monarch_utils::commands::delete_secret("steam", &mut settings.steam) {
+            error!("Failed to delete Steam secret: {}", e);
+            show_error("Failed to delete Steam secret!");
+        }
     }
 
     pub fn toggle_epic(&mut self, settings: &mut Settings, state: bool) {
@@ -94,7 +113,10 @@ impl SettingsPage {
         self.write_settings(settings);
     }
 
-    pub fn refresh(&mut self) {
+    pub fn refresh(&mut self, settings: &mut Settings) {
+        // Get updated paths and shit
+        settings.fix_settings();
+
         match monarch_utils::commands::get_cache_size() {
             Ok(size) => self.cache_size = size,
             Err(e) => {
@@ -129,14 +151,24 @@ impl SettingsPage {
     }
 
     pub fn install_umu_task(&self) {
+        if monarch_games::commands::umu_is_installed() {
+            show_error("umu-run already detected on system! Cannot install another version.");
+            return;
+        }
+
         if let Err(e) = monarch_games::commands::install_umu() {
             show_error(&e);
         }
     }
 
     pub fn install_steamcmd_task(&self, settings: &Settings) -> iced::Task<Message> {
+        if monarch_games::commands::steamcmd_is_installed() {
+            show_error("steamcmd already detected on system! Cannot install another version.");
+            return iced::Task::none();
+        }
+
         if settings.steam.username.is_empty() {
-            show_error("No Steam username set. Please set your username at least.");
+            show_error("No Steam username set. Please set your username.");
             return iced::Task::none();
         }
 
@@ -149,6 +181,11 @@ impl SettingsPage {
     }
 
     pub fn install_legendary_task(&self) {
+        if monarch_games::commands::legendary_is_installed() {
+            show_error("legendary already detected on system! Cannot install another version.");
+            return;
+        }
+
         if let Err(e) = monarch_games::commands::install_legendary() {
             show_error(&e);
         }

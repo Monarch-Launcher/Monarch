@@ -1,12 +1,12 @@
-use crate::monarch_games::monarch_client::get_library;
+use crate::monarch_utils::monarch_fs::get_library_db_path;
 use crate::monarch_utils::monarch_settings;
-use crate::{
-    monarch_games::monarchgame::MonarchGame, monarch_library::games_library::write_games,
-    monarch_utils::monarch_settings::Settings,
-};
-use anyhow::{bail, Context, Result};
+use crate::{monarch_games::monarchgame::MonarchGame, monarch_utils::monarch_settings::Settings};
+use anyhow::{bail, Result};
+use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::SqlitePool;
 use std::sync::RwLock;
 use std::sync::{Arc, LazyLock};
+use tracing::{error, warn};
 
 /// Global app state of app logic.
 /// Initialises a blank MonarchState to avoid RwLock deadlock on init.
@@ -20,6 +20,14 @@ pub static MONARCH_STATE: LazyLock<RwLock<MonarchState>> =
 pub struct MonarchState {
     library_games: Vec<MonarchGame>,
     settings: Arc<RwLock<Settings>>,
+
+    library_conn: Option<Arc<SqlitePool>>, // Using Arc<> allows for copying the 'ptr' across async threads
+}
+
+impl Drop for MonarchState {
+    fn drop(&mut self) {
+        futures::executor::block_on(self.library_conn.as_ref().unwrap().close());
+    }
 }
 
 impl MonarchState {
@@ -27,17 +35,33 @@ impl MonarchState {
         Self {
             library_games: Vec::new(),
             settings: Arc::new(RwLock::new(Settings::new())),
+            library_conn: None,
         }
     }
 
-    pub fn init(&mut self) {
-        self.library_games = get_library();
+    pub async fn init(&mut self) {
         self.settings = Arc::new(RwLock::new(
             monarch_settings::read_settings()
                 .expect("monarch_state::init() -> Failed to read settings from disk")
                 .try_into()
                 .expect("monarch_state::init() -> Failed to convert into Settings"),
         ));
+
+        match self.settings.write() {
+            Ok(mut settings) => {
+                settings.fix_settings();
+            }
+            Err(e) => {
+                error!(
+                    "monarch_state::init() Failed to lock on setting when verifying! | Err: {e}"
+                );
+            }
+        }
+        self.library_conn = Some(Arc::new(SqlitePool::connect_lazy_with(
+            SqliteConnectOptions::new()
+                .filename(get_library_db_path())
+                .create_if_missing(true),
+        )));
     }
 
     /// Returns what the backend thinks is the users library.
@@ -51,15 +75,23 @@ impl MonarchState {
         self.library_games = games.to_vec();
     }
 
+    /// Simple abstraction for pushing new game into MONARCH_STATE
+    pub fn push_game(&mut self, game: MonarchGame) {
+        self.library_games.push(game);
+    }
+
+    /// Simple abstraction for removing a game at index
+    pub fn remove_game(&mut self, index: usize) {
+        self.library_games.remove(index);
+    }
+
     /// Update a game.
     /// Useful when updating game properties and want to let
     /// the backend state know of it.
-    pub fn update_game(&mut self, game: &MonarchGame) -> Result<()> {
+    pub fn update_game(&mut self, game: MonarchGame) -> Result<()> {
         for (i, self_game) in self.library_games.iter_mut().enumerate() {
             if self_game.id == game.id {
-                self.library_games[i] = game.clone();
-                write_games(&self.library_games)
-                    .with_context(|| "monarch_state::update_game() -> ")?;
+                self.library_games[i] = game;
                 return Ok(());
             }
         }
@@ -88,7 +120,25 @@ impl MonarchState {
         false
     }
 
+    /// Get a copy of the Arc<RwLock<Settings>> contained in MONARCH_STATE
     pub fn get_settings_ptr(&self) -> Arc<RwLock<Settings>> {
         self.settings.clone()
+    }
+
+    pub fn get_db_pool_arc(&self) -> Arc<SqlitePool> {
+        self.library_conn.as_ref().unwrap().clone()
+    }
+
+    /// Attempt to fix RwLock of Settings if error occurs
+    /// Could be useful in future
+    pub fn _clear_settings_poison(&self) {
+        if self.settings.is_poisoned() {
+            warn!(
+                "monarch_state::clear_settings_poison() detected poisoned state for settings lock! Clearing poison."
+            );
+            self.settings.clear_poison();
+        } else {
+            error!("monarch_state::clear_settings_poison() Settings is not poisoned! Nothing to clear.")
+        }
     }
 }

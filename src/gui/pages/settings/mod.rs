@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock, RwLockWriteGuard};
 use tracing::error;
 
 use crate::gui::components::common::error_view;
-use crate::gui::show_error;
+use crate::gui::{self, show_confirm, show_error, AppMessage};
 use crate::monarch_utils;
 use crate::monarch_utils::monarch_settings::Settings;
 
@@ -37,6 +37,7 @@ pub enum Message {
     DeleteSteamCredentials,
     SteamGuardSecretChanged(String),
     SaveSteamSecret,
+    DeleteSteamSecret,
     ToggleEpic(bool),
     EpicUsernameChanged(String),
     EpicPasswordChanged(String),
@@ -45,11 +46,14 @@ pub enum Message {
     Refresh(()),
     OpenLink(&'static str),
     InstallSteamCMD,
+    InstallSteamCMDLinuxWarning,
     InstallLegendary,
     InstallUmu,
     RemoveSteamCMD,
     RemoveLegendary,
     RemoveUmu,
+    ToggleSteamHiddenPassword,
+    ToggleEpicHiddenPassword,
 }
 
 impl Message {
@@ -61,11 +65,14 @@ impl Message {
             | Message::ToggleSteam(_)
             | Message::SaveSteamCredentials
             | Message::SaveSteamSecret
+            | Message::DeleteSteamSecret
             | Message::DeleteSteamCredentials
             | Message::ToggleEpic(_)
             | Message::SaveEpicCredentials
             | Message::DeleteEpicCredentials
-            | Message::InstallSteamCMD => true,
+            | Message::InstallSteamCMD
+            | Message::Refresh(_)
+            | Message::ClearCache => true,
             _ => false,
         }
     }
@@ -77,9 +84,11 @@ pub struct SettingsPage {
     cache_size: u64,
     steam_username_tmp: String,
     steam_password_tmp: String,
+    view_steam_password: bool,
     steam_secret_tmp: String,
     epic_username_tmp: String,
     epic_password_tmp: String,
+    view_epic_password: bool,
 }
 
 impl Default for SettingsPage {
@@ -96,9 +105,11 @@ impl Default for SettingsPage {
             cache_size: monarch_utils::commands::get_cache_size().unwrap_or(0),
             steam_username_tmp: steam_user,
             steam_password_tmp: String::new(),
+            view_steam_password: false,
             steam_secret_tmp: String::new(),
             epic_username_tmp: epic_user,
             epic_password_tmp: String::new(),
+            view_epic_password: false,
         }
     }
 }
@@ -138,6 +149,7 @@ impl SettingsPage {
             }
             Message::SteamGuardSecretChanged(s) => self.steam_secret_tmp = s,
             Message::SaveSteamSecret => self.update_steam_secret(&mut write_guard.unwrap()),
+            Message::DeleteSteamSecret => self.remove_steam_secret(&mut write_guard.unwrap()),
             Message::ToggleEpic(state) => self.toggle_epic(&mut write_guard.unwrap(), state),
             Message::EpicUsernameChanged(u) => self.epic_username_tmp = u,
             Message::EpicPasswordChanged(p) => self.epic_password_tmp = p,
@@ -149,22 +161,30 @@ impl SettingsPage {
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {
                 monarch_utils::commands::clear_cached_images();
-                self.refresh();
+                self.refresh(&mut write_guard.unwrap());
             }
-            Message::Refresh(_) => self.refresh(),
+            Message::Refresh(_) => self.refresh(&mut write_guard.unwrap()),
             Message::OpenLogs => {
                 let _ = monarch_utils::commands::open_logs();
             }
             Message::OpenLink(url) => self.open_link(url),
             Message::InstallUmu => self.install_umu_task(),
             Message::InstallSteamCMD => return self.install_steamcmd_task(&write_guard.unwrap()),
+            Message::InstallSteamCMDLinuxWarning => show_confirm("Working with SteamCMD is a pain in the ass. That's why it's recommended to download and manage SteamCMD from you package manager.", AppMessage::Page(gui::pages::Message::Settings(Message::InstallSteamCMD))),
             Message::InstallLegendary => self.install_legendary_task(),
             Message::RemoveSteamCMD => self.remove_steamcmd(),
             Message::RemoveLegendary => self.remove_legendary(),
             Message::BrowseLibraryFolder => return self.pick_default_monarch_folder(),
             #[cfg(target_os = "linux")]
             Message::RemoveUmu => self.remove_umu(),
-            _ => {}
+            #[cfg(not(target_os = "linux"))]
+            Message::RemoveUmu => {}, // Do nothing
+            Message::ToggleSteamHiddenPassword => {
+                self.view_steam_password = !self.view_steam_password
+            },
+            Message::ToggleEpicHiddenPassword => {
+                self.view_epic_password = !self.view_epic_password
+            },
         }
         iced::Task::none()
     }

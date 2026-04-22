@@ -51,12 +51,22 @@ pub static ADD_FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
     svg::Handle::from_memory(bytes.to_vec())
 });
 
-pub static SEARCH_FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
+pub static _SEARCH_FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/folder-search-svgrepo-com.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });
 
-pub static FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
+pub static _FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/folder-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static VIEW: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/view.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static HIDE: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/hide.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });
