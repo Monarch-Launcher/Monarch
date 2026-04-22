@@ -8,7 +8,7 @@ use iced::{
 
 use crate::{
     gui::{
-        components::common::{danger_button, input_field, primary_button, secondary_button},
+        components::common::{danger_button, input_field, primary_button, secondary_button, secure_input_field},
         pages::settings::{Message, SettingsPage, SettingsTab},
         styles,
     }, monarch_games, monarch_utils::{self, monarch_settings::Settings}
@@ -256,7 +256,7 @@ impl SettingsPage {
             ),
             Space::new().height(10),
 
-            input_field(
+            secure_input_field(
                 "Steam Password",
                 &self.steam_password_tmp,
                 Message::SteamPasswordChanged
@@ -360,7 +360,7 @@ impl SettingsPage {
             ),
             Space::new().height(10),
 
-            input_field(
+            secure_input_field(
                 "Password",
                 &self.epic_password_tmp,
                 Message::EpicPasswordChanged
