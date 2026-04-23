@@ -299,11 +299,23 @@ impl SettingsPage {
                 .color([0.7, 0.7, 0.7]),
             Space::new().height(15),
 
-            input_field(
-                "Shared Secret",
-                &self.steam_secret_tmp,
-                Message::SteamGuardSecretChanged
-            ),
+            if self.view_steam_secret {
+                row![
+                    input_field("Steam Secret", &self.steam_secret_tmp, Message::SteamGuardSecretChanged),
+                    Space::new().width(10),
+                    icon_button(Some(Message::ToggleHiddenSteamSecret), false, VIEW.clone(), 0.0),
+                ]
+            } else {
+                row![
+                    secure_input_field(
+                        "Steam Secret",
+                        &self.steam_secret_tmp,
+                        Message::SteamGuardSecretChanged
+                    ),
+                    Space::new().width(10),
+                    icon_button(Some(Message::ToggleHiddenSteamSecret), false, HIDE.clone(), 0.0),
+                ]
+            },
             Space::new().height(10),
 
             row![
