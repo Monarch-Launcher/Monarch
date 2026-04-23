@@ -54,6 +54,7 @@ pub enum Message {
     RemoveUmu,
     ToggleSteamHiddenPassword,
     ToggleEpicHiddenPassword,
+    ToggleHiddenSteamSecret,
 }
 
 impl Message {
@@ -85,6 +86,7 @@ pub struct SettingsPage {
     steam_username_tmp: String,
     steam_password_tmp: String,
     view_steam_password: bool,
+    view_steam_secret: bool,
     steam_secret_tmp: String,
     epic_username_tmp: String,
     epic_password_tmp: String,
@@ -106,6 +108,7 @@ impl Default for SettingsPage {
             steam_username_tmp: steam_user,
             steam_password_tmp: String::new(),
             view_steam_password: false,
+            view_steam_secret: false,
             steam_secret_tmp: String::new(),
             epic_username_tmp: epic_user,
             epic_password_tmp: String::new(),
@@ -184,6 +187,9 @@ impl SettingsPage {
             },
             Message::ToggleEpicHiddenPassword => {
                 self.view_epic_password = !self.view_epic_password
+            },
+            Message::ToggleHiddenSteamSecret => {
+                self.view_steam_secret = !self.view_steam_secret;
             },
         }
         iced::Task::none()

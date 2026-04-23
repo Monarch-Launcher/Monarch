@@ -42,6 +42,7 @@ impl SettingsPage {
             );
         }
 
+        self.steam_password_tmp = "".to_string();
         self.write_settings(settings);
     }
 
@@ -65,6 +66,7 @@ impl SettingsPage {
             &self.steam_secret_tmp,
         );
         settings.steam.twofa = true;
+        self.steam_secret_tmp = "".to_string();
         self.write_settings(settings);
     }
 
@@ -76,16 +78,9 @@ impl SettingsPage {
         self.write_settings(settings);
     }
 
-    pub fn delete_steam_secret(&mut self, settings: &mut Settings) {
-        if let Err(e) = monarch_utils::commands::delete_secret("steam", &mut settings.steam) {
-            error!("Failed to delete Steam secret: {}", e);
-            show_error("Failed to delete Steam secret!");
-        }
-    }
-
     pub fn toggle_epic(&mut self, settings: &mut Settings, state: bool) {
         settings.epic.manage = state;
-        self.write_settings(&settings);
+        self.write_settings(settings);
     }
 
     pub fn update_epic_credentials(&mut self, settings: &mut Settings) {
@@ -100,6 +95,7 @@ impl SettingsPage {
             );
         }
 
+        self.epic_password_tmp = "".to_string();
         self.write_settings(settings);
     }
 
