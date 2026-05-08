@@ -3593,6 +3593,7 @@ dependencies = [
  "image",
  "keyring",
  "keyvalues-serde",
+ "monarch_egs",
  "objc",
  "portable-pty",
  "rand 0.9.2",
@@ -3615,21 +3616,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "monarch-legendary"
+name = "monarch-packager"
 version = "0.1.0"
 dependencies = [
+ "cargo-packager",
+]
+
+[[package]]
+name = "monarch_egs"
+version = "0.1.0"
+dependencies = [
+ "dotenv",
  "reqwest 0.13.3",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
  "tokio",
-]
-
-[[package]]
-name = "monarch-packager"
-version = "0.1.0"
-dependencies = [
- "cargo-packager",
 ]
 
 [[package]]

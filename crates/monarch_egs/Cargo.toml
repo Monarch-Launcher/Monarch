@@ -1,7 +1,10 @@
 [package]
-name = "monarch-legendary"
+name = "monarch_egs"
 version = "0.1.0"
 edition = "2024"
+
+[build-dependencies]
+dotenv = "0.15.0"
 
 [dependencies]
 reqwest = { version = "0.13", features = ["json"] }

@@ -1,4 +1,4 @@
-use reqwest::{Client, Response, Result, StatusCode};
+use reqwest::{Client, Response, Result};
 use serde_json::Value;
 
 use crate::auth::session::Session;
@@ -19,7 +19,7 @@ impl User {
     }
 
     pub fn start_auth(&self) {
-        let url: String = std::env::var("EPICLOGIN_URL").unwrap();
+        let url: &str = std::env!("EPICLOGIN_URL");
         #[cfg(target_os = "linux")]
         {
             let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
@@ -33,8 +33,9 @@ impl User {
         }
     }
 
-    pub fn finish_auth(&mut self, auth_code: &str) {
+    pub async fn finish_auth(&mut self, auth_code: &str) -> Result<()> {
         let code: &str = auth_code.trim();
+        self.login_with_auth_code(code).await
     }
 
     async fn login_with_auth_code(&mut self, auth_code: &str) -> Result<()> {
@@ -63,6 +64,10 @@ impl User {
         let response_json: Value = serde_json::from_str(&response_text).unwrap();
         let token: String = response_json["access_token"].to_string();
         self.session.set_access_token(token);
+
+        println!("{:?}", response_text);
+        println!("------------------------------------------------------");
+        println!("{:?}", response_json);
 
         Ok(())
     }

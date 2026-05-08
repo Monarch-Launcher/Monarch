@@ -50,6 +50,8 @@ sqlx = { version = "0.8", features = [
   "runtime-async-std",
 ], default-features = false }
 
+monarch_egs = { path = "../monarch_egs" }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = { version = "0.2.7", features = ["exception"] }
 

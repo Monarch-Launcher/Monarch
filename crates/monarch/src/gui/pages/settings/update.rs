@@ -10,7 +10,7 @@ use crate::{
         },
         show_confirm, show_error, AppMessage,
     },
-    monarch_games,
+    monarch_games::{self, egs::EgsClient},
     monarch_utils::{self, monarch_settings::Settings},
 };
 
@@ -83,20 +83,10 @@ impl SettingsPage {
         self.write_settings(settings);
     }
 
-    pub fn update_epic_credentials(&mut self, settings: &mut Settings) {
-        settings.epic.username = self.epic_username_tmp.clone();
+    pub fn login_epic(&mut self, settings: &mut Settings) {
+        let client: EgsClient = monarch_games::egs::EgsClient::new();
 
-        if !self.epic_password_tmp.is_empty() {
-            let _ = monarch_utils::commands::set_password(
-                "epic",
-                &mut settings.epic,
-                &self.epic_username_tmp,
-                &self.epic_password_tmp,
-            );
-        }
-
-        self.epic_password_tmp = "".to_string();
-        self.write_settings(settings);
+        futures::executor::block_on(client.login()).unwrap();
     }
 
     pub fn delete_epic_credentials(&mut self, settings: &mut Settings) {

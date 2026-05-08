@@ -370,41 +370,9 @@ impl SettingsPage {
             text(legendary_bin).size(14).color([0.5, 0.5, 0.5]),
             Space::new().height(25),
 
-            text("Enter your Epic Games credentials to enable library synchronization and game downloads.")
-                .size(14)
-                .color([0.7, 0.7, 0.7]),
-            Space::new().height(15),
-
-            input_field(
-                "Epic Username / Email",
-                &self.epic_username_tmp,
-                Message::EpicUsernameChanged
-            ),
-            Space::new().height(10),
-
-            
-            if self.view_epic_password {
-                row![
-                    input_field("Epic Password", &self.epic_password_tmp, Message::EpicPasswordChanged),
-                    Space::new().width(10),
-                    icon_button(Some(Message::ToggleEpicHiddenPassword), false, VIEW.clone(), 0.0),
-                ]
-            } else {
-                row![
-                    secure_input_field(
-                        "Steam Password",
-                        &self.epic_password_tmp,
-                        Message::EpicPasswordChanged
-                    ),
-                    Space::new().width(10),
-                    icon_button(Some(Message::ToggleEpicHiddenPassword), false, HIDE.clone(), 0.0),
-                ]
-            },
-            Space::new().height(10),
-
             row![
                 Space::new().width(Length::Fill),
-                primary_button("Save Credentials", Some(Message::SaveEpicCredentials)),
+                primary_button("Login to Epic Games", Some(Message::LoginEpic)),
                 Space::new().width(10),
                 danger_button("Delete Credentials", Some(Message::DeleteEpicCredentials)),
             ],
