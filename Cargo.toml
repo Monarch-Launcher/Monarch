@@ -1,63 +1,9 @@
-[package]
-name = "monarch"
-version = "0.2.1"
-description = "A FOSS game launcher/manager."
-authors = ["an0nymoos3", "sermuns"]
-license = "GPL-3.0-or-later"
-repository = "https://github.com/Monarch-Launcher/Monarch"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[build-dependencies]
-dotenv = "0.15.0"
-
-[dependencies]
-iced = { version = "0.14.0", features = ["image", "svg", "tokio"] }
-iced_term = "0.7.0"
-image = { version = "0.25", features = ["webp"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tokio = { version = "1", features = ["full"] }
-toml = { version = "0.8.11", features = ["preserve_order"] }
-reqwest = { version = "0.11.0", features = ["blocking"] }
-scraper = "0.19.0"
-tracing = { version = "0.1.41", features = [
-  "max_level_trace",
-  "release_max_level_info",
-] }
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-regex = "1.8.1"
-keyvalues-serde = "0.2.2"
-sysinfo = "0.29.7"
-keyring = "2"
-anyhow = "1.0.86"
-portable-pty = "0.9.0"
-simple-steam-totp = { version = "0.1.0", git = "https://github.com/Monarch-Launcher/simple-steam-totp.git" }
-rand = "0.9.1"
-zip = "4.3.0"
-futures = { version = "0.3", default-features = false, features = ["executor"] }
-tar = "0.4.44"
-flate2 = "1.1.2"
-fs_extra = "1.3.0"
-async-trait = "0.1.89"
-chrono = "0.4.43"
-rfd = "0.17.2"
-sqlx = { version = "0.8", features = [
-  "sqlite",
-  "macros",
-  "derive",
-  "runtime-async-std",
-], default-features = false }
-
 [workspace]
-members = ["package"]
+resolver = "3"
+members = ["crates/*"]
+default-members = ["crates/monarch"]
 
-[target.'cfg(target_os = "macos")'.dependencies]
-objc = { version = "0.2.7", features = ["exception"] }
-
-[target.'cfg(windows)'.dependencies]
-winreg = "0.52.0"
-
-[profile.dev.package.sqlx-macros]
+[profile.release]
+strip = true
+lto = true
 opt-level = 3

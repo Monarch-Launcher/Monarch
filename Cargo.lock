@@ -3407,6 +3407,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "monarch-legendary"
+version = "0.1.0"
+
+[[package]]
 name = "monarch-packager"
 version = "0.1.0"
 dependencies = [
