@@ -83,10 +83,19 @@ impl SettingsPage {
         self.write_settings(settings);
     }
 
-    pub fn login_epic(&mut self, settings: &mut Settings) {
+    pub fn login_epic(&self) {
         let client: EgsClient = monarch_games::egs::EgsClient::new();
+        client.open_epic_login();
+    }
 
-        futures::executor::block_on(client.login()).unwrap();
+    pub fn login_epic_auth_code(&self) {
+        let mut client: EgsClient = monarch_games::egs::EgsClient::new();
+        if let Err(e) =
+            futures::executor::block_on(client.save_epic_auth_code(&self.epic_auth_code_tmp))
+        {
+            error!("Failed to login to epic games using auth code! -> {:?}", e);
+            show_error("Failed to login to Epic Games using authorization code!");
+        }
     }
 
     pub fn delete_epic_credentials(&mut self, settings: &mut Settings) {

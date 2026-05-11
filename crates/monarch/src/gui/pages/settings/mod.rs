@@ -41,6 +41,8 @@ pub enum Message {
     ToggleEpic(bool),
     LoginEpic,
     DeleteEpicCredentials,
+    EpicAuthCodeChanged(String),
+    SaveEpicAuthCode,
     Refresh(()),
     OpenLink(&'static str),
     InstallSteamCMD,
@@ -51,7 +53,6 @@ pub enum Message {
     RemoveLegendary,
     RemoveUmu,
     ToggleSteamHiddenPassword,
-    ToggleEpicHiddenPassword,
     ToggleHiddenSteamSecret,
 }
 
@@ -67,7 +68,6 @@ impl Message {
             | Message::DeleteSteamSecret
             | Message::DeleteSteamCredentials
             | Message::ToggleEpic(_)
-            | Message::LoginEpic
             | Message::DeleteEpicCredentials
             | Message::InstallSteamCMD
             | Message::Refresh(_)
@@ -86,9 +86,7 @@ pub struct SettingsPage {
     view_steam_password: bool,
     view_steam_secret: bool,
     steam_secret_tmp: String,
-    epic_username_tmp: String,
-    epic_password_tmp: String,
-    view_epic_password: bool,
+    epic_auth_code_tmp: String,
 }
 
 impl Default for SettingsPage {
@@ -108,9 +106,7 @@ impl Default for SettingsPage {
             view_steam_password: false,
             view_steam_secret: false,
             steam_secret_tmp: String::new(),
-            epic_username_tmp: epic_user,
-            epic_password_tmp: String::new(),
-            view_epic_password: false,
+            epic_auth_code_tmp: String::new(),
         }
     }
 }
@@ -152,10 +148,12 @@ impl SettingsPage {
             Message::SaveSteamSecret => self.update_steam_secret(&mut write_guard.unwrap()),
             Message::DeleteSteamSecret => self.remove_steam_secret(&mut write_guard.unwrap()),
             Message::ToggleEpic(state) => self.toggle_epic(&mut write_guard.unwrap(), state),
-            Message::LoginEpic => self.login_epic(&mut write_guard.unwrap()),
+            Message::LoginEpic => self.login_epic(),
             Message::DeleteEpicCredentials => {
                 self.delete_epic_credentials(&mut write_guard.unwrap())
             }
+            Message::EpicAuthCodeChanged(code) => self.epic_auth_code_tmp = code,
+            Message::SaveEpicAuthCode => self.login_epic_auth_code(),
             Message::RequestResetDefaults => self.ask_reset_settings(),
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {
@@ -180,9 +178,6 @@ impl SettingsPage {
             Message::RemoveUmu => {}, // Do nothing
             Message::ToggleSteamHiddenPassword => {
                 self.view_steam_password = !self.view_steam_password
-            },
-            Message::ToggleEpicHiddenPassword => {
-                self.view_epic_password = !self.view_epic_password
             },
             Message::ToggleHiddenSteamSecret => {
                 self.view_steam_secret = !self.view_steam_secret;

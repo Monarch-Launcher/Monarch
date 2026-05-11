@@ -1,8 +1,8 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use tracing::{error, info};
 
-use monarch_egs::{Session, User};
+use monarch_egs::User;
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
@@ -13,35 +13,25 @@ use crate::monarch_utils::monarch_settings::get_settings;
 
 use super::stores::StoreType;
 
-pub struct EgsClient {}
+pub struct EgsClient {
+    user: User,
+}
 
 impl EgsClient {
     pub fn new() -> Self {
-        Self {}
+        Self { user: User::new() }
     }
 
-    pub async fn login(&self) -> Result<()> {
-        info!("Logging in to Epic Games...");
+    pub fn open_epic_login(&self) {
+        info!("User logging into Epic Games...");
+        self.user.start_auth();
+    }
 
-        let mut egs_user: User = User::new();
-        egs_user.start_auth();
-
-        use std::io;
-        use std::io::Read;
-        println!("Please enter authorization code: ");
-        let mut input = String::new().into_bytes();
-        io::stdin().read_to_end(&mut input).unwrap();
-
-        unsafe {
-            egs_user
-                .finish_auth(String::from_utf8_unchecked(input).as_str())
-                .await
-                .unwrap();
-        }
-
-        info!("Login complete!");
-
-        Ok(())
+    pub async fn save_epic_auth_code(&mut self, code: &str) -> Result<()> {
+        info!("Logging in using Epic Games auth code...");
+        self.user.finish_auth(code).await.with_context(|| {
+            "egs::save_epic_auth_code() Failed to authenticate using auth code! | Err: "
+        })
     }
 }
 
@@ -55,10 +45,7 @@ impl StoreType for EgsClient {
         let response = match reqwest::get(search_term).await {
             Ok(resp) => resp,
             Err(e) => {
-                error!(
-                    "monarch_client::search_games() reqwest::get() failed! | Err: {}",
-                    e
-                );
+                error!("egs::search_games() reqwest::get() failed! | Err: {}", e);
                 return Vec::new();
             }
         };

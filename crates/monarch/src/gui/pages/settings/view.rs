@@ -378,6 +378,17 @@ impl SettingsPage {
             ],
             Space::new().height(10),
 
+            row![
+                input_field(
+                "Epic Games authorization code",
+                &self.epic_auth_code_tmp,
+                Message::EpicAuthCodeChanged
+            ),
+                Space::new().width(10),
+                primary_button("Save", Some(Message::SaveEpicAuthCode)),
+            ],
+            Space::new().height(10),
+
             text(format!("Logged in as: {epic_login}")).size(14).color([0.5, 0.5, 0.5]),
         ]
         .spacing(10)
