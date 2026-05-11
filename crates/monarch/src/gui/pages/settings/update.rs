@@ -90,9 +90,8 @@ impl SettingsPage {
 
     pub fn login_epic_auth_code(&self) {
         let mut client: EgsClient = monarch_games::egs::EgsClient::new();
-        if let Err(e) =
-            futures::executor::block_on(client.save_epic_auth_code(&self.epic_auth_code_tmp))
-        {
+        let trimmed_code: &str = self.epic_auth_code_tmp.trim().trim_matches('"');
+        if let Err(e) = futures::executor::block_on(client.save_epic_auth_code(trimmed_code)) {
             error!("Failed to login to epic games using auth code! -> {:?}", e);
             show_error("Failed to login to Epic Games using authorization code!");
         }
