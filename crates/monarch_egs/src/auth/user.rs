@@ -1,6 +1,6 @@
-use reqwest::{Client, Response, Result};
+use reqwest::Result;
 
-use crate::auth::session::Session;
+use crate::auth::session::{Session, SessionTokenType};
 
 #[derive(Debug, Default)]
 pub struct User {
@@ -14,7 +14,7 @@ impl User {
         }
     }
 
-    pub fn from_config() -> Self {
+    pub fn load_stored_user() -> Self {
         User::new()
     }
 
@@ -35,11 +35,7 @@ impl User {
 
     pub async fn finish_auth(&mut self, auth_code: &str) -> Result<()> {
         let code: &str = auth_code.trim();
-        self.login_with_auth_code(code).await
-    }
-
-    async fn login_with_auth_code(&mut self, auth_code: &str) -> Result<()> {
-        self.session = Session::from_auth_code(auth_code).await;
+        self.session = Session::from(SessionTokenType::AuthCode(code.to_string())).await;
         Ok(())
     }
 }

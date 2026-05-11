@@ -6,6 +6,11 @@ static OAUTH_HOST: &str = "https://account-public-service-prod03.ol.epicgames.co
 static BASIC_USERNAME: &str = "34a02cf8f4414e29b15921876da36f9a";
 static BASIC_PASSWORD: &str = "daafbccc737745039dffe53d94fc76cf";
 
+pub enum SessionTokenType {
+    AuthCode(String),
+    RefreshToken(String),
+}
+
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Session {
     access_token: String,
@@ -13,14 +18,21 @@ pub struct Session {
 }
 
 impl Session {
-    pub async fn from_auth_code(auth_code: &str) -> Self {
+    pub async fn from(token: SessionTokenType) -> Self {
         let url: String = format!("{OAUTH_HOST}/account/api/oauth/token");
 
-        let form: HashMap<&str, &str> = HashMap::from([
-            ("grant_type", "authorization_code"),
-            ("code", auth_code),
-            ("token_type", "eg1"),
-        ]);
+        let form: HashMap<&str, String> = match token {
+            SessionTokenType::AuthCode(auth_code) => HashMap::from([
+                ("grant_type", "authorization_code".to_string()),
+                ("code", auth_code),
+                ("token_type", "eg1".to_string()),
+            ]),
+            SessionTokenType::RefreshToken(refresh_token) => HashMap::from([
+                ("grant_type", "refresh_token".to_string()),
+                ("refresh_token", refresh_token),
+                ("token_type", "eg1".to_string()),
+            ]),
+        };
 
         let client: Client = Client::new();
         let response: Response = client
@@ -44,12 +56,6 @@ impl Session {
 
         let response_text: String = response.text().await.unwrap();
         serde_json::from_str::<Session>(&response_text).unwrap()
-    }
-
-    pub fn from_refresh_token(refresh_token: &str) -> Self {
-        Self {
-            ..Default::default()
-        }
     }
 
     pub fn has_access_token(&self) -> bool {
