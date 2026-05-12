@@ -14,8 +14,11 @@ impl User {
         }
     }
 
-    pub fn load_stored_user() -> Self {
-        User::new()
+    pub async fn load_stored_user(refresh_token: &str) -> Self {
+        Self {
+            session: Session::from_token(SessionTokenType::RefreshToken(refresh_token.to_string()))
+                .await,
+        }
     }
 
     pub fn start_auth(&self) {
@@ -35,7 +38,15 @@ impl User {
 
     pub async fn finish_auth(&mut self, auth_code: &str) -> Result<()> {
         let code: &str = auth_code.trim();
-        self.session = Session::from(SessionTokenType::AuthCode(code.to_string())).await;
+        self.session = Session::from_token(SessionTokenType::AuthCode(code.to_string())).await;
         Ok(())
+    }
+
+    pub async fn get_access_token(&mut self) -> String {
+        if self.session.session_expired() {
+            self.session.refresh_session().await;
+        }
+
+        self.session.get_access_token()
     }
 }

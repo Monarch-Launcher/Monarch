@@ -3,4 +3,4 @@ mod auth;
 mod download;
 mod utils;
 
-pub use auth::{Session, User};
+pub use auth::User;

@@ -1,6 +1,9 @@
 use reqwest::{Client, Response};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::Deserialize;
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 static OAUTH_HOST: &str = "https://account-public-service-prod03.ol.epicgames.com";
 static BASIC_USERNAME: &str = "34a02cf8f4414e29b15921876da36f9a";
@@ -11,14 +14,41 @@ pub enum SessionTokenType {
     RefreshToken(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug)]
 pub struct Session {
     access_token: String,
     refresh_token: String,
+    expires: Instant,
 }
 
 impl Session {
-    pub async fn from(token: SessionTokenType) -> Self {
+    pub async fn from_token(token: SessionTokenType) -> Self {
+        Self::authenticate_token(token).await
+    }
+
+    pub async fn refresh_session(&mut self) {
+        let new_session: Session =
+            Self::authenticate_token(SessionTokenType::RefreshToken(self.refresh_token.clone()))
+                .await;
+
+        self.access_token = new_session.access_token;
+        self.refresh_token = new_session.refresh_token;
+        self.expires = new_session.expires;
+    }
+
+    pub fn has_access_token(&self) -> bool {
+        self.access_token.is_empty()
+    }
+
+    pub fn session_expired(&self) -> bool {
+        Instant::now() >= self.expires
+    }
+
+    pub fn get_access_token(&self) -> String {
+        self.access_token.clone()
+    }
+
+    async fn authenticate_token(token: SessionTokenType) -> Self {
         let url: String = format!("{OAUTH_HOST}/account/api/oauth/token");
 
         let form: HashMap<&str, String> = match token {
@@ -55,17 +85,41 @@ impl Session {
         }
 
         let response_text: String = response.text().await.unwrap();
-        serde_json::from_str::<Session>(&response_text).unwrap()
-    }
+        let token_resp: TokenResponse =
+            serde_json::from_str::<TokenResponse>(&response_text).unwrap();
 
-    pub fn has_access_token(&self) -> bool {
-        self.access_token.is_empty()
+        token_resp.into()
     }
+}
 
-    pub fn set_new_tokens(&mut self, access_token: String, refresh_token: String) {
-        self.access_token = access_token;
-        self.refresh_token = refresh_token;
+impl Default for Session {
+    fn default() -> Self {
+        Self {
+            access_token: String::new(),
+            refresh_token: String::new(),
+            expires: Instant::now(),
+        }
     }
+}
 
-    pub fn refresh_session(&mut self) {}
+#[derive(Deserialize)]
+struct TokenResponse {
+    access_token: String,
+    refresh_token: String,
+    expires_in: u64,
+    account_id: String,
+    client_id: String,
+}
+
+impl From<TokenResponse> for Session {
+    fn from(value: TokenResponse) -> Self {
+        let expire_instant: Instant = Instant::now()
+            .checked_add(Duration::from_secs(value.expires_in))
+            .unwrap();
+        Self {
+            access_token: value.access_token,
+            refresh_token: value.refresh_token,
+            expires: expire_instant,
+        }
+    }
 }
