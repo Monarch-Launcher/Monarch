@@ -30,6 +30,27 @@ impl EgsClient {
             .with_context(|| "egs::load_existing_user() -> ")?;
 
         self.user = User::load_stored_user(session).await;
+
+        match get_settings() {
+            Ok(settings_lock) => match settings_lock.read() {
+                Ok(settings) => {
+                    self.user.set_display_name(&settings.epic.username);
+                }
+                Err(e) => {
+                    error!(
+                        "egs::load_existing_user() settings_lock.read() failed! | Err: {}",
+                        e
+                    );
+                }
+            },
+            Err(e) => {
+                error!(
+                    "egs::load_existing_user() get_settings() failed! | Err: {}",
+                    e
+                );
+            }
+        }
+
         Ok(())
     }
 
