@@ -8,7 +8,7 @@ use iced::{
 
 use crate::{
     gui::{
-        components::common::{danger_button, icon_button, input_field, other_primary_button, primary_button, secondary_button, secure_input_field}, pages::settings::{Message, SettingsPage, SettingsTab}, resources::{HIDE, VIEW}, styles
+        components::common::{danger_button, icon_button, input_field, primary_button, secondary_button, secure_input_field}, pages::settings::{Message, SettingsPage, SettingsTab}, resources::{HIDE, VIEW}, styles
     }, monarch_games, monarch_utils::monarch_settings::Settings
 };
 
@@ -379,11 +379,23 @@ impl SettingsPage {
             Space::new().height(10),
 
             row![
-                input_field(
-                "Epic Games authorization code",
-                &self.epic_auth_code_tmp,
-                Message::EpicAuthCodeChanged
-            ),
+                if self.view_epic_token {
+                    row![
+                        input_field("Epic Games authorization code", &self.epic_auth_code_tmp, Message::EpicAuthCodeChanged),
+                        Space::new().width(10),
+                        icon_button(Some(Message::ToggleHiddenEpicToken), false, VIEW.clone(), 0.0),
+                    ]
+                } else {
+                    row![
+                        secure_input_field(
+                            "Epic Games authorization code",
+                            &self.epic_auth_code_tmp,
+                            Message::EpicAuthCodeChanged
+                        ),
+                        Space::new().width(10),
+                        icon_button(Some(Message::ToggleHiddenEpicToken), false, HIDE.clone(), 0.0),
+                    ]
+                },
                 Space::new().width(10),
                 primary_button("Save", Some(Message::SaveEpicAuthCode)),
             ],

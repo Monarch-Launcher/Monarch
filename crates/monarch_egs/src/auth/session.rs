@@ -1,3 +1,4 @@
+use super::user::User;
 use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -22,14 +23,16 @@ pub struct Session {
 }
 
 impl Session {
-    pub async fn from_token(token: SessionTokenType) -> Self {
-        Self::authenticate_token(token).await
+    pub async fn from_token(token: SessionTokenType, user: &mut User) -> Self {
+        Self::authenticate_token(token, Some(user)).await
     }
 
     pub async fn refresh_session(&mut self) {
-        let new_session: Session =
-            Self::authenticate_token(SessionTokenType::RefreshToken(self.refresh_token.clone()))
-                .await;
+        let new_session: Session = Self::authenticate_token(
+            SessionTokenType::RefreshToken(self.refresh_token.clone()),
+            None,
+        )
+        .await;
 
         self.access_token = new_session.access_token;
         self.refresh_token = new_session.refresh_token;
@@ -48,7 +51,7 @@ impl Session {
         self.access_token.clone()
     }
 
-    async fn authenticate_token(token: SessionTokenType) -> Self {
+    async fn authenticate_token(token: SessionTokenType, user: Option<&mut User>) -> Self {
         let url: String = format!("{OAUTH_HOST}/account/api/oauth/token");
 
         let form: HashMap<&str, String> = match token {
@@ -88,6 +91,10 @@ impl Session {
         let token_resp: TokenResponse =
             serde_json::from_str::<TokenResponse>(&response_text).unwrap();
 
+        if let Some(u) = user {
+            u.set_display_name(&token_resp.display_name);
+        }
+
         token_resp.into()
     }
 }
@@ -107,8 +114,9 @@ struct TokenResponse {
     access_token: String,
     refresh_token: String,
     expires_in: u64,
-    account_id: String,
-    client_id: String,
+
+    #[serde(rename = "displayName")]
+    display_name: String,
 }
 
 impl From<TokenResponse> for Session {

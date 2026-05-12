@@ -52,6 +52,10 @@ impl EgsClient {
             .with_context(|| "egs::save_epic_auth_code() -> ")
     }
 
+    pub fn display_name(&self) -> String {
+        self.user.display_name()
+    }
+
     fn get_epic_games_token_path() -> PathBuf {
         get_monarch_home().join("monarch_egs.json")
     }

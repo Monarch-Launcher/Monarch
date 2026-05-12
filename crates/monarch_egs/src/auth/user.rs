@@ -4,6 +4,7 @@ use crate::auth::session::{Session, SessionTokenType};
 
 #[derive(Debug, Default)]
 pub struct User {
+    display_name: String,
     session: Session,
 }
 
@@ -18,7 +19,10 @@ impl User {
         if session.session_expired() {
             session.refresh_session().await;
         }
-        Self { session }
+        Self {
+            display_name: "".to_string(),
+            session,
+        }
     }
 
     pub fn export_session(&self) -> Session {
@@ -42,7 +46,8 @@ impl User {
 
     pub async fn finish_auth(&mut self, auth_code: &str) -> Result<()> {
         let code: &str = auth_code.trim();
-        self.session = Session::from_token(SessionTokenType::AuthCode(code.to_string())).await;
+        self.session =
+            Session::from_token(SessionTokenType::AuthCode(code.to_string()), self).await;
         Ok(())
     }
 
@@ -52,5 +57,13 @@ impl User {
         }
 
         self.session.get_access_token()
+    }
+
+    pub fn display_name(&self) -> String {
+        self.display_name.clone()
+    }
+
+    pub fn set_display_name(&mut self, display_name: &str) {
+        self.display_name = display_name.to_string();
     }
 }

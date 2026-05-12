@@ -54,6 +54,7 @@ pub enum Message {
     RemoveUmu,
     ToggleSteamHiddenPassword,
     ToggleHiddenSteamSecret,
+    ToggleHiddenEpicToken,
 }
 
 impl Message {
@@ -71,7 +72,8 @@ impl Message {
             | Message::DeleteEpicCredentials
             | Message::InstallSteamCMD
             | Message::Refresh(_)
-            | Message::ClearCache => true,
+            | Message::ClearCache
+            | Message::SaveEpicAuthCode => true,
             _ => false,
         }
     }
@@ -87,6 +89,7 @@ pub struct SettingsPage {
     view_steam_secret: bool,
     steam_secret_tmp: String,
     epic_auth_code_tmp: String,
+    view_epic_token: bool,
 }
 
 impl Default for SettingsPage {
@@ -107,6 +110,7 @@ impl Default for SettingsPage {
             view_steam_secret: false,
             steam_secret_tmp: String::new(),
             epic_auth_code_tmp: String::new(),
+            view_epic_token: false,
         }
     }
 }
@@ -153,7 +157,7 @@ impl SettingsPage {
                 self.delete_epic_credentials(&mut write_guard.unwrap())
             }
             Message::EpicAuthCodeChanged(code) => self.epic_auth_code_tmp = code,
-            Message::SaveEpicAuthCode => self.login_epic_auth_code(),
+            Message::SaveEpicAuthCode => self.login_epic_auth_code(&mut write_guard.unwrap()),
             Message::RequestResetDefaults => self.ask_reset_settings(),
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {
@@ -182,6 +186,9 @@ impl SettingsPage {
             Message::ToggleHiddenSteamSecret => {
                 self.view_steam_secret = !self.view_steam_secret;
             },
+            Message::ToggleHiddenEpicToken => {
+                self.view_epic_token = !self.view_epic_token;
+            }
         }
         iced::Task::none()
     }
