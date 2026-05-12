@@ -6,9 +6,11 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-static OAUTH_HOST: &str = "https://account-public-service-prod03.ol.epicgames.com";
-static BASIC_USERNAME: &str = "34a02cf8f4414e29b15921876da36f9a";
-static BASIC_PASSWORD: &str = "daafbccc737745039dffe53d94fc76cf";
+pub static OAUTH_HOST: &str = "account-public-service-prod03.ol.epicgames.com";
+pub static BASIC_USERNAME: &str = "34a02cf8f4414e29b15921876da36f9a";
+pub static BASIC_PASSWORD: &str = "daafbccc737745039dffe53d94fc76cf";
+pub static VERSION: &str = "15.18.2-29993784+++Portal+Release-Live";
+pub static LABEL: &str = "Live";
 
 pub enum SessionTokenType {
     AuthCode(String),
@@ -20,6 +22,12 @@ pub struct Session {
     access_token: String,
     refresh_token: String,
     expires: SystemTime,
+    account_id: String,
+    client_id: String,
+    client_secret: String,
+    user_agent: String,
+    store_user_agent: String,
+    label: String,
 }
 
 impl Session {
@@ -51,8 +59,32 @@ impl Session {
         self.access_token.clone()
     }
 
+    pub fn get_account_id(&self) -> String {
+        self.account_id.clone()
+    }
+
+    pub fn get_client_id(&self) -> String {
+        self.client_id.clone()
+    }
+
+    pub fn get_client_secret(&self) -> String {
+        self.client_secret.clone()
+    }
+
+    pub fn get_user_agent(&self) -> String {
+        self.user_agent.clone()
+    }
+
+    pub fn get_store_user_agent(&self) -> String {
+        self.store_user_agent.clone()
+    }
+
+    pub fn get_label(&self) -> String {
+        self.label.clone()
+    }
+
     async fn authenticate_token(token: SessionTokenType, user: Option<&mut User>) -> Self {
-        let url: String = format!("{OAUTH_HOST}/account/api/oauth/token");
+        let url: String = format!("https://{OAUTH_HOST}/account/api/oauth/token");
 
         let form: HashMap<&str, String> = match token {
             SessionTokenType::AuthCode(auth_code) => HashMap::from([
@@ -88,6 +120,9 @@ impl Session {
         }
 
         let response_text: String = response.text().await.unwrap();
+
+        println!("{:?}", response_text);
+
         let token_resp: TokenResponse =
             serde_json::from_str::<TokenResponse>(&response_text).unwrap();
 
@@ -105,6 +140,12 @@ impl Default for Session {
             access_token: String::new(),
             refresh_token: String::new(),
             expires: SystemTime::now(),
+            account_id: String::new(),
+            store_user_agent: format!("EpicGamesLauncher//{}", VERSION),
+            user_agent: format!("UELauncher/{} Windows/10.0.19041.1.256.64bit", VERSION),
+            client_id: String::new(),
+            client_secret: String::new(),
+            label: LABEL.to_string(),
         }
     }
 }
@@ -114,7 +155,8 @@ struct TokenResponse {
     access_token: String,
     refresh_token: String,
     expires_in: u64,
-
+    account_id: String,
+    client_id: String,
     #[serde(rename = "displayName")]
     display_name: String,
 }
@@ -124,10 +166,24 @@ impl From<TokenResponse> for Session {
         let expire_instant: SystemTime = SystemTime::now()
             .checked_add(Duration::from_secs(value.expires_in))
             .unwrap();
+
+        let mut client_id = value.client_id;
+        let mut client_secret = "".to_string();
+        if client_id.is_empty() || client_secret.is_empty() {
+            client_id = BASIC_USERNAME.to_string();
+            client_secret = BASIC_PASSWORD.to_string();
+        }
+
         Self {
             access_token: value.access_token,
             refresh_token: value.refresh_token,
             expires: expire_instant,
+            account_id: value.account_id,
+            user_agent: format!("UELauncher/{} Windows/10.0.19041.1.256.64bit", VERSION),
+            client_id,
+            client_secret,
+            store_user_agent: format!("EpicGamesLauncher//{}", VERSION),
+            label: LABEL.to_string(),
         }
     }
 }

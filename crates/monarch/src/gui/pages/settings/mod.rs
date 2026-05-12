@@ -4,8 +4,8 @@ use tracing::error;
 
 use crate::gui::components::common::error_view;
 use crate::gui::{self, show_confirm, show_error, AppMessage};
-use crate::monarch_utils;
 use crate::monarch_utils::monarch_settings::Settings;
+use crate::{monarch_games, monarch_utils};
 
 mod update;
 mod view;
@@ -55,6 +55,7 @@ pub enum Message {
     ToggleSteamHiddenPassword,
     ToggleHiddenSteamSecret,
     ToggleHiddenEpicToken,
+    TestEpicFunctionality,
 }
 
 impl Message {
@@ -188,6 +189,11 @@ impl SettingsPage {
             },
             Message::ToggleHiddenEpicToken => {
                 self.view_epic_token = !self.view_epic_token;
+            }
+            Message::TestEpicFunctionality => {
+                let mut client = monarch_games::egs::EgsClient::new();
+                futures::executor::block_on(client.load_existing_user()).unwrap();
+                futures::executor::block_on(client.get_user_games());
             }
         }
         iced::Task::none()

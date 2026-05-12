@@ -25,7 +25,7 @@ impl User {
         }
     }
 
-    pub fn export_session(&self) -> Session {
+    pub fn session(&self) -> Session {
         self.session.clone()
     }
 

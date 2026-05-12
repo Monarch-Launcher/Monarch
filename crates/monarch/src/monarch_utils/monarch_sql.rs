@@ -4,8 +4,8 @@ use tracing::warn;
 
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo};
 
-const MONARCH_GAME_FIELDS: &str = "(name, id, executable_path, thumbnail_path, thumbnail_url, launch_args, compatibility, summary, artwork_path, artwork_url, imported)";
-const TYPED_MONARCH_GAME_FIELDS: &str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, thumbnail_path TEXT, thumbnail_url TEXT, launch_args TEXT, compatibility TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN)";
+const MONARCH_GAME_FIELDS: &str = "(name, id, executable_path, thumbnail_path, thumbnail_url, launch_args, compatibility, summary, artwork_path, artwork_url, imported, is_installed)";
+const TYPED_MONARCH_GAME_FIELDS: &str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, thumbnail_path TEXT, thumbnail_url TEXT, launch_args TEXT, compatibility TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN, is_installed BOOLEAN)";
 
 const STORE_INFO_FIELDS: &str = "(monarch_game_id, name, store_id, store_url)";
 const TYPED_STORE_INFO_FIELDS: &str =
@@ -27,6 +27,7 @@ struct MonarchGameRecord {
     pub artwork_path: String,
     pub artwork_url: String,
     pub imported: bool,
+    pub is_installed: bool,
 }
 
 #[derive(Debug, FromRow, Encode, Decode)]
@@ -78,6 +79,7 @@ impl MonarchGame {
             artwork_url: game_record.artwork_url,
             properties,
             imported: game_record.imported,
+            is_installed: game_record.is_installed,
         }
     }
 }
@@ -159,7 +161,7 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .with_context(|| "monarch_sql::insert_game() Failed to start new transaction! | Err: ")?;
 
     sqlx::query(&format!(
-        "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         MONARCH_GAME_FIELDS
     ))
     .bind(&game.name)
@@ -173,6 +175,7 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     .bind(&game.artwork_path)
     .bind(&game.artwork_url)
     .bind(game.imported)
+    .bind(game.is_installed)
     .execute(&mut *tx)
     .await
     .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
@@ -264,7 +267,7 @@ pub async fn remove_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
 pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     let sql_library_query: String = format!(
         r#"INSERT INTO library{} 
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET
         name = ?,
         executable_path = ?,
@@ -275,7 +278,8 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         summary = ?,
         artwork_path = ?,
         artwork_url = ?,
-        imported = ?"#,
+        imported = ?,
+        is_installed = ?"#,
         MONARCH_GAME_FIELDS
     );
 
@@ -322,6 +326,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.artwork_path)
         .bind(&game.artwork_url)
         .bind(game.imported)
+        .bind(game.is_installed)
         .bind(&game.name)
         .bind(&game.executable_path)
         .bind(&game.thumbnail_path)
@@ -332,6 +337,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.artwork_path)
         .bind(&game.artwork_url)
         .bind(game.imported)
+        .bind(game.is_installed)
         .execute(&mut *tx)
         .await
         .with_context(|| {
@@ -418,7 +424,7 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
 
     for game in games {
         sqlx::query(&format!(
-            "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             MONARCH_GAME_FIELDS
         ))
         .bind(&game.name)
@@ -432,6 +438,7 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
         .bind(&game.artwork_path)
         .bind(&game.artwork_url)
         .bind(game.imported)
+        .bind(game.is_installed)
         .execute(&mut *tx)
         .await
         .with_context(|| {
@@ -503,6 +510,12 @@ pub async fn init_db(pool: &SqlitePool) -> Result<()> {
         .execute(&mut *tx)
         .await
         .with_context(|| "monarch_sql::init_db() Failed to verify library table! | Err: ")?;
+    } else {
+        // Migration: Add is_installed column if it doesn't exist
+        sqlx::query("ALTER TABLE library ADD COLUMN is_installed BOOLEAN DEFAULT FALSE")
+            .execute(&mut *tx)
+            .await
+            .unwrap_or_default(); // Ignore error if column already exists
     }
 
     if !table_exists(pool, "stores")

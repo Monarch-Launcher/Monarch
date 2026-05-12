@@ -401,6 +401,9 @@ impl SettingsPage {
             ],
             Space::new().height(10),
 
+            danger_button("TEST FUNCTIONALITY", Some(Message::TestEpicFunctionality)),
+            Space::new().width(10),
+
             text(format!("Logged in as: {epic_login}")).size(14).color([0.5, 0.5, 0.5]),
         ]
         .spacing(10)

@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use tracing::{error, info};
 
-use monarch_egs::{Session, User};
+use monarch_egs::{Asset, Session, User};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
@@ -77,6 +77,35 @@ impl EgsClient {
         self.user.display_name()
     }
 
+    pub async fn get_user_games(&self) -> Vec<Box<dyn SearchResult>> {
+        let assets = monarch_egs::owned_games(&self.user, monarch_egs::Platform::Windows).await;
+        let results: Vec<Box<dyn SearchResult>> = Vec::new();
+        let monarch_url: &'static str = std::env!("MONARCH_URL");
+
+        for asset in assets {
+            let url = format!(
+                "{}/api/games?store_id={}&store=epicgames",
+                monarch_url, asset.catalog_id
+            );
+            let response = match reqwest::get(&url).await {
+                Ok(resp) => resp,
+                Err(e) => {
+                    error!("egs::get_user_games() Failed to request Monarch API for app_id: {} | Err: {}", asset.app_id, e);
+                    continue;
+                }
+            };
+
+            println!(
+                "{} ({}): {:#?}",
+                asset.app_id,
+                asset.catalog_id,
+                response.text().await.unwrap()
+            );
+        }
+
+        results
+    }
+
     fn get_epic_games_token_path() -> PathBuf {
         get_monarch_home().join("monarch_egs.json")
     }
@@ -95,7 +124,7 @@ impl EgsClient {
     }
 
     fn store_session_to_file(&self) -> Result<()> {
-        let json_content = serde_json::to_value(self.user.export_session()).unwrap();
+        let json_content = serde_json::to_value(self.user.session()).unwrap();
         let path: PathBuf = Self::get_epic_games_token_path();
         std::fs::write(&path, json_content.to_string()).with_context(|| {
             "egs::store_session_to_file() Failed to write EGS credentials to file! | Err: "

@@ -40,6 +40,9 @@ pub struct MonarchGame {
 
     #[serde(default)]
     pub imported: bool,
+
+    #[serde(default)]
+    pub is_installed: bool,
 }
 
 impl MonarchGame {
@@ -75,6 +78,7 @@ impl MonarchGame {
             artwork_path: String::new(),
             properties: MonarchGameProperties::default(),
             imported: false,
+            is_installed: true,
         }
     }
 
@@ -157,6 +161,7 @@ impl MonarchGame {
             .to_string(),
             properties: MonarchGameProperties::default(),
             imported: false,
+            is_installed: false,
         }
     }
 }
