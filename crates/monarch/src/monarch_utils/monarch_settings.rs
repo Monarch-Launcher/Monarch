@@ -25,6 +25,9 @@ pub struct LauncherSettings {
     pub manage: bool,
     pub username: String,
     pub twofa: bool,
+
+    #[serde(default)]
+    pub custom_data: String, // Arbitrary data - used to store Epic Games creds
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,12 +91,14 @@ impl Settings {
                 manage: false,
                 username: String::new(),
                 twofa: false,
+                custom_data: String::new(),
             },
             epic: LauncherSettings {
                 game_folders: Vec::new(),
                 manage: false,
                 username: String::new(),
                 twofa: false,
+                custom_data: String::new(),
             },
         }
     }
@@ -178,6 +183,7 @@ impl Default for Settings {
             manage: false,
             username: String::new(),
             twofa: false,
+            custom_data: String::new(),
         };
 
         let epic: LauncherSettings = LauncherSettings {
@@ -185,6 +191,7 @@ impl Default for Settings {
             manage: false,
             username: String::new(),
             twofa: false,
+            custom_data: String::new(),
         };
 
         Self {

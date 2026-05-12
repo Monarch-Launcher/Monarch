@@ -17,17 +17,17 @@ use crate::{
 impl SettingsPage {
     pub fn toggle_quicklaunch(&mut self, settings: &mut Settings, state: bool) {
         settings.quicklaunch.enabled = state;
-        self.write_settings(&settings);
+        self.write_settings(settings);
     }
 
     pub fn change_library_folder(&mut self, settings: &mut Settings, folder: &str) {
         settings.monarch.game_folder = folder.to_string();
-        self.write_settings(&settings);
+        self.write_settings(settings);
     }
 
     pub fn toggle_steam(&mut self, settings: &mut Settings, state: bool) {
         settings.steam.manage = state;
-        self.write_settings(&settings);
+        self.write_settings(settings);
     }
 
     pub fn update_steam_credentials(&mut self, settings: &mut Settings) {
@@ -85,6 +85,10 @@ impl SettingsPage {
 
     pub fn login_epic(&self) {
         let client: EgsClient = monarch_games::egs::EgsClient::new();
+        if client.credentials_exist() {
+            show_error("Epic Games credentials detected on system! Please delete them before attempting to log in.");
+            return;
+        }
         client.open_epic_login();
     }
 

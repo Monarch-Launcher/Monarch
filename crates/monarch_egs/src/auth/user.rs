@@ -14,11 +14,15 @@ impl User {
         }
     }
 
-    pub async fn load_stored_user(refresh_token: &str) -> Self {
-        Self {
-            session: Session::from_token(SessionTokenType::RefreshToken(refresh_token.to_string()))
-                .await,
+    pub async fn load_stored_user(mut session: Session) -> Self {
+        if session.session_expired() {
+            session.refresh_session().await;
         }
+        Self { session }
+    }
+
+    pub fn export_session(&self) -> Session {
+        self.session.clone()
     }
 
     pub fn start_auth(&self) {

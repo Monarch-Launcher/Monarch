@@ -1,8 +1,8 @@
 use reqwest::{Client, Response};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    time::{Duration, Instant},
+    time::{Duration, SystemTime},
 };
 
 static OAUTH_HOST: &str = "https://account-public-service-prod03.ol.epicgames.com";
@@ -14,11 +14,11 @@ pub enum SessionTokenType {
     RefreshToken(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
     access_token: String,
     refresh_token: String,
-    expires: Instant,
+    expires: SystemTime,
 }
 
 impl Session {
@@ -41,7 +41,7 @@ impl Session {
     }
 
     pub fn session_expired(&self) -> bool {
-        Instant::now() >= self.expires
+        SystemTime::now() >= self.expires
     }
 
     pub fn get_access_token(&self) -> String {
@@ -97,7 +97,7 @@ impl Default for Session {
         Self {
             access_token: String::new(),
             refresh_token: String::new(),
-            expires: Instant::now(),
+            expires: SystemTime::now(),
         }
     }
 }
@@ -113,7 +113,7 @@ struct TokenResponse {
 
 impl From<TokenResponse> for Session {
     fn from(value: TokenResponse) -> Self {
-        let expire_instant: Instant = Instant::now()
+        let expire_instant: SystemTime = SystemTime::now()
             .checked_add(Duration::from_secs(value.expires_in))
             .unwrap();
         Self {

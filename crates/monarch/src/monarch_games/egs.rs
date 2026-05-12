@@ -1,14 +1,16 @@
+use std::path::PathBuf;
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use tracing::{error, info};
 
-use monarch_egs::User;
+use monarch_egs::{Session, User};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
-use crate::monarch_utils::monarch_fs::generate_cache_image_path;
+use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_monarch_home};
 use crate::monarch_utils::monarch_settings::get_settings;
 
 use super::stores::StoreType;
@@ -22,6 +24,19 @@ impl EgsClient {
         Self { user: User::new() }
     }
 
+    pub async fn load_existing_user(&mut self) -> Result<()> {
+        let session: Session = self
+            .load_session_from_file()
+            .with_context(|| "egs::load_existing_user() -> ")?;
+
+        self.user = User::load_stored_user(session).await;
+        Ok(())
+    }
+
+    pub fn credentials_exist(&self) -> bool {
+        Self::get_epic_games_token_path().exists()
+    }
+
     pub fn open_epic_login(&self) {
         info!("User logging into Epic Games...");
         self.user.start_auth();
@@ -31,6 +46,34 @@ impl EgsClient {
         info!("Logging in using Epic Games auth code...");
         self.user.finish_auth(code).await.with_context(|| {
             "egs::save_epic_auth_code() Failed to authenticate using auth code! | Err: "
+        })?;
+
+        self.store_session_to_file()
+            .with_context(|| "egs::save_epic_auth_code() -> ")
+    }
+
+    fn get_epic_games_token_path() -> PathBuf {
+        get_monarch_home().join("monarch_egs.json")
+    }
+
+    fn load_session_from_file(&self) -> Result<Session> {
+        let path: PathBuf = Self::get_epic_games_token_path();
+        let json_content_str: String = std::fs::read_to_string(&path).with_context(|| {
+            format!(
+                "egs::load_session_from_file() Failed to read {} to String! | Err: ",
+                path.display()
+            )
+        })?;
+        serde_json::from_str(&json_content_str).with_context(|| {
+            "egs::load_session_from_file() Failed to parse content to Session! | Err: "
+        })
+    }
+
+    fn store_session_to_file(&self) -> Result<()> {
+        let json_content = serde_json::to_value(self.user.export_session()).unwrap();
+        let path: PathBuf = Self::get_epic_games_token_path();
+        std::fs::write(&path, json_content.to_string()).with_context(|| {
+            "egs::store_session_to_file() Failed to write EGS credentials to file! | Err: "
         })
     }
 }
