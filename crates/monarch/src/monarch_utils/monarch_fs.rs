@@ -224,6 +224,8 @@ pub fn find_linux_binary(binary_name: &str) -> Option<PathBuf> {
         }
     };
 
+    // TODO: expand tilde??
+
     let mut paths: Vec<&str> = path.split(":").collect();
 
     // Check locally installed binaries as well
