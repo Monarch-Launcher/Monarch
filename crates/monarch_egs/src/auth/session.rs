@@ -47,15 +47,14 @@ impl Session {
         self.expires = new_session.expires;
     }
 
-    pub fn has_access_token(&self) -> bool {
-        self.access_token.is_empty()
-    }
-
     pub fn session_expired(&self) -> bool {
         SystemTime::now() >= self.expires
     }
 
-    pub fn get_access_token(&self) -> String {
+    pub async fn get_access_token(&mut self) -> String {
+        if self.session_expired() {
+            self.refresh_session().await;
+        }
         self.access_token.clone()
     }
 

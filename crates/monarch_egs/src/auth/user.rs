@@ -52,11 +52,7 @@ impl User {
     }
 
     pub async fn get_access_token(&mut self) -> String {
-        if self.session.session_expired() {
-            self.session.refresh_session().await;
-        }
-
-        self.session.get_access_token()
+        self.session.get_access_token().await
     }
 
     pub fn display_name(&self) -> String {

@@ -96,7 +96,7 @@ impl EgsClient {
             };
 
             println!(
-                "{} ({}): {:#?}",
+                "{} ({}): {:?}",
                 asset.app_id,
                 asset.catalog_id,
                 response.text().await.unwrap()

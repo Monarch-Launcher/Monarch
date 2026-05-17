@@ -2,20 +2,21 @@ use std::collections::HashMap;
 
 use super::Platform;
 use reqwest::{Client, Response};
+use serde_json::Value;
 
-use crate::{Asset, Session, User, games::Entitlement};
+use crate::{Session, User, games::Entitlement};
 
-static ALL_OFFERS: &str = "launcher-public-service-prod06.ol.epicgames.com";
-static OWNED_OFFERS: &str = "entitlement-public-service-prod08.ol.epicgames.com";
-static METADATA_OFFERS: &str = "catalog-public-service-prod06.ol.epicgames.com";
+static _ALL_OFFERS: &str = "launcher-public-service-prod06.ol.epicgames.com";
+static ENTITLEMENTS_URL: &str = "entitlement-public-service-prod08.ol.epicgames.com";
+static METADATA_URL: &str = "catalog-public-service-prod06.ol.epicgames.com";
 
 pub async fn owned_games(user: &User, platform: Platform) -> Vec<Entitlement> {
-    let session: Session = user.session();
+    let mut session: Session = user.session();
 
     let client = Client::new();
     let url: String = format!(
         "https://{}/entitlement/api/account/{}/entitlements",
-        OWNED_OFFERS,
+        ENTITLEMENTS_URL,
         session.get_account_id(),
     );
     let params: HashMap<&str, String> = HashMap::from([
@@ -27,7 +28,7 @@ pub async fn owned_games(user: &User, platform: Platform) -> Vec<Entitlement> {
     let response: Response = client
         .get(&url)
         .header("User-Agent", session.get_user_agent())
-        .bearer_auth(session.get_access_token())
+        .bearer_auth(session.get_access_token().await)
         .query(&params)
         .send()
         .await
@@ -46,38 +47,38 @@ pub async fn owned_games(user: &User, platform: Platform) -> Vec<Entitlement> {
 
     let response_text: String = response.text().await.unwrap();
 
-    println!("{:#?}", response_text);
+    println!("{:?}", response_text);
 
     let assets: Vec<Entitlement> = serde_json::from_str(&response_text).unwrap();
 
-    get_games_metadata(&session, &assets).await;
+    get_games_metadata(&mut session, &assets).await;
     assets
 }
 
-async fn get_games_metadata(session: &Session, entitlements: &[Entitlement]) {
+async fn get_games_metadata(session: &mut Session, entitlements: &[Entitlement]) {
     let client = Client::new();
 
     for game in entitlements {
         let url: String = format!(
             "https://{}/catalog/api/shared/namespace/{}/bulk/items",
-            METADATA_OFFERS, game.namespace
+            METADATA_URL, game.namespace
         );
         let params: HashMap<&str, String> = HashMap::from([
             ("label", session.get_label()),
             ("includeMainGameDetails", "true".to_string()),
-            ("id", game.app_id.clone()),
+            ("id", game.catalog_id.clone()),
         ]);
 
         let response: Response = client
             .get(&url)
             .header("User-Agent", session.get_user_agent())
-            .bearer_auth(session.get_access_token())
+            .bearer_auth(session.get_access_token().await)
             .query(&params)
             .send()
             .await
             .unwrap();
 
-        println!("{:#?}", response);
+        // println!("{:?}", response);
 
         if response.status().is_server_error() {
             // TODO: Do something
@@ -90,8 +91,13 @@ async fn get_games_metadata(session: &Session, entitlements: &[Entitlement]) {
             panic!("not 2XX")
         }
 
-        let response_text: String = response.text().await.unwrap();
+        let response_text: Value = response.json().await.unwrap();
+        let title = response_text
+            .get(game.catalog_id.clone())
+            .unwrap()
+            .get("title")
+            .unwrap();
 
-        println!("{:#?}", response_text);
+        println!("{} - {}", game.entitlement_name, title);
     }
 }
