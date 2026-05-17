@@ -4,13 +4,15 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use tracing::{error, info};
 
-use monarch_egs::{Asset, Session, User};
+use monarch_egs::{Session, User};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
-use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_monarch_home};
+use crate::monarch_utils::monarch_fs::{
+    generate_cache_image_path, generate_library_image_path, get_monarch_home,
+};
 use crate::monarch_utils::monarch_settings::get_settings;
 
 use super::stores::StoreType;
@@ -77,30 +79,55 @@ impl EgsClient {
         self.user.display_name()
     }
 
+    pub async fn get_library(&self) -> Vec<MonarchGame> {
+        let egs_games = self.get_user_games().await;
+
+        let monarch_games: Vec<MonarchGame> = egs_games
+            .into_iter()
+            .map(|game| {
+                let mut m_game = game.into_monarchgame();
+                m_game.thumbnail_path =
+                    generate_library_image_path(&m_game.name, GameImageType::Cover)
+                        .to_string_lossy()
+                        .to_string();
+                m_game
+            })
+            .collect();
+
+        monarch_games
+    }
+
     pub async fn get_user_games(&self) -> Vec<Box<dyn SearchResult>> {
-        let assets = monarch_egs::owned_games(&self.user, monarch_egs::Platform::Windows).await;
-        let results: Vec<Box<dyn SearchResult>> = Vec::new();
+        let entitlements = monarch_egs::owned_games(&self.user).await;
+        let mut results: Vec<Box<dyn SearchResult>> = Vec::new();
         let monarch_url: &'static str = std::env!("MONARCH_URL");
 
-        for asset in assets {
+        for entitlement in entitlements {
+            info!("Parsing {} via {}.", entitlement.namespace, monarch_url);
             let url = format!(
                 "{}/api/games?store_id={}&store=epicgames",
-                monarch_url, asset.catalog_id
+                monarch_url, entitlement.namespace
             );
             let response = match reqwest::get(&url).await {
                 Ok(resp) => resp,
                 Err(e) => {
-                    error!("egs::get_user_games() Failed to request Monarch API for app_id: {} | Err: {}", asset.app_id, e);
+                    error!("egs::get_user_games() Failed to request Monarch API for app_id: {} | Err: {}", entitlement.namespace, e);
                     continue;
                 }
             };
 
-            println!(
-                "{} ({}): {:?}",
-                asset.app_id,
-                asset.catalog_id,
-                response.text().await.unwrap()
+            let response_text: String = response.text().await.unwrap();
+
+            info!(
+                "EG response for {}: {:?}",
+                entitlement.namespace, &response_text
             );
+
+            if let Ok(games) = serde_json::from_str::<Vec<MonarchWebApiGame>>(&response_text) {
+                if !games.is_empty() {
+                    results.push(Box::new(games[0].clone()));
+                }
+            }
         }
 
         results
@@ -198,7 +225,7 @@ impl StoreType for EgsClient {
     }
 
     fn game_is_installed(&self, _store_id: &str) -> bool {
-        unimplemented!()
+        false
     }
 
     fn store_enabled(&self) -> bool {

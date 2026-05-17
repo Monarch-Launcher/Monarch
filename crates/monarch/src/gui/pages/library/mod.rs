@@ -83,7 +83,10 @@ impl LibraryPage {
                             info!("Downloading cover for: {}", game.name);
                             if let Err(e) = monarch_games::commands::download_thumbnail(&game).await
                             {
-                                error!("Failed to download thumbnail for game {}: {}", game.id, e);
+                                error!(
+                                    "Failed to download thumbnail for game {} ({}): {}",
+                                    game.id, game.thumbnail_url, e
+                                );
                             }
 
                             info!("Updating game properties for : {}", game.name);
@@ -130,7 +133,7 @@ impl LibraryPage {
                     .iter_mut()
                     .find(|c| c.game.id == game.id)
                 {
-                    card.game = game;
+                    card.update_game(game);
                 }
                 iced::Task::none()
             }

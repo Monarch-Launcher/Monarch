@@ -130,10 +130,7 @@ impl MonarchGame {
     }
 
     pub fn is_installed(&self) -> bool {
-        if let Ok(state) = MONARCH_STATE.read() {
-            return state.get_game(&self.id).is_some();
-        }
-        false
+        self.is_installed
     }
 
     pub fn has_properties(&self) -> bool {

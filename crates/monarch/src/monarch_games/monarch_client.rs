@@ -1,6 +1,7 @@
 use super::games::{GameType, SearchResult};
 use super::stores::{DownloadOptions, StoreType};
 use super::{monarchgame::MonarchGame, steam_client};
+use crate::monarch_games::egs;
 use crate::monarch_games::monarchgame::{
     GameImageType, MonarchGameProperties, MonarchWebApiGame, StoreInfo,
 };
@@ -377,21 +378,56 @@ pub async fn refresh_library() -> Result<Vec<MonarchGame>> {
 
     let steam_games: Vec<MonarchGame> = steam_client::get_library().await;
 
+    let mut egs_client = egs::EgsClient::new();
+    egs_client.load_existing_user().await.unwrap();
+    let epic_games: Vec<MonarchGame> = egs_client.get_library().await;
+
     // Filter out removed games while keeping imported ones.
-    // Prefer library version of the game to preserve properties like last_played.
-    let mut final_games: Vec<MonarchGame> = Vec::new();
+    // Deduplicate games by their Monarch ID to prevent UNIQUE constraint errors in database.
+    let mut merged_games: HashMap<String, MonarchGame> = HashMap::new();
+
+    // 1. First, populate with existing library games that are either imported
+    // or still exist in steam_games or epic_games.
     for lg in games {
-        if lg.imported || steam_games.iter().any(|sg| *sg == lg) {
-            final_games.push(lg);
+        let is_steam = steam_games.iter().any(|sg| *sg == lg || sg.id == lg.id);
+        let is_epic = epic_games.iter().any(|eg| *eg == lg || eg.id == lg.id);
+        if lg.imported || is_steam || is_epic {
+            let mut updated_game = lg.clone();
+            if is_steam {
+                updated_game.is_installed = true;
+            }
+            merged_games.insert(updated_game.id.clone(), updated_game);
         }
     }
 
-    // Add new games from steam that aren't already in our list
+    // 2. Next, merge new Steam games, preserving properties if already present.
     for sg in steam_games {
-        if !final_games.iter().any(|fg| *fg == sg) {
-            final_games.push(sg);
+        match merged_games.get_mut(&sg.id) {
+            Some(existing) => {
+                let mut updated_sg = sg.clone();
+                updated_sg.properties = existing.properties.clone();
+                updated_sg.launch_args = existing.launch_args.clone();
+                updated_sg.compatibility = existing.compatibility.clone();
+                updated_sg.imported = existing.imported || sg.imported;
+                if updated_sg.executable_path.is_none() {
+                    updated_sg.executable_path = existing.executable_path.clone();
+                }
+                *existing = updated_sg;
+            }
+            None => {
+                merged_games.insert(sg.id.clone(), sg);
+            }
         }
     }
+
+    // 3. Finally, merge Epic games, avoiding overwriting installed versions.
+    for eg in epic_games {
+        if !merged_games.contains_key(&eg.id) {
+            merged_games.insert(eg.id.clone(), eg);
+        }
+    }
+
+    let final_games: Vec<MonarchGame> = merged_games.into_values().collect();
 
     library::overwrite_games(&final_games)
         .await

@@ -41,7 +41,10 @@ impl SearchPage {
                     if let Err(e) =
                         monarch_games::commands::download_thumbnail(&game.into_monarchgame()).await
                     {
-                        error!("Failed to download thumbnail for game {}: {}", game.id, e);
+                        error!(
+                            "Failed to download thumbnail for game {} ({}): {}",
+                            game.id, game.cover_url, e
+                        );
                     }
                     game
                 },

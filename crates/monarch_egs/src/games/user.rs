@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use super::Platform;
 use reqwest::{Client, Response};
 use serde_json::Value;
 
@@ -10,7 +9,7 @@ static _ALL_OFFERS: &str = "launcher-public-service-prod06.ol.epicgames.com";
 static ENTITLEMENTS_URL: &str = "entitlement-public-service-prod08.ol.epicgames.com";
 static METADATA_URL: &str = "catalog-public-service-prod06.ol.epicgames.com";
 
-pub async fn owned_games(user: &User, platform: Platform) -> Vec<Entitlement> {
+pub async fn owned_games(user: &User) -> Vec<Entitlement> {
     let mut session: Session = user.session();
 
     let client = Client::new();
@@ -46,13 +45,7 @@ pub async fn owned_games(user: &User, platform: Platform) -> Vec<Entitlement> {
     }
 
     let response_text: String = response.text().await.unwrap();
-
-    println!("{:?}", response_text);
-
-    let assets: Vec<Entitlement> = serde_json::from_str(&response_text).unwrap();
-
-    get_games_metadata(&mut session, &assets).await;
-    assets
+    serde_json::from_str::<Vec<Entitlement>>(&response_text).unwrap()
 }
 
 async fn get_games_metadata(session: &mut Session, entitlements: &[Entitlement]) {
@@ -66,6 +59,7 @@ async fn get_games_metadata(session: &mut Session, entitlements: &[Entitlement])
         let params: HashMap<&str, String> = HashMap::from([
             ("label", session.get_label()),
             ("includeMainGameDetails", "true".to_string()),
+            ("includeDLCDetails", "false".to_string()),
             ("id", game.catalog_id.clone()),
         ]);
 

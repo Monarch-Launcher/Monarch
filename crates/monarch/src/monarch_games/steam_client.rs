@@ -18,12 +18,9 @@ use crate::monarch_games::monarchgame::StoreInfo;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::library;
-use crate::monarch_utils::commands::write_settings;
 use crate::monarch_utils::monarch_credentials::get_password;
-use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
 use crate::monarch_utils::monarch_settings::{get_settings, LauncherSettings};
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -225,7 +222,11 @@ pub fn remove_steamcmd() -> Result<()> {
 
 /// Returns games installed by Steam Client.
 pub async fn get_library() -> Vec<MonarchGame> {
-    steam::get_library().await
+    let mut games = steam::get_library().await;
+    for game in &mut games {
+        game.is_installed = true;
+    }
+    games
 }
 
 /// Attempts to launch Steam Client game.

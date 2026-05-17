@@ -1,4 +1,4 @@
-use iced::widget::{column, row};
+use iced::widget::{column, row, text, Space};
 use iced::{alignment, Element};
 
 use super::gamecard::GameCard;
@@ -43,12 +43,43 @@ impl GameCardContainer {
 
             let mut games_column = column![].spacing(20).align_x(alignment::Horizontal::Center);
 
-            for chunk in self.games.chunks(games_per_row) {
-                let mut row = row![].spacing(20);
-                for game in chunk {
-                    row = row.push(game.view(interactive));
+            let (installed_games, uninstalled_games): (Vec<&GameCard>, Vec<&GameCard>) =
+                self.games.iter().partition(|card| card.game.is_installed);
+
+            if !installed_games.is_empty() {
+                games_column = games_column.push(
+                    text("Installed")
+                        .size(24)
+                        .font(crate::gui::styles::fonts::BOLD)
+                );
+
+                for chunk in installed_games.chunks(games_per_row) {
+                    let mut row = row![].spacing(20);
+                    for game in chunk {
+                        row = row.push(game.view(interactive));
+                    }
+                    games_column = games_column.push(row);
                 }
-                games_column = games_column.push(row);
+            }
+
+            if !uninstalled_games.is_empty() {
+                if !installed_games.is_empty() {
+                    games_column = games_column.push(Space::new().height(iced::Length::Fixed(40.0)));
+                }
+
+                games_column = games_column.push(
+                    text("Ready to Install")
+                        .size(24)
+                        .font(crate::gui::styles::fonts::BOLD)
+                );
+
+                for chunk in uninstalled_games.chunks(games_per_row) {
+                    let mut row = row![].spacing(20);
+                    for game in chunk {
+                        row = row.push(game.view(interactive));
+                    }
+                    games_column = games_column.push(row);
+                }
             }
 
             games_column.into()
