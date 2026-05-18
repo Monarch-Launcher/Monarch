@@ -6,11 +6,11 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-pub static OAUTH_HOST: &str = "account-public-service-prod03.ol.epicgames.com";
-pub static BASIC_USERNAME: &str = "34a02cf8f4414e29b15921876da36f9a";
-pub static BASIC_PASSWORD: &str = "daafbccc737745039dffe53d94fc76cf";
-pub static VERSION: &str = "15.18.2-29993784+++Portal+Release-Live";
-pub static LABEL: &str = "Live";
+static OAUTH_HOST: &str = "account-public-service-prod03.ol.epicgames.com";
+static BASIC_USERNAME: &str = "34a02cf8f4414e29b15921876da36f9a";
+static BASIC_PASSWORD: &str = "daafbccc737745039dffe53d94fc76cf";
+static VERSION: &str = "15.18.2-29993784+++Portal+Release-Live";
+static LABEL: &str = "Live";
 
 pub enum SessionTokenType {
     AuthCode(String),

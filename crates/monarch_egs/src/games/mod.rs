@@ -19,24 +19,6 @@ impl Platform {
     }
 }
 
-/// An asset is essentially a game on the Epic Games Store
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Asset {
-    #[serde(rename = "appName")]
-    pub app_id: String,
-
-    #[serde(rename = "buildVersion")]
-    pub build_version: String,
-
-    #[serde(rename = "catalogItemId")]
-    pub catalog_id: String,
-
-    pub namespace: String,
-
-    #[serde(rename = "assetId")]
-    pub asset_id: String,
-}
-
 /// An entitlement is essentially ownership of a game on the Epic Games Store
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entitlement {

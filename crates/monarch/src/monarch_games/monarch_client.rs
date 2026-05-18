@@ -1,7 +1,7 @@
 use super::games::{GameType, SearchResult};
 use super::stores::{DownloadOptions, StoreType};
 use super::{monarchgame::MonarchGame, steam_client};
-use crate::monarch_games::egs;
+use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::monarchgame::{
     GameImageType, MonarchGameProperties, MonarchWebApiGame, StoreInfo,
 };
@@ -15,7 +15,7 @@ use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 pub struct MonarchClient {}
 
@@ -378,7 +378,7 @@ pub async fn refresh_library() -> Result<Vec<MonarchGame>> {
 
     let steam_games: Vec<MonarchGame> = steam_client::get_library().await;
 
-    let mut egs_client = egs::EgsClient::new();
+    let mut egs_client: EgsClient = EgsClient::new();
     egs_client.load_existing_user().await.unwrap();
     let epic_games: Vec<MonarchGame> = egs_client.get_library().await;
 

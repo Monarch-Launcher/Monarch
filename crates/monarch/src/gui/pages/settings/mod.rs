@@ -191,7 +191,7 @@ impl SettingsPage {
                 self.view_epic_token = !self.view_epic_token;
             }
             Message::TestEpicFunctionality => {
-                let mut client = monarch_games::egs::EgsClient::new();
+                let mut client = monarch_games::egs_client::EgsClient::new();
                 futures::executor::block_on(client.load_existing_user()).unwrap();
                 futures::executor::block_on(client.get_user_games());
             }

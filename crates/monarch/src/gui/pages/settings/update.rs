@@ -10,7 +10,7 @@ use crate::{
         },
         show_confirm, show_error, AppMessage,
     },
-    monarch_games::{self, egs::EgsClient},
+    monarch_games::{self, egs_client::EgsClient},
     monarch_utils::{self, monarch_settings::Settings},
 };
 
@@ -84,7 +84,7 @@ impl SettingsPage {
     }
 
     pub fn login_epic(&self) {
-        let client: EgsClient = monarch_games::egs::EgsClient::new();
+        let client: EgsClient = monarch_games::egs_client::EgsClient::new();
         if client.credentials_exist() {
             show_error("Epic Games credentials detected on system! Please delete them before attempting to log in.");
             return;
@@ -93,7 +93,7 @@ impl SettingsPage {
     }
 
     pub fn login_epic_auth_code(&mut self, settings: &mut Settings) {
-        let mut client: EgsClient = monarch_games::egs::EgsClient::new();
+        let mut client: EgsClient = monarch_games::egs_client::EgsClient::new();
         let trimmed_code: &str = self.epic_auth_code_tmp.trim().trim_matches('"');
         if let Err(e) = futures::executor::block_on(client.save_epic_auth_code(trimmed_code)) {
             error!("Failed to login to epic games using auth code! -> {:?}", e);

@@ -1,5 +1,5 @@
 pub mod commands;
-pub mod egs;
+pub mod egs_client;
 pub mod games;
 pub mod legendary_client;
 pub mod monarch_client;

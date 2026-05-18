@@ -5,7 +5,7 @@ use cargo_packager::{
 use std::path::PathBuf;
 
 #[cfg(not(target_os = "windows"))]
-const MONARCH_BIN_PATH: &'static str = "target/release/monarch";
+static MONARCH_BIN_PATH: &str = "target/release/monarch";
 
 #[cfg(target_os = "windows")]
 const MONARCH_BIN_PATH: &'static str = "target\\release\\monarch.exe";
@@ -13,7 +13,9 @@ const MONARCH_BIN_PATH: &'static str = "target\\release\\monarch.exe";
 fn main() {
     // Prevents 'strip' errors on Arch Linux for AppImage packaging
     #[cfg(target_os = "linux")]
-    std::env::set_var("NO_STRIP", "true");
+    unsafe {
+        std::env::set_var("NO_STRIP", "true");
+    }
 
     println!("Packaging Monarch...");
 

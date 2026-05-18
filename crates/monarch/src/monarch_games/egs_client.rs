@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use tracing::{error, info};
 
-use monarch_egs::{Session, User};
+use monarch_egs::{get_manifest_from_namespace, DownloadManager, Manifest, Session, User};
 
-use crate::monarch_games::games::SearchResult;
+use crate::monarch_games::games::{GameType, SearchResult};
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
@@ -19,11 +19,15 @@ use super::stores::StoreType;
 
 pub struct EgsClient {
     user: User,
+    download_manager: DownloadManager,
 }
 
 impl EgsClient {
     pub fn new() -> Self {
-        Self { user: User::new() }
+        Self {
+            user: User::new(),
+            download_manager: DownloadManager::new(),
+        }
     }
 
     pub async fn load_existing_user(&mut self) -> Result<()> {
@@ -213,7 +217,21 @@ impl StoreType for EgsClient {
     }
 
     async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()> {
-        unimplemented!()
+        let mut namespace: String = String::new();
+        for store in game.stores.iter() {
+            if store.name == "epicgames" {
+                namespace = store.store_id.clone();
+            }
+        }
+
+        if namespace.is_empty() {
+            error!("egs_client::install_game() Missing Epic Games namespace!");
+            bail!("Missing Epic Games namespace!")
+        }
+
+        let manifest: Manifest = get_manifest_from_namespace(&namespace);
+        self.download_manager.start_download(&manifest);
+        Ok(())
     }
 
     async fn uninstall_game(&self, game: &MonarchGame) -> Result<()> {
