@@ -120,8 +120,6 @@ impl Session {
 
         let response_text: String = response.text().await.unwrap();
 
-        println!("{:?}", response_text);
-
         let token_resp: TokenResponse =
             serde_json::from_str::<TokenResponse>(&response_text).unwrap();
 

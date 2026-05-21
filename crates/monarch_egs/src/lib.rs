@@ -4,5 +4,5 @@ mod games;
 mod utils;
 
 pub use auth::{Session, User};
-pub use download::{DownloadManager, Manifest, get_manifest_from_namespace};
+pub use download::{DownloadManager, Manifest, get_game_manifest};
 pub use games::{Entitlement, Platform, owned_games};

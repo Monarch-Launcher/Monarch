@@ -20,7 +20,7 @@ impl Platform {
 }
 
 /// An entitlement is essentially ownership of a game on the Epic Games Store
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entitlement {
     #[serde(rename = "id")]
     pub app_id: String,

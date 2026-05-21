@@ -2,11 +2,12 @@ use std::path::PathBuf;
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
+use tokio::task::{self, JoinHandle};
 use tracing::{error, info};
 
-use monarch_egs::{get_manifest_from_namespace, DownloadManager, Manifest, Session, User};
+use monarch_egs::{get_game_manifest, DownloadManager, Manifest, Session, User};
 
-use crate::monarch_games::games::{GameType, SearchResult};
+use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
@@ -94,6 +95,10 @@ impl EgsClient {
                     generate_library_image_path(&m_game.name, GameImageType::Cover)
                         .to_string_lossy()
                         .to_string();
+                m_game.artwork_path =
+                    generate_library_image_path(&m_game.name, GameImageType::Artwork)
+                        .to_string_lossy()
+                        .to_string();
                 m_game
             })
             .collect();
@@ -106,30 +111,43 @@ impl EgsClient {
         let mut results: Vec<Box<dyn SearchResult>> = Vec::new();
         let monarch_url: &'static str = std::env!("MONARCH_URL");
 
-        for entitlement in entitlements {
-            info!("Parsing {} via {}.", entitlement.namespace, monarch_url);
-            let url = format!(
-                "{}/api/games?store_id={}&store=epicgames",
-                monarch_url, entitlement.namespace
-            );
-            let response = match reqwest::get(&url).await {
-                Ok(resp) => resp,
-                Err(e) => {
-                    error!("egs::get_user_games() Failed to request Monarch API for app_id: {} | Err: {}", entitlement.namespace, e);
-                    continue;
+        let mut tasks = Vec::new();
+
+        for ent in entitlements {
+            let entitlement = ent.clone();
+
+            let task: JoinHandle<Result<Box<MonarchWebApiGame>>> = task::spawn(async move {
+                info!("Parsing {} via {}.", entitlement.namespace, monarch_url);
+                let url = format!(
+                    "{}/api/games?store_id={}&store=epicgames",
+                    monarch_url, entitlement.namespace
+                );
+                let response = match reqwest::get(&url).await {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        error!("egs::get_user_games() Failed to request Monarch API for app_id: {} | Err: {}", entitlement.namespace, e);
+                        bail!("egs::get_user_games() Failed to request Monarch API")
+                    }
+                };
+
+                let response_text: String = response.text().await.unwrap();
+
+                if let Ok(games) = serde_json::from_str::<Vec<MonarchWebApiGame>>(&response_text) {
+                    if !games.is_empty() {
+                        return Ok(Box::new(games[0].clone()));
+                    }
                 }
-            };
 
-            let response_text: String = response.text().await.unwrap();
+                bail!("egs_client::get_user_games() Failed to parse response as MonarchWebApiGame!")
+            });
 
-            info!(
-                "EG response for {}: {:?}",
-                entitlement.namespace, &response_text
-            );
+            tasks.push(task);
+        }
 
-            if let Ok(games) = serde_json::from_str::<Vec<MonarchWebApiGame>>(&response_text) {
-                if !games.is_empty() {
-                    results.push(Box::new(games[0].clone()));
+        for task in tasks {
+            if let Ok(finished_task) = task.await {
+                if let Ok(game) = finished_task {
+                    results.push(game);
                 }
             }
         }
@@ -229,7 +247,7 @@ impl StoreType for EgsClient {
             bail!("Missing Epic Games namespace!")
         }
 
-        let manifest: Manifest = get_manifest_from_namespace(&namespace);
+        let manifest: Manifest = get_game_manifest(&namespace, "", "", None, None).await;
         self.download_manager.start_download(&manifest);
         Ok(())
     }
