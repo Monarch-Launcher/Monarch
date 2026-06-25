@@ -4,7 +4,7 @@ mod manifest;
 use std::path::PathBuf;
 
 pub use manager::DownloadManager;
-pub use manifest::{Manifest, get_game_manifest};
+pub use manifest::{Manifest, get_cdn_urls, get_game_manifest};
 
 pub enum Platform {
     Windows,

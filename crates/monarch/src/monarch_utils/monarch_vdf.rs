@@ -284,6 +284,7 @@ impl Into<MonarchGameProperties> for SteamGameProperties {
             version: "".to_string(),
             protondb_rating: "N/A".to_string(),
             protondb_url: "".to_string(),
+            other: HashMap::new(),
         }
     }
 }

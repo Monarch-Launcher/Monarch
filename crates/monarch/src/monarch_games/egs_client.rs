@@ -85,30 +85,23 @@ impl EgsClient {
     }
 
     pub async fn get_library(&self) -> Vec<MonarchGame> {
-        let egs_games = self.get_user_games().await;
+        let mut games = self.get_user_games().await;
 
-        let monarch_games: Vec<MonarchGame> = egs_games
-            .into_iter()
-            .map(|game| {
-                let mut m_game = game.into_monarchgame();
-                m_game.thumbnail_path =
-                    generate_library_image_path(&m_game.name, GameImageType::Cover)
-                        .to_string_lossy()
-                        .to_string();
-                m_game.artwork_path =
-                    generate_library_image_path(&m_game.name, GameImageType::Artwork)
-                        .to_string_lossy()
-                        .to_string();
-                m_game
-            })
-            .collect();
+        for game in games.iter_mut() {
+            game.thumbnail_path = generate_library_image_path(&game.name, GameImageType::Cover)
+                .to_string_lossy()
+                .to_string();
+            game.artwork_path = generate_library_image_path(&game.name, GameImageType::Artwork)
+                .to_string_lossy()
+                .to_string();
+        }
 
-        monarch_games
+        games
     }
 
-    pub async fn get_user_games(&self) -> Vec<Box<dyn SearchResult>> {
+    pub async fn get_user_games(&self) -> Vec<MonarchGame> {
         let entitlements = monarch_egs::owned_games(&self.user).await;
-        let mut results: Vec<Box<dyn SearchResult>> = Vec::new();
+        let mut results: Vec<MonarchGame> = Vec::new();
         let monarch_url: &'static str = std::env!("MONARCH_URL");
 
         let mut tasks = Vec::new();
@@ -116,7 +109,7 @@ impl EgsClient {
         for ent in entitlements {
             let entitlement = ent.clone();
 
-            let task: JoinHandle<Result<Box<MonarchWebApiGame>>> = task::spawn(async move {
+            let task: JoinHandle<Result<MonarchGame>> = task::spawn(async move {
                 info!("Parsing {} via {}.", entitlement.namespace, monarch_url);
                 let url = format!(
                     "{}/api/games?store_id={}&store=epicgames",
@@ -134,7 +127,12 @@ impl EgsClient {
 
                 if let Ok(games) = serde_json::from_str::<Vec<MonarchWebApiGame>>(&response_text) {
                     if !games.is_empty() {
-                        return Ok(Box::new(games[0].clone()));
+                        let mut monarch_game = games[0].clone().into_monarchgame();
+                        monarch_game
+                            .properties
+                            .other
+                            .insert("catalog_id".to_string(), ent.catalog_id);
+                        return Ok(monarch_game);
                     }
                 }
 
@@ -247,8 +245,17 @@ impl StoreType for EgsClient {
             bail!("Missing Epic Games namespace!")
         }
 
-        let manifest: Manifest = get_game_manifest(&namespace, "", "", None, None).await;
-        self.download_manager.start_download(&manifest);
+        let cdn_urls = monarch_egs::get_cdn_urls(
+            "Windows",
+            &namespace,
+            game.properties.other.get("catalog_id").unwrap(),
+            &game.name,
+        )
+        .await
+        .unwrap();
+
+        //let manifest: Manifest = get_game_manifest(&namespace, "", "", None, None).await;
+        //self.download_manager.start_download(&manifest);
         Ok(())
     }
 

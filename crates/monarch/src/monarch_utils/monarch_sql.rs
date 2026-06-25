@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use sqlx::{Decode, Encode, FromRow, SqlitePool};
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo};
 
@@ -11,8 +11,8 @@ const STORE_INFO_FIELDS: &str = "(monarch_game_id, name, store_id, store_url)";
 const TYPED_STORE_INFO_FIELDS: &str =
     "(monarch_game_id TEXT PRIMARY KEY, name TEXT, store_id TEXT, store_url TEXT)";
 
-const MONARCH_GAME_PROPERTIES_FIELDS: &str = "(monarch_game_id, install_dir, size_on_disk, last_played, time_played, description, version, protondb_rating, protondb_url)";
-const TYPED_MONARCH_GAME_PROPERTIES_FIELDS: &str = "(monarch_game_id TEXT PRIMARY KEY, install_dir TEXT, size_on_disk INTEGER, last_played TEXT, time_played TEXT, description TEXT, version TEXT, protondb_rating TEXT, protondb_url TEXT)";
+const MONARCH_GAME_PROPERTIES_FIELDS: &str = "(monarch_game_id, install_dir, size_on_disk, last_played, time_played, description, version, protondb_rating, protondb_url, other)";
+const TYPED_MONARCH_GAME_PROPERTIES_FIELDS: &str = "(monarch_game_id TEXT PRIMARY KEY, install_dir TEXT, size_on_disk INTEGER, last_played TEXT, time_played TEXT, description TEXT, version TEXT, protondb_rating TEXT, protondb_url TEXT, other TEXT)";
 
 #[derive(Debug, FromRow, Encode, Decode)]
 struct MonarchGameRecord {
@@ -31,16 +31,18 @@ struct MonarchGameRecord {
 }
 
 #[derive(Debug, FromRow, Encode, Decode)]
+#[allow(dead_code)]
 struct StoreInfoRecord {
-    pub monarch_game_id: String,
+    pub monarch_game_id: String, // Allow dead_code
     pub name: String,
     pub store_id: String,
     pub store_url: String,
 }
 
 #[derive(Debug, FromRow, Encode, Decode)]
+#[allow(dead_code)]
 struct MonarchGamePropertiesRecord {
-    pub monarch_game_id: String,
+    pub monarch_game_id: String, // Allow dead_code
     pub install_dir: String,
     pub size_on_disk: u64,
     pub last_played: String,
@@ -50,6 +52,8 @@ struct MonarchGamePropertiesRecord {
 
     pub protondb_rating: String,
     pub protondb_url: String,
+
+    pub other: String,
 }
 
 impl MonarchGame {
@@ -105,6 +109,7 @@ impl From<MonarchGamePropertiesRecord> for MonarchGameProperties {
             version: record.version,
             protondb_rating: record.protondb_rating,
             protondb_url: record.protondb_url,
+            other: serde_json::from_str(&record.other).unwrap_or_default(),
         }
     }
 }
@@ -197,7 +202,7 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     }
 
     sqlx::query(&format!(
-        "INSERT INTO properties {} VALUES (?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO properties {} VALUES (?,?,?,?,?,?,?,?,?,?)",
         MONARCH_GAME_PROPERTIES_FIELDS
     ))
     .bind(&game.id)
@@ -209,6 +214,7 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     .bind(&game.properties.version)
     .bind(&game.properties.protondb_rating)
     .bind(&game.properties.protondb_url)
+    .bind(serde_json::to_string(&game.properties.other).unwrap())
     .execute(&mut *tx)
     .await
     .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
@@ -305,7 +311,8 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         description = ?,
         version = ?,
         protondb_rating = ?,
-        protondb_url = ?"#,
+        protondb_url = ?,
+        other = ?"#,
         MONARCH_GAME_PROPERTIES_FIELDS
     );
 
@@ -384,6 +391,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.properties.version)
         .bind(&game.properties.protondb_rating)
         .bind(&game.properties.protondb_url)
+        .bind(serde_json::to_string(&game.properties.other).unwrap())
         .execute(&mut *tx)
         .await
         .with_context(|| {
@@ -465,7 +473,7 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
         }
 
         sqlx::query(&format!(
-            "INSERT INTO properties {} VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO properties {} VALUES (?,?,?,?,?,?,?,?,?,?)",
             MONARCH_GAME_PROPERTIES_FIELDS
         ))
         .bind(&game.id)
@@ -477,6 +485,7 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
         .bind(&game.properties.version)
         .bind(&game.properties.protondb_rating)
         .bind(&game.properties.protondb_url)
+        .bind(serde_json::to_string(&game.properties.other).unwrap())
         .execute(&mut *tx)
         .await
         .with_context(|| {
@@ -567,4 +576,154 @@ async fn table_exists(pool: &SqlitePool, name: &str) -> Result<bool> {
         })?;
 
     Ok(!tables.is_empty())
+}
+
+/// Checks that all tables have correct columns.
+/// If not, it adds or removes columns.
+///
+/// TODO: Implement dropping columns
+///
+/// NOTE: By reading and doing string manipulations to check for columns
+/// you only need to specify them in the constants in the top of the file
+/// to allow changes to automatically get migrated.
+pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
+    /*
+     * First fix the library table.
+     */
+
+    // Make a vec of pairs, which are the column and column type
+    let monarch_games_column_types = TYPED_MONARCH_GAME_FIELDS
+        .replace(",", "")
+        .replace("(", "")
+        .replace(")", "")
+        .replace(" PRIMARY KEY", "");
+    let monarch_games_column_types_map = monarch_games_column_types
+        .split(" ")
+        .into_iter()
+        .collect::<Vec<&str>>()
+        .windows(2)
+        .step_by(2)
+        .map(|pair| (pair[0].to_string(), pair[1].to_string()))
+        .collect::<Vec<(String, String)>>();
+
+    let mut existing_cols: Vec<String> =
+        get_existing_columns(pool, "library")
+            .await
+            .with_context(|| {
+                "monarch_sql::repair_or_migrate_db() Failed to get columns in table 'library'"
+            })?;
+
+    let mut tx = pool.begin().await.with_context(|| {
+        "monarch_sql::repair_or_migrate_db() Failed to start transaction! | Err: "
+    })?;
+
+    for col in monarch_games_column_types_map {
+        if !existing_cols.contains(&col.0) {
+            warn!("{} not found in library!", col.0);
+            info!("Creating column: {} in library...", col.0);
+
+            sqlx::query(&format!(
+                "ALTER TABLE library ADD COLUMN {} {}",
+                col.0, col.1
+            ))
+            .execute(&mut *tx)
+            .await
+            .with_context(|| format!("monarch_sql::repair_or_migrate_db() Failed to add column {} to library! | Err: ", col.0))?;
+        }
+    }
+
+    /*
+     * Then fix the stores table.
+     */
+    let stores_column_types = TYPED_STORE_INFO_FIELDS
+        .replace(",", "")
+        .replace("(", "")
+        .replace(")", "")
+        .replace(" PRIMARY KEY", "");
+    let stores_column_types_map = stores_column_types
+        .split(" ")
+        .into_iter()
+        .collect::<Vec<&str>>()
+        .windows(2)
+        .step_by(2)
+        .map(|pair| (pair[0].to_string(), pair[1].to_string()))
+        .collect::<Vec<(String, String)>>();
+
+    existing_cols = get_existing_columns(pool, "stores")
+        .await
+        .with_context(|| {
+            "monarch_sql::repair_or_migrate_db() Failed to get columns in table 'stores'"
+        })?;
+
+    for col in stores_column_types_map {
+        if !existing_cols.contains(&col.0) {
+            warn!("{} not found in library!", col.0);
+            info!("Creating column: {} in store...", col.0);
+
+            sqlx::query(&format!(
+                "ALTER TABLE stores ADD COLUMN {} {}",
+                col.0, col.1
+            ))
+            .execute(&mut *tx)
+            .await
+            .with_context(|| format!("monarch_sql::repair_or_migrate_db() Failed to add column {} to stores! | Err: ", col.0))?;
+        }
+    }
+
+    /*
+     * And lastly fix the properties table.
+     */
+    let monarch_game_properties_column_types = TYPED_MONARCH_GAME_PROPERTIES_FIELDS
+        .replace(",", "")
+        .replace("(", "")
+        .replace(")", "")
+        .replace(" PRIMARY KEY", "");
+    let monarch_game_properties_column_types_map = monarch_game_properties_column_types
+        .split(" ")
+        .into_iter()
+        .collect::<Vec<&str>>()
+        .windows(2)
+        .step_by(2)
+        .map(|pair| (pair[0].to_string(), pair[1].to_string()))
+        .collect::<Vec<(String, String)>>();
+
+    existing_cols = get_existing_columns(pool, "properties")
+        .await
+        .with_context(|| {
+            "monarch_sql::repair_or_migrate_db() Failed to get columns in table 'stores'"
+        })?;
+
+    for col in monarch_game_properties_column_types_map {
+        if !existing_cols.contains(&col.0) {
+            warn!("{} not found in properties!", col.0);
+            info!("Creating column: {} in properties...", col.0);
+
+            sqlx::query(&format!(
+                "ALTER TABLE properties ADD COLUMN {} {}",
+                col.0, col.1
+            ))
+            .execute(&mut *tx)
+            .await
+            .with_context(|| format!("monarch_sql::repair_or_migrate_db() Failed to add column {} to properties! | Err: ", col.0))?;
+        }
+    }
+
+    tx.commit().await.with_context(|| {
+        "monarch_sql::repair_or_migrate_db() Failed to commit transaction | Err: "
+    })?;
+
+    Ok(())
+}
+
+/// Fetches all column names for a given table
+async fn get_existing_columns(pool: &SqlitePool, table_name: &str) -> Result<Vec<String>> {
+    let cols = sqlx::query_scalar::<_, String>(&format!(
+        "SELECT name FROM pragma_table_info('{}')",
+        table_name
+    ))
+    .fetch_all(pool)
+    .await
+    .with_context(|| format!("Failed to read columns for table '{}'", table_name))?;
+
+    Ok(cols)
 }

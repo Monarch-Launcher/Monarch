@@ -1,6 +1,7 @@
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::error;
 
@@ -365,6 +366,8 @@ pub struct MonarchGameProperties {
 
     pub protondb_rating: String,
     pub protondb_url: String,
+
+    pub other: HashMap<String, String>, // KV-store field to store misc info about a game, e.g. EGS catalog_id
 }
 
 impl Default for MonarchGameProperties {
@@ -378,6 +381,7 @@ impl Default for MonarchGameProperties {
             version: "Error".to_string(),
             protondb_rating: "N/A".to_string(),
             protondb_url: "".to_string(),
+            other: HashMap::new(),
         }
     }
 }

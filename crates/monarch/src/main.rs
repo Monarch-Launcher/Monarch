@@ -11,8 +11,12 @@ use crate::{
     gui::App,
     monarch_library::library,
     monarch_utils::{
-        housekeeping, monarch_fs::verify_monarch_folders, monarch_logger::init_logger,
-        monarch_settings, monarch_sql::init_db, monarch_state::MONARCH_STATE,
+        housekeeping,
+        monarch_fs::verify_monarch_folders,
+        monarch_logger::init_logger,
+        monarch_settings,
+        monarch_sql::{init_db, repair_or_migrate_db},
+        monarch_state::MONARCH_STATE,
     },
 };
 
@@ -44,6 +48,9 @@ async fn init() {
         Ok(state) => {
             let pool = state.get_db_pool_arc();
             init_db(&pool).await.expect("Failed to run init_db()!"); // Verify database tables exist
+            repair_or_migrate_db(&pool)
+                .await
+                .expect("Failed to run repair_or_migrate_db()!"); // Verify database tables structure
         }
         Err(e) => {
             error!("Failed to acquire read lock on MONARCH_STATE! | Err: {e}");
