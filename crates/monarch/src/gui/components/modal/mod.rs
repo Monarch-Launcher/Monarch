@@ -3,6 +3,8 @@ use iced::{alignment, Element, Length, Theme};
 
 use crate::gui::styles;
 
+pub mod download_modal;
+
 pub struct Modal<'a, Message> {
     title: String,
     content: Element<'a, Message, Theme>,

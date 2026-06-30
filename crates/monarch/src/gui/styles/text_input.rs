@@ -1,6 +1,8 @@
 use iced::widget::text_input;
 use iced::{Border, Color, Theme};
 
+use super::radius;
+
 pub fn search(theme: &Theme, status: text_input::Status) -> text_input::Style {
     let palette = theme.palette();
 
@@ -10,7 +12,7 @@ pub fn search(theme: &Theme, status: text_input::Status) -> text_input::Style {
         | text_input::Status::Hovered => text_input::Style {
             background: Color::from_rgb8(25, 25, 25).into(),
             border: Border {
-                radius: 10.0.into(),
+                radius: radius::SUBTLE.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
@@ -22,7 +24,7 @@ pub fn search(theme: &Theme, status: text_input::Status) -> text_input::Style {
         text_input::Status::Disabled => text_input::Style {
             background: Color::from_rgb8(25, 25, 25).into(),
             border: Border {
-                radius: 10.0.into(),
+                radius: radius::SUBTLE.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
@@ -43,7 +45,7 @@ pub fn default(theme: &Theme, status: text_input::Status) -> text_input::Style {
         | text_input::Status::Hovered => text_input::Style {
             background: Color::from_rgb8(30, 30, 35).into(),
             border: Border {
-                radius: 4.0.into(),
+                radius: radius::SUBTLE.into(),
                 width: 1.0,
                 color: Color::from_rgb8(60, 60, 60),
             },
@@ -55,7 +57,7 @@ pub fn default(theme: &Theme, status: text_input::Status) -> text_input::Style {
         text_input::Status::Disabled => text_input::Style {
             background: Color::from_rgb8(20, 20, 25).into(),
             border: Border {
-                radius: 4.0.into(),
+                radius: radius::SUBTLE.into(),
                 width: 1.0,
                 color: Color::from_rgb8(40, 40, 40),
             },

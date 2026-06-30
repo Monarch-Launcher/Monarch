@@ -132,6 +132,10 @@ impl EgsClient {
                             .properties
                             .other
                             .insert("catalog_id".to_string(), ent.catalog_id);
+                        monarch_game
+                            .properties
+                            .other
+                            .insert("app_name".to_string(), ent.entitlement_name);
                         return Ok(monarch_game);
                     }
                 }
@@ -245,10 +249,12 @@ impl StoreType for EgsClient {
             bail!("Missing Epic Games namespace!")
         }
 
+        let token = self.user.session().get_access_token().await;
         let cdn_urls = monarch_egs::get_cdn_urls(
+            &token,
             "Windows",
             &namespace,
-            game.properties.other.get("catalog_id").unwrap(),
+            game.properties.other.get("catalog_id").expect("Missing catalog_id!"),
             &game.name,
         )
         .await

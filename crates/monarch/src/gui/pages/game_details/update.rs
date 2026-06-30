@@ -2,13 +2,15 @@ use tracing::error;
 
 use crate::{
     gui::{
-        components::gamecard::{
-            actions::{self, ActionsModal},
-            properties::{self, PropertiesModal},
+        components::{
+            gamecard::{
+                actions::{self, ActionsModal},
+                properties::{self, PropertiesModal},
+            },
+            modal::download_modal,
         },
         pages::game_details::{GameDetailsPage, Message},
-    },
-    monarch_games,
+    }, monarch_games::{self, games::GameType, monarchgame::MonarchGame},
 };
 
 impl GameDetailsPage {
@@ -72,22 +74,53 @@ impl GameDetailsPage {
         iced::Task::none()
     }
 
-    pub fn download_game(&self) -> iced::Task<Message> {
-        let game = match &self.game {
-            Some(g) => g.lock().unwrap().clone(),
-            None => {
-                error!("No game in GameDetailsPage!");
-                return iced::Task::none();
-            }
-        };
+    pub fn download_game(&mut self) -> iced::Task<Message> {
+        let game = self.game.as_ref().unwrap().lock().unwrap();
 
-        iced::Task::perform(
-            async move {
-                if let Err(e) = monarch_games::commands::download_game(&game).await {
-                    error!("Failed to launch: {} | Err: {}", game.name, e)
+        let (modal, task) = download_modal::DownloadModal::new(
+            game.name.to_string(),
+            game.get_store_name(),
+            game.get_store_id(),
+        );
+        self.download_modal = Some(modal);
+        task.map(Message::DownloadModalMessage)
+    }
+
+    pub fn handle_download_modal_message(
+        &mut self,
+        msg: download_modal::Message,
+    ) -> iced::Task<Message> {
+        match msg {
+            download_modal::Message::Confirm => {
+                if let Some(modal) = self.download_modal.take() {
+                    let mut opts = modal.options;
+                    if let Some(compat) = modal.selected_compatibility {
+                        opts.compatibility = Some(compat.name);
+                    }
+
+                    let game: MonarchGame = self.game.as_ref().unwrap().lock().unwrap().clone();
+
+                    iced::Task::perform(
+                        async move {
+                            let _ = crate::monarch_games::commands::download_game(&game, &mut opts).await;
+                        },
+                        |_| Message::BackPressed, // Redirect on download init or just stay
+                    )
+                } else {
+                    iced::Task::none()
                 }
-            },
-            Message::Nop,
-        )
+            }
+            download_modal::Message::Cancel => {
+                self.download_modal = None;
+                iced::Task::none()
+            }
+            other => {
+                if let Some(modal) = &mut self.download_modal {
+                    modal.update(other).map(Message::DownloadModalMessage)
+                } else {
+                    iced::Task::none()
+                }
+            }
+        }
     }
 }

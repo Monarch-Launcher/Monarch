@@ -1,6 +1,8 @@
 use iced::widget::pick_list;
 use iced::{overlay, Border, Color, Theme};
 
+use super::radius;
+
 pub fn default(theme: &Theme, status: pick_list::Status) -> pick_list::Style {
     let palette = theme.palette();
 
@@ -10,7 +12,7 @@ pub fn default(theme: &Theme, status: pick_list::Status) -> pick_list::Style {
         handle_color: palette.text,
         background: Color::from_rgb8(30, 30, 35).into(),
         border: Border {
-            radius: 4.0.into(),
+            radius: radius::SUBTLE.into(),
             width: 1.0,
             color: Color::from_rgb8(60, 60, 60),
         },
@@ -25,7 +27,7 @@ pub fn default(theme: &Theme, status: pick_list::Status) -> pick_list::Style {
         pick_list::Status::Opened { .. } => pick_list::Style {
             background: Color::from_rgb8(40, 40, 45).into(),
             border: Border {
-                radius: 4.0.into(),
+                radius: radius::SUBTLE.into(),
                 width: 1.0,
                 color: palette.primary,
             },
@@ -43,7 +45,7 @@ pub fn menu(theme: &Theme) -> overlay::menu::Style {
         border: Border {
             width: 1.0,
             color: Color::from_rgb8(60, 60, 60),
-            radius: 4.0.into(),
+            radius: radius::SUBTLE.into(),
         },
         selected_text_color: Color::WHITE,
         selected_background: palette.primary.into(),

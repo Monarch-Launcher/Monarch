@@ -179,7 +179,7 @@ impl DownloadModal {
         ]
         .spacing(5);
 
-        crate::gui::components::modal::Modal::new("Verify Download Options", content)
+        super::Modal::new("Verify Download Options", content)
             .width(Length::Fixed(600.0))
             .on_close(Message::Cancel)
             .view()

@@ -3,10 +3,10 @@ use std::sync::{Arc, Mutex};
 use iced::widget::{container, text};
 use iced::{alignment, Element, Length};
 
+use crate::gui::components::modal::download_modal;
 use crate::gui::styles;
 use crate::monarch_games::monarchgame::MonarchGame;
 
-mod download_modal;
 mod update;
 mod view;
 

@@ -5,9 +5,10 @@ use crate::utils::err::MonarchEgsError;
 pub struct Manifest {}
 
 static MANIFEST_URL: &str = "launcher-public-service-prod06.ol.epicgames.com";
-static CDN_URL: &str = "launcher-public-service-prod06.ol.epicgames.com/";
+static CDN_URL: &str = "launcher-public-service-prod06.ol.epicgames.com";
 
 pub async fn get_cdn_urls(
+    access_token: &str,
     platform: &str,
     namespace: &str,
     catalog_id: &str,
@@ -18,7 +19,10 @@ pub async fn get_cdn_urls(
     );
 
     let client: Client = Client::new();
-    let response = client.get(&url).send().await.unwrap();
+    let response = client.get(&url).bearer_auth(access_token).send().await.unwrap();
+
+    println!("resp: {:?}", response);
+
     let response_object: serde_json::Value = response.json().await.unwrap();
 
     println!("{:?}", response_object);

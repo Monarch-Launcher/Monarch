@@ -1,6 +1,8 @@
 use iced::widget::{button as widget_button, container as widget_container};
 use iced::{Border, Color, Theme, Vector};
 
+use super::radius;
+
 pub fn container(theme: &Theme) -> widget_container::Style {
     let palette = theme.palette();
 
@@ -33,7 +35,7 @@ pub fn button(theme: &Theme, status: widget_button::Status) -> widget_button::St
             background: None,
             text_color: palette.text,
             border: Border {
-                radius: 4.0.into(),
+                radius: radius::SUBTLE.into(),
                 ..Default::default()
             },
             ..Default::default()
@@ -42,7 +44,7 @@ pub fn button(theme: &Theme, status: widget_button::Status) -> widget_button::St
             background: None,
             text_color: palette.text,
             border: Border {
-                radius: 4.0.into(),
+                radius: radius::SUBTLE.into(),
                 ..Default::default()
             },
             ..Default::default()
@@ -64,7 +66,7 @@ pub fn active_button(theme: &Theme, status: widget_button::Status) -> widget_but
             background: None,
             text_color: palette.primary,
             border: Border {
-                radius: 4.0.into(),
+                radius: radius::SUBTLE.into(),
                 ..Default::default()
             },
             ..Default::default()
@@ -73,7 +75,7 @@ pub fn active_button(theme: &Theme, status: widget_button::Status) -> widget_but
             background: None,
             text_color: palette.primary,
             border: Border {
-                radius: 4.0.into(),
+                radius: radius::SUBTLE.into(),
                 ..Default::default()
             },
             ..Default::default()

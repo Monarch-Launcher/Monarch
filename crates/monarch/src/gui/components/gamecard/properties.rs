@@ -200,7 +200,7 @@ impl PropertiesModal {
                         border: border::Border {
                             color: palette.primary,
                             width: 1.0,
-                            radius: 4.0.into(),
+                            radius: crate::gui::styles::radius::SUBTLE.into(),
                         },
                         text_color: Some(palette.text),
                         ..Default::default()

@@ -138,7 +138,7 @@ impl HomePage {
                                     .into(),
                                 ),
                                 border: iced::Border {
-                                    radius: 4.0.into(),
+                                    radius: crate::gui::styles::radius::SUBTLE.into(),
                                     ..Default::default()
                                 },
                                 ..Default::default()
@@ -169,7 +169,7 @@ impl HomePage {
                     border: iced::Border {
                         color: Color::from_rgb8(255, 127, 0),
                         width: 2.0,
-                        radius: 8.0.into(),
+                        radius: 0.0.into(),
                     },
                     shadow: iced::Shadow {
                         color: Color::from_rgba8(255, 127, 0, 0.25),
@@ -191,7 +191,7 @@ impl HomePage {
                 .style(|_: &Theme| container::Style {
                     background: Some(Color::from_rgb8(255, 127, 0).into()),
                     border: iced::Border {
-                        radius: 4.0.into(),
+                        radius: crate::gui::styles::radius::SUBTLE.into(),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -208,7 +208,7 @@ impl HomePage {
                     .style(|_: &Theme| container::Style {
                         background: Some(Color::from_rgba8(255, 255, 255, 0.1).into()),
                         border: iced::Border {
-                            radius: 4.0.into(),
+                            radius: crate::gui::styles::radius::SUBTLE.into(),
                             color: Color::from_rgba8(255, 255, 255, 0.15),
                             width: 1.0,
                         },
@@ -245,7 +245,7 @@ impl HomePage {
                         .into(),
                     ),
                     border: iced::Border {
-                        radius: 6.0.into(),
+                        radius: crate::gui::styles::radius::SUBTLE.into(),
                         color: Color::from_rgba8(255, 255, 255, 0.15),
                         width: 1.0,
                     },
@@ -302,7 +302,7 @@ impl HomePage {
                     .style(|_: &Theme| container::Style {
                         background: Some(Color::from_rgba8(255, 255, 255, 0.04).into()),
                         border: iced::Border {
-                            radius: 12.0.into(),
+                            radius: crate::gui::styles::radius::SUBTLE.into(),
                             color: Color::from_rgba8(255, 255, 255, 0.08),
                             width: 1.0,
                         },

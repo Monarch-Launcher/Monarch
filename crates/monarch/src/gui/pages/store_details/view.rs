@@ -82,7 +82,7 @@ impl StoreDetailsPage {
             border: iced::Border {
                 color: Color::from_rgb8(255, 127, 0),
                 width: 3.0,
-                radius: 8.0.into(),
+                radius: 0.0.into(),
             },
             shadow: iced::Shadow {
                 color: Color::from_rgba8(0, 0, 0, 0.8),
@@ -159,7 +159,7 @@ impl StoreDetailsPage {
                     .style(|_theme: &Theme| container::Style {
                         background: Some(Color::from_rgba8(255, 255, 255, 0.05).into()),
                         border: iced::Border {
-                            radius: 8.0.into(),
+                            radius: crate::gui::styles::radius::SUBTLE.into(),
                             color: Color::from_rgba8(255, 255, 255, 0.1),
                             width: 1.0,
                         },

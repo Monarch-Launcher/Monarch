@@ -175,7 +175,7 @@ impl GameType for MonarchGame {
             "monarch" => Box::new(MonarchClient::new()),
             "steam" => Box::new(SteamClient::new()),
             "steamcmd" => Box::new(SteamClient::new()),
-            "epic" => Box::new(LegendaryClient::new()),
+            "epicgames" => Box::new(LegendaryClient::new()),
             _ => {
                 panic!("Invalid store: {:?}", self.stores)
             }

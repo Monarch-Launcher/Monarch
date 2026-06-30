@@ -1,6 +1,8 @@
 use iced::widget::text_editor;
 use iced::{Border, Color, Theme};
 
+use super::radius;
+
 pub fn default(theme: &Theme, status: text_editor::Status) -> text_editor::Style {
     let palette = theme.palette();
 
@@ -10,7 +12,7 @@ pub fn default(theme: &Theme, status: text_editor::Status) -> text_editor::Style
         | text_editor::Status::Hovered => text_editor::Style {
             background: Color::from_rgb8(30, 30, 35).into(),
             border: Border {
-                radius: 4.0.into(),
+                radius: radius::SUBTLE.into(),
                 width: 1.0,
                 color: Color::from_rgb8(60, 60, 60),
             },
@@ -21,7 +23,7 @@ pub fn default(theme: &Theme, status: text_editor::Status) -> text_editor::Style
         text_editor::Status::Disabled => text_editor::Style {
             background: Color::from_rgb8(20, 20, 25).into(),
             border: Border {
-                radius: 4.0.into(),
+                radius: radius::SUBTLE.into(),
                 width: 1.0,
                 color: Color::from_rgb8(40, 40, 40),
             },

@@ -91,7 +91,7 @@ impl GameCard {
                 border: iced::Border {
                     color: Color::TRANSPARENT,
                     width: if self.hover { 2.0 } else { 0.0 },
-                    radius: 12.0.into(),
+                    radius: 0.0.into(),
                 },
                 shadow: iced::Shadow {
                     color: Color::from_rgba8(0, 0, 0, 0.6 * self.hover_factor),
@@ -123,7 +123,7 @@ impl GameCard {
                 border: iced::Border {
                     color: Color::TRANSPARENT,
                     width: if self.hover { 2.0 } else { 0.0 },
-                    radius: 12.0.into(),
+                    radius: 0.0.into(),
                 },
                 shadow: iced::Shadow {
                     color: Color::from_rgba8(0, 0, 0, 0.6 * self.hover_factor),
@@ -146,7 +146,7 @@ impl GameCard {
                 background: None,
                 border: iced::Border {
                     width: 0.0,
-                    radius: 12.0.into(),
+                    radius: 0.0.into(),
                     color: Color::TRANSPARENT,
                 },
                 ..Default::default()

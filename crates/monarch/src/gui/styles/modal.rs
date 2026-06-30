@@ -2,6 +2,8 @@ use iced::border;
 use iced::widget::container;
 use iced::{Color, Theme};
 
+use super::radius;
+
 pub fn overlay(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Color::from_rgba8(0, 0, 0, 0.8).into()),
@@ -18,7 +20,7 @@ pub fn content(theme: &Theme) -> container::Style {
         border: border::Border {
             color: palette.primary,
             width: 1.0,
-            radius: 8.0.into(),
+            radius: radius::SUBTLE.into(),
         },
         ..Default::default()
     }

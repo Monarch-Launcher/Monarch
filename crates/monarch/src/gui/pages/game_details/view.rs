@@ -7,7 +7,7 @@ use iced::{
 
 use crate::{
     gui::{
-        components::common::{launch_button, download_button, secondary_button},
+        components::common::{download_button, launch_button, secondary_button},
         pages::game_details::{GameDetailsPage, Message},
     },
     monarch_games::{games::GameType, monarchgame::MonarchGame},
@@ -83,7 +83,7 @@ impl GameDetailsPage {
             border: iced::Border {
                 color: Color::from_rgb8(255, 127, 0),
                 width: 3.0,
-                radius: 8.0.into(),
+                radius: 0.0.into(),
             },
             shadow: iced::Shadow {
                 color: Color::from_rgba8(0, 0, 0, 0.8),
@@ -110,7 +110,7 @@ impl GameDetailsPage {
         .style(|_theme: &Theme| container::Style {
             background: Some(Color::from_rgb8(255, 127, 0).into()),
             border: iced::Border {
-                radius: 4.0.into(),
+                radius: crate::gui::styles::radius::SUBTLE.into(),
                 ..Default::default()
             },
             ..Default::default()
@@ -203,7 +203,7 @@ impl GameDetailsPage {
         .style(|_theme: &Theme| container::Style {
             background: Some(Color::from_rgba8(255, 255, 255, 0.05).into()),
             border: iced::Border {
-                radius: 8.0.into(),
+                radius: crate::gui::styles::radius::SUBTLE.into(),
                 color: Color::from_rgba8(255, 255, 255, 0.1),
                 width: 1.0,
             },
@@ -211,9 +211,9 @@ impl GameDetailsPage {
         });
 
         let launch_btn = if game.is_installed {
-            launch_button("Launch", Some(Message::LaunchGame)) 
+            launch_button("Launch", Some(Message::LaunchGame))
         } else {
-            download_button("Download", Some(Message::LaunchGame)) 
+            download_button("Download", Some(Message::DownloadGame))
         };
         let edit_btn = secondary_button("Edit", Some(Message::OpenProperties));
         let actions_button = secondary_button("More Actions", Some(Message::OpenActions));
@@ -264,7 +264,7 @@ impl GameDetailsPage {
                 .style(|_theme: &Theme| container::Style {
                     background: Some(Color::from_rgba8(255, 255, 255, 0.03).into()),
                     border: iced::Border {
-                        radius: 8.0.into(),
+                        radius: crate::gui::styles::radius::SUBTLE.into(),
                         color: Color::from_rgba8(255, 255, 255, 0.05),
                         width: 1.0,
                     },

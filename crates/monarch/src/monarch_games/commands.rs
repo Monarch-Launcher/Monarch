@@ -152,7 +152,7 @@ pub async fn launch_game(game: &MonarchGame) -> Result<(), String> {
 }
 
 /// Tells Monarch to download specified game
-pub async fn download_game(opts: &mut DownloadOptions) -> Result<Vec<MonarchGame>, String> {
+pub async fn download_game(game: &MonarchGame, opts: &mut DownloadOptions) -> Result<Vec<MonarchGame>, String> {
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
     info!("Installing: {}", opts.game_name);
@@ -175,15 +175,6 @@ pub async fn download_game(opts: &mut DownloadOptions) -> Result<Vec<MonarchGame
         }
     }
 
-    let game = MonarchGame::new(
-        &opts.game_name,
-        0,
-        &opts.game_store,
-        &opts.game_store_id,
-        "",
-        "",
-    );
-
     let result: Result<(), String> = match opts.game_store.as_str() {
         "steam" => {
             if let Err(e) = SteamClient::new().install_game(&game, &opts).await {
@@ -194,9 +185,7 @@ pub async fn download_game(opts: &mut DownloadOptions) -> Result<Vec<MonarchGame
         "epicgames" => {
             let mut client = EgsClient::new();
             client.load_existing_user().await.unwrap();
-            if let Err(e) = {
-                return Err(e.to_string());
-            }
+            client.install_game(&game, opts).await.unwrap();
             Ok(())
         }
         _ => Err(String::from("Unsupported store")),
@@ -212,7 +201,7 @@ pub async fn download_game(opts: &mut DownloadOptions) -> Result<Vec<MonarchGame
         }
         Err(e) => {
             error!(
-                "monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}",
+                "monarch_client::download_game() Failed to lock on MONARCH_STATE | Err: {}",
                 e
             );
             return Err(String::from("Failed to get updated library."));

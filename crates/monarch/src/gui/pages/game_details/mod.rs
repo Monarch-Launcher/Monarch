@@ -8,6 +8,7 @@ use iced::{alignment, Element, Length};
 
 use crate::gui::components::gamecard::actions::{self, ActionsModal};
 use crate::gui::components::gamecard::properties::{self, PropertiesModal};
+use crate::gui::components::modal::download_modal;
 use crate::gui::styles;
 use crate::monarch_games::monarchgame::MonarchGame;
 
@@ -16,6 +17,7 @@ pub enum Message {
     BackPressed,
     LaunchGame,
     DownloadGame,
+    DownloadModalMessage(download_modal::Message),
     OpenProperties,
     OpenActions,
     Properties(properties::Message),
@@ -27,6 +29,7 @@ pub struct GameDetailsPage {
     game: Option<Arc<Mutex<MonarchGame>>>,
     properties_modal: Option<PropertiesModal>,
     actions_modal: Option<ActionsModal>,
+    download_modal: Option<download_modal::DownloadModal>,
 }
 
 impl GameDetailsPage {
@@ -35,6 +38,7 @@ impl GameDetailsPage {
             game: None,
             properties_modal: None,
             actions_modal: None,
+            download_modal: None,
         }
     }
 
@@ -49,7 +53,8 @@ impl GameDetailsPage {
                 iced::Task::none()
             }
             Message::LaunchGame => self.launch_game(),
-            Message::LaunchGame => self.download_game(),
+            Message::DownloadGame => self.download_game(),
+            Message::DownloadModalMessage(m) => self.handle_download_modal_message(m),
             Message::OpenProperties => self.open_properties(),
             Message::OpenActions => self.open_actions(),
             Message::Actions(actions_msg) => self.update_actions_msg(actions_msg),
@@ -73,6 +78,14 @@ impl GameDetailsPage {
                 layers = layers.push(modal.view().map(Message::Actions));
                 content = layers.into();
             }
+
+            if let Some(modal) = &self.download_modal {
+                let mut layers = stack![content].width(Length::Fill).height(Length::Fill);
+
+                layers = layers.push(modal.view().map(Message::DownloadModalMessage));
+                content = layers.into();
+            }
+
             content
         } else {
             container(
