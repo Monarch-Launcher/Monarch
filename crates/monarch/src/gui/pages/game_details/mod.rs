@@ -15,6 +15,7 @@ use crate::monarch_games::monarchgame::MonarchGame;
 pub enum Message {
     BackPressed,
     LaunchGame,
+    DownloadGame,
     OpenProperties,
     OpenActions,
     Properties(properties::Message),
@@ -48,6 +49,7 @@ impl GameDetailsPage {
                 iced::Task::none()
             }
             Message::LaunchGame => self.launch_game(),
+            Message::LaunchGame => self.download_game(),
             Message::OpenProperties => self.open_properties(),
             Message::OpenActions => self.open_actions(),
             Message::Actions(actions_msg) => self.update_actions_msg(actions_msg),

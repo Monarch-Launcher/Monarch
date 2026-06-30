@@ -7,6 +7,7 @@ use tracing::{error, info, warn};
 use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
+use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::games::GameType;
 use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::MonarchWebApiGame;
@@ -191,7 +192,9 @@ pub async fn download_game(opts: &mut DownloadOptions) -> Result<Vec<MonarchGame
             Ok(())
         }
         "epicgames" => {
-            if let Err(e) = LegendaryClient::new().install_game(&game, &opts).await {
+            let mut client = EgsClient::new();
+            client.load_existing_user().await.unwrap();
+            if let Err(e) = {
                 return Err(e.to_string());
             }
             Ok(())

@@ -71,4 +71,23 @@ impl GameDetailsPage {
         }
         iced::Task::none()
     }
+
+    pub fn download_game(&self) -> iced::Task<Message> {
+        let game = match &self.game {
+            Some(g) => g.lock().unwrap().clone(),
+            None => {
+                error!("No game in GameDetailsPage!");
+                return iced::Task::none();
+            }
+        };
+
+        iced::Task::perform(
+            async move {
+                if let Err(e) = monarch_games::commands::download_game(&game).await {
+                    error!("Failed to launch: {} | Err: {}", game.name, e)
+                }
+            },
+            Message::Nop,
+        )
+    }
 }

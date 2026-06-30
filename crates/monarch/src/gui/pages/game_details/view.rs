@@ -7,7 +7,7 @@ use iced::{
 
 use crate::{
     gui::{
-        components::common::{launch_button, secondary_button},
+        components::common::{launch_button, download_button, secondary_button},
         pages::game_details::{GameDetailsPage, Message},
     },
     monarch_games::{games::GameType, monarchgame::MonarchGame},
@@ -210,7 +210,11 @@ impl GameDetailsPage {
             ..Default::default()
         });
 
-        let launch_btn = launch_button("Launch", Some(Message::LaunchGame));
+        let launch_btn = if game.is_installed {
+            launch_button("Launch", Some(Message::LaunchGame)) 
+        } else {
+            download_button("Download", Some(Message::LaunchGame)) 
+        };
         let edit_btn = secondary_button("Edit", Some(Message::OpenProperties));
         let actions_button = secondary_button("More Actions", Some(Message::OpenActions));
 

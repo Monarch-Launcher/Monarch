@@ -70,3 +70,8 @@ pub static HIDE: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/hide.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });
+
+pub static DOWNLOAD: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/download-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});

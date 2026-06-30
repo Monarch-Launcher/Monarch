@@ -1,4 +1,4 @@
-use crate::gui::resources::PLAY;
+use crate::gui::resources::{PLAY, DOWNLOAD};
 use crate::gui::styles;
 use iced::widget::text::LineHeight;
 use iced::widget::{button, pick_list, row, svg, text_editor, text_input, Text};
@@ -154,6 +154,39 @@ where
     button(
         row![
             svg(PLAY.clone())
+                .width(35)
+                .height(35)
+                .style(move |_theme: &Theme, _status| {
+                    iced::widget::svg::Style {
+                        color: Some(Color::WHITE),
+                    }
+                }),
+            Text::new(label.to_owned())
+                .align_x(alignment::Horizontal::Center)
+                .size(30)
+        ]
+        .spacing(20)
+        .align_y(alignment::Vertical::Center),
+    )
+    .on_press_maybe(on_press)
+    .style(styles::button::primary)
+    .padding(10)
+    .width(300)
+    .height(60)
+    .into()
+}
+
+pub fn download_button<'a, Message>(
+    label: &str,
+    on_press: Option<Message>,
+) -> Element<'a, Message, Theme>
+where
+    Message: Clone + 'a,
+{
+    // Text alignment in Iced 0.14 uses align_x
+    button(
+        row![
+            svg(DOWNLOAD.clone())
                 .width(35)
                 .height(35)
                 .style(move |_theme: &Theme, _status| {
