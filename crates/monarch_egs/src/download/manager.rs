@@ -1,4 +1,4 @@
-use crate::download::manifest::Manifest;
+use super::DownloadManifest;
 
 pub struct DownloadManager {}
 
@@ -7,5 +7,5 @@ impl DownloadManager {
         Self {}
     }
 
-    pub fn start_download(&self, manifest: &Manifest) {}
+    pub fn start_download(&self, manifest: &DownloadManifest) {}
 }

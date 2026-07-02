@@ -8,6 +8,9 @@ pub enum MonarchEgsError {
     #[error("parsing object failed")]
     ParsingError(String),
 
+    #[error("hash mismatch")]
+    HashMismatchError(String),
+
     #[error("unknown error")]
     Unknown,
 }

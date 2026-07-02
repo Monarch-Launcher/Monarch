@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use tokio::task::{self, JoinHandle};
 use tracing::{error, info};
 
-use monarch_egs::{get_game_manifest, DownloadManager, Manifest, Session, User};
+use monarch_egs::{DownloadManager, DownloadManifest, Session, User, get_game_manifest};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
@@ -250,18 +250,17 @@ impl StoreType for EgsClient {
         }
 
         let token = self.user.session().get_access_token().await;
-        let cdn_urls = monarch_egs::get_cdn_urls(
+        let manifest: DownloadManifest = get_game_manifest(
             &token,
             "Windows",
             &namespace,
-            game.properties.other.get("catalog_id").expect("Missing catalog_id!"),
-            &game.name,
+            &"4fe75bbc5a674f4f9b356b5c90567da5".to_string(),
+            &"Fortnite".to_string(),
         )
         .await
         .unwrap();
 
-        //let manifest: Manifest = get_game_manifest(&namespace, "", "", None, None).await;
-        //self.download_manager.start_download(&manifest);
+        self.download_manager.start_download(&manifest);
         Ok(())
     }
 
