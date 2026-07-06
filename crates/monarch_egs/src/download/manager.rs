@@ -1,4 +1,4 @@
-use super::DownloadManifest;
+use super::Manifest;
 
 pub struct DownloadManager {}
 
@@ -7,5 +7,5 @@ impl DownloadManager {
         Self {}
     }
 
-    pub fn start_download(&self, manifest: &DownloadManifest) {}
+    pub fn start_download(&self, manifest: &Manifest) {}
 }

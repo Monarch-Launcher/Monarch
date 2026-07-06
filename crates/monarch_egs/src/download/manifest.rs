@@ -2,7 +2,7 @@ use reqwest::Client;
 use sha1::{Sha1, Digest};
 
 use crate::utils::err::MonarchEgsError;
-use super::DownloadManifest;
+use super::{Manifest, PrepManifestData};
 
 static CDN_URL: &str = "launcher-public-service-prod06.ol.epicgames.com";
 
@@ -13,10 +13,12 @@ pub async fn get_game_manifest(
     namespace: &str,
     catalog_id: &str,
     app_name: &str,
-) -> Result<DownloadManifest, MonarchEgsError> {
+) -> Result<Manifest, MonarchEgsError> {
     let (manifest_urls, base_urls, hash) = get_cdn_urls(access_token, platform, namespace, catalog_id, app_name).await.unwrap();
 
     let client: Client = Client::new();
+
+    let mut manifest_info: Option<PrepManifestData> = None;
 
     for url in manifest_urls.iter() {
         println!("Attempting download of {}", url);
@@ -36,13 +38,20 @@ pub async fn get_game_manifest(
             }
 
             println!("Hash checked out!");
-            return Ok(DownloadManifest {
+            manifest_info = Some(PrepManifestData {
                 manifest_urls,
                 base_urls,
                 hash,
                 manifest_data,
-            })
+            });
+            break;
         }
+    }
+
+    
+    if let Some(m) = manifest_info {
+        let manifest: Manifest = parse_manifest(&m).await.unwrap();   
+        return Ok(manifest);
     }
     
     Err(MonarchEgsError::WebRequestError(format!("All manifest downloads failed!")))
@@ -144,4 +153,26 @@ async fn get_cdn_urls(
     println!("base_urls: {:?}", base_urls);
 
     Ok((manifest_urls, base_urls, hash))
+}
+
+pub async fn parse_manifest(manifest_info: &PrepManifestData) -> Result<Manifest, MonarchEgsError> {
+    if manifest_info.manifest_data.starts_with(b"{") {
+        return parse_json_manifest(&manifest_info).await;
+    }
+    return parse_binary_manifest(&manifest_info).await;
+}
+
+async fn parse_json_manifest(manifest_info: &PrepManifestData) -> Result<Manifest, MonarchEgsError> {
+    let manifest_json: serde_json::Value = serde_json::from_slice(&manifest_info.manifest_data).unwrap();
+    println!("manifest_json: {:?}", manifest_json);
+    Ok(
+        Manifest::default()
+    )
+}
+
+async fn parse_binary_manifest(manifest_info: &PrepManifestData) -> Result<Manifest, MonarchEgsError> {
+    println!("manifest is binary!");
+    Ok(
+        Manifest::default()
+    )
 }

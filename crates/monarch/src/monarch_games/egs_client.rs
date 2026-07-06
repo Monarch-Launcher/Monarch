@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use tokio::task::{self, JoinHandle};
 use tracing::{error, info};
 
-use monarch_egs::{DownloadManager, DownloadManifest, Session, User, get_game_manifest};
+use monarch_egs::{DownloadManager, Manifest, Session, User, get_game_manifest};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
@@ -250,7 +250,7 @@ impl StoreType for EgsClient {
         }
 
         let token = self.user.session().get_access_token().await;
-        let manifest: DownloadManifest = get_game_manifest(
+        let manifest: Manifest = get_game_manifest(
             &token,
             "Windows",
             &namespace,
