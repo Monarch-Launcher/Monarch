@@ -1795,13 +1795,13 @@ checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "flate2"
-version = "1.1.2"
+version = "1.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a3d7db9596fecd151c5f638c0ee5d5bd487b6e0ea232e5dc96d5250f6f94b1d"
+checksum = "843fba2746e448b37e26a819579957415c8cef339bf08564fe8b7ddbd959573c"
 dependencies = [
  "crc32fast",
- "libz-rs-sys",
  "miniz_oxide",
+ "zlib-rs",
 ]
 
 [[package]]
@@ -3130,15 +3130,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libz-rs-sys"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "172a788537a2221661b480fee8dc5f96c580eb34fa88764d3205dc356c7e4221"
-dependencies = [
- "zlib-rs",
-]
-
-[[package]]
 name = "lilt"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3430,7 +3421,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "monarch"
+name = "monarch-packager"
+version = "0.1.0"
+dependencies = [
+ "cargo-packager",
+]
+
+[[package]]
+name = "monarch_app"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "futures",
+ "iced",
+ "iced_term",
+ "image",
+ "monarch_core",
+ "monarch_egs",
+ "objc",
+ "rfd",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "monarch_core"
 version = "0.2.1"
 dependencies = [
  "anyhow",
@@ -3440,8 +3457,6 @@ dependencies = [
  "flate2",
  "fs_extra",
  "futures",
- "iced",
- "iced_term",
  "image",
  "keyring",
  "keyvalues-serde",
@@ -3451,7 +3466,6 @@ dependencies = [
  "rand 0.9.2",
  "regex",
  "reqwest",
- "rfd",
  "scraper",
  "serde",
  "serde_json",
@@ -3468,17 +3482,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "monarch-packager"
-version = "0.1.0"
-dependencies = [
- "cargo-packager",
-]
-
-[[package]]
 name = "monarch_egs"
 version = "0.1.0"
 dependencies = [
  "dotenv",
+ "flate2",
  "reqwest",
  "serde",
  "serde_json",
@@ -8394,9 +8402,9 @@ dependencies = [
 
 [[package]]
 name = "zlib-rs"
-version = "0.5.1"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "626bd9fa9734751fc50d6060752170984d7053f5a39061f524cda68023d4db8a"
+checksum = "b142a20ec14a91d5bc708c1dc21b080c550113d8aa77afa29635673a65dd02c5"
 
 [[package]]
 name = "zopfli"

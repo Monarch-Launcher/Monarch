@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+mod assets;
 mod info;
 mod user;
 
@@ -35,4 +36,5 @@ pub struct Entitlement {
     pub namespace: String,
 }
 
+pub use assets::{GameAsset, owned_assets, pick_asset_for_namespace};
 pub use user::owned_games;
