@@ -89,6 +89,7 @@ pub struct App {
     settings_page: pages::settings::SettingsPage,
     game_details_page: pages::game_details::GameDetailsPage,
     store_details_page: pages::store_details::StoreDetailsPage,
+    download_page: pages::download::DownloadPage,
 
     active_terminals: HashMap<Id, TermInstance>,
     active_modal: Option<ModalState>,
@@ -171,6 +172,17 @@ impl App {
             _ => iced::Subscription::none(),
         };
         subscriptions.push(page_subscription);
+
+        // Mock download speed samples refresh four times per second while a download is active.
+        if self.download_page.is_downloading() {
+            subscriptions.push(
+                iced::time::every(std::time::Duration::from_millis(250)).map(|_| {
+                    AppMessage::Page(pages::Message::Download(
+                        pages::download::Message::Tick,
+                    ))
+                }),
+            );
+        }
         subscriptions.push(Self::external_subscription());
 
         iced::Subscription::batch(subscriptions)
@@ -207,6 +219,9 @@ impl App {
                         let _ = self
                             .settings_page
                             .update(pages::settings::Message::Refresh(()));
+                    }
+                    header::Message::DownloadPage => {
+                        self.active_tab = PageTab::Download;
                     }
                 }
                 iced::Task::none()
@@ -289,6 +304,10 @@ impl App {
                         .update(msg)
                         .map(|m| AppMessage::Page(pages::Message::StoreDetails(m))),
                 },
+                pages::Message::Download(msg) => self
+                    .download_page
+                    .update(msg)
+                    .map(|m| AppMessage::Page(pages::Message::Download(m))),
             },
             AppMessage::OpenGameDetails(game) => {
                 self.previous_tab = self.active_tab;
@@ -401,12 +420,17 @@ impl App {
                 .store_details_page
                 .view()
                 .map(pages::Message::StoreDetails),
+            PageTab::Download => self.download_page.view().map(pages::Message::Download),
         };
 
         let main_content = container(
             iced::widget::Column::new()
                 .push(
-                    Element::from(self.header.view(self.active_tab)).map(AppMessage::HeaderMessage),
+                    Element::from(
+                        self.header
+                            .view(self.active_tab, self.download_page.current_download_speed()),
+                    )
+                    .map(AppMessage::HeaderMessage),
                 )
                 .push(page_content.map(AppMessage::Page))
                 .width(Fill)
@@ -496,6 +520,7 @@ impl Default for App {
             settings_page: pages::settings::SettingsPage::default(),
             game_details_page: pages::game_details::GameDetailsPage::default(),
             store_details_page: pages::store_details::StoreDetailsPage::default(),
+            download_page: pages::download::DownloadPage::default(),
             active_terminals: HashMap::new(),
             active_modal: None,
         }

@@ -14,7 +14,7 @@ name = "monarch"
 path = "src/main.rs"
 
 [dependencies]
-iced = { version = "0.14.0", features = ["image", "svg", "tokio"] }
+iced = { version = "0.14.0", features = ["image", "svg", "tokio", "canvas"] }
 iced_term = "0.7.0"
 image = { version = "0.25", features = ["webp"] }
 tracing = { version = "0.1.41", features = [

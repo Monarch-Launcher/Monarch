@@ -1,4 +1,5 @@
 pub mod button;
+pub mod download;
 pub mod radius;
 pub mod editor;
 pub mod fonts;

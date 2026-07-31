@@ -1,3 +1,4 @@
+pub mod download;
 pub mod game_details;
 pub mod home;
 pub mod library;
@@ -13,6 +14,7 @@ pub enum Message {
     Settings(settings::Message),
     GameDetails(game_details::Message),
     StoreDetails(store_details::Message),
+    Download(download::Message),
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -24,4 +26,5 @@ pub enum PageTab {
     Settings,
     GameDetails,
     StoreDetails,
+    Download,
 }

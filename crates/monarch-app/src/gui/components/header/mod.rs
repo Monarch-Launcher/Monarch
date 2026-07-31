@@ -1,4 +1,4 @@
-use iced::widget::{button, container, image, row, text, Container};
+use iced::widget::{button, container, image, row, svg, text, Space, Container};
 use iced::{alignment, Length};
 
 #[derive(Clone, Debug)]
@@ -7,6 +7,7 @@ pub enum Message {
     LibraryPage,
     SearchPage,
     SettingsPage,
+    DownloadPage,
 }
 
 #[derive(Default)]
@@ -15,7 +16,11 @@ pub struct Header {}
 impl Header {
     pub fn _update(&mut self, _msg: Message) {}
 
-    pub fn view(&self, active_tab: crate::gui::pages::PageTab) -> Container<'_, Message> {
+    pub fn view(
+        &self,
+        active_tab: crate::gui::pages::PageTab,
+        download_speed: Option<f64>,
+    ) -> Container<'_, Message> {
         let logo = image(crate::gui::resources::LOGO.clone());
 
         let button_content = |label| {
@@ -55,14 +60,43 @@ impl Header {
             active_tab == PageTab::Settings,
         );
 
+        let speed_widget = download_speed.map(|speed| {
+            button(
+                row![
+                    svg(crate::gui::resources::DOWNLOAD.clone())
+                        .width(Length::Fixed(16.0))
+                        .height(Length::Fixed(16.0))
+                        .style(|_theme: &iced::Theme, _status| iced::widget::svg::Style {
+                            color: Some(iced::Color::from_rgb8(255, 127, 0)),
+                        }),
+                    text(format!("{speed:.1} MB/s"))
+                        .size(14)
+                        .color(iced::Color::from_rgb8(255, 127, 0))
+                        .font(crate::gui::styles::fonts::MEDIUM),
+                ]
+                .spacing(8)
+                .align_y(alignment::Vertical::Center),
+            )
+            .on_press(Message::DownloadPage)
+            .padding(iced::Padding::from([8, 12]))
+            .style(crate::gui::styles::download::speed_widget)
+        });
+
+        let mut nav = row![home_button, library_button, search_button, settings_button]
+            .spacing(10)
+            .width(Length::Fill)
+            .align_y(alignment::Vertical::Center);
+
+        nav = nav.push(Space::new().width(Length::Fill));
+
+        if let Some(widget) = speed_widget {
+            nav = nav.push(widget);
+        }
+
         container(
-            row![
-                logo,
-                row![home_button, library_button, search_button, settings_button,]
-                    .width(Length::Fill)
-                    .spacing(10),
-            ]
-            .align_y(alignment::Vertical::Center),
+            row![logo, nav]
+                .align_y(alignment::Vertical::Center)
+                .spacing(10),
         )
         .padding(10)
         .style(crate::gui::styles::header::container)
