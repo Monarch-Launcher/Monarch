@@ -41,7 +41,7 @@ impl GameCardContainer {
             let card_width = 240.0 + 20.0;
             let games_per_row = (size.width / card_width).floor().max(1.0) as usize;
 
-            let mut games_column = column![].spacing(20).align_x(alignment::Horizontal::Center);
+            let mut games_column = column![].spacing(10).align_x(alignment::Horizontal::Left);
 
             let (installed_games, uninstalled_games): (Vec<&GameCard>, Vec<&GameCard>) =
                 self.games.iter().partition(|card| card.game.is_installed);
@@ -50,11 +50,11 @@ impl GameCardContainer {
                 games_column = games_column.push(
                     text("Installed")
                         .size(24)
-                        .font(crate::gui::styles::fonts::BOLD)
+                        .font(crate::gui::styles::fonts::BOLD),
                 );
 
                 for chunk in installed_games.chunks(games_per_row) {
-                    let mut row = row![].spacing(20);
+                    let mut row = row![].spacing(10);
                     for game in chunk {
                         row = row.push(game.view(interactive));
                     }
@@ -64,17 +64,18 @@ impl GameCardContainer {
 
             if !uninstalled_games.is_empty() {
                 if !installed_games.is_empty() {
-                    games_column = games_column.push(Space::new().height(iced::Length::Fixed(40.0)));
+                    games_column =
+                        games_column.push(Space::new().height(iced::Length::Fixed(40.0)));
                 }
 
                 games_column = games_column.push(
                     text("Ready to Install")
                         .size(24)
-                        .font(crate::gui::styles::fonts::BOLD)
+                        .font(crate::gui::styles::fonts::BOLD),
                 );
 
                 for chunk in uninstalled_games.chunks(games_per_row) {
-                    let mut row = row![].spacing(20);
+                    let mut row = row![].spacing(10);
                     for game in chunk {
                         row = row.push(game.view(interactive));
                     }

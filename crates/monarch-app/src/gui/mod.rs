@@ -110,13 +110,13 @@ impl App {
                 *GUI_SENDER.lock().unwrap() = Some(sender.clone());
                 *EXTERNAL_RECEIVER.lock().unwrap() = Some(receiver);
 
-                monarch_core::monarch_utils::monarch_terminal::register_terminal_handler(
-                    Box::new(move |command, env, workdir, done| {
+                monarch_core::monarch_utils::monarch_terminal::register_terminal_handler(Box::new(
+                    move |command, env, workdir, done| {
                         let _ = sender.unbounded_send(AppMessage::OpenTerminalRaw(
                             command, env, workdir, done,
                         ));
-                    }),
-                );
+                    },
+                ));
 
                 let (id, task) = window::open(window::Settings::default());
                 (
@@ -161,6 +161,22 @@ impl App {
         });
         subscriptions.push(window_subscription);
 
+        // A queue drag can be ended anywhere (even outside the list); end it on
+        // any mouse release while a drag is in flight.
+        let drag_active = self.download_page.drag.is_some();
+        if drag_active && matches!(self.active_tab, pages::PageTab::Download) {
+            subscriptions.push(iced::event::listen_with(
+                |event, _status, _id| match event {
+                    iced::Event::Mouse(iced::mouse::Event::ButtonReleased(_)) => {
+                        Some(AppMessage::Page(pages::Message::Download(
+                            pages::download::Message::DragEnded,
+                        )))
+                    }
+                    _ => None,
+                },
+            ));
+        }
+
         // Page/animation subscriptions
         let page_subscription: Subscription<AppMessage> = match self.active_tab {
             pages::PageTab::Search => iced::time::every(std::time::Duration::from_millis(16))
@@ -169,20 +185,25 @@ impl App {
                 .map(|_| AppMessage::Page(pages::Message::Library(pages::library::Message::Tick))),
             pages::PageTab::Home => iced::time::every(std::time::Duration::from_millis(16))
                 .map(|_| AppMessage::Page(pages::Message::Home(pages::home::Message::Tick))),
+            // The speed graph redraws continuously between samples so it
+            // scrolls smoothly instead of jumping once per poll.
+            pages::PageTab::Download => iced::time::every(std::time::Duration::from_millis(16))
+                .map(|_| {
+                    AppMessage::Page(pages::Message::Download(
+                        pages::download::Message::AnimationFrame,
+                    ))
+                }),
             _ => iced::Subscription::none(),
         };
         subscriptions.push(page_subscription);
 
-        // Mock download speed samples refresh four times per second while a download is active.
-        if self.download_page.is_downloading() {
-            subscriptions.push(
-                iced::time::every(std::time::Duration::from_millis(250)).map(|_| {
-                    AppMessage::Page(pages::Message::Download(
-                        pages::download::Message::Tick,
-                    ))
-                }),
-            );
-        }
+        // Poll the downloader so queue changes and completion (which triggers a
+        // library refresh) are picked up even when no download is in flight.
+        subscriptions.push(
+            iced::time::every(std::time::Duration::from_millis(250)).map(|_| {
+                AppMessage::Page(pages::Message::Download(pages::download::Message::Tick))
+            }),
+        );
         subscriptions.push(Self::external_subscription());
 
         iced::Subscription::batch(subscriptions)
@@ -304,10 +325,20 @@ impl App {
                         .update(msg)
                         .map(|m| AppMessage::Page(pages::Message::StoreDetails(m))),
                 },
-                pages::Message::Download(msg) => self
-                    .download_page
-                    .update(msg)
-                    .map(|m| AppMessage::Page(pages::Message::Download(m))),
+                pages::Message::Download(msg) => {
+                    if matches!(msg, pages::download::Message::DownloadFinished) {
+                        // A download just finished: the game was registered in
+                        // the library before completion was published, so
+                        // re-scan to pick it up (and mark it installed).
+                        return self
+                            .library_page
+                            .update(pages::library::Message::RefreshLibrary)
+                            .map(|m| AppMessage::Page(pages::Message::Library(m)));
+                    }
+                    self.download_page
+                        .update(msg)
+                        .map(|m| AppMessage::Page(pages::Message::Download(m)))
+                }
             },
             AppMessage::OpenGameDetails(game) => {
                 self.previous_tab = self.active_tab;
@@ -331,7 +362,8 @@ impl App {
                         {
                             return ();
                         }
-                        let _ = monarch_core::monarch_games::commands::download_artwork(&game).await;
+                        let _ =
+                            monarch_core::monarch_games::commands::download_artwork(&game).await;
                     },
                     |_| {
                         AppMessage::Page(pages::Message::StoreDetails(
@@ -407,6 +439,14 @@ impl App {
             return iced::widget::Space::new().into();
         }
 
+        let show_speed_in_bits = match monarch_core::monarch_utils::commands::get_settings() {
+            Ok(settings) => settings
+                .read()
+                .map(|s| s.monarch.show_download_speed_in_bits)
+                .unwrap_or(false),
+            Err(_) => false,
+        };
+
         let page_content = match self.active_tab {
             PageTab::Home => self.home_page.view().map(pages::Message::Home),
             PageTab::Library => self.library_page.view().map(pages::Message::Library),
@@ -420,17 +460,23 @@ impl App {
                 .store_details_page
                 .view()
                 .map(pages::Message::StoreDetails),
-            PageTab::Download => self.download_page.view().map(pages::Message::Download),
+            PageTab::Download => self
+                .download_page
+                .view(show_speed_in_bits)
+                .map(pages::Message::Download),
         };
 
         let main_content = container(
             iced::widget::Column::new()
                 .push(
-                    Element::from(
-                        self.header
-                            .view(self.active_tab, self.download_page.current_download_speed()),
-                    )
-                    .map(AppMessage::HeaderMessage),
+                    self.header
+                        .view(
+                            self.active_tab,
+                            self.download_page.current_download_speed(),
+                            show_speed_in_bits,
+                            monarch_core::monarch_games::commands::get_pending_download_count(),
+                        )
+                        .map(AppMessage::HeaderMessage),
                 )
                 .push(page_content.map(AppMessage::Page))
                 .width(Fill)

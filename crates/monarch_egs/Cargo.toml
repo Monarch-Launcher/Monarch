@@ -14,3 +14,10 @@ serde_json.workspace = true
 thiserror = "2"
 sha1 = "0.11"
 flate2 = "=1.1.9"
+aes-gcm = "0.10"
+base64 = "0.22"
+crc32fast = "1"
+tracing = { version = "0.1.41", features = [
+  "max_level_trace",
+  "release_max_level_info",
+] }

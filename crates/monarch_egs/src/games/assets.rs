@@ -2,6 +2,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::User;
+use crate::utils::err::MonarchEgsError;
 
 static LAUNCHER_URL: &str = "launcher-public-service-prod06.ol.epicgames.com";
 
@@ -26,7 +27,7 @@ pub struct GameAsset {
 }
 
 /// Returns owned downloadable assets for a platform (default Legendary path).
-pub async fn owned_assets(user: &User, platform: &str) -> Vec<GameAsset> {
+pub async fn owned_assets(user: &User, platform: &str) -> Result<Vec<GameAsset>, MonarchEgsError> {
     let mut session = user.session();
     let client = Client::new();
     let url = format!("https://{LAUNCHER_URL}/launcher/api/public/assets/{platform}");
@@ -38,14 +39,23 @@ pub async fn owned_assets(user: &User, platform: &str) -> Vec<GameAsset> {
         .query(&[("label", "Live")])
         .send()
         .await
-        .unwrap();
+        .map_err(|e| {
+            MonarchEgsError::WebRequestError(format!("owned_assets() request failed! | Err: {e}"))
+        })?;
 
     if !response.status().is_success() {
-        panic!("owned_assets() non-success status: {}", response.status());
+        return Err(MonarchEgsError::WebRequestError(format!(
+            "owned_assets() non-success status: {}",
+            response.status()
+        )));
     }
 
-    let response_text = response.text().await.unwrap();
-    serde_json::from_str::<Vec<GameAsset>>(&response_text).unwrap_or_default()
+    let response_text = response.text().await.map_err(|e| {
+        MonarchEgsError::WebRequestError(format!(
+            "owned_assets() failed to read response body! | Err: {e}"
+        ))
+    })?;
+    Ok(serde_json::from_str::<Vec<GameAsset>>(&response_text).unwrap_or_default())
 }
 
 /// Pick the best downloadable asset for a namespace.
@@ -54,10 +64,7 @@ pub fn pick_asset_for_namespace<'a>(
     assets: &'a [GameAsset],
     namespace: &str,
 ) -> Option<&'a GameAsset> {
-    let ns_assets: Vec<&GameAsset> = assets
-        .iter()
-        .filter(|a| a.namespace == namespace)
-        .collect();
+    let ns_assets: Vec<&GameAsset> = assets.iter().filter(|a| a.namespace == namespace).collect();
 
     if ns_assets.is_empty() {
         return None;

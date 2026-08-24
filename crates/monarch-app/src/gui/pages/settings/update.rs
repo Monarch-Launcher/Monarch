@@ -12,9 +12,79 @@ use crate::gui::{
 use monarch_core::monarch_games::{self, egs_client::EgsClient};
 use monarch_core::monarch_utils::{self, monarch_settings::Settings};
 
+use super::{format_speed_setting, SpeedPrefix};
+
 impl SettingsPage {
     pub fn toggle_quicklaunch(&mut self, settings: &mut Settings, state: bool) {
         settings.quicklaunch.enabled = state;
+        self.write_settings(settings);
+    }
+
+    pub fn toggle_download_speed_bits(&mut self, settings: &mut Settings, state: bool) {
+        // Switching the unit base must not silently change the effective
+        // limit eightfold, so re-express the entered number in the new base.
+        let effective_bps = settings.monarch.max_download_speed_bps();
+        settings.monarch.show_download_speed_in_bits = state;
+
+        if settings.monarch.max_download_speed_value > 0.0 {
+            let multiplier = settings.monarch.max_download_speed_multiplier();
+            settings.monarch.max_download_speed_value = if state {
+                effective_bps as f64 * 8.0 / multiplier
+            } else {
+                effective_bps as f64 / multiplier
+            };
+            // Keep the input showing what is now stored.
+            self.max_speed_tmp = format_speed_setting(settings.monarch.max_download_speed_value);
+        }
+        self.write_settings(settings);
+        self.apply_max_download_speed(settings);
+    }
+
+    /// Handles edits to the max download speed input. The raw text is always
+    /// kept in the temp field so typing isn't fought; only valid, finite,
+    /// non-negative values are persisted and pushed to the downloader.
+    pub fn change_max_download_speed(&mut self, settings: &mut Settings, value: String) {
+        self.max_speed_tmp = value;
+
+        let trimmed = self.max_speed_tmp.trim();
+        let parsed = if trimmed.is_empty() {
+            Some(0.0)
+        } else {
+            trimmed.parse::<f64>().ok()
+        };
+
+        let Some(speed_value) = parsed.filter(|speed| speed.is_finite()) else {
+            // Intermediate/invalid input (e.g. "1." or "-"): keep the last
+            // applied limit until the text becomes a valid number again.
+            return;
+        };
+        let speed_value = speed_value.max(0.0);
+
+        settings.monarch.max_download_speed_value = speed_value;
+        self.write_settings(settings);
+        self.apply_max_download_speed(settings);
+    }
+
+    /// Persists the chosen unit prefix and re-applies the limit.
+    pub fn select_max_download_speed_unit(&mut self, settings: &mut Settings, prefix: SpeedPrefix) {
+        self.max_speed_prefix = prefix;
+        settings.monarch.max_download_speed_prefix = prefix.as_str().to_string();
+        self.write_settings(settings);
+        self.apply_max_download_speed(settings);
+    }
+
+    /// Pushes the persisted speed limit into the live downloader so running
+    /// and queued downloads pick it up immediately.
+    fn apply_max_download_speed(&self, settings: &Settings) {
+        let bps = settings.monarch.max_download_speed_bps();
+        if let Err(e) = monarch_utils::commands::set_max_download_speed_bps(bps) {
+            error!("Failed to apply max download speed | Err: {e}");
+            show_error("Failed to apply the download speed limit!");
+        }
+    }
+
+    pub fn toggle_auto_update_check(&mut self, settings: &mut Settings, state: bool) {
+        settings.monarch.check_updates_on_startup = state;
         self.write_settings(settings);
     }
 

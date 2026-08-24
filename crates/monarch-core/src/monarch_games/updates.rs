@@ -1,0 +1,485 @@
+/*
+    Automatic start-up update checks for games managed by Monarch.
+
+    Games whose files were installed by Monarch itself can currently only be
+    installed or updated through monarch_egs, so update availability is
+    determined by comparing the locally recorded build version against Epic's
+    Live assets list.
+*/
+
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::thread;
+use tracing::{error, info, warn};
+
+use monarch_egs::{GameUpdate, InstalledBuild};
+
+use crate::monarch_games::egs_client::EgsClient;
+use crate::monarch_games::monarchgame::MonarchGame;
+use crate::monarch_games::stores::DownloadOptions;
+use crate::monarch_utils::monarch_downloader::DownloadJob;
+use crate::monarch_utils::monarch_settings::get_settings;
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
+
+/// Platform used when installing games through monarch_egs. Managed installs
+/// always use Windows builds, even on Linux/macOS (via umu/proton).
+static MANAGED_PLATFORM: &str = "Windows";
+
+/// An available update for a game managed by Monarch, paired with the library
+/// game it belongs to so the UI can present it without extra lookups.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonarchGameUpdate {
+    pub game_name: String,
+    pub game_id: String,
+    pub update: GameUpdate,
+}
+
+/// An installed game managed by Monarch together with the metadata required to
+/// check it for updates.
+struct ManagedInstall {
+    game: MonarchGame,
+    build: InstalledBuild,
+}
+
+/// Spawns the start-up update check on a background thread with its own tokio
+/// runtime, mirroring housekeeping::start(), so start-up is never blocked on
+/// network requests.
+pub fn start_startup_check() {
+    thread::spawn(|| {
+        let runtime = match tokio::runtime::Runtime::new() {
+            Ok(runtime) => runtime,
+            Err(e) => {
+                error!(
+                    "monarch_games::updates::start_startup_check() Failed to create tokio runtime! | Err: {e}"
+                );
+                return;
+            }
+        };
+
+        // The Epic session handling in monarch_egs panics on some network
+        // failures. Catch it here so a failed check can never take Monarch
+        // down during start-up.
+        let check =
+            futures::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(run_startup_check()));
+
+        if let Err(panic) = runtime.block_on(check) {
+            error!(
+                "monarch_games::updates::start_startup_check() Update check panicked! | Err: {panic:?}"
+            );
+        }
+    });
+}
+
+/// Runs the start-up update check unless the user disabled it in settings.
+pub async fn run_startup_check() {
+    if !auto_update_check_enabled() {
+        info!(
+            "monarch_games::updates::run_startup_check() Skipping start-up update check, disabled in settings"
+        );
+        return;
+    }
+
+    match check_for_game_updates().await {
+        Ok(updates) if updates.is_empty() => {
+            info!(
+                "monarch_games::updates::run_startup_check() All games managed by Monarch are up to date"
+            );
+        }
+        Ok(updates) => {
+            for game_update in &updates {
+                info!(
+                    "monarch_games::updates::run_startup_check() Update available for {} ({} -> {})",
+                    game_update.game_name,
+                    game_update.update.installed_build_version,
+                    game_update.update.latest_build_version
+                );
+            }
+        }
+        Err(e) => {
+            warn!(
+                "monarch_games::updates::run_startup_check() Start-up update check failed | Err: {e}"
+            );
+        }
+    }
+}
+
+/// Whether automatic start-up update checks are enabled in settings.
+fn auto_update_check_enabled() -> bool {
+    match get_settings() {
+        Ok(settings_lock) => settings_lock
+            .read()
+            .map(|settings| settings.monarch.check_updates_on_startup)
+            .unwrap_or_else(|e| {
+                error!(
+                    "monarch_games::updates::auto_update_check_enabled() Failed to lock on settings | Err: {e}"
+                );
+                false
+            }),
+        Err(e) => {
+            error!(
+                "monarch_games::updates::auto_update_check_enabled() Failed to get settings | Err: {e}"
+            );
+            false
+        }
+    }
+}
+
+/// Checks all installed games managed by Monarch for available updates and
+/// stores the result in MONARCH_STATE. Can also be triggered manually, e.g.
+/// from a "check for updates" button.
+pub async fn check_for_game_updates() -> Result<Vec<MonarchGameUpdate>, String> {
+    let games: Vec<MonarchGame> = match MONARCH_STATE.read() {
+        Ok(state) => state.get_library_games(),
+        Err(e) => {
+            error!(
+                "monarch_games::updates::check_for_game_updates() Failed to lock on MONARCH_STATE | Err: {e}"
+            );
+            return Err(String::from("Failed to read app state!"));
+        }
+    };
+
+    let installs = collect_managed_installs(&games);
+
+    if installs.is_empty() {
+        store_available_updates(Vec::new());
+        return Ok(Vec::new());
+    }
+
+    let mut client = EgsClient::new();
+    if !client.credentials_exist() {
+        info!(
+            "monarch_games::updates::check_for_game_updates() No Epic Games credentials found, skipping update check"
+        );
+        store_available_updates(Vec::new());
+        return Ok(Vec::new());
+    }
+
+    client
+        .load_existing_user()
+        .await
+        .map_err(|e| format!("Failed to load Epic Games session | Err: {e}"))?;
+
+    let builds: Vec<InstalledBuild> = installs
+        .iter()
+        .map(|install| install.build.clone())
+        .collect();
+    let updates = monarch_egs::check_updates(client.user(), MANAGED_PLATFORM, &builds)
+        .await
+        .map_err(|e| format!("Epic Games update check failed | Err: {e}"))?;
+
+    let game_updates: Vec<MonarchGameUpdate> = updates
+        .into_iter()
+        .map(|update| {
+            let install = installs.iter().find(|install| {
+                install.build.namespace == update.namespace
+                    && install.build.app_name == update.app_name
+            });
+            MonarchGameUpdate {
+                game_name: install
+                    .map(|install| install.game.name.clone())
+                    .unwrap_or_else(|| update.app_name.clone()),
+                game_id: install
+                    .map(|install| install.game.id.clone())
+                    .unwrap_or_default(),
+                update,
+            }
+        })
+        .collect();
+
+    store_available_updates(game_updates.clone());
+
+    // Queue the detected updates so they are ready to download from the
+    // download page, without starting them automatically.
+    if !game_updates.is_empty() {
+        queue_detected_updates(&game_updates, &installs).await;
+    }
+
+    Ok(game_updates)
+}
+
+/// Queues download jobs for the given updates without starting them. Jobs land
+/// at the back of the downloader queue where the user can start them from the
+/// download page. Games that are already queued or downloading are skipped.
+async fn queue_detected_updates(updates: &[MonarchGameUpdate], installs: &[ManagedInstall]) {
+    let default_folder: String = match get_settings() {
+        Ok(settings_lock) => settings_lock
+            .read()
+            .map(|settings| settings.monarch.game_folder.clone())
+            .unwrap_or_else(|e| {
+                error!(
+                    "monarch_games::updates::queue_detected_updates() Failed to lock on settings | Err: {e}"
+                );
+                String::new()
+            }),
+        Err(e) => {
+            error!(
+                "monarch_games::updates::queue_detected_updates() Failed to get settings | Err: {e}"
+            );
+            String::new()
+        }
+    };
+
+    let client = EgsClient::new();
+    let mut prepared: Vec<(MonarchGame, DownloadJob)> = Vec::new();
+
+    for update in updates {
+        let Some(install) = installs.iter().find(|install| {
+            install.game.id == update.game_id && install.build.namespace == update.update.namespace
+        }) else {
+            continue;
+        };
+        let game = install.game.clone();
+
+        // Update in place: the download handler writes into <folder>/<game>,
+        // so reuse the parent of the recorded install directory.
+        let opts = DownloadOptions {
+            folder: install_parent_folder(&game, &default_folder),
+            store: String::from("epicgames"),
+            game_name: game.name.clone(),
+            game_store: String::from("epicgames"),
+            game_store_id: update.update.namespace.clone(),
+            os: std::env::consts::OS.to_string(),
+            compatibility: game.compatibility.clone(),
+        };
+
+        match client.prepare_download_job(&game, &opts).await {
+            Ok(job) => prepared.push((game, job)),
+            Err(e) => {
+                warn!(
+                    "monarch_games::updates::queue_detected_updates() Failed to prepare update for {} | Err: {}",
+                    game.name,
+                    e.chain().map(|e| e.to_string()).collect::<String>()
+                );
+            }
+        }
+    }
+
+    if prepared.is_empty() {
+        return;
+    }
+
+    match MONARCH_STATE.read() {
+        Ok(state) => match state.get_downloader_ptr().write() {
+            Ok(mut downloader) => {
+                if let Err(e) = downloader.register_egs_handler() {
+                    warn!(
+                        "monarch_games::updates::queue_detected_updates() Failed to register EGS download handler | Err: {e}"
+                    );
+                }
+
+                for (game, job) in prepared {
+                    if downloader.is_queued(&game) || downloader.is_downloading_game(&game) {
+                        info!(
+                            "monarch_games::updates::queue_detected_updates() {} already queued or downloading, skipping",
+                            game.name
+                        );
+                        continue;
+                    }
+
+                    info!(
+                        "monarch_games::updates::queue_detected_updates() Queuing update for {}",
+                        game.name
+                    );
+                    downloader.queue_download(job);
+                }
+            }
+            Err(e) => {
+                error!(
+                    "monarch_games::updates::queue_detected_updates() Failed to lock on downloader | Err: {e}"
+                );
+            }
+        },
+        Err(e) => {
+            error!(
+                "monarch_games::updates::queue_detected_updates() Failed to lock on MONARCH_STATE | Err: {e}"
+            );
+        }
+    }
+}
+
+/// Returns the folder an update should be downloaded to. The download handler
+/// appends the game name to this folder, so this is the parent of the game's
+/// existing install directory; falls back to Monarch's default game folder.
+fn install_parent_folder(game: &MonarchGame, default_folder: &str) -> String {
+    let install_dir = &game.properties.install_dir;
+    if !install_dir.is_empty() && install_dir != "Error" {
+        let parent = PathBuf::from(install_dir)
+            .parent()
+            .map(|parent| parent.to_path_buf())
+            .unwrap_or_default();
+
+        if parent.as_os_str().is_empty() {
+            return default_folder.to_string();
+        }
+        return parent.to_string_lossy().to_string();
+    }
+    default_folder.to_string()
+}
+
+/// Persists the latest update check results so the UI can pick them up.
+fn store_available_updates(updates: Vec<MonarchGameUpdate>) {
+    match MONARCH_STATE.write() {
+        Ok(mut state) => state.set_available_updates(updates),
+        Err(e) => {
+            error!(
+                "monarch_games::updates::store_available_updates() Failed to lock on MONARCH_STATE | Err: {e}"
+            );
+        }
+    }
+}
+
+/// Collects library games whose files were installed by Monarch itself and
+/// therefore can only be updated through monarch_egs. Games missing the
+/// metadata required for a comparison are skipped.
+fn collect_managed_installs(games: &[MonarchGame]) -> Vec<ManagedInstall> {
+    let mut installs = Vec::new();
+
+    for game in games {
+        if !game.is_installed || !game.managed_by_monarch {
+            continue;
+        }
+
+        let Some(store) = game.stores.iter().find(|store| store.name == "epicgames") else {
+            continue;
+        };
+
+        let catalog_id = game.properties.other.get("catalog_id");
+        let app_name = game.properties.other.get("app_name");
+        let version = &game.properties.version;
+
+        // Games installed before Monarch tracked EGS asset data, or installs
+        // without a recorded build version, cannot be reliably compared.
+        let Some(catalog_id) = catalog_id else {
+            warn!(
+                "monarch_games::updates::collect_managed_installs() Missing EGS catalog id for {}, skipping",
+                game.name
+            );
+            continue;
+        };
+        let Some(app_name) = app_name else {
+            warn!(
+                "monarch_games::updates::collect_managed_installs() Missing EGS app name for {}, skipping",
+                game.name
+            );
+            continue;
+        };
+
+        if store.store_id.is_empty()
+            || catalog_id.is_empty()
+            || app_name.is_empty()
+            || version.is_empty()
+            || version == "Error"
+        {
+            warn!(
+                "monarch_games::updates::collect_managed_installs() Incomplete install metadata for {}, skipping",
+                game.name
+            );
+            continue;
+        }
+
+        installs.push(ManagedInstall {
+            game: game.clone(),
+            build: InstalledBuild {
+                namespace: store.store_id.clone(),
+                catalog_item_id: catalog_id.clone(),
+                app_name: app_name.clone(),
+                build_version: version.clone(),
+            },
+        });
+    }
+
+    installs
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::monarch_games::monarchgame::{MonarchGameProperties, StoreInfo};
+    use std::collections::HashMap;
+
+    fn managed_epic_game(name: &str, namespace: &str, version: &str) -> MonarchGame {
+        let mut other = HashMap::new();
+        other.insert("catalog_id".to_string(), format!("cat-{name}"));
+        other.insert("app_name".to_string(), format!("app-{name}"));
+
+        MonarchGame {
+            name: name.to_string(),
+            id: format!("MONARCH-{name}"),
+            stores: vec![StoreInfo {
+                name: "epicgames".to_string(),
+                store_id: namespace.to_string(),
+                store_url: String::new(),
+            }],
+            executable_path: None,
+            thumbnail_path: String::new(),
+            thumbnail_url: String::new(),
+            launch_args: None,
+            compatibility: None,
+            summary: String::new(),
+            artwork_path: String::new(),
+            artwork_url: String::new(),
+            properties: MonarchGameProperties {
+                version: version.to_string(),
+                other,
+                ..Default::default()
+            },
+            imported: false,
+            is_installed: true,
+            managed_by_monarch: true,
+        }
+    }
+
+    #[test]
+    fn collects_managed_epic_installs() {
+        let games = vec![
+            managed_epic_game("GameA", "ns-a", "1.0"),
+            MonarchGame {
+                managed_by_monarch: false,
+                ..managed_epic_game("GameB", "ns-b", "1.0")
+            },
+            MonarchGame {
+                is_installed: false,
+                ..managed_epic_game("GameC", "ns-c", "1.0")
+            },
+        ];
+
+        let installs = collect_managed_installs(&games);
+
+        assert_eq!(installs.len(), 1);
+        assert_eq!(installs[0].game.name, "GameA");
+        assert_eq!(installs[0].build.namespace, "ns-a");
+        assert_eq!(installs[0].build.build_version, "1.0");
+    }
+
+    #[test]
+    fn skips_games_with_incomplete_metadata() {
+        let mut game = managed_epic_game("GameA", "ns-a", "1.0");
+        game.properties.version = "Error".to_string();
+        let games = vec![game];
+
+        assert!(collect_managed_installs(&games).is_empty());
+    }
+
+    #[test]
+    fn skips_non_epic_games() {
+        let mut game = managed_epic_game("GameA", "ns-a", "1.0");
+        game.stores[0].name = "steam".to_string();
+        let games = vec![game];
+
+        assert!(collect_managed_installs(&games).is_empty());
+    }
+
+    #[test]
+    fn update_folder_uses_install_dir_parent() {
+        let mut game = managed_epic_game("GameA", "ns-a", "1.0");
+        game.properties.install_dir = "/games/GameA".to_string();
+        assert_eq!(install_parent_folder(&game, "/default"), "/games");
+
+        // Missing install dir falls back to Monarch's default game folder.
+        game.properties.install_dir = "Error".to_string();
+        assert_eq!(install_parent_folder(&game, "/default"), "/default");
+
+        game.properties.install_dir = String::new();
+        assert_eq!(install_parent_folder(&game, "/default"), "/default");
+    }
+}

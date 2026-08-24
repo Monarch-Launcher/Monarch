@@ -56,7 +56,7 @@ pub static _SEARCH_FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
     svg::Handle::from_memory(bytes.to_vec())
 });
 
-pub static _FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
+pub static FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/folder-svgrepo-com.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });
@@ -73,5 +73,32 @@ pub static HIDE: LazyLock<svg::Handle> = LazyLock::new(|| {
 
 pub static DOWNLOAD: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/download-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static PAUSE: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/pause-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static TRASH: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!(
+        "../../icons/Actions/bin-cancel-delete-remove-trash-garbage-svgrepo-com.svg"
+    );
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static FAVORITE: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/star-alt-3-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static FAVORITE_OUTLINE: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/star-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static UPDATE: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/update-svgrepo-com.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });

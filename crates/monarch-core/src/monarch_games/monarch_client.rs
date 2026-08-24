@@ -386,12 +386,13 @@ pub async fn refresh_library() -> Result<Vec<MonarchGame>> {
     // Deduplicate games by their Monarch ID to prevent UNIQUE constraint errors in database.
     let mut merged_games: HashMap<String, MonarchGame> = HashMap::new();
 
-    // 1. First, populate with existing library games that are either imported
-    // or still exist in steam_games or epic_games.
+    // 1. First, populate with existing library games that are either imported,
+    // still present in steam_games or epic_games, or installed on disk (so a
+    // refresh never drops a game Monarch itself has downloaded).
     for lg in games {
         let is_steam = steam_games.iter().any(|sg| *sg == lg || sg.id == lg.id);
         let is_epic = epic_games.iter().any(|eg| *eg == lg || eg.id == lg.id);
-        if lg.imported || is_steam || is_epic {
+        if lg.imported || lg.is_installed || is_steam || is_epic {
             let mut updated_game = lg.clone();
             if is_steam {
                 updated_game.is_installed = true;

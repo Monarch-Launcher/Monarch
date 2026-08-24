@@ -5,12 +5,12 @@ use crate::gui::components::gamecard::game_browser::GameBrowser;
 use crate::gui::components::gamecard::{self, GameCardMessage};
 use crate::gui::components::modal::Modal;
 use crate::gui::styles;
+use iced::widget::{button, column, container, row, text, Space};
+use iced::{alignment, Element, Length};
 use monarch_core::monarch_games;
 use monarch_core::monarch_games::games::SearchResult;
 use monarch_core::monarch_games::monarchgame::MonarchWebApiGame;
 use monarch_core::monarch_games::stores::SearchFilter;
-use iced::widget::{button, column, container, row, text, Space};
-use iced::{alignment, Element, Length};
 use tracing::error;
 
 #[derive(Clone, Debug)]
@@ -122,8 +122,11 @@ impl AddGameModal {
                 let query = self.search_query.clone();
                 iced::Task::perform(
                     async move {
-                        monarch_core::monarch_games::commands::search_games(query, SearchFilter::default())
-                            .await
+                        monarch_core::monarch_games::commands::search_games(
+                            query,
+                            SearchFilter::default(),
+                        )
+                        .await
                     },
                     Message::UpdateSearchResults,
                 )

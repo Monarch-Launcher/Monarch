@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 mod assets;
 mod info;
+mod updates;
 mod user;
 
 pub enum Platform {
@@ -37,4 +38,5 @@ pub struct Entitlement {
 }
 
 pub use assets::{GameAsset, owned_assets, pick_asset_for_namespace};
+pub use updates::{GameUpdate, InstalledBuild, check_updates, latest_build_version};
 pub use user::owned_games;

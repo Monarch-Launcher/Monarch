@@ -1,11 +1,12 @@
 use std::io::prelude::*;
+use std::collections::HashMap;
 use flate2::read::ZlibDecoder;
 
 use reqwest::Client;
 use sha1::{Sha1, Digest};
-use tokio::sync::watch;
 
 use crate::{download::{ChunkDataList, ChunkInfo, ChunkPart, CustomFields, FileManifest, FileManifestList, ManifestMetadata}, utils::err::MonarchEgsError};
+use tracing::{debug, info, trace, warn};
 use super::{Manifest, PrepManifestData};
 
 static CDN_URL: &str = "launcher-public-service-prod06.ol.epicgames.com";
@@ -18,14 +19,15 @@ pub async fn get_game_manifest(
     catalog_id: &str,
     app_name: &str,
 ) -> Result<Manifest, MonarchEgsError> {
-    let (manifest_urls, base_urls, hash) = get_cdn_urls(access_token, platform, namespace, catalog_id, app_name).await.unwrap();
+    let (manifest_urls, base_urls, hash, secret_keys) =
+        get_cdn_urls(access_token, platform, namespace, catalog_id, app_name).await.unwrap();
 
     let client: Client = Client::new();
 
     let mut manifest_info: Option<PrepManifestData> = None;
 
     for url in manifest_urls.iter() {
-        println!("Attempting download of {}", url);
+        info!("Attempting download of {}", url);
 
         let response = client.get(url).send().await.unwrap();
 
@@ -41,12 +43,13 @@ pub async fn get_game_manifest(
                 return Err(MonarchEgsError::HashMismatchError(format!("Hash mismatch for manifest! | Computed: {:?}, Expected: {}", computed_hash, hash)));
             }
 
-            println!("Hash checked out!");
+            debug!("Hash checked out!");
             manifest_info = Some(PrepManifestData {
                 manifest_urls,
                 base_urls,
                 hash,
                 manifest_data,
+                secret_keys,
             });
             break;
         }
@@ -68,7 +71,7 @@ async fn get_cdn_urls(
     namespace: &str,
     catalog_id: &str,
     app_name: &str,
-) -> Result<(Vec<String>, Vec<String>, String), MonarchEgsError> {
+) -> Result<(Vec<String>, Vec<String>, String, HashMap<String, String>), MonarchEgsError> {
     let url: String = format!(
         "https://{CDN_URL}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_id}/app/{app_name}/label/Live",
     );
@@ -77,17 +80,9 @@ async fn get_cdn_urls(
     let response = client.get(&url).bearer_auth(access_token).send().await.unwrap();
     let response_object: serde_json::Value = response.json().await.unwrap();
 
-    // Get manifest hash
-    let hash: String = match response_object.get("elements") {
+    let first_element = match response_object.get("elements") {
         Some(elements) => match elements.get(0) {
-            Some(first) => match first.get("hash") {
-                Some(hash) => hash.to_string().replace("\"", "").replace("\\", ""),
-                None => {
-                    return Err(MonarchEgsError::ParsingError(
-                        "Missing 'hash' attribute".to_string(),
-                    ));
-                }
-            },
+            Some(first) => first,
             None => {
                 return Err(MonarchEgsError::ParsingError(
                     "'elements' missing index 0".to_string(),
@@ -102,25 +97,31 @@ async fn get_cdn_urls(
     };
 
     // Get manifest hash
-    let manifests: Vec<serde_json::Value> = match response_object.get("elements") {
-        Some(elements) => match elements.get(0) {
-            Some(first) => match first.get("manifests") {
-                Some(manifests) => manifests.as_array().unwrap().to_vec(),
-                None => {
-                    return Err(MonarchEgsError::ParsingError(
-                        "Missing 'hash' attribute".to_string(),
-                    ));
-                }
-            },
-            None => {
-                return Err(MonarchEgsError::ParsingError(
-                    "'elements' missing index 0".to_string(),
-                ));
-            }
-        },
+    let hash: String = match first_element.get("hash") {
+        Some(hash) => hash.as_str().unwrap_or_default().to_string(),
         None => {
             return Err(MonarchEgsError::ParsingError(
-                "Missing 'elements' attribute".to_string(),
+                "Missing 'hash' attribute".to_string(),
+            ));
+        }
+    };
+
+    // AES keys for encrypted builds, keyed by uppercase hex GUID
+    let mut secret_keys: HashMap<String, String> = HashMap::new();
+    if let Some(secrets) = first_element.get("secrets").and_then(|s| s.as_object()) {
+        for (guid, key) in secrets {
+            if let Some(key) = key.as_str() {
+                secret_keys.insert(guid.to_uppercase(), key.to_string());
+            }
+        }
+    }
+
+    // Get manifest URLs
+    let manifests: Vec<serde_json::Value> = match first_element.get("manifests") {
+        Some(manifests) => manifests.as_array().unwrap().to_vec(),
+        None => {
+            return Err(MonarchEgsError::ParsingError(
+                "Missing 'manifests' attribute".to_string(),
             ));
         }
     };
@@ -131,7 +132,7 @@ async fn get_cdn_urls(
         let mut url: String = manifest.get("uri").unwrap().to_string().replace("\"", "");
         let url_parts: Vec<&str> = url.split('/').collect();
         let base_url: String = url_parts.clone().into_iter().take(url_parts.len() - 1).collect::<Vec<&str>>().join("/");
-        
+
         if let Some(query_params) = manifest.get("queryParams") {
             let params: String = query_params.as_array()
                 .unwrap()
@@ -153,10 +154,10 @@ async fn get_cdn_urls(
         base_urls.push(base_url);
     }
 
-    println!("manifest_urls: {:?}", manifest_urls);
-    println!("base_urls: {:?}", base_urls);
+    debug!("manifest_urls: {:?}", manifest_urls);
+    debug!("base_urls: {:?}", base_urls);
 
-    Ok((manifest_urls, base_urls, hash))
+    Ok((manifest_urls, base_urls, hash, secret_keys))
 }
 
 // Parses a manifest into a Manifest struct
@@ -170,15 +171,67 @@ pub async fn parse_manifest(manifest_info: &PrepManifestData) -> Result<Manifest
 // Parse the manifest as a JSON object
 async fn parse_json_manifest(manifest_info: &PrepManifestData) -> Result<Manifest, MonarchEgsError> {
     let manifest_json: serde_json::Value = serde_json::from_slice(&manifest_info.manifest_data).unwrap();
-    println!("manifest_json: {:?}", manifest_json);
-    Ok(
-        Manifest::default()
-    )
+    trace!("manifest_json: {:?}", manifest_json);
+
+    let mut manifest = Manifest::default();
+    manifest.base_urls = manifest_info.base_urls.clone();
+    manifest.manifest_urls = manifest_info.manifest_urls.clone();
+    manifest.secret_keys = manifest_info.secret_keys.clone();
+    manifest.version = manifest_json
+        .get("ManifestFileVersion")
+        .and_then(|v| v.as_str())
+        .and_then(parse_blob_num)
+        .unwrap_or(13);
+    manifest.meta.feature_level = manifest.version;
+    manifest.meta.app_name = manifest_json
+        .get("AppNameString")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+    manifest.meta.build_version = manifest_json
+        .get("BuildVersionString")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+    manifest.meta.launch_exe = manifest_json
+        .get("LaunchExeString")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+    manifest.meta.launch_command = manifest_json
+        .get("LaunchCommand")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+    manifest.meta.prereq_ids = manifest_json
+        .get("PrereqIds")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Ok(manifest)
+}
+
+/// Decodes the JSON manifest's `blob_to_num` format: each byte is stored as a
+/// 3-digit decimal string, e.g. `018000000000` -> 18.
+fn parse_blob_num(value: &str) -> Option<u32> {
+    let mut num: u64 = 0;
+    let mut shift = 0;
+    for chunk in value.as_bytes().chunks(3) {
+        let digit = std::str::from_utf8(chunk).ok()?.parse::<u64>().ok()?;
+        num |= digit << shift;
+        shift += 8;
+    }
+    u32::try_from(num).ok()
 }
 
 // Parse the manifest as a binary object
 async fn parse_binary_manifest(manifest_info: &PrepManifestData) -> Result<Manifest, MonarchEgsError> {
-    println!("manifest is binary!");
+    debug!("manifest is binary!");
 
     let mut manifest: Manifest = Manifest::default();
     
@@ -238,25 +291,29 @@ async fn parse_binary_manifest(manifest_info: &PrepManifestData) -> Result<Manif
     } else {
         manifest_data.read_to_end(&mut manifest.data).expect("Failed to read manifest data!");
     }
-    println!("Initial manifest parsing done!");
+    debug!("Initial manifest parsing done!");
 
     let mut data = manifest.data.as_slice();
 
     // Parse manifest metadata from the decompressed payload
     manifest.meta = parse_manifest_meta(&mut data).await.unwrap();
-    println!("Manifest metadata parsing done!");
+    debug!("Manifest metadata parsing done!");
+
+    manifest.base_urls = manifest_info.base_urls.clone();
+    manifest.manifest_urls = manifest_info.manifest_urls.clone();
+    manifest.secret_keys = manifest_info.secret_keys.clone();
 
     // Parse chunk data list from the decompressed payload
-    manifest.chunk_data_list = parse_chunk_data_list(&mut data, manifest.meta.feature_level).await.unwrap();
-    println!("Chunk data list parsing done!");
+    manifest.chunk_data_list = parse_chunk_data_list(&mut data, manifest.meta.feature_level, &manifest.secret_keys).await.unwrap();
+    debug!("Chunk data list parsing done!");
 
     // Parse file manifest list from the decompressed payload
     manifest.file_manifest_list = parse_file_manifest_list(&mut data).await.unwrap();
-    println!("File manifest list parsing done!");
+    debug!("File manifest list parsing done!");
 
     // Parse file manifest list from the decompressed payload
     manifest.custom_fields = parse_custom_fields(&mut data).await.unwrap();
-    println!("Custom fields parsing done!");
+    debug!("Custom fields parsing done!");
 
     Ok(manifest)
 }
@@ -310,7 +367,7 @@ async fn parse_manifest_meta(data: &mut &[u8]) -> Result<ManifestMetadata, Monar
     let size_read = (start_remaining - data.len()) as u32;
     if size_read != manifest_meta.meta_size {
         let missing = manifest_meta.meta_size as i64 - size_read as i64;
-        println!(
+        warn!(
             "Did not read entire manifest metadata! Version: {}, {} bytes missing, skipping...",
             manifest_meta.data_version, missing
         );
@@ -326,7 +383,11 @@ async fn parse_manifest_meta(data: &mut &[u8]) -> Result<ManifestMetadata, Monar
 }
 
 // Parse the chunk data list from the decompressed payload
-async fn parse_chunk_data_list(data: &mut &[u8], feature_level: u32) -> Result<ChunkDataList, MonarchEgsError> {
+async fn parse_chunk_data_list(
+    data: &mut &[u8],
+    feature_level: u32,
+    secret_keys: &HashMap<String, String>,
+) -> Result<ChunkDataList, MonarchEgsError> {
     let mut chunk_data_list: ChunkDataList = ChunkDataList::default();
     let start_remaining = data.len();
 
@@ -395,10 +456,40 @@ async fn parse_chunk_data_list(data: &mut &[u8], feature_level: u32) -> Result<C
         chunk.file_size = i64::from_le_bytes(file_size_buf) as u64;
     }
 
+    // ChunksV5 era manifests store per-chunk encryption data (feature level >= 22)
+    if feature_level >= 22 {
+        let mut secret_guid_buf: [u8; 16] = [0; 16];
+        for chunk in chunk_data_list.elements.iter_mut() {
+            data.read_exact(&mut secret_guid_buf).expect("Failed to read chunk secret_guid!");
+            chunk.secret_guid = [
+                u32::from_le_bytes(secret_guid_buf[0..4].try_into().unwrap()),
+                u32::from_le_bytes(secret_guid_buf[4..8].try_into().unwrap()),
+                u32::from_le_bytes(secret_guid_buf[8..12].try_into().unwrap()),
+                u32::from_le_bytes(secret_guid_buf[12..16].try_into().unwrap()),
+            ];
+        }
+
+        for _chunk in chunk_data_list.elements.iter_mut() {
+            data.read_exact(&mut buf).expect("Failed to read chunk window_size_compressed!");
+        }
+
+        let mut tag_buf: [u8; 16] = [0; 16];
+        for chunk in chunk_data_list.elements.iter_mut() {
+            data.read_exact(&mut tag_buf).expect("Failed to read chunk encryption_tag!");
+            chunk.encryption_tag = tag_buf;
+        }
+
+        for chunk in chunk_data_list.elements.iter_mut() {
+            if let Some(key) = secret_keys.get(&crate::download::guid_hex_upper(&chunk.secret_guid)) {
+                chunk.secret_key = hex_to_bytes(key).and_then(|bytes| bytes.try_into().ok());
+            }
+        }
+    }
+
     let size_read = (start_remaining - data.len()) as u32;
     if size_read != chunk_data_list.size {
         let missing = chunk_data_list.size as i64 - size_read as i64;
-        println!(
+        warn!(
             "Did not read entire chunk data list! Version: {}, {} bytes missing, skipping...",
             chunk_data_list.version, missing
         );
@@ -411,6 +502,16 @@ async fn parse_chunk_data_list(data: &mut &[u8], feature_level: u32) -> Result<C
     }
 
     Ok(chunk_data_list)
+}
+
+fn hex_to_bytes(hex: &str) -> Option<Vec<u8>> {
+    if hex.len() % 2 != 0 {
+        return None;
+    }
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).ok())
+        .collect()
 }
 
 // Helper function to read a fstring from the data
@@ -528,7 +629,7 @@ async fn parse_file_manifest_list(data: &mut &[u8]) -> Result<FileManifestList, 
             let part_read = (part_start_remaining - data.len()) as u32;
             if part_read < part_size {
                 let missing = (part_size - part_read) as usize;
-                println!("Did not read {} bytes from chunk part!", missing);
+                warn!("Did not read {} bytes from chunk part!", missing);
                 let mut skip = vec![0u8; missing];
                 data.read_exact(&mut skip).expect("Failed to skip remaining chunk part bytes!");
             }
@@ -569,7 +670,7 @@ async fn parse_file_manifest_list(data: &mut &[u8]) -> Result<FileManifestList, 
     let size_read = (start_remaining - data.len()) as u32;
     if size_read != file_manifest_list.size {
         let missing = file_manifest_list.size as i64 - size_read as i64;
-        println!(
+        warn!(
             "Did not read entire file data list! Version: {}, {} bytes missing, skipping...",
             file_manifest_list.version, missing
         );
@@ -614,7 +715,7 @@ async fn parse_custom_fields(data: &mut &[u8]) -> Result<CustomFields, MonarchEg
     let size_read = (start_remaining - data.len()) as u32;
     if size_read != custom_fields.size {
         let missing = custom_fields.size as i64 - size_read as i64;
-        println!(
+        warn!(
             "Did not read entire custom fields part! Version: {}, {} bytes missing, skipping...",
             custom_fields.version, missing
         );

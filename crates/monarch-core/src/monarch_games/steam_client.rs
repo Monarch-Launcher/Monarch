@@ -345,6 +345,8 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
         store_url: "".to_string(),
     });
 
+    monarchgame.managed_by_monarch = true;
+
     Ok(monarchgame)
 }
 

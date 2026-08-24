@@ -1,19 +1,33 @@
 use iced::mouse;
 use iced::widget::canvas::{self, gradient, stroke, Frame, Geometry, Path, Stroke, Text};
-use iced::widget::{button, column, container, image, row, scrollable, stack, text, Space};
+use iced::widget::{
+    button, column, container, image, mouse_area, row, scrollable, stack, svg, text, Space,
+};
 use iced::{alignment, Color, Element, Length, Pixels, Point, Rectangle, Renderer, Theme};
 
-use crate::gui::pages::download::{format_eta, DownloadPage, Message, QueueStatus};
+use crate::gui::pages::download::{
+    format_eta, DownloadPage, Message, QueueStatus, HISTORY_LEN, QUEUE_ITEM_HEIGHT,
+    QUEUE_ITEM_SPACING,
+};
+use crate::gui::resources::{DOWNLOAD, PAUSE, PLAY, TRASH};
 use crate::gui::styles;
 
 // Deep rich Monarch orange (same hue family as the header widget).
 const DOWNLOAD_COLOR: Color = Color::from_rgb8(204, 86, 0);
 // Electric blue-violet (less magenta / pink).
 const WRITE_COLOR: Color = Color::from_rgb8(88, 36, 230);
+// Punchier variants for the series lines so they read stronger than the
+// softer areas beneath them.
+const DOWNLOAD_LINE_COLOR: Color = Color::from_rgb8(255, 106, 0);
+const WRITE_LINE_COLOR: Color = Color::from_rgb8(120, 70, 255);
 
 struct SpeedGraph {
     download: Vec<f32>,
     write: Vec<f32>,
+    bits: bool,
+    /// Fraction of the current sampling interval that has elapsed; slides the
+    /// graph smoothly between samples.
+    scroll_phase: f32,
 }
 
 impl<Message> canvas::Program<Message> for SpeedGraph {
@@ -44,10 +58,11 @@ impl<Message> canvas::Program<Message> for SpeedGraph {
             .copied()
             .fold(0.0_f32, f32::max);
         // Top of the scale sits ~20% above the peak, then snaps up to a clean 20.
-        let (unit, divisor) = rate_unit((peak * 1.2).max(1.0));
-        let peak_in_unit = (peak as f64 * 1_000_000.0) / divisor;
+        let rate_factor = if self.bits { 8_000_000.0 } else { 1_000_000.0 };
+        let (unit, divisor) = rate_unit((peak * 1.2).max(1.0), self.bits);
+        let peak_in_unit = (peak as f64 * rate_factor) / divisor;
         let top = ceil_to_20(peak_in_unit * 1.2).max(20.0);
-        let max_speed = ((top * divisor) / 1_000_000.0) as f32;
+        let max_speed = ((top * divisor) / rate_factor) as f32;
 
         // Soft horizontal grid + dynamic Y labels on both sides.
         for i in 0..5 {
@@ -91,20 +106,36 @@ impl<Message> canvas::Program<Message> for SpeedGraph {
             });
         }
 
+        // Fixed-slot mapping: each sample occupies one `dx`-wide slot and the
+        // whole series slides left by the elapsed fraction of an interval, so
+        // motion is continuous across sample pushes.
+        let dx = width / (HISTORY_LEN - 1) as f32;
+        let right_x = pad_l + width;
         let to_points = |series: &[f32]| -> Vec<Point> {
-            if series.is_empty() {
+            let n = series.len();
+            if n == 0 {
                 return Vec::new();
             }
-            let last = (series.len() - 1).max(1) as f32;
-            series
+            let mut points: Vec<Point> = series
                 .iter()
                 .enumerate()
                 .map(|(i, value)| {
-                    let x = pad_l + (i as f32) / last * width;
+                    let x = right_x - ((n - 1 - i) as f32 + self.scroll_phase) * dx;
                     let y = pad_t + height - (value / max_speed).clamp(0.0, 1.0) * height;
                     Point::new(x, y)
                 })
-                .collect()
+                .collect();
+
+            // Grow the newest segment into place over the interval so new
+            // samples ease in vertically instead of popping.
+            if n >= 2 && self.scroll_phase > 0.0 {
+                let t = ease_out_cubic(self.scroll_phase);
+                let prev_y = points[n - 2].y;
+                let last = &mut points[n - 1];
+                last.y = prev_y + (last.y - prev_y) * t;
+            }
+
+            points
         };
 
         // Draw write under download so the orange series reads on top.
@@ -112,6 +143,7 @@ impl<Message> canvas::Program<Message> for SpeedGraph {
             &mut frame,
             &to_points(&self.write),
             WRITE_COLOR,
+            WRITE_LINE_COLOR,
             baseline_y,
             pad_l,
         );
@@ -119,6 +151,7 @@ impl<Message> canvas::Program<Message> for SpeedGraph {
             &mut frame,
             &to_points(&self.download),
             DOWNLOAD_COLOR,
+            DOWNLOAD_LINE_COLOR,
             baseline_y,
             pad_l,
         );
@@ -127,17 +160,22 @@ impl<Message> canvas::Program<Message> for SpeedGraph {
     }
 }
 
-/// History values are stored as MB/s; pick a B/s prefix from the scale max.
-fn rate_unit(max_mbps: f32) -> (&'static str, f64) {
-    let bps = max_mbps as f64 * 1_000_000.0;
-    if bps >= 1_000_000_000.0 {
-        ("GB/s", 1_000_000_000.0)
-    } else if bps >= 1_000_000.0 {
-        ("MB/s", 1_000_000.0)
-    } else if bps >= 1_000.0 {
-        ("KB/s", 1_000.0)
+/// History values are stored as MB/s; pick a B/s or b/s prefix from the scale
+/// max. A prefix is only replaced once the value exceeds 900 of that unit, so
+/// e.g. Mb/s is used up to 900 Mb/s before switching to Gb/s.
+fn rate_unit(max_mbps: f32, in_bits: bool) -> (&'static str, f64) {
+    let factor = if in_bits { 8_000_000.0 } else { 1_000_000.0 };
+    let bps = max_mbps as f64 * factor;
+    if bps > 900_000_000_000.0 {
+        (if in_bits { "Tb/s" } else { "TB/s" }, 1_000_000_000_000.0)
+    } else if bps > 900_000_000.0 {
+        (if in_bits { "Gb/s" } else { "GB/s" }, 1_000_000_000.0)
+    } else if bps > 900_000.0 {
+        (if in_bits { "Mb/s" } else { "MB/s" }, 1_000_000.0)
+    } else if bps > 900.0 {
+        (if in_bits { "Kb/s" } else { "KB/s" }, 1_000.0)
     } else {
-        ("B/s", 1.0)
+        (if in_bits { "b/s" } else { "B/s" }, 1.0)
     }
 }
 
@@ -152,7 +190,8 @@ fn ceil_to_20(value: f64) -> f64 {
 fn draw_glow_area(
     frame: &mut Frame,
     points: &[Point],
-    color: Color,
+    fill_color: Color,
+    line_color: Color,
     baseline_y: f32,
     left_x: f32,
 ) {
@@ -179,21 +218,21 @@ fn draw_glow_area(
         0.0,
         Color {
             a: 0.48,
-            ..color
+            ..fill_color
         },
     )
     .add_stop(
         0.45,
         Color {
             a: 0.2,
-            ..color
+            ..fill_color
         },
     )
     .add_stop(
         1.0,
         Color {
             a: 0.0,
-            ..color
+            ..fill_color
         },
     );
     frame.fill(&area, fill);
@@ -203,12 +242,16 @@ fn draw_glow_area(
         append_polyline(builder, points);
     });
 
-    // Tight neon halo — keep it narrow so corners stay sharp.
+    // Faint wide halo for depth, then a crisp 1px core matching the
+    // header accent line.
     frame.stroke(
         &line,
         Stroke {
-            style: stroke::Style::Solid(Color { a: 0.22, ..color }),
-            width: 5.0,
+            style: stroke::Style::Solid(Color {
+                a: 0.12,
+                ..line_color
+            }),
+            width: 2.5,
             line_cap: stroke::LineCap::Square,
             line_join: stroke::LineJoin::Miter,
             line_dash: stroke::LineDash::default(),
@@ -217,20 +260,8 @@ fn draw_glow_area(
     frame.stroke(
         &line,
         Stroke {
-            style: stroke::Style::Solid(Color { a: 0.45, ..color }),
-            width: 3.0,
-            line_cap: stroke::LineCap::Square,
-            line_join: stroke::LineJoin::Miter,
-            line_dash: stroke::LineDash::default(),
-        },
-    );
-
-    // Hard core ridge.
-    frame.stroke(
-        &line,
-        Stroke {
-            style: stroke::Style::Solid(color),
-            width: 1.6,
+            style: stroke::Style::Solid(line_color),
+            width: 1.0,
             line_cap: stroke::LineCap::Square,
             line_join: stroke::LineJoin::Miter,
             line_dash: stroke::LineDash::default(),
@@ -242,6 +273,10 @@ fn pad_min_y(points: &[Point]) -> f32 {
     points.iter().map(|p| p.y).fold(f32::INFINITY, f32::min)
 }
 
+fn ease_out_cubic(t: f32) -> f32 {
+    1.0 - (1.0 - t).powi(3)
+}
+
 fn append_polyline(builder: &mut canvas::path::Builder, points: &[Point]) {
     for point in points.iter().skip(1) {
         builder.line_to(*point);
@@ -249,8 +284,8 @@ fn append_polyline(builder: &mut canvas::path::Builder, points: &[Point]) {
 }
 
 impl DownloadPage {
-    pub fn view(&self) -> Element<'_, Message> {
-        let main = self.view_main_panel();
+    pub fn view(&self, show_speed_in_bits: bool) -> Element<'_, Message> {
+        let main = self.view_main_panel(show_speed_in_bits);
         let queue = self.view_queue_panel();
 
         row![
@@ -267,7 +302,7 @@ impl DownloadPage {
         .into()
     }
 
-    fn view_main_panel(&self) -> Element<'_, Message> {
+    fn view_main_panel(&self, show_speed_in_bits: bool) -> Element<'_, Message> {
         let Some(active) = &self.active else {
             return container(
                 text("No downloads in progress")
@@ -372,18 +407,12 @@ impl DownloadPage {
             .spacing(8),
         ]
         .spacing(14)
-        .padding(
-            iced::Padding::new(0.0)
-                .right(40.0)
-                .bottom(36.0)
-                .left(40.0),
-        );
+        .padding(iced::Padding::new(0.0).right(40.0).bottom(36.0).left(40.0));
 
-        let hero_overlay = container(
-            column![Space::new().height(Length::Fill), hero_meta].width(Length::Fill),
-        )
-        .width(Length::Fill)
-        .height(Length::Fixed(HERO_HEIGHT));
+        let hero_overlay =
+            container(column![Space::new().height(Length::Fill), hero_meta].width(Length::Fill))
+                .width(Length::Fill)
+                .height(Length::Fixed(HERO_HEIGHT));
 
         let hero = stack![background_image, hero_fade, hero_overlay]
             .width(Length::Fill)
@@ -392,13 +421,19 @@ impl DownloadPage {
         let stats = row![
             self.stat_card(
                 "Download Speed",
-                format!("{:.1} MB/s", active.download_speed_mbps),
+                crate::gui::components::common::format_speed(
+                    active.download_speed_mbps,
+                    show_speed_in_bits,
+                ),
                 true,
                 Length::Fill,
             ),
             self.stat_card(
                 "Write Speed",
-                format!("{:.1} MB/s", active.write_speed_mbps),
+                crate::gui::components::common::format_speed(
+                    active.write_speed_mbps,
+                    show_speed_in_bits,
+                ),
                 false,
                 Length::Fill,
             ),
@@ -418,12 +453,7 @@ impl DownloadPage {
                 false,
                 Length::FillPortion(1),
             ),
-            self.stat_card(
-                "Store",
-                active.store.clone(),
-                false,
-                Length::FillPortion(1),
-            ),
+            self.stat_card("Store", active.store.clone(), false, Length::FillPortion(1),),
             self.stat_card(
                 "Download Location",
                 active.location.clone(),
@@ -453,6 +483,8 @@ impl DownloadPage {
                 canvas::Canvas::new(SpeedGraph {
                     download: self.download_history.clone(),
                     write: self.write_history.clone(),
+                    bits: show_speed_in_bits,
+                    scroll_phase: self.graph_scroll_phase(),
                 })
                 .width(Length::Fill)
                 .height(Length::Fill),
@@ -499,20 +531,27 @@ impl DownloadPage {
         ]
         .spacing(4);
 
-        let items: Element<'_, Message> = column(
+        let items = column(
             self.queue
                 .iter()
                 .map(|item| self.queue_item_view(item))
                 .collect::<Vec<_>>(),
         )
-        .spacing(10)
-        .into();
+        .spacing(QUEUE_ITEM_SPACING);
+
+        // One mouse area over the whole list: it tracks the cursor across item
+        // boundaries so dragging reorders beyond a single item. The drag itself
+        // starts from each item's drag handle (DragStarted) and ends on release
+        // (DragEnded); move events here just report the cursor's y position.
+        let drag_layer = mouse_area(items)
+            .on_release(Message::DragEnded)
+            .on_move(|point| Message::DragMoved { y: point.y });
 
         container(
             column![
                 header,
                 Space::new().height(Length::Fixed(16.0)),
-                scrollable(items).height(Length::Fill),
+                scrollable(drag_layer).height(Length::Fill),
             ]
             .padding(20),
         )
@@ -526,6 +565,8 @@ impl DownloadPage {
         item: &crate::gui::pages::download::QueuedItem,
     ) -> Element<'_, Message> {
         let is_selected = self.selected_id == item.id;
+        let is_active = item.status == QueueStatus::Active;
+        let is_paused = item.status == QueueStatus::Paused;
         let style = if is_selected {
             styles::download::queue_item_active
         } else {
@@ -548,16 +589,14 @@ impl DownloadPage {
                 .color(Color::from_rgb8(140, 140, 140))
         };
 
-        button(
+        let content = button(
             column![
                 text(item.name.clone())
                     .size(15)
                     .color(Color::WHITE)
                     .font(styles::fonts::MEDIUM),
                 row![
-                    text(status_label.0)
-                        .size(12)
-                        .color(status_label.1),
+                    text(status_label.0).size(12).color(status_label.1),
                     Space::new().width(Length::Fill),
                     progress,
                 ]
@@ -572,8 +611,64 @@ impl DownloadPage {
         .on_press(Message::SelectQueueItem(item.id))
         .padding(12)
         .width(Length::Fill)
-        .style(style)
-        .into()
+        .height(Length::Fill)
+        .style(style);
+
+        // The active download cannot be reordered; it always sits on top.
+        let handle: Element<'_, Message> = if is_active {
+            Space::new().width(Length::Fixed(28.0)).into()
+        } else {
+            mouse_area(
+                container(text("⠿").size(16).color(Color::from_rgb8(90, 90, 100)))
+                    .width(Length::Fixed(28.0))
+                    .height(Length::Fill)
+                    .center_x(Length::Fill)
+                    .center_y(Length::Fill),
+            )
+            .on_press(Message::DragStarted(item.id))
+            .interaction(mouse::Interaction::Grabbing)
+            .into()
+        };
+
+        let mut actions: Vec<Element<'_, Message>> = Vec::new();
+        if is_active {
+            actions.push(queue_action_button(
+                PAUSE.clone(),
+                Color::from_rgb8(230, 230, 230),
+                Message::PauseJob(item.id),
+            ));
+        } else {
+            actions.push(queue_action_button(
+                if is_paused {
+                    PLAY.clone()
+                } else {
+                    PAUSE.clone()
+                },
+                Color::from_rgb8(230, 230, 230),
+                if is_paused {
+                    Message::ResumeJob(item.id)
+                } else {
+                    Message::PauseJob(item.id)
+                },
+            ));
+            actions.push(queue_action_button(
+                DOWNLOAD.clone(),
+                Color::from_rgb8(255, 127, 0),
+                Message::DownloadNow(item.id),
+            ));
+        }
+        actions.push(queue_action_button(
+            TRASH.clone(),
+            Color::from_rgb8(210, 90, 90),
+            Message::RemoveJob(item.id),
+        ));
+
+        row![handle, content, row(actions).spacing(2),]
+            .spacing(4)
+            .align_y(alignment::Vertical::Center)
+            .width(Length::Fill)
+            .height(Length::Fixed(QUEUE_ITEM_HEIGHT))
+            .into()
     }
 
     fn stat_card<'a>(
@@ -591,9 +686,7 @@ impl DownloadPage {
 
         container(
             column![
-                text(label)
-                    .size(12)
-                    .color(Color::from_rgb8(140, 140, 140)),
+                text(label).size(12).color(Color::from_rgb8(140, 140, 140)),
                 text(value)
                     .size(20)
                     .color(value_color)
@@ -608,21 +701,39 @@ impl DownloadPage {
     }
 }
 
+fn queue_action_button(
+    icon: svg::Handle,
+    color: Color,
+    message: Message,
+) -> Element<'static, Message> {
+    button(
+        svg(icon)
+            .width(16)
+            .height(16)
+            .style(move |_theme: &Theme, _status| iced::widget::svg::Style { color: Some(color) }),
+    )
+    .on_press(message)
+    .padding(8)
+    .style(styles::button::transparent)
+    .into()
+}
+
 fn legend_swatch<'a>(color: Color, label: &'a str) -> Element<'a, Message> {
     row![
-        container(Space::new().width(Length::Fixed(10.0)).height(Length::Fixed(10.0))).style(
-            move |_theme: &Theme| container::Style {
-                background: Some(color.into()),
-                border: iced::Border {
-                    radius: styles::radius::SUBTLE.into(),
-                    ..Default::default()
-                },
+        container(
+            Space::new()
+                .width(Length::Fixed(10.0))
+                .height(Length::Fixed(10.0))
+        )
+        .style(move |_theme: &Theme| container::Style {
+            background: Some(color.into()),
+            border: iced::Border {
+                radius: styles::radius::SUBTLE.into(),
                 ..Default::default()
-            }
-        ),
-        text(label)
-            .size(12)
-            .color(Color::from_rgb8(160, 160, 170)),
+            },
+            ..Default::default()
+        }),
+        text(label).size(12).color(Color::from_rgb8(160, 160, 170)),
     ]
     .spacing(6)
     .align_y(alignment::Vertical::Center)

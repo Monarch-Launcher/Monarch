@@ -5,30 +5,28 @@ use async_trait::async_trait;
 use tokio::task::{self, JoinHandle};
 use tracing::{error, info};
 
-use monarch_egs::{DownloadManager, Manifest, Session, User, get_game_manifest};
+use monarch_egs::{Manifest, Session, User, get_game_manifest};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
+use crate::monarch_utils::monarch_downloader::DownloadJob;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
 };
 use crate::monarch_utils::monarch_settings::get_settings;
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 use super::stores::StoreType;
 
 pub struct EgsClient {
     user: User,
-    download_manager: DownloadManager,
 }
 
 impl EgsClient {
     pub fn new() -> Self {
-        Self {
-            user: User::new(),
-            download_manager: DownloadManager::new(),
-        }
+        Self { user: User::new() }
     }
 
     pub async fn load_existing_user(&mut self) -> Result<()> {
@@ -84,6 +82,63 @@ impl EgsClient {
         self.user.display_name()
     }
 
+    /// Read access to the underlying Epic Games user, e.g. for update checks.
+    pub fn user(&self) -> &User {
+        &self.user
+    }
+
+    /// Validates the game's Epic metadata, fetches the current install
+    /// manifest and wraps everything in a [`DownloadJob`] ready to be handed
+    /// to the global downloader.
+    pub async fn prepare_download_job(
+        &self,
+        game: &MonarchGame,
+        opts: &DownloadOptions,
+    ) -> Result<DownloadJob> {
+        let mut namespace: String = String::new();
+        for store in game.stores.iter() {
+            if store.name == "epicgames" {
+                namespace = store.store_id.clone();
+            }
+        }
+
+        if namespace.is_empty() {
+            error!("egs_client::prepare_download_job() Missing Epic Games namespace!");
+            bail!("Missing Epic Games namespace!")
+        }
+
+        let catalog_id = game
+            .properties
+            .other
+            .get("catalog_id")
+            .cloned()
+            .unwrap_or_default();
+        let app_name = game
+            .properties
+            .other
+            .get("app_name")
+            .cloned()
+            .unwrap_or_default();
+
+        if catalog_id.is_empty() || app_name.is_empty() {
+            error!(
+                "egs_client::prepare_download_job() Missing asset catalog_id/app_name on game '{}'",
+                game.name
+            );
+            bail!("Missing Epic Games asset catalog_id or app_name — refresh the library")
+        }
+
+        let token = self.user.session().get_access_token().await;
+        let manifest: Manifest =
+            get_game_manifest(&token, "Windows", &namespace, &catalog_id, &app_name)
+                .await
+                .with_context(|| {
+                    "egs_client::prepare_download_job() Failed to fetch game manifest from Epic Games! | Err: "
+                })?;
+
+        Ok(DownloadJob::new(game, opts.clone(), manifest))
+    }
+
     pub async fn get_library(&self) -> Vec<MonarchGame> {
         let mut games = self.get_user_games().await;
 
@@ -102,7 +157,15 @@ impl EgsClient {
     pub async fn get_user_games(&self) -> Vec<MonarchGame> {
         // Launcher assets (not entitlements) carry the catalogItemId + appName
         // pair required by the CDN manifest endpoint.
-        let assets = monarch_egs::owned_assets(&self.user, "Windows").await;
+        let assets = match monarch_egs::owned_assets(&self.user, "Windows").await {
+            Ok(assets) => assets,
+            Err(e) => {
+                error!(
+                    "egs::get_user_games() Failed to fetch owned assets from Epic Games! | Err: {e}"
+                );
+                return Vec::new();
+            }
+        };
         let mut results: Vec<MonarchGame> = Vec::new();
         let monarch_url: &'static str = std::env!("MONARCH_URL");
 
@@ -254,46 +317,32 @@ impl StoreType for EgsClient {
     }
 
     async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()> {
-        let mut namespace: String = String::new();
-        for store in game.stores.iter() {
-            if store.name == "epicgames" {
-                namespace = store.store_id.clone();
+        let job = self.prepare_download_job(game, opts).await?;
+
+        // Submit the job to the global downloader, which routes it to the EGS
+        // download handler (and on to monarch_egs) once registered.
+        match MONARCH_STATE.read() {
+            Ok(state) => match state.get_downloader_ptr().write() {
+                Ok(mut downloader) => {
+                    if let Err(e) = downloader.register_egs_handler() {
+                        error!(
+                            "egs_client::install_game() Failed to register EGS download handler | Err: {e}"
+                        );
+                        bail!("Failed to register EGS download handler!")
+                    }
+                    downloader.start_download(job);
+                }
+                Err(e) => {
+                    error!("egs_client::install_game() Failed to lock on downloader | Err: {e}");
+                    bail!("Failed to lock on downloader!")
+                }
+            },
+            Err(e) => {
+                error!("egs_client::install_game() Failed to lock on MONARCH_STATE | Err: {e}");
+                bail!("Failed to lock on MONARCH_STATE!")
             }
         }
 
-        if namespace.is_empty() {
-            error!("egs_client::install_game() Missing Epic Games namespace!");
-            bail!("Missing Epic Games namespace!")
-        }
-
-        let catalog_id = game
-            .properties
-            .other
-            .get("catalog_id")
-            .cloned()
-            .unwrap_or_default();
-        let app_name = game
-            .properties
-            .other
-            .get("app_name")
-            .cloned()
-            .unwrap_or_default();
-
-        if catalog_id.is_empty() || app_name.is_empty() {
-            error!(
-                "egs_client::install_game() Missing asset catalog_id/app_name on game '{}'",
-                game.name
-            );
-            bail!("Missing Epic Games asset catalog_id or app_name — refresh the library")
-        }
-
-        let token = self.user.session().get_access_token().await;
-        let manifest: Manifest =
-            get_game_manifest(&token, "Windows", &namespace, &catalog_id, &app_name)
-                .await
-                .unwrap();
-
-        self.download_manager.start_download(&manifest);
         Ok(())
     }
 

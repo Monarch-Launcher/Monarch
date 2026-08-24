@@ -6,7 +6,9 @@ use iced::{alignment, border, Element, Length, Task};
 use tracing::error;
 
 use crate::gui::{show_error, styles};
-use monarch_core::monarch_games::commands::{get_executables, proton_versions, update_game_properties};
+use monarch_core::monarch_games::commands::{
+    get_executables, proton_versions, update_game_properties,
+};
 use monarch_core::monarch_games::monarchgame::MonarchGame;
 use monarch_core::monarch_utils::monarch_vdf::ProtonVersion;
 

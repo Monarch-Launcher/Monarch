@@ -44,6 +44,11 @@ pub struct MonarchGame {
 
     #[serde(default)]
     pub is_installed: bool,
+
+    /// Whether the game files were installed by Monarch itself. Only such
+    /// games may have their install folder removed on uninstall.
+    #[serde(default)]
+    pub managed_by_monarch: bool,
 }
 
 impl MonarchGame {
@@ -80,6 +85,7 @@ impl MonarchGame {
             properties: MonarchGameProperties::default(),
             imported: false,
             is_installed: true,
+            managed_by_monarch: false,
         }
     }
 
@@ -160,6 +166,7 @@ impl MonarchGame {
             properties: MonarchGameProperties::default(),
             imported: false,
             is_installed: false,
+            managed_by_monarch: false,
         }
     }
 }

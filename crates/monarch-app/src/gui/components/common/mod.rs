@@ -1,4 +1,4 @@
-use crate::gui::resources::{PLAY, DOWNLOAD};
+use crate::gui::resources::{DOWNLOAD, PLAY};
 use crate::gui::styles;
 use iced::widget::text::LineHeight;
 use iced::widget::{button, pick_list, row, svg, text_editor, text_input, Text};
@@ -327,4 +327,14 @@ pub async fn open_file_dialog(filter_name: &str, filter_extensions: &[&str]) -> 
 
 pub async fn open_folder_dialog() -> Option<FileHandle> {
     rfd::AsyncFileDialog::new().pick_folder().await
+}
+
+/// Format a speed given in MB/s (decimal). In bits mode the value is converted
+/// to megabits per second (Mb/s); otherwise it is shown as MB/s.
+pub fn format_speed(speed_mbps: f64, in_bits: bool) -> String {
+    if in_bits {
+        format!("{:.1} Mb/s", speed_mbps * 8.0)
+    } else {
+        format!("{:.1} MB/s", speed_mbps)
+    }
 }

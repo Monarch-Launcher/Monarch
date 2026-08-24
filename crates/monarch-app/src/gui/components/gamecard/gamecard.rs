@@ -1,7 +1,7 @@
 use crate::gui::components::gamecard::GameCardMessage;
-use monarch_core::monarch_games::monarchgame::MonarchGame;
 use iced::widget::{button, container, image, mouse_area};
 use iced::{alignment, Color, Element, Length};
+use monarch_core::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Debug, Clone)]
 pub struct GameCard {
@@ -28,7 +28,9 @@ impl GameCard {
     }
 
     pub fn update_game(&mut self, game: MonarchGame) {
-        if !game.is_installed && (self.game.thumbnail_path != game.thumbnail_path || self.grayscale_handle.is_none()) {
+        if !game.is_installed
+            && (self.game.thumbnail_path != game.thumbnail_path || self.grayscale_handle.is_none())
+        {
             self.grayscale_handle = load_grayscale(&game.thumbnail_path);
         } else if game.is_installed {
             self.grayscale_handle = None;
@@ -180,5 +182,7 @@ fn load_grayscale(path: &str) -> Option<iced::widget::image::Handle> {
     let rgba = gray_img.to_rgba8();
     let (width, height) = rgba.dimensions();
     let pixels = rgba.into_raw();
-    Some(iced::widget::image::Handle::from_rgba(width, height, pixels))
+    Some(iced::widget::image::Handle::from_rgba(
+        width, height, pixels,
+    ))
 }

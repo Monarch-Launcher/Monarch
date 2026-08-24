@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
-use sqlx::{Decode, Encode, FromRow, SqlitePool};
+use sqlx::{Decode, Encode, FromRow, Row, SqlitePool};
 use tracing::{info, warn};
 
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo};
 
-const MONARCH_GAME_FIELDS: &str = "(name, id, executable_path, thumbnail_path, thumbnail_url, launch_args, compatibility, summary, artwork_path, artwork_url, imported, is_installed)";
-const TYPED_MONARCH_GAME_FIELDS: &str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, thumbnail_path TEXT, thumbnail_url TEXT, launch_args TEXT, compatibility TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN, is_installed BOOLEAN)";
+const MONARCH_GAME_FIELDS: &str = "(name, id, executable_path, thumbnail_path, thumbnail_url, launch_args, compatibility, summary, artwork_path, artwork_url, imported, is_installed, managed_by_monarch)";
+const TYPED_MONARCH_GAME_FIELDS: &str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, thumbnail_path TEXT, thumbnail_url TEXT, launch_args TEXT, compatibility TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN, is_installed BOOLEAN, managed_by_monarch BOOLEAN)";
 
 const STORE_INFO_FIELDS: &str = "(monarch_game_id, name, store_id, store_url)";
 const TYPED_STORE_INFO_FIELDS: &str =
@@ -28,6 +28,7 @@ struct MonarchGameRecord {
     pub artwork_url: String,
     pub imported: bool,
     pub is_installed: bool,
+    pub managed_by_monarch: bool,
 }
 
 #[derive(Debug, FromRow, Encode, Decode)]
@@ -84,6 +85,7 @@ impl MonarchGame {
             properties,
             imported: game_record.imported,
             is_installed: game_record.is_installed,
+            managed_by_monarch: game_record.managed_by_monarch,
         }
     }
 }
@@ -166,7 +168,7 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .with_context(|| "monarch_sql::insert_game() Failed to start new transaction! | Err: ")?;
 
     sqlx::query(&format!(
-        "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
         MONARCH_GAME_FIELDS
     ))
     .bind(&game.name)
@@ -181,6 +183,7 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     .bind(&game.artwork_url)
     .bind(game.imported)
     .bind(game.is_installed)
+    .bind(game.managed_by_monarch)
     .execute(&mut *tx)
     .await
     .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
@@ -273,7 +276,7 @@ pub async fn remove_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
 pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     let sql_library_query: String = format!(
         r#"INSERT INTO library{} 
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET
         name = ?,
         executable_path = ?,
@@ -285,7 +288,8 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         artwork_path = ?,
         artwork_url = ?,
         imported = ?,
-        is_installed = ?"#,
+        is_installed = ?,
+        managed_by_monarch = ?"#,
         MONARCH_GAME_FIELDS
     );
 
@@ -302,7 +306,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
 
     let sql_properties_query: String = format!(
         r#"INSERT INTO properties{} 
-    VALUES (?,?,?,?,?,?,?,?,?)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(monarch_game_id) DO UPDATE SET
         install_dir = ?,
         size_on_disk = ?,
@@ -334,6 +338,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.artwork_url)
         .bind(game.imported)
         .bind(game.is_installed)
+        .bind(game.managed_by_monarch)
         .bind(&game.name)
         .bind(&game.executable_path)
         .bind(&game.thumbnail_path)
@@ -345,6 +350,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.artwork_url)
         .bind(game.imported)
         .bind(game.is_installed)
+        .bind(game.managed_by_monarch)
         .execute(&mut *tx)
         .await
         .with_context(|| {
@@ -383,6 +389,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.properties.version)
         .bind(&game.properties.protondb_rating)
         .bind(&game.properties.protondb_url)
+        .bind(serde_json::to_string(&game.properties.other).unwrap())
         .bind(&game.properties.install_dir)
         .bind(game.properties.size_on_disk as u32)
         .bind(&game.properties.last_played)
@@ -432,7 +439,7 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
 
     for game in games {
         sqlx::query(&format!(
-            "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             MONARCH_GAME_FIELDS
         ))
         .bind(&game.name)
@@ -447,6 +454,7 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
         .bind(&game.artwork_url)
         .bind(game.imported)
         .bind(game.is_installed)
+        .bind(game.managed_by_monarch)
         .execute(&mut *tx)
         .await
         .with_context(|| {
@@ -522,6 +530,12 @@ pub async fn init_db(pool: &SqlitePool) -> Result<()> {
     } else {
         // Migration: Add is_installed column if it doesn't exist
         sqlx::query("ALTER TABLE library ADD COLUMN is_installed BOOLEAN DEFAULT FALSE")
+            .execute(&mut *tx)
+            .await
+            .unwrap_or_default(); // Ignore error if column already exists
+
+        // Migration: Add managed_by_monarch column if it doesn't exist
+        sqlx::query("ALTER TABLE library ADD COLUMN managed_by_monarch BOOLEAN DEFAULT FALSE")
             .execute(&mut *tx)
             .await
             .unwrap_or_default(); // Ignore error if column already exists
@@ -633,6 +647,19 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
     }
 
     /*
+     * Sanitize NULL values in boolean columns that were added without a
+     * DEFAULT clause (e.g. managed_by_monarch), so they decode as false.
+     */
+    sqlx::query(
+        "UPDATE library SET managed_by_monarch = COALESCE(managed_by_monarch, 0)",
+    )
+    .execute(&mut *tx)
+    .await
+    .with_context(|| {
+        "monarch_sql::repair_or_migrate_db() Failed to sanitize library.managed_by_monarch values! | Err: "
+    })?;
+
+    /*
      * Then fix the stores table.
      */
     let stores_column_types = TYPED_STORE_INFO_FIELDS
@@ -708,6 +735,77 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
         }
     }
 
+    /*
+     * SQLite does not support changing a column's type with ALTER TABLE,
+     * so any type drift must be fixed by rebuilding the table. The old
+     * schema declared size_on_disk as TEXT, which breaks u64 decoding.
+     */
+    let size_on_disk_type = get_column_type(pool, "properties", "size_on_disk")
+        .await
+        .with_context(|| {
+            "monarch_sql::repair_or_migrate_db() Failed to get column type for properties.size_on_disk! | Err: "
+        })?;
+
+    if !size_on_disk_type
+        .as_deref()
+        .map(|t| t.eq_ignore_ascii_case("INTEGER"))
+        .unwrap_or(false)
+    {
+        warn!(
+            "properties.size_on_disk declared as {:?}, expected INTEGER. Rebuilding 'properties' table...",
+            size_on_disk_type
+        );
+
+        sqlx::query("ALTER TABLE properties RENAME TO properties_old")
+            .execute(&mut *tx)
+            .await
+            .with_context(|| {
+                "monarch_sql::repair_or_migrate_db() Failed to rename old properties table! | Err: "
+            })?;
+
+        sqlx::query(&format!(
+            "CREATE TABLE properties {}",
+            TYPED_MONARCH_GAME_PROPERTIES_FIELDS
+        ))
+        .execute(&mut *tx)
+        .await
+        .with_context(|| {
+            "monarch_sql::repair_or_migrate_db() Failed to create new properties table! | Err: "
+        })?;
+
+        sqlx::query(&format!(
+            "INSERT INTO properties {} SELECT monarch_game_id, install_dir, CAST(size_on_disk AS INTEGER), last_played, time_played, description, version, protondb_rating, protondb_url, other FROM properties_old",
+            MONARCH_GAME_PROPERTIES_FIELDS
+        ))
+        .execute(&mut *tx)
+        .await
+        .with_context(|| {
+            "monarch_sql::repair_or_migrate_db() Failed to migrate properties rows! | Err: "
+        })?;
+
+        sqlx::query("DROP TABLE properties_old")
+            .execute(&mut *tx)
+            .await
+            .with_context(|| {
+                "monarch_sql::repair_or_migrate_db() Failed to drop old properties table! | Err: "
+            })?;
+    }
+
+    /*
+     * Also sanitize rows whose value-level type drifted from the column type
+     * (e.g. an empty TEXT written into the INTEGER size_on_disk column by an
+     * older app version). This can occur even when the schema is correct.
+     */
+    sqlx::query(
+        "UPDATE properties SET size_on_disk = COALESCE(CAST(size_on_disk AS INTEGER), 0) \
+         WHERE typeof(size_on_disk) != 'integer'",
+    )
+    .execute(&mut *tx)
+    .await
+    .with_context(|| {
+        "monarch_sql::repair_or_migrate_db() Failed to sanitize properties.size_on_disk values! | Err: "
+    })?;
+
     tx.commit().await.with_context(|| {
         "monarch_sql::repair_or_migrate_db() Failed to commit transaction | Err: "
     })?;
@@ -726,4 +824,26 @@ async fn get_existing_columns(pool: &SqlitePool, table_name: &str) -> Result<Vec
     .with_context(|| format!("Failed to read columns for table '{}'", table_name))?;
 
     Ok(cols)
+}
+
+/// Fetches the declared type of a single column in a table.
+/// Used to detect schema mismatches that `ALTER TABLE ADD COLUMN` cannot fix.
+async fn get_column_type(
+    pool: &SqlitePool,
+    table_name: &str,
+    column_name: &str,
+) -> Result<Option<String>> {
+    let rows = sqlx::query(&format!("PRAGMA table_info('{}')", table_name))
+        .fetch_all(pool)
+        .await
+        .with_context(|| format!("Failed to read column types for table '{}'", table_name))?;
+
+    for row in rows {
+        let name: String = row.get(1);
+        if name == column_name {
+            return Ok(Some(row.get::<String, _>(2)));
+        }
+    }
+
+    Ok(None)
 }

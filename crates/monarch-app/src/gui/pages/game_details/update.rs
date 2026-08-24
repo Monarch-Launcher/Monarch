@@ -101,7 +101,10 @@ impl GameDetailsPage {
 
                     iced::Task::perform(
                         async move {
-                            let _ = monarch_core::monarch_games::commands::download_game(&game, &mut opts).await;
+                            let _ = monarch_core::monarch_games::commands::download_game(
+                                &game, &mut opts,
+                            )
+                            .await;
                         },
                         |_| Message::BackPressed, // Redirect on download init or just stay
                     )

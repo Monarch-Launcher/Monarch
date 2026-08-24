@@ -2,7 +2,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![allow(non_snake_case)]
 
-use monarch_core::{monarch_library::library, monarch_utils::{housekeeping, monarch_fs::verify_monarch_folders, monarch_logger::init_logger, monarch_settings, monarch_sql::{init_db, repair_or_migrate_db}, monarch_state::MONARCH_STATE}};
+use monarch_core::{
+    monarch_library::library,
+    monarch_utils::{
+        housekeeping,
+        monarch_fs::verify_monarch_folders,
+        monarch_logger::init_logger,
+        monarch_settings,
+        monarch_sql::{init_db, repair_or_migrate_db},
+        monarch_state::MONARCH_STATE,
+    },
+};
 
 use monarch_app::gui::App;
 
@@ -51,6 +61,10 @@ async fn init() {
         .set_library_games(&games);
 
     housekeeping::start(); // Starts housekeeping loop
+
+    // Checks for updates of games managed by Monarch on a background thread,
+    // only runs if enabled in settings.
+    monarch_core::monarch_games::updates::start_startup_check();
 }
 
 fn main() {

@@ -1,7 +1,8 @@
 use iced::{
     alignment,
     widget::{
-        button, column, container, rich_text, row, scrollable, span, svg, text, toggler, Space,
+        button, column, container, pick_list, rich_text, row, scrollable, span, svg, text, toggler,
+        Space,
     },
     Color, Element, Length, Theme,
 };
@@ -11,7 +12,7 @@ use crate::gui::{
         danger_button, icon_button, input_field, primary_button, secondary_button,
         secure_input_field,
     },
-    pages::settings::{Message, SettingsPage, SettingsTab},
+    pages::settings::{Message, SettingsPage, SettingsTab, SpeedPrefix, SpeedUnitChoice},
     resources::{HIDE, VIEW},
     styles,
 };
@@ -19,10 +20,7 @@ use monarch_core::monarch_games;
 use monarch_core::monarch_utils::monarch_settings::Settings;
 
 impl SettingsPage {
-    pub fn view_settings_page(
-        &self,
-        settings: &Settings,
-    ) -> Element<'_, Message, Theme> {
+    pub fn view_settings_page(&self, settings: &Settings) -> Element<'_, Message, Theme> {
         let sidebar = column![
             self.tab_button(
                 "Monarch",
@@ -119,7 +117,6 @@ impl SettingsPage {
             "Not installed"
         };
 
-
         column![
             self.section_header("General"),
             Space::new().height(20),
@@ -147,6 +144,17 @@ impl SettingsPage {
                 toggler(settings.quicklaunch.enabled).on_toggle(Message::ToggleQuickLaunch),
             ]
             .align_y(alignment::Vertical::Center),
+            Space::new().height(25),
+
+            row![
+                text("Automatically check for game updates on start-up")
+                    .size(16)
+                    .width(Length::Shrink),
+                Space::new().width(10),
+                toggler(settings.monarch.check_updates_on_startup)
+                    .on_toggle(Message::ToggleAutoUpdateCheck),
+            ]
+            .align_y(alignment::Vertical::Center),
             Space::new().height(40),
 
             self.section_header("Game Library Folder"),
@@ -167,6 +175,67 @@ impl SettingsPage {
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(10),
+
+            self.section_header("Download"),
+            text("Configure how downloads behave and how speeds are displayed.")
+                .size(14)
+                .color([0.7, 0.7, 0.7]),
+            Space::new().height(15),
+
+            row![
+                text("Show download speed in bits per second (b/s) instead of bytes per second (B/s)")
+                    .size(16)
+                    .width(Length::Shrink),
+                Space::new().width(10),
+                toggler(settings.monarch.show_download_speed_in_bits)
+                    .on_toggle(Message::ToggleDownloadSpeedBits),
+            ]
+            .align_y(alignment::Vertical::Center),
+            Space::new().height(15),
+
+            row![
+                text("Maximum download speed (0 = unlimited)")
+                    .size(16)
+                    .width(Length::Shrink),
+                Space::new().width(10),
+                container(input_field(
+                    "No limit",
+                    &self.max_speed_tmp,
+                    Message::MaxDownloadSpeedChanged
+                ))
+                .width(Length::Fixed(120.0)),
+                Space::new().width(10),
+                {
+                    let bits = settings.monarch.show_download_speed_in_bits;
+                    let selected = SpeedUnitChoice {
+                        prefix: self.max_speed_prefix,
+                        bits,
+                    };
+                    let options = vec![
+                        SpeedUnitChoice { prefix: SpeedPrefix::Kilo, bits },
+                        SpeedUnitChoice { prefix: SpeedPrefix::Mega, bits },
+                        SpeedUnitChoice { prefix: SpeedPrefix::Giga, bits },
+                    ];
+                    container(
+                        pick_list(
+                            options,
+                            Some(selected),
+                            |choice| Message::MaxDownloadSpeedUnitSelected(choice.prefix),
+                        )
+                        .style(styles::pick_list::default)
+                        .padding(10),
+                    )
+                    .width(Length::Fixed(110.0))
+                },
+            ]
+            .align_y(alignment::Vertical::Center),
+            text(format!(
+                "Applies as {}",
+                format_effective_limit(settings.monarch.max_download_speed_bps())
+            ))
+            .size(14)
+            .color([0.5, 0.5, 0.5]),
+            Space::new().height(40),
 
             self.section_header("Storage & Cache"),
             row![
@@ -194,7 +263,10 @@ impl SettingsPage {
     fn view_steam(&self, settings: &Settings) -> Element<'_, Message, Theme> {
         let steamcmd_bin: String;
         let steamcmd_installed: &str = if monarch_games::commands::steamcmd_is_installed() {
-            steamcmd_bin = format!("Using steamcmd located at: {}", settings.monarch.steamcmd_bin);
+            steamcmd_bin = format!(
+                "Using steamcmd located at: {}",
+                settings.monarch.steamcmd_bin
+            );
             "Installed"
         } else {
             steamcmd_bin = "".to_string();
@@ -229,7 +301,7 @@ impl SettingsPage {
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(25),
-            
+
             row![
                 text(format!("SteamCMD: {}", steamcmd_installed)).size(16).width(Length::Shrink),
                 Space::new().width(Length::Fill),
@@ -286,7 +358,7 @@ impl SettingsPage {
                 danger_button("Delete Credentials", Some(Message::DeleteSteamCredentials)),
             ],
             Space::new().height(10),
-            
+
             text(format!("Logged in as: {steam_login}")).size(14).color([0.5, 0.5, 0.5]),
             Space::new().height(40),
 
@@ -339,9 +411,12 @@ impl SettingsPage {
     }
 
     fn view_epic(&self, settings: &Settings) -> Element<'_, Message, Theme> {
-        let legendary_bin: String; 
+        let legendary_bin: String;
         let legendary_installed: &str = if monarch_games::commands::legendary_is_installed() {
-            legendary_bin = format!("Using legendary located at: {}", settings.monarch.legendary_bin);
+            legendary_bin = format!(
+                "Using legendary located at: {}",
+                settings.monarch.legendary_bin
+            );
             "Installed"
         } else {
             legendary_bin = "".to_string();
@@ -364,9 +439,10 @@ impl SettingsPage {
             ]
             .align_y(alignment::Vertical::Center),
             Space::new().height(25),
-
             row![
-                text(format!("Legendary: {}", legendary_installed)).size(16).width(Length::Shrink),
+                text(format!("Legendary: {}", legendary_installed))
+                    .size(16)
+                    .width(Length::Shrink),
                 Space::new().width(Length::Fill),
                 primary_button("Install Legendary", Some(Message::InstallLegendary)),
                 Space::new().width(10),
@@ -375,7 +451,6 @@ impl SettingsPage {
             .align_y(alignment::Vertical::Center),
             text(legendary_bin).size(14).color([0.5, 0.5, 0.5]),
             Space::new().height(25),
-
             row![
                 Space::new().width(Length::Fill),
                 primary_button("Login to Epic Games", Some(Message::LoginEpic)),
@@ -383,13 +458,21 @@ impl SettingsPage {
                 danger_button("Delete Credentials", Some(Message::DeleteEpicCredentials)),
             ],
             Space::new().height(10),
-
             row![
                 if self.view_epic_token {
                     row![
-                        input_field("Epic Games authorization code", &self.epic_auth_code_tmp, Message::EpicAuthCodeChanged),
+                        input_field(
+                            "Epic Games authorization code",
+                            &self.epic_auth_code_tmp,
+                            Message::EpicAuthCodeChanged
+                        ),
                         Space::new().width(10),
-                        icon_button(Some(Message::ToggleHiddenEpicToken), false, VIEW.clone(), 0.0),
+                        icon_button(
+                            Some(Message::ToggleHiddenEpicToken),
+                            false,
+                            VIEW.clone(),
+                            0.0
+                        ),
                     ]
                 } else {
                     row![
@@ -399,18 +482,23 @@ impl SettingsPage {
                             Message::EpicAuthCodeChanged
                         ),
                         Space::new().width(10),
-                        icon_button(Some(Message::ToggleHiddenEpicToken), false, HIDE.clone(), 0.0),
+                        icon_button(
+                            Some(Message::ToggleHiddenEpicToken),
+                            false,
+                            HIDE.clone(),
+                            0.0
+                        ),
                     ]
                 },
                 Space::new().width(10),
                 primary_button("Save", Some(Message::SaveEpicAuthCode)),
             ],
             Space::new().height(10),
-
             danger_button("TEST FUNCTIONALITY", Some(Message::TestEpicFunctionality)),
             Space::new().width(10),
-
-            text(format!("Logged in as: {epic_login}")).size(14).color([0.5, 0.5, 0.5]),
+            text(format!("Logged in as: {epic_login}"))
+                .size(14)
+                .color([0.5, 0.5, 0.5]),
         ]
         .spacing(10)
         .into()
@@ -443,5 +531,25 @@ impl SettingsPage {
             return "0 B".to_string();
         }
         format!("{:.2} {}", size, prefixes[i as usize])
+    }
+}
+
+/// Formats a byte-per-second limit in both common notations so the effect of
+/// the chosen unit and the bit/byte toggle is always visible.
+fn format_effective_limit(bps: u64) -> String {
+    if bps == 0 {
+        return "no limit".to_string();
+    }
+    let mbit = bps as f64 * 8.0 / 1_000_000.0;
+    let mbyte = bps as f64 / 1_000_000.0;
+    format!("{} Mb/s ({} MB/s)", trim_number(mbit), trim_number(mbyte))
+}
+
+/// Whole numbers without decimals, everything else with one decimal place.
+fn trim_number(value: f64) -> String {
+    if value.fract() == 0.0 {
+        format!("{}", value as u64)
+    } else {
+        format!("{value:.1}")
     }
 }

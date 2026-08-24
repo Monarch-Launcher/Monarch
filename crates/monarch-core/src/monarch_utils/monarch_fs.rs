@@ -183,6 +183,22 @@ pub fn create_dir(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Attempts to recursively remove a directory and all its contents.
+/// Returns Ok if the path does not exist.
+pub fn remove_dir(path: &Path) -> Result<()> {
+    if !path_exists(path) {
+        return Ok(());
+    }
+
+    fs::remove_dir_all(path).with_context(|| {
+        format!(
+            "monarch_fs::remove_dir() Something went wrong trying to remove directory: {dir} | Err: ",
+            dir = path.display()
+        )
+    })?;
+    Ok(())
+}
+
 /// Returns all found executables in a given directory
 pub fn get_executables(path: &Path) -> Result<Vec<PathBuf>> {
     let mut executables: Vec<PathBuf> = Vec::new();

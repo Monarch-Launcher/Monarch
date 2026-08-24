@@ -109,28 +109,55 @@ pub fn progress_fill(_theme: &Theme) -> container::Style {
 }
 
 pub fn speed_widget(_theme: &Theme, status: button::Status) -> button::Style {
-    let (bg, border) = match status {
+    let (bg, border_color, border_width) = match status {
         button::Status::Hovered => (
-            Color::from_rgba8(255, 127, 0, 0.2),
-            Color::from_rgba8(255, 127, 0, 0.7),
+            Some(Background::Color(Color::from_rgba8(255, 127, 0, 0.2))),
+            Some(Color::from_rgba8(255, 127, 0, 0.7)),
+            1.0,
         ),
         button::Status::Pressed => (
-            Color::from_rgba8(255, 127, 0, 0.28),
-            Color::from_rgb8(255, 127, 0),
+            Some(Background::Color(Color::from_rgba8(255, 127, 0, 0.28))),
+            Some(Color::from_rgb8(255, 127, 0)),
+            1.0,
         ),
-        _ => (
-            Color::from_rgba8(255, 127, 0, 0.12),
-            Color::from_rgba8(255, 127, 0, 0.45),
-        ),
+        _ => (None, None, 0.0),
     };
 
     button::Style {
-        background: Some(Background::Color(bg)),
+        background: bg,
         text_color: Color::from_rgb8(255, 127, 0),
         border: Border {
             radius: radius::SUBTLE.into(),
-            width: 1.0,
-            color: border,
+            width: border_width,
+            color: border_color.unwrap_or(Color::TRANSPARENT),
+        },
+        shadow: Default::default(),
+        snap: false,
+    }
+}
+
+pub fn speed_widget_idle(_theme: &Theme, status: button::Status) -> button::Style {
+    let (bg, border_color, border_width) = match status {
+        button::Status::Hovered => (
+            Some(Background::Color(Color::from_rgba8(128, 128, 128, 0.2))),
+            Some(Color::from_rgba8(128, 128, 128, 0.7)),
+            1.0,
+        ),
+        button::Status::Pressed => (
+            Some(Background::Color(Color::from_rgba8(128, 128, 128, 0.28))),
+            Some(Color::from_rgb8(128, 128, 128)),
+            1.0,
+        ),
+        _ => (None, None, 0.0),
+    };
+
+    button::Style {
+        background: bg,
+        text_color: Color::from_rgb8(150, 150, 150),
+        border: Border {
+            radius: radius::SUBTLE.into(),
+            width: border_width,
+            color: border_color.unwrap_or(Color::TRANSPARENT),
         },
         shadow: Default::default(),
         snap: false,

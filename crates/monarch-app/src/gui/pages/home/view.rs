@@ -5,10 +5,7 @@ use iced::{
 };
 
 use super::{HomePage, Message};
-use crate::gui::{
-    components::common::launch_button,
-    styles,
-};
+use crate::gui::{components::common::launch_button, styles};
 
 impl HomePage {
     pub fn view(&self) -> Element<'_, Message> {

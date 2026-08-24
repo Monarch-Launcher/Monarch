@@ -16,6 +16,7 @@ use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_library::{self, library};
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_fs::path_exists;
+use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 
@@ -224,17 +225,160 @@ pub async fn update_game(name: String, store: String, store_id: String) -> Resul
     }
 }
 
+/// Returns the updates found by the latest update check for games managed by Monarch.
+pub fn get_available_game_updates() -> Vec<super::updates::MonarchGameUpdate> {
+    match MONARCH_STATE.read() {
+        Ok(state) => state.get_available_updates(),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::get_available_game_updates() Failed to lock on MONARCH_STATE | Err: {e}"
+            );
+            Vec::new()
+        }
+    }
+}
+
+/// Number of downloads either in progress or waiting in the queue.
+pub fn get_pending_download_count() -> usize {
+    match MONARCH_STATE.read() {
+        Ok(state) => match state.get_downloader_ptr().read() {
+            Ok(downloader) => downloader.pending_job_count(),
+            Err(e) => {
+                error!(
+                    "monarch_games::commands::get_pending_download_count() Failed to lock on downloader | Err: {e}"
+                );
+                0
+            }
+        },
+        Err(e) => {
+            error!(
+                "monarch_games::commands::get_pending_download_count() Failed to lock on MONARCH_STATE | Err: {e}"
+            );
+            0
+        }
+    }
+}
+
 /// Tells Monarch to remove specified game
 pub async fn remove_game(name: String, store: String, store_id: String) -> Result<(), String> {
     info!("Uninstalling: {name}");
-    if let Err(e) = monarch_client::uninstall_game(&store, &store_id).await {
-        error!(
-            "monarch_games::commands::remove_game() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-        return Err(format!("Something went wrong while removing: {name}"));
+
+    // Resolve the full game record so we can tell whether Monarch manages its files.
+    let game: Option<MonarchGame> = match MONARCH_STATE.read() {
+        Ok(state) => state
+            .get_library_games()
+            .into_iter()
+            .find(|g| g.get_store_name() == store && g.get_store_id() == store_id),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::remove_game() Failed to lock on MONARCH_STATE | Err: {e}"
+            );
+            return Err(format!("Something went wrong while removing: {name}"));
+        }
+    };
+
+    // Only remove files that Monarch itself downloaded.
+    if let Some(game) = &game {
+        if game.managed_by_monarch {
+            if let Err(e) = remove_install_dir(game) {
+                error!(
+                    "monarch_games::commands::remove_game() Failed to remove install folder for {name} | Err: {e}"
+                );
+                return Err(format!(
+                    "Something went wrong while removing: {name} \nCould not remove the install folder."
+                ));
+            }
+        }
     }
+
+    match store.as_str() {
+        "steam" | "steamcmd" => {
+            if let Err(e) = monarch_client::uninstall_game(&store, &store_id).await {
+                error!(
+                    "monarch_games::commands::remove_game() -> {}",
+                    e.chain().map(|e| e.to_string()).collect::<String>()
+                );
+                return Err(format!("Something went wrong while removing: {name}"));
+            }
+        }
+        "epicgames" => {
+            // Monarch-installed Epic games are removed directly from the library,
+            // there is no external launcher to coordinate with.
+            let game = match game {
+                Some(game) => game,
+                None => {
+                    error!(
+                        "monarch_games::commands::remove_game() Game not found in library: {name}"
+                    );
+                    return Err(format!("Something went wrong while removing: {name}"));
+                }
+            };
+
+            if let Err(e) = library::remove_game(&game).await {
+                error!(
+                    "monarch_games::commands::remove_game() -> {}",
+                    e.chain().map(|e| e.to_string()).collect::<String>()
+                );
+                return Err(format!("Something went wrong while removing: {name}"));
+            }
+        }
+        _ => {
+            error!("monarch_games::commands::remove_game() Unsupported store: {store}");
+            return Err(format!("Something went wrong while removing: {name}"));
+        }
+    }
+
     Ok(())
+}
+
+/// Removes the install directory of a game that Monarch itself downloaded.
+///
+/// Only directories located within Monarch's own game folder are removed, so a
+/// Monarch-downloaded Steam game can never wipe the shared Steam library folder.
+fn remove_install_dir(game: &MonarchGame) -> Result<(), String> {
+    let install_dir: PathBuf = PathBuf::from(&game.properties.install_dir);
+
+    if !install_dir.is_dir() {
+        warn!(
+            "monarch_games::commands::remove_install_dir() Install folder not found, skipping: {}",
+            install_dir.display()
+        );
+        return Ok(());
+    }
+
+    let game_folder: PathBuf = match get_settings() {
+        Ok(settings_lock) => match settings_lock.read() {
+            Ok(settings) => PathBuf::from(&settings.monarch.game_folder),
+            Err(e) => {
+                error!(
+                    "monarch_games::commands::remove_install_dir() Failed to lock on settings | Err: {e}"
+                );
+                return Err("Failed to read settings".to_string());
+            }
+        },
+        Err(e) => {
+            error!(
+                "monarch_games::commands::remove_install_dir() Failed to get settings | Err: {e}"
+            );
+            return Err("Failed to read settings".to_string());
+        }
+    };
+
+    // Safety: never delete folders outside Monarch's game folder.
+    if !install_dir.starts_with(&game_folder) {
+        warn!(
+            "monarch_games::commands::remove_install_dir() Refusing to remove install folder outside Monarch's game folder: {}",
+            install_dir.display()
+        );
+        return Ok(());
+    }
+
+    info!(
+        "monarch_games::commands::remove_install_dir() Removing install folder: {}",
+        install_dir.display()
+    );
+
+    monarch_fs::remove_dir(&install_dir).map_err(|e| e.to_string())
 }
 
 pub async fn move_game_to_monarch(

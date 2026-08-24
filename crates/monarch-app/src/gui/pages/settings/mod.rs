@@ -24,6 +24,10 @@ pub enum SettingsTab {
 pub enum Message {
     TabSelected(SettingsTab),
     ToggleQuickLaunch(bool),
+    ToggleDownloadSpeedBits(bool),
+    MaxDownloadSpeedChanged(String),
+    MaxDownloadSpeedUnitSelected(SpeedPrefix),
+    ToggleAutoUpdateCheck(bool),
     LibraryFolderChanged(String),
     BrowseLibraryFolder,
     ClearCache,
@@ -62,6 +66,10 @@ impl Message {
     fn requires_write_lock(&self) -> bool {
         match self {
             Message::ToggleQuickLaunch(_)
+            | Message::ToggleDownloadSpeedBits(_)
+            | Message::MaxDownloadSpeedChanged(_)
+            | Message::MaxDownloadSpeedUnitSelected(_)
+            | Message::ToggleAutoUpdateCheck(_)
             | Message::LibraryFolderChanged(_)
             | Message::ResetDefaults
             | Message::ToggleSteam(_)
@@ -84,6 +92,10 @@ pub struct SettingsPage {
     current_tab: SettingsTab,
     shared_settings: Arc<RwLock<Settings>>,
     cache_size: u64,
+    /// Text currently typed into the max download speed input.
+    max_speed_tmp: String,
+    /// Unit prefix picked next to the max speed input.
+    max_speed_prefix: SpeedPrefix,
     steam_username_tmp: String,
     steam_password_tmp: String,
     view_steam_password: bool,
@@ -96,15 +108,28 @@ pub struct SettingsPage {
 impl Default for SettingsPage {
     fn default() -> Self {
         let shared_settings = monarch_utils::commands::get_settings().unwrap_or_default();
-        let (steam_user, epic_user) = match shared_settings.read() {
-            Ok(s) => (s.steam.username.clone(), s.epic.username.clone()),
-            Err(_) => (String::new(), String::new()),
+        let (steam_user, _epic_user, max_speed_tmp, max_speed_prefix) = match shared_settings.read()
+        {
+            Ok(s) => (
+                s.steam.username.clone(),
+                s.epic.username.clone(),
+                format_speed_setting(s.monarch.max_download_speed_value),
+                SpeedPrefix::from_setting(&s.monarch.max_download_speed_prefix),
+            ),
+            Err(_) => (
+                String::new(),
+                String::new(),
+                String::new(),
+                SpeedPrefix::Mega,
+            ),
         };
 
         Self {
             current_tab: SettingsTab::Monarch,
             shared_settings,
             cache_size: monarch_utils::commands::get_cache_size().unwrap_or(0),
+            max_speed_tmp,
+            max_speed_prefix,
             steam_username_tmp: steam_user,
             steam_password_tmp: String::new(),
             view_steam_password: false,
@@ -136,6 +161,18 @@ impl SettingsPage {
             Message::TabSelected(tab) => self.current_tab = tab,
             Message::ToggleQuickLaunch(state) => {
                 self.toggle_quicklaunch(&mut write_guard.unwrap(), state)
+            }
+            Message::ToggleDownloadSpeedBits(state) => {
+                self.toggle_download_speed_bits(&mut write_guard.unwrap(), state)
+            }
+            Message::MaxDownloadSpeedChanged(value) => {
+                self.change_max_download_speed(&mut write_guard.unwrap(), value)
+            }
+            Message::MaxDownloadSpeedUnitSelected(prefix) => {
+                self.select_max_download_speed_unit(&mut write_guard.unwrap(), prefix)
+            }
+            Message::ToggleAutoUpdateCheck(state) => {
+                self.toggle_auto_update_check(&mut write_guard.unwrap(), state)
             }
             Message::LibraryFolderChanged(folder) => {
                 self.change_library_folder(&mut write_guard.unwrap(), &folder)
@@ -211,5 +248,72 @@ impl SettingsPage {
                 )
             }
         }
+    }
+}
+
+/// Unit prefix for the max download speed setting, stored as "k"/"m"/"g" in
+/// settings.toml. Prefixes are decimal multiples of the unit base.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SpeedPrefix {
+    Kilo,
+    Mega,
+    Giga,
+}
+
+impl SpeedPrefix {
+    fn as_str(self) -> &'static str {
+        match self {
+            SpeedPrefix::Kilo => "k",
+            SpeedPrefix::Mega => "m",
+            SpeedPrefix::Giga => "g",
+        }
+    }
+
+    /// Parses a stored prefix string, falling back to Mega on unknown values.
+    fn from_setting(value: &str) -> Self {
+        match value {
+            "k" => SpeedPrefix::Kilo,
+            "g" => SpeedPrefix::Giga,
+            _ => SpeedPrefix::Mega,
+        }
+    }
+}
+
+/// Pick-list entry pairing a unit prefix with the current bit/byte base, so
+/// its label adapts ("kb/s", "mb/s", "gb/s" in bits mode vs "KB/s", "MB/s",
+/// "GB/s" in bytes mode).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SpeedUnitChoice {
+    pub prefix: SpeedPrefix,
+    pub bits: bool,
+}
+
+impl std::fmt::Display for SpeedUnitChoice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let scale = if self.bits {
+            match self.prefix {
+                SpeedPrefix::Kilo => "k",
+                SpeedPrefix::Mega => "m",
+                SpeedPrefix::Giga => "g",
+            }
+        } else {
+            match self.prefix {
+                SpeedPrefix::Kilo => "K",
+                SpeedPrefix::Mega => "M",
+                SpeedPrefix::Giga => "G",
+            }
+        };
+        let base = if self.bits { "b" } else { "B" };
+        write!(f, "{scale}{base}/s")
+    }
+}
+
+/// Formats a speed value for the settings input: whole numbers without a
+/// decimal point, everything else as-is.
+fn format_speed_setting(value: f64) -> String {
+    if value.fract() == 0.0 {
+        format!("{}", value.max(0.0) as u64)
+    } else {
+        format!("{value}")
     }
 }

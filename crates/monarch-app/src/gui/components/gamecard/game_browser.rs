@@ -46,8 +46,8 @@ impl GameBrowser {
             container(iced::widget::scrollable(
                 container(self.games.view(interactive))
                     .width(Length::Fill)
-                    .padding(20)
-                    .align_x(alignment::Horizontal::Center),
+                    .padding(10)
+                    .align_x(alignment::Horizontal::Left),
             ))
             .width(Length::Fill)
             .height(Length::Fill)

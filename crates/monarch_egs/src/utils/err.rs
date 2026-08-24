@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum MonarchEgsError {
     #[error("web request failed")]
     WebRequestError(String),
@@ -10,6 +10,9 @@ pub enum MonarchEgsError {
 
     #[error("hash mismatch")]
     HashMismatchError(String),
+
+    #[error("download cancelled")]
+    Cancelled,
 
     #[error("unknown error")]
     Unknown,

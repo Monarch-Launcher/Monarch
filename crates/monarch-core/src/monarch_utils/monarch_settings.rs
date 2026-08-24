@@ -30,6 +30,11 @@ pub struct LauncherSettings {
     pub custom_data: String, // Arbitrary data - used to store Epic Games creds
 }
 
+/// Whether Monarch automatically checks for updates of managed games on start-up.
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonarchSettings {
     pub game_folder: String,
@@ -46,6 +51,58 @@ pub struct MonarchSettings {
 
     #[serde(default)]
     pub legendary_bin: String,
+
+    /// Whether download speeds are shown in bits per second (b/s) instead of
+    /// bytes per second (B/s).
+    #[serde(default)]
+    pub show_download_speed_in_bits: bool,
+
+    /// User-configured maximum download speed. The unit's base (bit or byte)
+    /// follows [`Self::show_download_speed_in_bits`]. 0 means unlimited.
+    #[serde(default)]
+    pub max_download_speed_value: f64,
+
+    /// Unit prefix of [`Self::max_download_speed_value`]: "k", "m" or "g".
+    /// Prefixes are decimal (kb/s = 1000 b/s), matching how network speeds
+    /// are conventionally written.
+    #[serde(default = "default_max_speed_prefix")]
+    pub max_download_speed_prefix: String,
+
+    /// Whether Monarch checks for updates of installed games managed by
+    /// Monarch when it starts up.
+    #[serde(default = "default_true")]
+    pub check_updates_on_startup: bool,
+}
+
+/// Decimal multiplier for a speed unit prefix ("k", "m" or "g").
+fn speed_prefix_multiplier(prefix: &str) -> f64 {
+    match prefix {
+        "g" => 1_000_000_000.0,
+        "m" => 1_000_000.0,
+        _ => 1_000.0,
+    }
+}
+
+fn default_max_speed_prefix() -> String {
+    String::from("m")
+}
+
+impl MonarchSettings {
+    /// Decimal multiplier of the configured speed unit prefix.
+    pub fn max_download_speed_multiplier(&self) -> f64 {
+        speed_prefix_multiplier(&self.max_download_speed_prefix)
+    }
+
+    /// The configured speed limit in bytes per second; 0 means unlimited.
+    pub fn max_download_speed_bps(&self) -> u64 {
+        let raw = self.max_download_speed_value.max(0.0) * self.max_download_speed_multiplier();
+        let bytes_per_sec = if self.show_download_speed_in_bits {
+            raw / 8.0
+        } else {
+            raw
+        };
+        bytes_per_sec as u64
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,7 +124,7 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             settings_path: String::new(),
             monarch: MonarchSettings {
@@ -79,6 +136,10 @@ impl Settings {
                 umu_bin: String::new(),
                 steamcmd_bin: String::new(),
                 legendary_bin: String::new(),
+                show_download_speed_in_bits: false,
+                max_download_speed_value: 0.0,
+                max_download_speed_prefix: default_max_speed_prefix(),
+                check_updates_on_startup: true,
             },
             quicklaunch: QuicklaunchSettings {
                 close_shortcut: String::new(),
@@ -169,6 +230,10 @@ impl Default for Settings {
             umu_bin,
             steamcmd_bin,
             legendary_bin,
+            show_download_speed_in_bits: false,
+            max_download_speed_value: 0.0,
+            max_download_speed_prefix: default_max_speed_prefix(),
+            check_updates_on_startup: true,
         };
 
         let quicklaunch: QuicklaunchSettings = QuicklaunchSettings {

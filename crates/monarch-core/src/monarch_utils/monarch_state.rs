@@ -1,7 +1,10 @@
 use crate::monarch_utils::monarch_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_fs::get_library_db_path;
 use crate::monarch_utils::monarch_settings;
-use crate::{monarch_games::monarchgame::MonarchGame, monarch_utils::monarch_settings::Settings};
+use crate::{
+    monarch_games::monarchgame::MonarchGame, monarch_games::updates::MonarchGameUpdate,
+    monarch_utils::monarch_settings::Settings,
+};
 use anyhow::{bail, Result};
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::SqlitePool;
@@ -20,6 +23,8 @@ pub static MONARCH_STATE: LazyLock<RwLock<MonarchState>> =
 #[derive(Debug)]
 pub struct MonarchState {
     library_games: Vec<MonarchGame>,
+    /// Updates found by the latest update check for games managed by Monarch.
+    available_updates: Vec<MonarchGameUpdate>,
     settings: Arc<RwLock<Settings>>,
     downloader: Arc<RwLock<MonarchDownloader>>,
 
@@ -36,6 +41,7 @@ impl MonarchState {
     pub fn new() -> Self {
         Self {
             library_games: Vec::new(),
+            available_updates: Vec::new(),
             settings: Arc::new(RwLock::new(Settings::new())),
             downloader: Arc::new(RwLock::new(MonarchDownloader::new())),
             library_conn: None,
@@ -60,6 +66,22 @@ impl MonarchState {
                 );
             }
         }
+
+        // Push the persisted download speed limit into the downloader so it
+        // applies from launch without any UI interaction.
+        let max_speed_bps = match self.settings.read() {
+            Ok(settings) => settings.monarch.max_download_speed_bps(),
+            Err(e) => {
+                error!(
+                    "monarch_state::init() Failed to lock on settings for speed limit! | Err: {e}"
+                );
+                0
+            }
+        };
+        if let Ok(mut downloader) = self.downloader.write() {
+            downloader.set_max_download_speed_bps(max_speed_bps);
+        }
+
         self.library_conn = Some(Arc::new(SqlitePool::connect_lazy_with(
             SqliteConnectOptions::new()
                 .filename(get_library_db_path())
@@ -123,9 +145,24 @@ impl MonarchState {
         false
     }
 
+    /// Updates found by the latest update check for games managed by Monarch.
+    pub fn get_available_updates(&self) -> Vec<MonarchGameUpdate> {
+        self.available_updates.clone()
+    }
+
+    /// For storing the result of an update check.
+    pub fn set_available_updates(&mut self, updates: Vec<MonarchGameUpdate>) {
+        self.available_updates = updates;
+    }
+
     /// Get a copy of the Arc<RwLock<Settings>> contained in MONARCH_STATE
     pub fn get_settings_ptr(&self) -> Arc<RwLock<Settings>> {
         self.settings.clone()
+    }
+
+    /// Get a copy of the Arc<RwLock<MonarchDownloader>> contained in MONARCH_STATE
+    pub fn get_downloader_ptr(&self) -> Arc<RwLock<MonarchDownloader>> {
+        self.downloader.clone()
     }
 
     pub fn get_db_pool_arc(&self) -> Arc<SqlitePool> {

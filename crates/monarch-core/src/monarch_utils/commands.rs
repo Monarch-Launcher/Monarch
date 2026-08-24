@@ -8,6 +8,7 @@ use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{LauncherSettings, Settings};
 use crate::monarch_utils::monarch_credentials::get_password;
+use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::{monarch_fs, monarch_settings};
 
 /*
@@ -65,6 +66,16 @@ pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
 /// backend.
 pub fn write_settings(settings: &Settings) -> Result<()> {
     monarch_settings::write_settings(settings)
+}
+
+/// Applies the maximum download speed (bytes/s, 0 = unlimited) to the global
+/// downloader so running and queued downloads pick it up immediately.
+pub fn set_max_download_speed_bps(bps: u64) -> Result<(), String> {
+    let state = MONARCH_STATE.read().map_err(|e| e.to_string())?;
+    let downloader = state.get_downloader_ptr();
+    let mut downloader = downloader.write().map_err(|e| e.to_string())?;
+    downloader.set_max_download_speed_bps(bps);
+    Ok(())
 }
 
 /*

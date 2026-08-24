@@ -49,7 +49,8 @@ impl StoreDetailsPage {
                 };
 
                 if !has_props {
-                    monarch_core::monarch_games::commands::get_game_properties(&mut game_copy).await;
+                    monarch_core::monarch_games::commands::get_game_properties(&mut game_copy)
+                        .await;
                     let mut game_lock = game_clone.lock().unwrap();
                     *game_lock = game_copy;
                 }
