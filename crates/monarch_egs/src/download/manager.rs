@@ -9,7 +9,7 @@ use sha1::{Digest, Sha1};
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::{Notify, mpsc};
 use tokio::task::JoinSet;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use super::chunk::process_chunk;
 use super::{FileManifest, Manifest};
@@ -194,6 +194,26 @@ pub struct VerifyReport {
     pub missing: u64,
     pub mismatched: u64,
     pub total_bytes: u64,
+}
+
+/// Live progress snapshot of a verification run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VerifyProgress {
+    /// Files hashed so far.
+    pub files_checked: u64,
+    /// Total files listed in the manifest.
+    pub total_files: u64,
+}
+
+impl VerifyProgress {
+    /// Completion as a whole percentage, floored to the nearest percent.
+    pub fn percent(&self) -> u64 {
+        if self.total_files == 0 {
+            return 100;
+        }
+        ((self.files_checked.min(self.total_files) as f64 / self.total_files as f64) * 100.0)
+            .floor() as u64
+    }
 }
 
 /// What a download run intends to do, computed without touching the network.
@@ -473,48 +493,93 @@ impl DownloadManager {
     /// Verify an existing installation against the manifest. Files that are
     /// missing or whose SHA1 does not match are reported; nothing is changed.
     pub async fn verify(&self) -> Result<VerifyReport, MonarchEgsError> {
-        let files = self.verify_files()?;
+        self.run_verification(None).await
+    }
+
+    /// Same as [`DownloadManager::verify`] but emits a [`VerifyProgress`]
+    /// snapshot every time the whole-percent progress changes.
+    pub async fn verify_with_progress(
+        &self,
+        tx: mpsc::Sender<VerifyProgress>,
+    ) -> Result<VerifyReport, MonarchEgsError> {
+        self.run_verification(Some(&tx)).await
+    }
+
+    async fn run_verification(
+        &self,
+        tx: Option<&mpsc::Sender<VerifyProgress>>,
+    ) -> Result<VerifyReport, MonarchEgsError> {
+        let files = self.manifest.files();
+        let total_files = files.len() as u64;
         let mut report = VerifyReport::default();
-        for verification in &files {
+        let mut files_checked = 0u64;
+        let mut last_percent: Option<u64> = None;
+
+        for file in files {
+            let verification = self.check_file(file)?;
+
             match verification.status {
                 VerifyStatus::Ok => report.ok += 1,
                 VerifyStatus::Missing => report.missing += 1,
                 VerifyStatus::HashMismatch => report.mismatched += 1,
             }
             report.total_bytes += verification.expected_size;
+
+            if let Some(tx) = tx {
+                files_checked += 1;
+                let snapshot = VerifyProgress {
+                    files_checked,
+                    total_files,
+                };
+
+                // Throttle: emit only when the floored percentage changes (or
+                // on completion) so huge installs do not flood the channel.
+                let percent = snapshot.percent();
+                if last_percent != Some(percent) || files_checked == total_files {
+                    last_percent = Some(percent);
+                    debug!(
+                        "Verification {}% ({}/{} files)",
+                        percent, files_checked, total_files
+                    );
+                    let _ = tx.send(snapshot).await;
+                }
+            }
         }
+
         Ok(report)
     }
 
     /// Per-file verification results for the current installation.
     pub fn verify_files(&self) -> Result<Vec<FileVerification>, MonarchEgsError> {
-        let files = self.manifest.files();
-        let mut results = Vec::with_capacity(files.len());
+        self.manifest
+            .files()
+            .iter()
+            .map(|file| self.check_file(file))
+            .collect()
+    }
 
-        for file in files {
-            let path = safe_join(&self.install_dir, file.filename()).ok_or_else(|| {
-                MonarchEgsError::ParsingError(format!(
-                    "Invalid filename in manifest: {}",
-                    file.filename()
-                ))
-            })?;
+    /// Checks a single installed file against its manifest hash.
+    fn check_file(&self, file: &FileManifest) -> Result<FileVerification, MonarchEgsError> {
+        let path = safe_join(&self.install_dir, file.filename()).ok_or_else(|| {
+            MonarchEgsError::ParsingError(format!(
+                "Invalid filename in manifest: {}",
+                file.filename()
+            ))
+        })?;
 
-            let status = if !path.exists() {
-                VerifyStatus::Missing
-            } else if file_sha1(&path).map(|h| h == *file.sha1()).unwrap_or(false) {
-                VerifyStatus::Ok
-            } else {
-                VerifyStatus::HashMismatch
-            };
+        let status = if !path.exists() {
+            VerifyStatus::Missing
+        } else if file_sha1(&path).map(|h| h == *file.sha1()).unwrap_or(false) {
+            VerifyStatus::Ok
+        } else {
+            VerifyStatus::HashMismatch
+        };
 
-            results.push(FileVerification {
-                filename: file.filename().to_string(),
-                expected_size: file.file_size(),
-                status,
-            });
-        }
-
-        Ok(results)
+        Ok(FileVerification {
+            filename: file.filename().to_string(),
+            expected_size: file.file_size(),
+            status,
+        })
     }
 
     async fn run_download(

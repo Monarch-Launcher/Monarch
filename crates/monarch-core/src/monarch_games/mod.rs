@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod egs_client;
 pub mod games;
+pub mod integrity;
 pub mod legendary_client;
 pub mod monarch_client;
 pub mod monarchgame;

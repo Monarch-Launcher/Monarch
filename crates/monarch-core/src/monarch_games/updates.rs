@@ -34,6 +34,16 @@ pub struct MonarchGameUpdate {
     pub update: GameUpdate,
 }
 
+/// The outcome of checking a single game for updates, as reported by
+/// check_game_for_updates().
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum GameUpdateCheck {
+    /// The installed build matches Epic's current Live build.
+    UpToDate,
+    /// A newer build was found and queued for download.
+    UpdateAvailable { latest_build_version: String },
+}
+
 /// An installed game managed by Monarch together with the metadata required to
 /// check it for updates.
 struct ManagedInstall {
@@ -197,6 +207,66 @@ pub async fn check_for_game_updates() -> Result<Vec<MonarchGameUpdate>, String> 
     Ok(game_updates)
 }
 
+/// Checks a single installed game managed by Monarch for updates. Same
+/// comparison as the start-up check but scoped to one game; a detected update
+/// is queued for download without starting it, and the stored update-check
+/// results for other games are left untouched.
+pub async fn check_game_for_updates(game: &MonarchGame) -> Result<GameUpdateCheck, String> {
+    let Some(install) = collect_managed_install(game) else {
+        return Err(format!(
+            "{} cannot be checked because it was not installed by Monarch or its install metadata is incomplete.",
+            game.name
+        ));
+    };
+
+    let mut client = EgsClient::new();
+    if !client.credentials_exist() {
+        return Err(String::from(
+            "Sign in to the Epic Games Store to check this game for updates.",
+        ));
+    }
+
+    client
+        .load_existing_user()
+        .await
+        .map_err(|e| format!("Failed to load Epic Games session | Err: {e}"))?;
+
+    let builds = vec![install.build.clone()];
+    let updates = monarch_egs::check_updates(client.user(), MANAGED_PLATFORM, &builds)
+        .await
+        .map_err(|e| format!("Epic Games update check failed | Err: {e}"))?;
+
+    let Some(update) = updates.into_iter().next() else {
+        // Up to date: drop any stale queued entry recorded for this game.
+        info!(
+            "monarch_games::updates::check_game_for_updates() {} is up to date",
+            game.name
+        );
+        store_game_update_result(&game.id, None);
+        return Ok(GameUpdateCheck::UpToDate);
+    };
+
+    info!(
+        "monarch_games::updates::check_game_for_updates() Update available for {} ({} -> {}), queuing",
+        game.name,
+        update.installed_build_version,
+        update.latest_build_version
+    );
+
+    let latest_build_version = update.latest_build_version.clone();
+    let game_update = MonarchGameUpdate {
+        game_name: game.name.clone(),
+        game_id: game.id.clone(),
+        update,
+    };
+
+    queue_detected_updates(std::slice::from_ref(&game_update), std::slice::from_ref(&install))
+        .await;
+    store_game_update_result(&game.id, Some(game_update));
+
+    Ok(GameUpdateCheck::UpdateAvailable { latest_build_version })
+}
+
 /// Queues download jobs for the given updates without starting them. Jobs land
 /// at the back of the downloader queue where the user can start them from the
 /// download page. Games that are already queued or downloading are skipped.
@@ -328,67 +398,89 @@ fn store_available_updates(updates: Vec<MonarchGameUpdate>) {
     }
 }
 
+/// Persists the result of a single-game update check, replacing any previous
+/// entry for that game while leaving other games' results untouched.
+fn store_game_update_result(game_id: &str, update: Option<MonarchGameUpdate>) {
+    match MONARCH_STATE.write() {
+        Ok(mut state) => {
+            let mut updates: Vec<MonarchGameUpdate> = state
+                .get_available_updates()
+                .into_iter()
+                .filter(|existing| existing.game_id != game_id)
+                .collect();
+            if let Some(update) = update {
+                updates.push(update);
+            }
+            state.set_available_updates(updates);
+        }
+        Err(e) => {
+            error!(
+                "monarch_games::updates::store_game_update_result() Failed to lock on MONARCH_STATE | Err: {e}"
+            );
+        }
+    }
+}
+
 /// Collects library games whose files were installed by Monarch itself and
 /// therefore can only be updated through monarch_egs. Games missing the
 /// metadata required for a comparison are skipped.
 fn collect_managed_installs(games: &[MonarchGame]) -> Vec<ManagedInstall> {
-    let mut installs = Vec::new();
+    games.iter().filter_map(collect_managed_install).collect()
+}
 
-    for game in games {
-        if !game.is_installed || !game.managed_by_monarch {
-            continue;
-        }
-
-        let Some(store) = game.stores.iter().find(|store| store.name == "epicgames") else {
-            continue;
-        };
-
-        let catalog_id = game.properties.other.get("catalog_id");
-        let app_name = game.properties.other.get("app_name");
-        let version = &game.properties.version;
-
-        // Games installed before Monarch tracked EGS asset data, or installs
-        // without a recorded build version, cannot be reliably compared.
-        let Some(catalog_id) = catalog_id else {
-            warn!(
-                "monarch_games::updates::collect_managed_installs() Missing EGS catalog id for {}, skipping",
-                game.name
-            );
-            continue;
-        };
-        let Some(app_name) = app_name else {
-            warn!(
-                "monarch_games::updates::collect_managed_installs() Missing EGS app name for {}, skipping",
-                game.name
-            );
-            continue;
-        };
-
-        if store.store_id.is_empty()
-            || catalog_id.is_empty()
-            || app_name.is_empty()
-            || version.is_empty()
-            || version == "Error"
-        {
-            warn!(
-                "monarch_games::updates::collect_managed_installs() Incomplete install metadata for {}, skipping",
-                game.name
-            );
-            continue;
-        }
-
-        installs.push(ManagedInstall {
-            game: game.clone(),
-            build: InstalledBuild {
-                namespace: store.store_id.clone(),
-                catalog_item_id: catalog_id.clone(),
-                app_name: app_name.clone(),
-                build_version: version.clone(),
-            },
-        });
+/// Returns the metadata required to check `game` for updates, or `None` when
+/// it is not an installed game managed through monarch_egs or its install
+/// metadata is incomplete.
+fn collect_managed_install(game: &MonarchGame) -> Option<ManagedInstall> {
+    if !game.is_installed || !game.managed_by_monarch {
+        return None;
     }
 
-    installs
+    let store = game.stores.iter().find(|store| store.name == "epicgames")?;
+
+    let catalog_id = game.properties.other.get("catalog_id");
+    let app_name = game.properties.other.get("app_name");
+    let version = &game.properties.version;
+
+    // Games installed before Monarch tracked EGS asset data, or installs
+    // without a recorded build version, cannot be reliably compared.
+    let Some(catalog_id) = catalog_id else {
+        warn!(
+            "monarch_games::updates::collect_managed_install() Missing EGS catalog id for {}",
+            game.name
+        );
+        return None;
+    };
+    let Some(app_name) = app_name else {
+        warn!(
+            "monarch_games::updates::collect_managed_install() Missing EGS app name for {}",
+            game.name
+        );
+        return None;
+    };
+
+    if store.store_id.is_empty()
+        || catalog_id.is_empty()
+        || app_name.is_empty()
+        || version.is_empty()
+        || version == "Error"
+    {
+        warn!(
+            "monarch_games::updates::collect_managed_install() Incomplete install metadata for {}",
+            game.name
+        );
+        return None;
+    }
+
+    Some(ManagedInstall {
+        game: game.clone(),
+        build: InstalledBuild {
+            namespace: store.store_id.clone(),
+            catalog_item_id: catalog_id.clone(),
+            app_name: app_name.clone(),
+            build_version: version.clone(),
+        },
+    })
 }
 
 #[cfg(test)]
@@ -467,6 +559,24 @@ mod tests {
         let games = vec![game];
 
         assert!(collect_managed_installs(&games).is_empty());
+    }
+
+    #[test]
+    fn single_game_check_rejects_unmanaged_games() {
+        let mut game = managed_epic_game("GameA", "ns-a", "1.0");
+        game.managed_by_monarch = false;
+
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let result = runtime.block_on(check_game_for_updates(&game));
+        assert!(result.is_err());
+
+        // Missing install metadata is rejected before any network access too.
+        let mut game = managed_epic_game("GameA", "ns-a", "Error");
+        assert!(runtime.block_on(check_game_for_updates(&game)).is_err());
+
+        // Non-Epic managed installs have no comparable build to check.
+        game.stores[0].name = "steam".to_string();
+        assert!(runtime.block_on(check_game_for_updates(&game)).is_err());
     }
 
     #[test]

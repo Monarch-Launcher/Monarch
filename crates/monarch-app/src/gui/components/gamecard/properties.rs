@@ -129,8 +129,24 @@ impl PropertiesModal {
                     self.selected_compatibility = self
                         .compatibility_list
                         .iter()
-                        .find(|v| v.name == game_compat)
+                        .find(|v| v.path == game_compat || v.name == game_compat)
                         .cloned();
+
+                    if self.selected_compatibility.is_none() {
+                        let compat_dir = std::path::Path::new(&game_compat)
+                            .parent()
+                            .and_then(|p| p.file_name())
+                            .and_then(|n| n.to_str())
+                            .map(|n| n.to_string());
+
+                        if let Some(dir) = compat_dir {
+                            self.selected_compatibility = self
+                                .compatibility_list
+                                .iter()
+                                .find(|v| v.name == dir)
+                                .cloned();
+                        }
+                    }
                 }
 
                 Task::none()

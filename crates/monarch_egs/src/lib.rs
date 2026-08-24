@@ -6,7 +6,8 @@ mod utils;
 pub use auth::{Session, User};
 pub use download::{
     DownloadEvent, DownloadManager, DownloadPlan, DownloadProgress, DownloadReport,
-    DownloaderOptions, Manifest, PrepManifestData, VerifyReport, VerifyStatus, get_game_manifest,
+    DownloaderOptions, Manifest, PrepManifestData, VerifyProgress, VerifyReport, VerifyStatus,
+    get_game_manifest,
 };
 pub use games::{
     Entitlement, GameAsset, GameUpdate, InstalledBuild, Platform, check_updates,

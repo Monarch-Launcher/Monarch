@@ -238,6 +238,81 @@ pub fn get_available_game_updates() -> Vec<super::updates::MonarchGameUpdate> {
     }
 }
 
+/// Checks all installed games managed by Monarch for available updates.
+///
+/// This is the same check that runs automatically on start-up: results are
+/// stored in app state and any detected updates are queued for download.
+pub async fn check_for_game_updates() -> Result<Vec<super::updates::MonarchGameUpdate>, String> {
+    // The Epic session handling in monarch_egs panics on some network
+    // failures. Catch it here so a failed manual check can never take
+    // Monarch down, mirroring the start-up update check.
+    let check = futures::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(
+        super::updates::check_for_game_updates(),
+    ));
+
+    match check.await {
+        Ok(result) => result,
+        Err(panic) => {
+            error!(
+                "monarch_games::commands::check_for_game_updates() Update check panicked! | Err: {panic:?}"
+            );
+            Err(String::from("Something went wrong while checking for updates!"))
+        }
+    }
+}
+
+/// Checks a single game managed by Monarch for updates and reports whether it
+/// is up to date or an update was queued. Triggered from the
+/// "Check for Updates" action in the actions modal.
+pub async fn check_game_for_updates(
+    game: &MonarchGame,
+) -> Result<super::updates::GameUpdateCheck, String> {
+    // Same panic hardening as the library-wide check.
+    let check = futures::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(
+        super::updates::check_game_for_updates(game),
+    ));
+
+    match check.await {
+        Ok(result) => result,
+        Err(panic) => {
+            error!(
+                "monarch_games::commands::check_game_for_updates() Update check panicked! | Err: {panic:?}"
+            );
+            Err(format!(
+                "Something went wrong while checking {} for updates!",
+                game.name
+            ))
+        }
+    }
+}
+
+/// Verifies the files of an installed game managed by Monarch and returns a
+/// human-readable summary of the result. Triggered from the
+/// "Verify Integrity of Files" action. `on_progress` is invoked with
+/// (files checked, total files) whenever the whole-percent progress changes.
+pub async fn verify_game_integrity(
+    game: &MonarchGame,
+    on_progress: Option<super::integrity::ProgressCallback>,
+) -> Result<String, String> {
+    info!("Verifying integrity of: {}", game.name);
+
+    // Manifest fetching in monarch_egs unwraps on some network failures;
+    // catch panics so a failed verification can never take Monarch down.
+    let verify = futures::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(
+        super::integrity::verify_game_integrity(game, on_progress),
+    ));
+
+    match verify.await {
+        Ok(result) => result,
+        Err(panic) => {
+            error!(
+                "monarch_games::commands::verify_game_integrity() Verification panicked! | Err: {panic:?}"
+            );
+            Err(String::from("Something went wrong while verifying game files!"))
+        }
+    }
+}
+
 /// Number of downloads either in progress or waiting in the queue.
 pub fn get_pending_download_count() -> usize {
     match MONARCH_STATE.read() {

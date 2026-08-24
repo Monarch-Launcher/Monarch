@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 pub use manager::{
     DownloadEvent, DownloadManager, DownloadPlan, DownloadProgress, DownloadReport,
-    DownloaderOptions, VerifyReport, VerifyStatus,
+    DownloaderOptions, VerifyProgress, VerifyReport, VerifyStatus,
 };
 
 pub use manifest::get_game_manifest;
