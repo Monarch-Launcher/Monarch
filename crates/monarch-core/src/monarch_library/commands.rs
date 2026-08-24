@@ -1,10 +1,22 @@
 use crate::{
-    monarch_games::{commands::get_game_properties, monarchgame::MonarchGame},
+    monarch_games::{
+        games::GameType,
+        monarchgame::{MonarchGame, MonarchGameProperties},
+    },
     monarch_utils::monarch_state::MONARCH_STATE,
+    monarch_utils::monarch_vdf,
 };
 
+#[cfg(target_os = "windows")]
+use crate::monarch_games::windows::steam;
+
+#[cfg(target_os = "macos")]
+use crate::monarch_games::macos::steam;
+
+#[cfg(target_os = "linux")]
+use crate::monarch_games::linux::steam;
+
 use core::result::Result;
-use futures::future::join_all;
 use std::cmp::Ordering;
 use tracing::error;
 
@@ -24,16 +36,46 @@ pub fn get_library() -> Result<Vec<MonarchGame>, String> {
 pub async fn get_home_recomendations() -> Result<Vec<MonarchGame>, String> {
     match get_library() {
         Ok(mut games) => {
-            let mut properties_tasks = vec![];
+            // Refresh last_played for installed Steam games directly from the
+            // local appmanifest files (disk-only, no network) so the sort below
+            // reflects actual recent play instead of possibly stale DB values.
             for game in games.iter_mut() {
-                properties_tasks.push(get_game_properties(game));
-            }
-            join_all(properties_tasks).await;
+                let mut store = game.get_store_name();
+                if store == "steamcmd" {
+                    store = "steam".to_string();
+                }
 
+                if game.is_installed() && store == "steam" {
+                    match steam::get_default_libraryfolders_location() {
+                        Ok(p) => {
+                            // Merge the locally available manifest fields so
+                            // cards show correct size/install dir even when
+                            // the DB row was never fully enriched.
+                            let props: MonarchGameProperties =
+                                monarch_vdf::get_game_properties_from_manifest(game, &p).into();
+                            game.properties.last_played = props.last_played;
+                            if !props.install_dir.is_empty() {
+                                game.properties.install_dir = props.install_dir;
+                            }
+                            if props.size_on_disk > 0 {
+                                game.properties.size_on_disk = props.size_on_disk;
+                            }
+                        }
+                        Err(e) => {
+                            error!("monarch_library::get_home_recomendations() Failed to get path to Steams libraryfolders.vdf! | Err: {e}");
+                        }
+                    }
+                }
+            }
+
+            // Sort by last_played, newest first. Timestamps are stored as unix
+            // epoch strings, so compare them numerically.
             games.sort_by(|g1, g2| {
-                if g1.properties.last_played > g2.properties.last_played {
+                let t1 = g1.properties.last_played.parse::<i64>().unwrap_or(0);
+                let t2 = g2.properties.last_played.parse::<i64>().unwrap_or(0);
+                if t1 > t2 {
                     Ordering::Less
-                } else if g1.properties.last_played < g2.properties.last_played {
+                } else if t1 < t2 {
                     Ordering::Greater
                 } else {
                     Ordering::Equal

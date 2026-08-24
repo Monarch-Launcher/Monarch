@@ -12,6 +12,7 @@ use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebAp
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_downloader::DownloadJob;
+use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
 };
@@ -195,7 +196,7 @@ impl EgsClient {
                     "{}/api/games?store_id={}&store=epicgames",
                     monarch_url, namespace
                 );
-                let response = match reqwest::get(&url).await {
+                let response = match monarch_http::client().get(&url).send().await {
                     Ok(resp) => resp,
                     Err(e) => {
                         error!("egs::get_user_games() Failed to request Monarch API for app_id: {} | Err: {}", namespace, e);
@@ -270,7 +271,7 @@ impl StoreType for EgsClient {
         let search_term: String =
             format!("{}/api/games?search={}?store=epicgames", monarch_url, name,);
 
-        let response = match reqwest::get(search_term).await {
+        let response = match monarch_http::client().get(search_term).send().await {
             Ok(resp) => resp,
             Err(e) => {
                 error!("egs::search_games() reqwest::get() failed! | Err: {}", e);

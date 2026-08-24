@@ -1,7 +1,9 @@
 use super::{HomePage, Message};
 use crate::gui::components::gamecard::gamecard::GameCard;
 use crate::gui::components::gamecard::GameCardMessage;
-use monarch_core::{monarch_games, monarch_library};
+use monarch_core::monarch_games;
+use monarch_core::monarch_games::monarchgame::MonarchGame;
+use monarch_core::monarch_library;
 
 impl HomePage {
     pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
@@ -19,7 +21,9 @@ impl HomePage {
                 }
                 self.deals = deals;
 
-                iced::Task::none()
+                // One background pass to enrich cards that are still missing
+                // properties. Runs after paint; bounded concurrency.
+                self.enrich_missing_properties()
             }
 
             Message::GameCard(gc_msg) => {
@@ -29,30 +33,14 @@ impl HomePage {
                     }
                 }
 
-                // Forward hover/tick messages to all cards
+                // Forward hover/tick messages to all cards. Property fetching
+                // intentionally does NOT happen here: it used to refetch every
+                // card on each hover/tick message.
                 for card in &mut self.recommended_games {
                     let _ = card.update(gc_msg.clone());
                 }
 
-                // Trigger download tasks
-                let update_tasks = iced::Task::batch(self.recommended_games.iter().cloned().map(
-                    |mut gamecard| {
-                        iced::Task::perform(
-                            async move {
-                                if !gamecard.game.has_properties() {
-                                    monarch_games::commands::get_game_properties(
-                                        &mut gamecard.game,
-                                    )
-                                    .await;
-                                }
-                                gamecard.game
-                            },
-                            Message::GameUpdated,
-                        )
-                    },
-                ));
-
-                update_tasks
+                iced::Task::none()
             }
 
             Message::GameUpdated(game) => {
@@ -111,6 +99,34 @@ impl HomePage {
                 }
             },
             Message::UpdateRecommendations,
+        )
+    }
+
+    /// Enriches recommended games that don't have properties yet, keeping at
+    /// most MAX_CONCURRENT_FETCHES requests in flight. Games whose properties
+    /// are already known are skipped. Emits one GameUpdated per finished fetch.
+    fn enrich_missing_properties(&self) -> iced::Task<Message> {
+        use futures::stream::StreamExt;
+
+        const MAX_CONCURRENT_FETCHES: usize = 8;
+
+        let missing: Vec<MonarchGame> = self
+            .recommended_games
+            .iter()
+            .filter(|card| !card.game.has_properties())
+            .map(|card| card.game.clone())
+            .collect();
+
+        if missing.is_empty() {
+            return iced::Task::none();
+        }
+
+        iced::Task::stream(
+            futures::stream::iter(missing.into_iter().map(|mut game| async move {
+                monarch_games::commands::get_game_properties(&mut game).await;
+                Message::GameUpdated(game)
+            }))
+            .buffer_unordered(MAX_CONCURRENT_FETCHES),
         )
     }
 }

@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
 use image::ImageFormat;
 use image::ImageReader;
-use reqwest;
 use reqwest::Response;
 use std::io::Cursor;
 use std::path::Path;
+
+use super::monarch_http;
 
 /*
 ---------- Download images for games ----------
@@ -12,9 +13,13 @@ use std::path::Path;
 
 /// Tells Monarch to attempt to download url content as image
 pub async fn download_image(url: &str, path: &Path) -> Result<()> {
-    let response: Response = reqwest::get(url).await.with_context(|| {
-        format!("monarch_download::download_image() Error while downloading: {url} | Err: ")
-    })?;
+    let response: Response = monarch_http::download_client()
+        .get(url)
+        .send()
+        .await
+        .with_context(|| {
+            format!("monarch_download::download_image() Error while downloading: {url} | Err: ")
+        })?;
 
     save_image_content(response, path)
         .await

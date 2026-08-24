@@ -35,9 +35,13 @@ pub async fn install_steamcmd() -> Result<()> {
         "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz";
     info!("Downloading: {}", steamcmd_url);
 
-    let response = reqwest::get(steamcmd_url).await.with_context(|| {
-        "linux::steam::install_steamcmd() Failed to get response while downloading SteamCMD | Err: "
-    })?;
+    let response = crate::monarch_utils::monarch_http::download_client()
+        .get(steamcmd_url)
+        .send()
+        .await
+        .with_context(|| {
+            "linux::steam::install_steamcmd() Failed to get response while downloading SteamCMD | Err: "
+        })?;
     let content = response.bytes().await.with_context(|| "linux::steam::install_steamcmd() Failed to get response bytes while downloading SteamCMD | Err: ")?;
 
     info!("Writing: {}", tar_dest.display());

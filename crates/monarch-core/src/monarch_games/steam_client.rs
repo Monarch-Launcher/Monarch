@@ -1,7 +1,6 @@
 use super::stores::StoreType;
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
-use reqwest;
 use scraper::{Html, Selector};
 use serde::Deserialize;
 use serde_json::Value;
@@ -19,6 +18,7 @@ use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::library;
 use crate::monarch_utils::monarch_credentials::get_password;
+use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
 use crate::monarch_utils::monarch_settings::{get_settings, LauncherSettings};
 
@@ -513,7 +513,7 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
     let target: String = format!("{monarch_url}/api/games?store=steam&store_id={id}");
 
     // GET info from Steam servers
-    match reqwest::get(&target).await {
+    match monarch_http::client().get(&target).send().await {
         Ok(response) => match response.text().await {
             Ok(body) => {
                 let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&body).unwrap();
@@ -576,7 +576,7 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 
     let mut games: Vec<MonarchGame> = Vec::new();
 
-    if let Ok(response) = reqwest::get(&target).await {
+    if let Ok(response) = monarch_http::client().get(&target).send().await {
         if let Ok(body) = response.text().await {
             games = parse_steam_page(&body).await;
         }
@@ -616,7 +616,7 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
 
     let game_info: String;
     // GET info from Steam servers
-    match reqwest::get(&target).await {
+    match monarch_http::client().get(&target).send().await {
         Ok(response) => match response.text().await {
             Ok(body) => {
                 game_info = body;
@@ -680,7 +680,7 @@ struct ProtonDbResults {
 pub async fn get_protondb_rating(steam_appid: &str) -> Result<(String, String)> {
     let target: String =
         format!("https://www.protondb.com/api/v1/reports/summaries/{steam_appid}.json");
-    let response = reqwest::get(&target).await?;
+    let response = monarch_http::client().get(&target).send().await?;
     let repsonse_text: String = response.text().await?;
 
     let proton_rating: ProtonDbResults = serde_json::from_str(&repsonse_text)?;

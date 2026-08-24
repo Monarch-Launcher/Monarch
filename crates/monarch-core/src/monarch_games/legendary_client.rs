@@ -10,6 +10,7 @@ use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebAp
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::generate_cache_image_path;
+use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_terminal::spawn_terminal;
 
@@ -66,7 +67,7 @@ impl StoreType for LegendaryClient {
         let search_term: String =
             format!("{}/api/games?search={}?store=epicgames", monarch_url, name,);
 
-        let response = match reqwest::get(search_term).await {
+        let response = match monarch_http::client().get(search_term).send().await {
             Ok(resp) => resp,
             Err(e) => {
                 error!(

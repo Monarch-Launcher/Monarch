@@ -35,12 +35,16 @@ pub async fn install_steamcmd() -> Result<()> {
 
     // Download steamcmd
     let download_url: &str = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip";
-    let response: Response = reqwest::get(download_url).await.with_context(|| {
-        format!(
-            "windows::steam::install_steamcmd() error occured running reqwest::get({}) | Err: ",
-            download_url
-        )
-    })?;
+    let response: Response = crate::monarch_utils::monarch_http::download_client()
+        .get(download_url)
+        .send()
+        .await
+        .with_context(|| {
+            format!(
+                "windows::steam::install_steamcmd() error occured running reqwest::get({}) | Err: ",
+                download_url
+            )
+        })?;
     let mut file: File = File::create(&steamcmd_zip)?;
     let bytes = response.bytes().await.with_context(|| {
         "windows::steam::install_steamcmd() error while reading response.bytes()! | Err"

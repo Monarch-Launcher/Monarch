@@ -9,7 +9,7 @@ use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
-use crate::monarch_utils::{monarch_terminal, monarch_vdf};
+use crate::monarch_utils::{monarch_http, monarch_terminal, monarch_vdf};
 use crate::{monarch_library::library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -30,7 +30,7 @@ impl StoreType for MonarchClient {
     async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
         let monarch_url: &'static str = std::env!("MONARCH_URL");
         let search_term: String = format!("{monarch_url}/api/games?search={}", name);
-        let response = match reqwest::get(search_term).await {
+        let response = match monarch_http::client().get(search_term).send().await {
             Ok(resp) => resp,
             Err(e) => {
                 error!(
@@ -461,7 +461,7 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     let monarch_url: &'static str = std::env!("MONARCH_URL");
     let search_term: String = format!("{monarch_url}/api/games?search={}", search_term);
 
-    let response = reqwest::get(search_term).await.unwrap();
+    let response = monarch_http::client().get(search_term).send().await.unwrap();
     let resp_content = response.text().await.unwrap();
 
     let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&resp_content).unwrap();
@@ -527,7 +527,7 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
     } else {
         let monarch_url: &'static str = std::env!("MONARCH_URL");
         let search_term: String = format!("{monarch_url}/api/games?id={}", game.id);
-        let response = reqwest::get(search_term).await.unwrap();
+        let response = monarch_http::client().get(search_term).send().await.unwrap();
         let resp_content = response.text().await.unwrap();
         let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&resp_content).unwrap();
 
@@ -563,8 +563,12 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
     properties.other = preserved_other;
     game.properties = properties;
 
-    // Keep process-local library cache in sync with computed/enriched properties.
-    if let Ok(mut state) = MONARCH_STATE.write() {
-        let _ = state.update_game(game.clone());
+    // Persist enriched properties to SQLite (and refresh the process-local
+    // cache inside update_game_properties). Startup rebuilds MONARCH_STATE
+    // from the database, so without this the enrichment is lost on restart.
+    if let Err(e) = library::update_game_properties(game).await {
+        error!(
+            "monarch_client::get_game_properties() Failed to persist game properties! | Err: {e}"
+        );
     }
 }
