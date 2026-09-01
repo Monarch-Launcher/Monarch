@@ -70,6 +70,9 @@ async fn init() {
 fn main() {
     futures::executor::block_on(init());
 
+    #[cfg(target_os = "windows")]
+    monarch_app::window::apply_rounded_corners();
+
     // Run Monarch
     App::run();
 }

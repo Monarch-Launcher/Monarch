@@ -1,4 +1,4 @@
-use iced::widget::{button, container, image, row, rule, svg, text, Space};
+use iced::widget::{button, container, image, mouse_area, row, rule, svg, text, Space};
 use iced::{alignment, Element, Length};
 
 #[derive(Clone, Debug)]
@@ -27,7 +27,7 @@ impl Header {
         speed_in_bits: bool,
         pending_downloads: usize,
     ) -> Element<'_, Message> {
-        let logo = image(crate::gui::resources::LOGO.clone()).height(Length::Fixed(44.0));
+        let logo = image(crate::gui::resources::LOGO.clone()).height(Length::Fixed(32.0));
 
         let button_content = |label| {
             text(label)
@@ -46,7 +46,7 @@ impl Header {
             button(button_content(label))
                 .on_press(msg)
                 .width(Length::Shrink)
-                .padding(8)
+                .padding(6)
                 .style(style)
         };
 
@@ -149,20 +149,6 @@ impl Header {
             .spacing(10)
             .align_y(alignment::Vertical::Center);
 
-        let drag_logo = button(row![logo].align_y(alignment::Vertical::Center))
-            .on_press(Message::DragWindow)
-            .padding(iced::Padding {
-                right: 20.0,
-                ..Default::default()
-            })
-            .style(crate::gui::styles::header::drag);
-
-        let drag_spacer = button(Space::new())
-            .on_press(Message::DragWindow)
-            .width(Length::Fill)
-            .padding(0)
-            .style(crate::gui::styles::header::drag);
-
         fn window_button<F>(
             icon: &svg::Handle,
             msg: Message,
@@ -219,18 +205,31 @@ impl Header {
         .spacing(4)
         .align_y(alignment::Vertical::Center);
 
-        let content = container(
-            row![drag_logo, nav, drag_spacer, window_controls]
-                .align_y(alignment::Vertical::Center)
+        // The whole header is a drag region: on press anywhere that isn't an
+        // interactive button (buttons capture the event first), the window is
+        // dragged. This fires on mouse-down, which winit requires for
+        // `window::drag` to start a native drag loop.
+        let content = mouse_area(
+            container(
+                row![
+                    logo,
+                    nav,
+                    Space::new().width(Length::Fill).height(Length::Shrink),
+                    window_controls,
+                ]
+                .align_y(alignment::Vertical::Top)
                 .width(Length::Fill),
+            )
+            .padding(iced::Padding {
+                top: 4.0,
+                right: 0.0,
+                bottom: 4.0,
+                left: 10.0,
+            })
+            .style(crate::gui::styles::header::container),
         )
-        .padding(iced::Padding {
-            top: 6.0,
-            right: 0.0,
-            bottom: 6.0,
-            left: 10.0,
-        })
-        .style(crate::gui::styles::header::container);
+        .on_press(Message::DragWindow)
+        .interaction(iced::mouse::Interaction::Pointer);
 
         let accent_line =
             rule::horizontal(1).style(|theme: &iced::Theme| iced::widget::rule::Style {

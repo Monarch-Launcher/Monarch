@@ -35,6 +35,7 @@ pub enum ModalState {
 pub enum AppMessage {
     HeaderMessage(header::Message),
     Page(pages::Message),
+    ResizeWindow(iced::window::Direction),
     OpenGameDetails(monarch_core::monarch_games::monarchgame::MonarchGame),
     OpenStoreDetails(monarch_core::monarch_games::monarchgame::MonarchGame),
     OpenTerminal(Id),
@@ -262,6 +263,9 @@ impl App {
                     }
                 }
                 iced::Task::none()
+            }
+            AppMessage::ResizeWindow(direction) => {
+                return iced::window::drag_resize(self.app_id, direction);
             }
             AppMessage::Page(page_msg) => match page_msg {
                 pages::Message::Home(msg) => {
@@ -510,7 +514,19 @@ impl App {
         .width(Fill)
         .height(Fill);
 
-        let app_content: Element<'_, AppMessage> = main_content.into();
+        // Wrap the app in a rounded, thin-bordered frame with invisible
+        // resize handles on every edge/corner.
+        let frame = container(main_content)
+            .padding(crate::gui::styles::window::FRAME_PADDING)
+            .style(crate::gui::styles::window::frame)
+            .width(Fill)
+            .height(Fill);
+
+        let app_content: Element<'_, AppMessage> =
+            iced::widget::stack![frame, resize_handles()]
+                .width(Fill)
+                .height(Fill)
+                .into();
 
         let Some(modal_state) = &self.active_modal else {
             return app_content;
@@ -596,4 +612,100 @@ impl Default for App {
             active_modal: None,
         }
     }
+}
+
+/// Overlay of invisible resize handles along the window edges and corners.
+///
+/// Each handle is a [`mouse_area`] that fires on mouse press (while the button
+/// is held, which is required by the platform drag-resize loop) and requests the
+/// corresponding direction from the OS via [`iced::window::drag_resize`].
+fn resize_handles() -> iced::Element<'static, AppMessage> {
+    use iced::widget::{column, container, mouse_area, row, Space};
+    use iced::{mouse, Length, window::Direction};
+
+    // A mouse area wrapped in a fixed-size container, since `MouseArea` itself
+    // takes the size of its content.
+    let handle = |direction: Direction,
+                  interaction: mouse::Interaction,
+                  width: Length,
+                  height: Length| {
+        container(mouse_area(Space::new().width(Length::Fill).height(Length::Fill))
+            .on_press(AppMessage::ResizeWindow(direction))
+            .interaction(interaction))
+        .width(width)
+        .height(height)
+    };
+
+    let h = crate::gui::styles::window::RESIZE_HANDLE;
+
+    container(
+        column![
+            row![
+                handle(
+                    Direction::NorthWest,
+                    mouse::Interaction::ResizingDiagonallyDown,
+                    Length::Fixed(h),
+                    Length::Fixed(h)
+                ),
+                handle(
+                    Direction::North,
+                    mouse::Interaction::ResizingVertically,
+                    Length::Fill,
+                    Length::Fixed(h)
+                ),
+                handle(
+                    Direction::NorthEast,
+                    mouse::Interaction::ResizingDiagonallyUp,
+                    Length::Fixed(h),
+                    Length::Fixed(h)
+                ),
+            ]
+            .width(Length::Fill)
+            .height(Length::Fixed(h)),
+            row![
+                handle(
+                    Direction::West,
+                    mouse::Interaction::ResizingHorizontally,
+                    Length::Fixed(h),
+                    Length::Fill
+                ),
+                Space::new().width(Length::Fill).height(Length::Fill),
+                handle(
+                    Direction::East,
+                    mouse::Interaction::ResizingHorizontally,
+                    Length::Fixed(h),
+                    Length::Fill
+                ),
+            ]
+            .width(Length::Fill)
+            .height(Length::Fill),
+            row![
+                handle(
+                    Direction::SouthWest,
+                    mouse::Interaction::ResizingDiagonallyUp,
+                    Length::Fixed(h),
+                    Length::Fixed(h)
+                ),
+                handle(
+                    Direction::South,
+                    mouse::Interaction::ResizingVertically,
+                    Length::Fill,
+                    Length::Fixed(h)
+                ),
+                handle(
+                    Direction::SouthEast,
+                    mouse::Interaction::ResizingDiagonallyDown,
+                    Length::Fixed(h),
+                    Length::Fixed(h)
+                ),
+            ]
+            .width(Length::Fill)
+            .height(Length::Fixed(h)),
+        ]
+        .width(Length::Fill)
+        .height(Length::Fill),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .into()
 }

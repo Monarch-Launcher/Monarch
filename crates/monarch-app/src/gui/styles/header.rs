@@ -140,38 +140,4 @@ pub fn window_control_close(theme: &Theme, status: widget_button::Status) -> wid
     }
 }
 
-pub fn drag(_theme: &Theme, status: widget_button::Status) -> widget_button::Style {
-    match status {
-        widget_button::Status::Active => widget_button::Style {
-            background: None,
-            text_color: Color::TRANSPARENT,
-            border: Border {
-                radius: 0.0.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
-            },
-            ..Default::default()
-        },
-        widget_button::Status::Hovered => widget_button::Style {
-            background: None,
-            text_color: Color::TRANSPARENT,
-            border: Border {
-                radius: 0.0.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
-            },
-            ..Default::default()
-        },
-        widget_button::Status::Pressed => widget_button::Style {
-            background: None,
-            text_color: Color::TRANSPARENT,
-            border: Border {
-                radius: 0.0.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
-            },
-            ..Default::default()
-        },
-        _ => widget_button::Style::default(),
-    }
-}
+
