@@ -72,6 +72,24 @@ pub struct MonarchSettings {
     /// Monarch when it starts up.
     #[serde(default = "default_true")]
     pub check_updates_on_startup: bool,
+
+    /// Whether the library filter (store/status selection) is remembered
+    /// across restarts.
+    #[serde(default)]
+    pub persist_library_filters: bool,
+
+    /// Persisted library filter: show Steam games.
+    #[serde(default)]
+    pub library_filter_steam: bool,
+    /// Persisted library filter: show Epic Games.
+    #[serde(default)]
+    pub library_filter_epic: bool,
+    /// Persisted library filter: show installed games.
+    #[serde(default)]
+    pub library_filter_installed: bool,
+    /// Persisted library filter: show ready-to-install games.
+    #[serde(default)]
+    pub library_filter_uninstalled: bool,
 }
 
 /// Decimal multiplier for a speed unit prefix ("k", "m" or "g").
@@ -140,6 +158,11 @@ impl Settings {
                 max_download_speed_value: 0.0,
                 max_download_speed_prefix: default_max_speed_prefix(),
                 check_updates_on_startup: true,
+                persist_library_filters: false,
+                library_filter_steam: false,
+                library_filter_epic: false,
+                library_filter_installed: false,
+                library_filter_uninstalled: false,
             },
             quicklaunch: QuicklaunchSettings {
                 close_shortcut: String::new(),
@@ -234,6 +257,11 @@ impl Default for Settings {
             max_download_speed_value: 0.0,
             max_download_speed_prefix: default_max_speed_prefix(),
             check_updates_on_startup: true,
+            persist_library_filters: false,
+            library_filter_steam: false,
+            library_filter_epic: false,
+            library_filter_installed: false,
+            library_filter_uninstalled: false,
         };
 
         let quicklaunch: QuicklaunchSettings = QuicklaunchSettings {

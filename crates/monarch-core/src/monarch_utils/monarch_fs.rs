@@ -357,3 +357,107 @@ pub fn copy_cache_to_library(cache_path: &Path) -> Result<PathBuf> {
         .with_context(|| format!("monarch_fs::copy_cache_to_resources() Something went wrong trying to copy image from cache to resources: {} | Err: {}", cache_path.display(), destination_path.display()))?;
     Ok(destination_path)
 }
+
+/*
+---------- Wine / Proton path helpers ----------
+*/
+
+/// Characters that are legal in Linux folder names but break Wine/Proton paths
+/// (notably `:`, which Windows treats as a drive separator).
+fn wine_unsafe_path_char(c: char) -> bool {
+    matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*')
+}
+
+/// True if any path component contains characters Wine cannot use in a folder name.
+pub fn path_has_wine_unsafe_chars(path: &Path) -> bool {
+    path.to_string_lossy()
+        .chars()
+        .any(wine_unsafe_path_char)
+}
+
+/// Folder name safe for both Linux installs and Wine drive mappings.
+///
+/// Replaces Wine-invalid characters with spaces and collapses whitespace.
+pub fn sanitize_install_folder_name_wine(name: &str) -> String {
+    let sanitized: String = name
+        .chars()
+        .map(|c| if wine_unsafe_path_char(c) { ' ' } else { c })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    if sanitized.is_empty() {
+        "Game".to_string()
+    } else {
+        sanitized
+    }
+}
+
+/// If `install_dir`'s folder name contains Wine-invalid characters, rename it
+/// to a sanitized sibling directory.
+///
+/// Returns `Ok(None)` when already safe, or `Ok(Some(new_path))` after a rename.
+pub fn ensure_wine_safe_install_dir(install_dir: &Path) -> Result<Option<PathBuf>> {
+    if !path_has_wine_unsafe_chars(install_dir) {
+        return Ok(None);
+    }
+
+    let Some(parent) = install_dir.parent() else {
+        return Ok(None);
+    };
+    let Some(folder_name) = install_dir.file_name().and_then(|n| n.to_str()) else {
+        return Ok(None);
+    };
+
+    let safe_name = sanitize_install_folder_name_wine(folder_name);
+    if safe_name == folder_name {
+        return Ok(None);
+    }
+
+    let safe_dir = parent.join(&safe_name);
+    if safe_dir.exists() {
+        bail!(
+            "Install folder contains characters Proton cannot use ('{}'), and the safe path '{}' already exists. Rename or reinstall the game.",
+            folder_name,
+            safe_dir.display()
+        );
+    }
+
+    warn!(
+        "monarch_fs::ensure_wine_safe_install_dir() Renaming for Wine compatibility: '{}' -> '{}'",
+        install_dir.display(),
+        safe_dir.display()
+    );
+    fs::rename(install_dir, &safe_dir).with_context(|| {
+        format!(
+            "monarch_fs::ensure_wine_safe_install_dir() Failed to rename {} to {} | Err: ",
+            install_dir.display(),
+            safe_dir.display()
+        )
+    })?;
+
+    Ok(Some(safe_dir))
+}
+
+/// Per-game Wine prefix directory under Monarch's home.
+pub fn wine_prefix_dir(game_id: &str) -> PathBuf {
+    get_monarch_home().join("wine_prefixes").join(game_id)
+}
+
+/// Format an executable for shell launch relative to `install_dir` when possible.
+///
+/// Preferring `./rel/path.exe` lets games resolve assets against their own folder
+/// (cwd) instead of an absolute Unix path. Quotes and escapes when needed.
+pub fn relative_launch_exe_arg(exe: &Path, install_dir: &Path) -> String {
+    match exe.strip_prefix(install_dir) {
+        Ok(rel) => {
+            let rel = rel.to_string_lossy();
+            if rel.chars().any(|c| c.is_whitespace() || c == '\'') {
+                format!("'./{}'", rel.replace('\'', "'\\''"))
+            } else {
+                format!("./{rel}")
+            }
+        }
+        Err(_) => format!("'{}'", exe.display()),
+    }
+}

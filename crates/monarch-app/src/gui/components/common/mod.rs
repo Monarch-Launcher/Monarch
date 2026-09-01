@@ -75,7 +75,11 @@ where
             .rotation(iced::Rotation::Floating(iced::Radians(rotation)))
             .style(move |_theme: &Theme, _status| {
                 iced::widget::svg::Style {
-                    color: Some(Color::from_rgb8(255, 127, 0)),
+                    color: Some(if is_hovered {
+                        Color::BLACK
+                    } else {
+                        Color::from_rgb8(255, 127, 0)
+                    }),
                 }
             }),]
         .spacing(10)

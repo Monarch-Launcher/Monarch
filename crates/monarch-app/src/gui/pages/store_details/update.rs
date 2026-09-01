@@ -15,7 +15,10 @@ impl StoreDetailsPage {
                 if let Some(modal) = self.download_modal.take() {
                     let mut opts = modal.options;
                     if let Some(compat) = modal.selected_compatibility {
-                        opts.compatibility = Some(compat.name);
+                        // Proton launch uses PROTONPATH, so store the path/codename.
+                        if !compat.path.is_empty() {
+                            opts.compatibility = Some(compat.path);
+                        }
                     }
 
                     let game: MonarchGame = self.game.as_ref().unwrap().lock().unwrap().clone();

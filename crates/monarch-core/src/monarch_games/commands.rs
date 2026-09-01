@@ -20,6 +20,8 @@ use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_vdf::{get_proton_versions, ProtonVersion};
 
+use monarch_egs::SupportedPlatforms;
+
 #[cfg(target_os = "windows")]
 use super::windows::steam;
 
@@ -406,21 +408,43 @@ pub async fn remove_game(name: String, store: String, store_id: String) -> Resul
     Ok(())
 }
 
+/// Returns true when `install_dir` looks like a real path rather than a
+/// sentinel / empty placeholder written by default property structs.
+fn has_known_install_dir(install_dir: &str) -> bool {
+    !install_dir.is_empty() && install_dir != "Error"
+}
+
+/// Resolves the on-disk install folder for a Monarch-managed game.
+///
+/// Prefers the recorded `install_dir`. If that was wiped to a sentinel (common
+/// after property enrichment for non-Steam stores), falls back to the default
+/// download layout: `{game_folder}/{game.name}`.
+fn resolve_managed_install_dir(game: &MonarchGame, game_folder: &PathBuf) -> Option<PathBuf> {
+    if has_known_install_dir(&game.properties.install_dir) {
+        let recorded = PathBuf::from(&game.properties.install_dir);
+        if recorded.is_dir() {
+            return Some(recorded);
+        }
+    }
+
+    let fallback = game_folder.join(&game.name);
+    if fallback.is_dir() {
+        warn!(
+            "monarch_games::commands::resolve_managed_install_dir() Falling back to default install path for {}: {}",
+            game.name,
+            fallback.display()
+        );
+        return Some(fallback);
+    }
+
+    None
+}
+
 /// Removes the install directory of a game that Monarch itself downloaded.
 ///
 /// Only directories located within Monarch's own game folder are removed, so a
 /// Monarch-downloaded Steam game can never wipe the shared Steam library folder.
 fn remove_install_dir(game: &MonarchGame) -> Result<(), String> {
-    let install_dir: PathBuf = PathBuf::from(&game.properties.install_dir);
-
-    if !install_dir.is_dir() {
-        warn!(
-            "monarch_games::commands::remove_install_dir() Install folder not found, skipping: {}",
-            install_dir.display()
-        );
-        return Ok(());
-    }
-
     let game_folder: PathBuf = match get_settings() {
         Ok(settings_lock) => match settings_lock.read() {
             Ok(settings) => PathBuf::from(&settings.monarch.game_folder),
@@ -439,8 +463,19 @@ fn remove_install_dir(game: &MonarchGame) -> Result<(), String> {
         }
     };
 
-    // Safety: never delete folders outside Monarch's game folder.
-    if !install_dir.starts_with(&game_folder) {
+    let Some(install_dir) = resolve_managed_install_dir(game, &game_folder) else {
+        warn!(
+            "monarch_games::commands::remove_install_dir() Install folder not found, skipping: recorded='{}'",
+            game.properties.install_dir
+        );
+        return Ok(());
+    };
+
+    // Safety: never delete folders outside Monarch's game folder. Canonicalize
+    // when possible so symlink / relative forms of the same path still match.
+    let install_canon = install_dir.canonicalize().unwrap_or_else(|_| install_dir.clone());
+    let folder_canon = game_folder.canonicalize().unwrap_or_else(|_| game_folder.clone());
+    if !install_canon.starts_with(&folder_canon) {
         warn!(
             "monarch_games::commands::remove_install_dir() Refusing to remove install folder outside Monarch's game folder: {}",
             install_dir.display()
@@ -535,6 +570,47 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
     }
 }
 
+/// Checks which platforms are supported for a game from Epic Games Store.
+/// Returns SupportedPlatforms indicating Windows/Linux/Mac support.
+pub async fn check_egs_platform_support(
+    game: &MonarchGame,
+) -> Result<SupportedPlatforms, String> {
+    let namespace = game
+        .stores
+        .iter()
+        .find(|s| s.name == "epicgames")
+        .map(|s| s.store_id.clone())
+        .unwrap_or_default();
+
+    if namespace.is_empty() {
+        error!(
+            "monarch_games::commands::check_egs_platform_support() Missing Epic Games namespace for {}",
+            game.name
+        );
+        return Err("Missing Epic Games namespace".to_string());
+    }
+
+    let mut client = EgsClient::new();
+    if let Err(e) = client.load_existing_user().await {
+        error!(
+            "monarch_games::commands::check_egs_platform_support() Failed to load EGS user | Err: {}",
+            e
+        );
+        return Err("Failed to load Epic Games user".to_string());
+    }
+
+    match client.check_platform_support(&namespace).await {
+        Ok(support) => Ok(support),
+        Err(e) => {
+            error!(
+                "monarch_games::commands::check_egs_platform_support() -> {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+            Err("Failed to check platform support".to_string())
+        }
+    }
+}
+
 pub async fn manual_add_game(mut game: MonarchGame) -> Result<(), String> {
     info!("User adding game binary: {:?}", game);
 
@@ -623,15 +699,15 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
 }
 
 pub async fn manual_remove_game(game: MonarchGame) -> Result<(), String> {
-    info!("User removing game binary: {:?}", game);
+    info!("User marking game as uninstalled: {:?}", game);
 
-    if let Err(e) = monarch_library::library::remove_game(&game).await {
+    if let Err(e) = monarch_library::library::mark_game_uninstalled(&game).await {
         error!(
             "monarch_games::commands::manual_remove_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
         return Err(format!(
-            "Failed to remove game: {} from library!",
+            "Failed to mark game as uninstalled: {} from library!",
             game.name
         ));
     }

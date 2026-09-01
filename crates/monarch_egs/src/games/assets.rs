@@ -1,5 +1,6 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 use crate::User;
 use crate::utils::err::MonarchEgsError;
@@ -56,6 +57,63 @@ pub async fn owned_assets(user: &User, platform: &str) -> Result<Vec<GameAsset>,
         ))
     })?;
     Ok(serde_json::from_str::<Vec<GameAsset>>(&response_text).unwrap_or_default())
+}
+
+/// Supported platforms for downloading a game from Epic Games Store.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SupportedPlatforms {
+    pub windows: bool,
+    pub linux: bool,
+    pub macos: bool,
+}
+
+impl SupportedPlatforms {
+    /// Creates a new SupportedPlatforms with all platforms disabled.
+    pub fn none() -> Self {
+        Self {
+            windows: false,
+            linux: false,
+            macos: false,
+        }
+    }
+
+    /// Returns true if any platform is supported.
+    pub fn has_any(&self) -> bool {
+        self.windows || self.linux || self.macos
+    }
+}
+
+/// Checks which platforms are supported for a specific game by its namespace.
+///
+/// This queries the EGS assets API for each platform and checks if the game
+/// has assets available for that platform.
+pub async fn check_platform_support(
+    user: &User,
+    namespace: &str,
+) -> Result<SupportedPlatforms, MonarchEgsError> {
+    let platforms = ["Windows", "Linux", "Mac"];
+    let mut support = SupportedPlatforms::none();
+
+    for platform in &platforms {
+        let assets = owned_assets(user, platform).await.unwrap_or_default();
+        let has_assets = assets.iter().any(|a| a.namespace == namespace);
+        
+        debug!(
+            "check_platform_support() Platform {} for namespace {}: {}",
+            platform,
+            namespace,
+            if has_assets { "supported" } else { "not supported" }
+        );
+
+        match *platform {
+            "Windows" => support.windows = has_assets,
+            "Linux" => support.linux = has_assets,
+            "Mac" => support.macos = has_assets,
+            _ => {}
+        }
+    }
+
+    Ok(support)
 }
 
 /// Pick the best downloadable asset for a namespace.

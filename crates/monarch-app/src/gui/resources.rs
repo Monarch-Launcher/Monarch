@@ -102,3 +102,8 @@ pub static UPDATE: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/update-svgrepo-com.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });
+
+pub static FILTER: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/filter-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});

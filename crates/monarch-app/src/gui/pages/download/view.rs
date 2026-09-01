@@ -360,6 +360,20 @@ impl DownloadPage {
         });
 
         let progress_pct = format!("{:.0}%", active.progress * 100.0);
+        let progress_caption = if active.verifying {
+            "Checking existing files"
+        } else {
+            "Progress"
+        };
+        let progress_detail = if let Some(label) = &active.verify_label {
+            format!("{label}  ·  {progress_pct}")
+        } else {
+            format!(
+                "{} / {}  ·  {}",
+                active.downloaded_label, active.total_label, progress_pct
+            )
+        };
+
         let hero_meta = column![
             text(active.name.clone())
                 .size(40)
@@ -375,16 +389,13 @@ impl DownloadPage {
             .align_y(alignment::Vertical::Center),
             column![
                 row![
-                    text("Progress")
+                    text(progress_caption)
                         .size(12)
                         .color(Color::from_rgb8(180, 180, 180)),
                     Space::new().width(Length::Fill),
-                    text(format!(
-                        "{} / {}  ·  {}",
-                        active.downloaded_label, active.total_label, progress_pct
-                    ))
-                    .size(12)
-                    .color(Color::from_rgb8(220, 220, 220)),
+                    text(progress_detail)
+                        .size(12)
+                        .color(Color::from_rgb8(220, 220, 220)),
                 ],
                 {
                     let filled = ((active.progress * 1000.0).round() as u16).max(1);
@@ -418,31 +429,38 @@ impl DownloadPage {
             .width(Length::Fill)
             .height(Length::Fixed(HERO_HEIGHT));
 
+        let speed_or_status = if active.verifying {
+            "Checking…".to_string()
+        } else {
+            crate::gui::components::common::format_speed(
+                active.download_speed_mbps,
+                show_speed_in_bits,
+            )
+        };
+        let write_or_dash = if active.verifying {
+            "—".to_string()
+        } else {
+            crate::gui::components::common::format_speed(active.write_speed_mbps, show_speed_in_bits)
+        };
+        let eta_or_dash = if active.verifying {
+            "—".to_string()
+        } else {
+            format_eta(active.eta_secs)
+        };
+
         let stats = row![
             self.stat_card(
-                "Download Speed",
-                crate::gui::components::common::format_speed(
-                    active.download_speed_mbps,
-                    show_speed_in_bits,
-                ),
+                if active.verifying {
+                    "Status"
+                } else {
+                    "Download Speed"
+                },
+                speed_or_status,
                 true,
                 Length::Fill,
             ),
-            self.stat_card(
-                "Write Speed",
-                crate::gui::components::common::format_speed(
-                    active.write_speed_mbps,
-                    show_speed_in_bits,
-                ),
-                false,
-                Length::Fill,
-            ),
-            self.stat_card(
-                "Time Remaining",
-                format_eta(active.eta_secs),
-                false,
-                Length::Fill,
-            ),
+            self.stat_card("Write Speed", write_or_dash, false, Length::Fill,),
+            self.stat_card("Time Remaining", eta_or_dash, false, Length::Fill,),
         ]
         .spacing(14);
 
@@ -574,6 +592,9 @@ impl DownloadPage {
         };
 
         let status_label = match item.status {
+            QueueStatus::Active if item.verifying => {
+                ("Checking files", Color::from_rgb8(100, 180, 255))
+            }
             QueueStatus::Active => ("Downloading", Color::from_rgb8(255, 127, 0)),
             QueueStatus::Queued => ("Queued", Color::from_rgb8(160, 160, 170)),
             QueueStatus::Paused => ("Paused", Color::from_rgb8(255, 204, 0)),

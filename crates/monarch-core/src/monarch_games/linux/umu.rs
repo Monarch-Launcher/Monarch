@@ -1,12 +1,16 @@
 use anyhow::{bail, Context, Result};
 use reqwest;
 use serde::Deserialize;
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 use tar::Archive;
 use tracing::{error, info, warn};
 
 use crate::{
     monarch_games::{games::GameType, monarchgame::MonarchGame},
+    monarch_library::library,
     monarch_utils::{
         monarch_fs::{self, get_monarch_bins_path, get_monarch_home},
         monarch_terminal,
@@ -143,63 +147,131 @@ pub fn install_umu() -> Result<()> {
     Ok(())
 }
 
+/// Resolve the on-disk install directory for a game.
+fn resolve_install_dir(game: &MonarchGame, exe: &Path) -> PathBuf {
+    let recorded = game.properties.install_dir.trim();
+    if !recorded.is_empty() && recorded != "Error" {
+        let path = PathBuf::from(recorded);
+        if path.is_dir() {
+            return path;
+        }
+    }
+    exe.parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_default()
+}
+
+/// Rename the install folder when needed for Wine, then update the game record.
+async fn ensure_wine_safe_game_paths(
+    game: &mut MonarchGame,
+    install_dir: PathBuf,
+    exe: PathBuf,
+) -> Result<(PathBuf, PathBuf)> {
+    let Some(safe_dir) = monarch_fs::ensure_wine_safe_install_dir(&install_dir)? else {
+        return Ok((install_dir, exe));
+    };
+
+    let rel_exe = exe
+        .strip_prefix(&install_dir)
+        .unwrap_or(Path::new(exe.file_name().unwrap_or_default()));
+    let safe_exe = safe_dir.join(rel_exe);
+
+    game.properties.install_dir = safe_dir.to_string_lossy().to_string();
+    game.executable_path = Some(safe_exe.to_string_lossy().to_string());
+
+    if let Err(e) = library::update_game_properties(game).await {
+        error!("linux::umu:: Failed to persist renamed install paths | Err: {e}");
+    }
+
+    Ok((safe_dir, safe_exe))
+}
+
 /// Executes the game using umu-launcher to run in proton.
 pub async fn umu_run(game: &MonarchGame) -> Result<()> {
-    info!(
-        "Compatibility layer set: {}",
-        game.compatibility.as_ref().unwrap()
+    let mut game = game.clone();
+
+    let compatibility = game
+        .compatibility
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("linux::umu::umu_run() No compatibility layer set for {}", game.name))?;
+    info!("Compatibility layer set: {compatibility}");
+
+    let exe = PathBuf::from(
+        game.executable_path
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("linux::umu::umu_run() No executable path set for {}", game.name))?,
     );
+    if !exe.is_file() {
+        bail!("Executable not found: {}", exe.display());
+    }
+
+    let install_dir = resolve_install_dir(&game, &exe);
+    let (install_dir, exe) = ensure_wine_safe_game_paths(&mut game, install_dir, exe).await?;
 
     let store_arg = match game.get_store_name().as_str() {
-        "epic" => "egs".to_string(),
+        "epic" | "epicgames" => "egs".to_string(),
         _ => "none".to_string(),
     };
 
     let gameid_arg = format!("umu-{}", game.get_store_id());
+    let prefix = monarch_fs::wine_prefix_dir(&gameid_arg);
+    std::fs::create_dir_all(&prefix).with_context(|| {
+        format!(
+            "linux::umu::umu_run() Failed to create wine prefix {} | Err: ",
+            prefix.display()
+        )
+    })?;
 
-    let env_vars: HashMap<String, String> = HashMap::from([
-        (
-            "PROTON_PATH".to_string(),
-            game.compatibility.as_ref().unwrap().clone(),
-        ),
-        ("GAMEID".to_string(), gameid_arg),
+    // Mount the game directory inside the Steam Runtime container and give
+    let mut env_vars: HashMap<String, String> = HashMap::from([
+        ("PROTONPATH".to_string(), compatibility),
+        ("GAMEID".to_string(), gameid_arg.clone()),
         ("STORE".to_string(), store_arg),
+        ("WINEPREFIX".to_string(), prefix.to_string_lossy().to_string()),
+        (
+            "STEAM_COMPAT_DATA_PATH".to_string(),
+            prefix.to_string_lossy().to_string(),
+        ),
+        (
+            "STEAM_COMPAT_INSTALL_PATH".to_string(),
+            install_dir.to_string_lossy().to_string(),
+        ),
+        (
+            "WINEDLLOVERRIDES".to_string(),
+            "winemenubuilder.exe=d".to_string(),
+        ),
     ]);
 
-    let umu: PathBuf = get_umu_exe();
-    let launch_command: String = format!(
-        "{} '{}'",
-        umu.display(),
-        game.executable_path.as_ref().unwrap()
-    );
+    let exe_arg = monarch_fs::relative_launch_exe_arg(&exe, &install_dir);
 
-    // Order launch args and command in proper order
-    info!(
-        "Launch args: {}",
-        game.launch_args.as_deref().unwrap_or_default()
-    );
-    let full_command: String = if game
-        .launch_args
-        .as_deref()
-        .unwrap_or_default()
-        .contains("%command%")
-    {
+    let umu: PathBuf = get_umu_exe();
+    let launch_command: String = format!("{} {}", umu.display(), exe_arg);
+
+    let launch_args = game.launch_args.as_deref().unwrap_or_default().trim();
+    info!("Launch args: {launch_args}");
+    let full_command: String = if launch_args.contains("%command%") {
         warn!("Using Steam %command% style launch arguments!");
-        game.launch_args
-            .as_deref()
-            .unwrap()
-            .replace("%command%", &launch_command)
+        launch_args.replace("%command%", &launch_command)
+    } else if launch_args.is_empty() {
+        launch_command
     } else {
-        format!(
-            "{} {}",
-            launch_command,
-            game.launch_args.as_deref().unwrap()
-        )
+        format!("{launch_command} {launch_args}")
     };
 
+    info!("Install dir: {}", install_dir.display());
     info!("Env vars: {:?}", env_vars);
     info!("Launch command: {}", &full_command);
-    let rx = monarch_terminal::spawn_terminal(full_command, env_vars, None);
+
+    // Avoid leaking a host LD_PRELOAD into the Steam Runtime container.
+    env_vars
+        .entry("LD_PRELOAD".to_string())
+        .or_insert_with(String::new);
+
+    let rx = monarch_terminal::spawn_terminal(
+        full_command,
+        env_vars,
+        Some(install_dir.to_string_lossy().to_string()),
+    );
     if let Err(e) = rx.await {
         error!("linux::umu::umu_run() Terminal command failed! | Err: {e}");
     }

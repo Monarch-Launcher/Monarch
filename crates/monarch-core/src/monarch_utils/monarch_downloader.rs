@@ -54,15 +54,32 @@ impl DownloadJob {
         options: DownloadOptions,
         manifest: T,
     ) -> Self {
+        // Carry the selected compatibility layer on the job's game copy so it
+        // is applied when the install finishes and the game is registered.
+        let mut game = game.clone();
+        if let Some(compat) = options.compatibility.filter(|c| !c.is_empty()) {
+            game.compatibility = Some(compat);
+        }
+
+        // Folder names must be Wine-safe (no `:`, etc.) so Proton can map the
+        // install as a Windows path after download.
+        #[cfg(target_os = "linux")]
+        let folder_name = {
+            use crate::monarch_utils::monarch_fs::sanitize_install_folder_name_wine;
+            sanitize_install_folder_name_wine(&game.name)
+        };
+        #[cfg(not(target_os = "linux"))]
+        let folder_name = game.name.clone();
+
         Self {
             id: NEXT_JOB_ID.fetch_add(1, Ordering::Relaxed),
-            name: game.name.clone(),
+            name: folder_name,
             game_id: game.id.clone(),
             path: PathBuf::from(options.folder),
             store: options.store.clone(),
             os: options.os.clone(),
             manifest: Arc::new(manifest),
-            game: game.clone(),
+            game,
         }
     }
 }
@@ -542,11 +559,34 @@ async fn add_installed_game_to_library(
 #[derive(Debug)]
 pub struct EgsDownloadHandler {
     status: Arc<RwLock<Option<DownloadSnapshot>>>,
-    /// Per-job cancellation handles, so `cancel()` can stop a running download.
-    cancels: Arc<Mutex<HashMap<u64, Arc<std::sync::atomic::AtomicBool>>>>,
+    /// Per-job cancellation handles keyed by job id. Each resume bumps
+    /// `generation` so a stale run's cleanup cannot remove the active handle.
+    cancels: Arc<Mutex<HashMap<u64, CancelSlot>>>,
+    /// Join handles for the latest run of each job, so a resume can wait for
+    /// the paused run to exit before hashing/writing the same install dir.
+    runs: Arc<Mutex<HashMap<u64, RunSlot>>>,
     /// Maximum download speed in bytes/s (0 = unlimited), shared with the
     /// downloader so limit changes apply to running downloads immediately.
     speed_limit_bps: Arc<AtomicU64>,
+}
+
+#[derive(Debug)]
+struct CancelSlot {
+    generation: u64,
+    cancel: Arc<std::sync::atomic::AtomicBool>,
+}
+
+struct RunSlot {
+    generation: u64,
+    handle: tokio::task::JoinHandle<()>,
+}
+
+impl std::fmt::Debug for RunSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RunSlot")
+            .field("generation", &self.generation)
+            .finish_non_exhaustive()
+    }
 }
 
 impl EgsDownloadHandler {
@@ -554,6 +594,7 @@ impl EgsDownloadHandler {
         Self {
             status,
             cancels: Arc::new(Mutex::new(HashMap::new())),
+            runs: Arc::new(Mutex::new(HashMap::new())),
             speed_limit_bps,
         }
     }
@@ -573,6 +614,7 @@ impl DownloadHandler for EgsDownloadHandler {
         let job_info: DownloadJobInfo = job.into();
         let status = self.status.clone();
         let cancels = self.cancels.clone();
+        let runs = self.runs.clone();
 
         // Capture the original game plus the manifest launch info before the
         // manifest is moved into the DownloadManager, so a finished download
@@ -583,11 +625,41 @@ impl DownloadHandler for EgsDownloadHandler {
         let build_version = manifest.build_version().to_string();
 
         let cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        self.cancels.lock().unwrap().insert(job_id, cancel.clone());
+        let generation = {
+            let mut map = self.cancels.lock().unwrap();
+            // Stop any previous run for this job id (pause/resume reuse ids).
+            if let Some(prev) = map.get_mut(&job_id) {
+                prev.cancel.store(true, Ordering::Relaxed);
+            }
+            let generation = map.get(&job_id).map(|s| s.generation + 1).unwrap_or(1);
+            map.insert(
+                job_id,
+                CancelSlot {
+                    generation,
+                    cancel: cancel.clone(),
+                },
+            );
+            generation
+        };
+
+        // Take the previous JoinHandle so this run can await it before touching
+        // the install directory (avoids overlapping prepare hashes).
+        let previous_run = self
+            .runs
+            .lock()
+            .unwrap()
+            .remove(&job_id)
+            .map(|slot| slot.handle);
 
         let speed_limit = Arc::clone(&self.speed_limit_bps);
 
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
+            if let Some(previous) = previous_run {
+                // Previous run was cancelled above; wait so we do not race on
+                // the same install dir / cancel slot.
+                let _ = previous.await;
+            }
+
             let manager = DownloadManager::new(manifest, install_dir.clone())
                 .with_cancel_handle(cancel.clone())
                 .with_max_speed_bps(speed_limit);
@@ -710,17 +782,40 @@ impl DownloadHandler for EgsDownloadHandler {
                 }
             }
 
+            // Only clear slots if we are still the active generation — a newer
+            // resume already owns them and must not be wiped by this cleanup.
             if let Ok(mut cancels) = cancels.lock() {
-                cancels.remove(&job_id);
+                if cancels
+                    .get(&job_id)
+                    .is_some_and(|slot| slot.generation == generation)
+                {
+                    cancels.remove(&job_id);
+                }
+            }
+            if let Ok(mut runs) = runs.lock() {
+                if runs
+                    .get(&job_id)
+                    .is_some_and(|slot| slot.generation == generation)
+                {
+                    runs.remove(&job_id);
+                }
             }
         });
+
+        self.runs.lock().unwrap().insert(
+            job_id,
+            RunSlot {
+                generation,
+                handle,
+            },
+        );
 
         Ok(())
     }
 
     fn cancel(&self, job: &DownloadJob) -> Result<(), String> {
-        if let Some(cancel) = self.cancels.lock().unwrap().get(&job.id) {
-            cancel.store(true, Ordering::Relaxed);
+        if let Some(slot) = self.cancels.lock().unwrap().get(&job.id) {
+            slot.cancel.store(true, Ordering::Relaxed);
         }
         Ok(())
     }

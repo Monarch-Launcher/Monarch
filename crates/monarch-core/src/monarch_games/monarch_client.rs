@@ -487,9 +487,32 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
         store = "steam".to_string();
     }
 
-    // Preserve misc KV data (e.g. EGS catalog_id/app_name) written during library scan.
+    // Start from the existing record so enrichment never wipes known install
+    // metadata (install_dir / size / version) for stores without a local
+    // property source — e.g. Epic Games installs managed by Monarch.
     let preserved_other = game.properties.other.clone();
-    let mut properties: MonarchGameProperties = MonarchGameProperties::default();
+    let mut properties = game.properties.clone();
+
+    // Heal installs whose install_dir was previously wiped to the default
+    // sentinel by older property enrichment.
+    if game.is_installed()
+        && game.managed_by_monarch
+        && (properties.install_dir.is_empty() || properties.install_dir == "Error")
+    {
+        if let Ok(settings_lock) = get_settings() {
+            if let Ok(settings) = settings_lock.read() {
+                let fallback = PathBuf::from(&settings.monarch.game_folder).join(&game.name);
+                if fallback.is_dir() {
+                    info!(
+                        "monarch_client::get_game_properties() Recovered install_dir for {}: {}",
+                        game.name,
+                        fallback.display()
+                    );
+                    properties.install_dir = fallback.to_string_lossy().to_string();
+                }
+            }
+        }
+    }
 
     if game.is_installed() {
         if store == "steam" {
@@ -523,29 +546,53 @@ pub async fn get_game_properties(game: &mut MonarchGame) {
                     return;
                 }
             }
+        } else if properties.description.is_empty() || properties.description == "Error" {
+            // Non-Steam installs: keep install metadata; only fill description
+            // from the game summary when it is still a sentinel/empty value.
+            if !game.summary.is_empty() {
+                properties.description = game.summary.clone();
+            }
         }
     } else {
         let monarch_url: &'static str = std::env!("MONARCH_URL");
         let search_term: String = format!("{monarch_url}/api/games?id={}", game.id);
-        let response = monarch_http::client().get(search_term).send().await.unwrap();
-        let resp_content = response.text().await.unwrap();
-        let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&resp_content).unwrap();
+        let response = match monarch_http::client().get(search_term).send().await {
+            Ok(resp) => resp,
+            Err(e) => {
+                error!(
+                    "monarch_client::get_game_properties() Failed to fetch game metadata! | Err: {e}"
+                );
+                return;
+            }
+        };
+        let resp_content = match response.text().await {
+            Ok(text) => text,
+            Err(e) => {
+                error!(
+                    "monarch_client::get_game_properties() Failed to read game metadata response! | Err: {e}"
+                );
+                return;
+            }
+        };
+        let web_games: Vec<MonarchWebApiGame> = match serde_json::from_str(&resp_content) {
+            Ok(games) => games,
+            Err(e) => {
+                error!(
+                    "monarch_client::get_game_properties() Failed to parse game metadata! | Err: {e}"
+                );
+                return;
+            }
+        };
 
         if !web_games.is_empty() {
             let web_game: &MonarchWebApiGame = &web_games[0];
-
-            if game.stores.is_empty() {}
             properties.description = web_game.summary.to_string();
-
-            for store in web_game.stores.iter() {
-                if store.name == "steam" {}
-            }
 
             #[cfg(target_os = "linux")]
             {
-                for store in game.stores.iter() {
-                    if store.name == "steam" {
-                        match steam_client::get_protondb_rating(&store.store_id).await {
+                for store_info in game.stores.iter() {
+                    if store_info.name == "steam" {
+                        match steam_client::get_protondb_rating(&store_info.store_id).await {
                             Ok((rating, url)) => {
                                 properties.protondb_rating = rating;
                                 properties.protondb_url = url;

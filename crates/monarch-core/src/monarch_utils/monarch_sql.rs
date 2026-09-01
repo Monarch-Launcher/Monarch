@@ -227,6 +227,22 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .with_context(|| "monarch_sql::insert_game() Failed to commit transaction! | Err: ")
 }
 
+/// Mark a game as uninstalled by setting is_installed to false
+pub async fn mark_game_uninstalled(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
+    sqlx::query("UPDATE library SET is_installed = false WHERE id = ?")
+        .bind(&game.id)
+        .execute(pool)
+        .await
+        .with_context(|| {
+            format!(
+                "monarch_sql::mark_game_uninstalled() Failed to mark {} as uninstalled! | Err: ",
+                &game.name
+            )
+        })?;
+
+    Ok(())
+}
+
 /// Remove all records of a game, including its properties and storefronts
 pub async fn remove_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     let mut tx = pool

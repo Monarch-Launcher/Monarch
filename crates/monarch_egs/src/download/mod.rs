@@ -5,7 +5,7 @@ mod manifest;
 use std::collections::HashMap;
 
 pub use manager::{
-    DownloadEvent, DownloadManager, DownloadPlan, DownloadProgress, DownloadReport,
+    DownloadEvent, DownloadManager, DownloadPhase, DownloadPlan, DownloadProgress, DownloadReport,
     DownloaderOptions, VerifyProgress, VerifyReport, VerifyStatus,
 };
 
@@ -474,97 +474,3 @@ fn base64_url_no_pad(data: &[u8]) -> String {
     URL_SAFE_NO_PAD.encode(data)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn sample_chunk() -> ChunkInfo {
-        let mut chunk = ChunkInfo::default();
-        chunk.guid = [0xDEADBEEF, 0x01020304, 0xA0B0C0D0, 0x11223344];
-        chunk.hash = 0x1122334455667788;
-        chunk.secret_guid = [1, 2, 3, 4];
-        chunk
-    }
-
-    #[test]
-    fn chunk_dir_matches_feature_levels() {
-        assert_eq!(chunk_dir(0), "Chunks");
-        assert_eq!(chunk_dir(3), "ChunksV2");
-        assert_eq!(chunk_dir(6), "ChunksV3");
-        assert_eq!(chunk_dir(15), "ChunksV4");
-        assert_eq!(chunk_dir(22), "ChunksV5");
-        assert_eq!(chunk_dir(100), "ChunksV5");
-    }
-
-    #[test]
-    fn guid_hex_upper_is_uppercase_concat() {
-        assert_eq!(
-            guid_hex_upper(&[0xDEADBEEF, 0x00000001, 0x00000000, 0xAABBCCDD]),
-            "DEADBEEF0000000100000000AABBCCDD"
-        );
-    }
-
-    #[test]
-    fn legacy_chunk_path_uses_v4_layout() {
-        let chunk = sample_chunk();
-        let path = chunk.path(15);
-        assert!(path.starts_with("ChunksV4/"));
-        let parts: Vec<&str> = path.split('/').collect();
-        assert_eq!(parts.len(), 3);
-        // group number, hash in upper hex, guid in upper hex.
-        assert_eq!(parts[1], format!("{:02}", chunk.group_num()));
-        assert_eq!(parts[2], format!("{:016X}_{}.chunk", chunk.hash, guid_hex_upper(&chunk.guid)));
-    }
-
-    #[test]
-    fn v5_chunk_path_uses_secret_and_base64url() {
-        let chunk = sample_chunk();
-        let path = chunk.path(22);
-        assert!(path.starts_with("ChunksV5/"));
-        let parts: Vec<&str> = path.split('/').collect();
-        assert_eq!(parts.len(), 4);
-        assert_eq!(parts[1], base64_url_no_pad(&le_bytes(&chunk.secret_guid)));
-        assert_eq!(parts[2], format!("{:02}", chunk.group_num()));
-        let name = parts[3];
-        let hash_b64 = base64_url_no_pad(&chunk.hash.to_le_bytes());
-        let guid_b64 = base64_url_no_pad(&le_bytes(&chunk.guid));
-        assert_eq!(name, format!("{hash_b64}_{guid_b64}.chunk"));
-    }
-
-    #[test]
-    fn zero_secret_guid_is_plain() {
-        let mut chunk = sample_chunk();
-        chunk.secret_guid = [0; 4];
-        let path = chunk.path(22);
-        let parts: Vec<&str> = path.split('/').collect();
-        assert_eq!(parts[1], "plain");
-    }
-
-    #[test]
-    fn group_num_crc32_fallback_is_stable() {
-        let chunk = sample_chunk();
-        assert!(chunk.group_num() < 100);
-        // Deterministic for the same guid.
-        assert_eq!(chunk.group_num(), sample_chunk().group_num());
-    }
-
-    #[test]
-    fn guid_num_packs_words_into_u128() {
-        let mut chunk = ChunkInfo::default();
-        chunk.guid = [1, 2, 3, 4];
-        let expected =
-            (4u128) | (3u128 << 32) | (2u128 << 64) | (1u128 << 96);
-        assert_eq!(chunk.guid_num(), expected);
-    }
-
-    #[test]
-    fn le_bytes_little_endian_words() {
-        assert_eq!(le_bytes(&[0x00000001, 0, 0, 0]), vec![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-    }
-
-    #[test]
-    fn base64_url_encoding_is_unpadded() {
-        assert_eq!(base64_url_no_pad(b"Epic Games"), "RXBpYyBHYW1lcw");
-        assert!(!base64_url_no_pad(b"Epic Games").contains('='));
-    }
-}

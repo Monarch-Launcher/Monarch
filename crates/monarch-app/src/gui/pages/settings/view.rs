@@ -155,6 +155,17 @@ impl SettingsPage {
                     .on_toggle(Message::ToggleAutoUpdateCheck),
             ]
             .align_y(alignment::Vertical::Center),
+            Space::new().height(25),
+
+            row![
+                text("Remember library filters across restarts")
+                    .size(16)
+                    .width(Length::Shrink),
+                Space::new().width(10),
+                toggler(settings.monarch.persist_library_filters)
+                    .on_toggle(Message::TogglePersistLibraryFilters),
+            ]
+            .align_y(alignment::Vertical::Center),
             Space::new().height(40),
 
             self.section_header("Game Library Folder"),

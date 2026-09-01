@@ -18,6 +18,8 @@ use monarch_core::monarch_games::updates::GameUpdateCheck;
 #[derive(Clone, Debug)]
 pub enum Message {
     Uninstall,
+    /// Result of an uninstall attempt; `Ok` carries the removed game id.
+    Uninstalled(Result<String, String>),
     Close,
     CheckForUpdates,
     UpdatesChecked(Result<GameUpdateCheck, String>),
@@ -146,34 +148,37 @@ impl ActionsModal {
             }
             Message::Uninstall => match self.game.lock() {
                 Ok(game) => {
-                    if &game.get_store_name() == "monarch" {
-                        return iced::Task::future(monarch_games::commands::manual_remove_game(
-                            game.clone(),
-                        ))
-                        .then(|out| {
-                            if let Err(e) = out {
-                                show_error(e);
-                            }
-                            iced::Task::none()
-                        });
-                    } else {
-                        return iced::Task::future(monarch_games::commands::remove_game(
-                            game.name.clone(),
-                            game.get_store_name(),
-                            game.get_store_id(),
-                        ))
-                        .then(|out| {
-                            if let Err(e) = out {
-                                show_error(e);
-                            }
-                            iced::Task::<Message>::none()
-                        });
-                    }
+                    self.status = Some(format!("Uninstalling {}...", game.name));
+                    let game_id = game.id.clone();
+                    let name = game.name.clone();
+                    let store = game.get_store_name();
+                    let store_id = game.get_store_id();
+                    let is_manual = store == "monarch";
+                    let game_clone = game.clone();
+
+                    return iced::Task::perform(
+                        async move {
+                            let result = if is_manual {
+                                monarch_games::commands::manual_remove_game(game_clone).await
+                            } else {
+                                monarch_games::commands::remove_game(name, store, store_id).await
+                            };
+                            result.map(|_| game_id)
+                        },
+                        Message::Uninstalled,
+                    );
                 }
                 Err(e) => {
                     error!("actions_modal::update() Failed to lock on self.game! | Err: {e}");
                     show_error("Failed to detect game to remove!");
                 }
+            },
+            Message::Uninstalled(result) => {
+                if let Err(e) = result {
+                    self.status = Some(format!("Failed to uninstall: {e}"));
+                    show_error(e);
+                }
+                // Success is handled by the parent (remove card + navigate).
             },
             Message::Close => {}
         }

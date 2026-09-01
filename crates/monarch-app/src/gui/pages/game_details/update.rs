@@ -67,6 +67,11 @@ impl GameDetailsPage {
             return iced::Task::none();
         }
 
+        if let actions::Message::Uninstalled(Ok(game_id)) = &actions_msg {
+            self.actions_modal = None;
+            return iced::Task::done(Message::GameUninstalled(game_id.clone()));
+        }
+
         if let Some(modal) = &mut self.actions_modal {
             return modal.update(actions_msg).map(Message::Actions);
         }
@@ -94,7 +99,10 @@ impl GameDetailsPage {
                 if let Some(modal) = self.download_modal.take() {
                     let mut opts = modal.options;
                     if let Some(compat) = modal.selected_compatibility {
-                        opts.compatibility = Some(compat.name);
+                        // Proton launch uses PROTONPATH, so store the path/codename.
+                        if !compat.path.is_empty() {
+                            opts.compatibility = Some(compat.path);
+                        }
                     }
 
                     let game: MonarchGame = self.game.as_ref().unwrap().lock().unwrap().clone();

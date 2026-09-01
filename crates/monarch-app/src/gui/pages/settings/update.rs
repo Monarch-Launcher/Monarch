@@ -88,6 +88,11 @@ impl SettingsPage {
         self.write_settings(settings);
     }
 
+    pub fn toggle_persist_library_filters(&mut self, settings: &mut Settings, state: bool) {
+        settings.monarch.persist_library_filters = state;
+        self.write_settings(settings);
+    }
+
     pub fn change_library_folder(&mut self, settings: &mut Settings, folder: &str) {
         settings.monarch.game_folder = folder.to_string();
         self.write_settings(settings);

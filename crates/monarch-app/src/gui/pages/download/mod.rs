@@ -6,7 +6,7 @@ use monarch_core::monarch_utils::monarch_downloader::{
     DownloadJobInfo, DownloadSnapshot, JobState, MonarchDownloader,
 };
 use monarch_core::monarch_utils::monarch_state::MONARCH_STATE;
-use monarch_egs::DownloadProgress;
+use monarch_egs::{DownloadPhase, DownloadProgress};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QueueStatus {
@@ -23,6 +23,8 @@ pub struct QueuedItem {
     pub platform: String,
     pub progress: f32,
     pub status: QueueStatus,
+    /// True while the active job is scanning existing files before transfer.
+    pub verifying: bool,
     pub size_label: String,
     pub location: String,
     pub artwork_path: String,
@@ -42,6 +44,10 @@ pub struct ActiveDownload {
     pub progress: f32,
     pub downloaded_label: String,
     pub total_label: String,
+    /// True while comparing on-disk files against the manifest.
+    pub verifying: bool,
+    /// Files checked / total during the verify pass (for status text).
+    pub verify_label: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -57,8 +63,9 @@ pub enum Message {
         y: f32,
     },
     DragEnded,
-    /// A download just finished; the library should refresh to show the game.
-    DownloadFinished,
+    /// A download just finished; carries the installed game's id so the
+    /// library can upsert that one entry without a full store refresh.
+    DownloadFinished(String),
     /// Drives smooth graph scrolling between samples by triggering a view
     /// rebuild; no download state advances on this message.
     AnimationFrame,
@@ -158,6 +165,18 @@ impl DownloadPage {
             Message::Tick => {
                 self.tick = self.tick.wrapping_add(1);
 
+                // Capture a completed job *before* advancing the queue. `poll()`
+                // may immediately start the next download and overwrite the
+                // Completed snapshot, which would hide the finish event.
+                let finished_game_id = if self.was_downloading {
+                    poll_snapshot().and_then(|snap| match snap.state {
+                        JobState::Completed => Some(snap.job.game_id),
+                        _ => None,
+                    })
+                } else {
+                    None
+                };
+
                 // Advance the backend queue if the active download finished.
                 let _ = mutate_downloader(|d| d.poll());
 
@@ -168,10 +187,6 @@ impl DownloadPage {
 
                 let is_downloading =
                     matches!(&snapshot, Some(snap) if snap.state == JobState::Downloading);
-
-                // Detect the Downloading -> Completed transition so the library
-                // can refresh and show the newly installed game.
-                let finished = self.was_downloading && !is_downloading;
                 self.was_downloading = is_downloading;
 
                 match &snapshot {
@@ -216,8 +231,8 @@ impl DownloadPage {
                     }
                 }
 
-                if finished {
-                    return iced::Task::done(Message::DownloadFinished);
+                if let Some(game_id) = finished_game_id {
+                    return iced::Task::done(Message::DownloadFinished(game_id));
                 }
                 iced::Task::none()
             }
@@ -245,6 +260,8 @@ impl DownloadPage {
                                 &item.size_label,
                             ),
                             total_label: item.size_label.clone(),
+                            verifying: item.verifying,
+                            verify_label: None,
                         });
                     }
                 }
@@ -310,9 +327,9 @@ impl DownloadPage {
                 self.drag = None;
                 iced::Task::none()
             }
-            // Handled by the parent App (triggers a library refresh); this arm
+            // Handled by the parent App (upserts the installed game); this arm
             // only exists so the page-level match stays exhaustive.
-            Message::DownloadFinished => iced::Task::none(),
+            Message::DownloadFinished(_) => iced::Task::none(),
             // Purely a redraw trigger for the graph; nothing to do here.
             Message::AnimationFrame => iced::Task::none(),
         }
@@ -354,6 +371,7 @@ impl DownloadPage {
         if let Some(snap) = snapshot {
             if snap.state == JobState::Downloading {
                 let job = &snap.job;
+                let verifying = snap.progress.phase == DownloadPhase::VerifyingExisting;
                 items.push(QueuedItem {
                     id: job.id,
                     name: job.name.clone(),
@@ -361,7 +379,12 @@ impl DownloadPage {
                     platform: job.os.clone(),
                     progress: progress_fraction(&snap.progress),
                     status: QueueStatus::Active,
-                    size_label: format_bytes(snap.progress.total_download_bytes),
+                    verifying,
+                    size_label: if verifying {
+                        "Checking files…".into()
+                    } else {
+                        format_bytes(snap.progress.total_download_bytes)
+                    },
                     location: install_dir(job),
                     artwork_path: artwork_path_for(&job.game_id),
                 });
@@ -380,6 +403,7 @@ impl DownloadPage {
                 } else {
                     QueueStatus::Queued
                 },
+                verifying: false,
                 size_label: "—".into(),
                 location: install_dir(job),
                 artwork_path: artwork_path_for(&job.game_id),
@@ -509,7 +533,28 @@ fn progress_fraction(progress: &DownloadProgress) -> f32 {
 
 fn build_active(snap: &DownloadSnapshot, write_speed_mbps: f64, eta_secs: u64) -> ActiveDownload {
     let progress = &snap.progress;
-    let download_speed_mbps = progress.download_speed_bps / 1_000_000.0;
+    let verifying = progress.phase == DownloadPhase::VerifyingExisting;
+    let download_speed_mbps = if verifying {
+        0.0
+    } else {
+        progress.download_speed_bps / 1_000_000.0
+    };
+
+    let (downloaded_label, total_label, verify_label) = if verifying {
+        let checked = progress.files_completed;
+        let total = progress.total_files;
+        (
+            format!("{checked} files"),
+            format!("{total} files"),
+            Some(format!("Checking existing files… {checked} / {total}")),
+        )
+    } else {
+        (
+            format_bytes(progress.downloaded_bytes),
+            format_bytes(progress.total_download_bytes),
+            None,
+        )
+    };
 
     ActiveDownload {
         id: snap.job.id,
@@ -519,11 +564,13 @@ fn build_active(snap: &DownloadSnapshot, write_speed_mbps: f64, eta_secs: u64) -
         location: install_dir(&snap.job),
         artwork_path: artwork_path_for(&snap.job.game_id),
         download_speed_mbps,
-        write_speed_mbps,
-        eta_secs,
+        write_speed_mbps: if verifying { 0.0 } else { write_speed_mbps },
+        eta_secs: if verifying { 0 } else { eta_secs },
         progress: progress_fraction(progress),
-        downloaded_label: format_bytes(progress.downloaded_bytes),
-        total_label: format_bytes(progress.total_download_bytes),
+        downloaded_label,
+        total_label,
+        verifying,
+        verify_label,
     }
 }
 

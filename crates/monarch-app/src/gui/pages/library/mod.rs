@@ -3,20 +3,29 @@ use iced::Length::{self, Fill};
 use iced::{alignment, Element};
 use tracing::{error, info};
 
-use crate::gui::components::common::other_primary_button;
+use crate::gui::components::common::icon_button;
 use crate::gui::components::gamecard;
+use crate::gui::components::gamecard::container::LibraryFilter;
 use crate::gui::components::gamecard::game_browser::GameBrowser;
-use crate::gui::resources::{ADD_FOLDER, REFRESH};
+use crate::gui::resources::{ADD_FOLDER, FILTER, REFRESH};
 use crate::gui::show_error;
 use monarch_core::monarch_games::monarchgame::MonarchGame;
-use monarch_core::{monarch_games, monarch_library};
+use monarch_core::{monarch_games, monarch_library, monarch_utils};
 
 mod add_game;
 use add_game::AddGameModal;
 
+mod filter;
+use filter::FilterModal;
+
 #[derive(Clone, Debug)]
 pub enum Message {
     RefreshLibrary,
+    /// Cheap post-install update: read the game from MONARCH_STATE and upsert
+    /// it into the browser without rescanning Steam/Epic.
+    GameInstalled(String),
+    /// Cheap post-uninstall update: drop the card without a full refresh.
+    GameRemoved(String),
     UpdateGames(Vec<MonarchGame>),
     UpdateGameProperties,
     GameUpdated(MonarchGame),
@@ -25,6 +34,9 @@ pub enum Message {
     Tick,
     ScannerHovered(bool),
     AddGameHovered(bool),
+    FilterHovered(bool),
+    FilterPressed,
+    FilterModal(filter::Message),
     OpenAddModal,
     AddModal(add_game::Message),
     AddGame(MonarchGame),
@@ -38,7 +50,9 @@ pub struct LibraryPage {
     tick_counter: u8,
     is_scanner_hovered: bool,
     is_add_hovered: bool,
+    is_filter_hovered: bool,
     add_game_modal: Option<AddGameModal>,
+    filter_modal: Option<FilterModal>,
 }
 
 impl LibraryPage {
@@ -60,6 +74,48 @@ impl LibraryPage {
                     },
                     Message::UpdateGames,
                 )
+            }
+            Message::GameInstalled(game_id) => {
+                // Backend already persisted the install; sync just that card
+                // from in-memory state instead of a full library refresh.
+                let game = match monarch_library::commands::get_library() {
+                    Ok(games) => games.into_iter().find(|g| g.id == game_id),
+                    Err(e) => {
+                        show_error(e);
+                        None
+                    }
+                };
+
+                let Some(game) = game else {
+                    return iced::Task::none();
+                };
+
+                self.browser.games.upsert_game(game.clone());
+
+                iced::Task::perform(
+                    async move {
+                        info!("Downloading artwork for: {}", game.name);
+                        let _ = monarch_games::commands::download_artwork(&game).await;
+
+                        info!("Downloading cover for: {}", game.name);
+                        if let Err(e) = monarch_games::commands::download_thumbnail(&game).await {
+                            error!(
+                                "Failed to download thumbnail for game {} ({}): {}",
+                                game.id, game.thumbnail_url, e
+                            );
+                        }
+
+                        info!("Updating game properties for : {}", game.name);
+                        let mut game = game;
+                        monarch_games::commands::get_game_properties(&mut game).await;
+                        game
+                    },
+                    Message::GameUpdated,
+                )
+            }
+            Message::GameRemoved(game_id) => {
+                self.browser.games.remove_game(&game_id);
+                iced::Task::none()
             }
             Message::UpdateGames(games) => {
                 self.is_refreshing = false;
@@ -183,6 +239,32 @@ impl LibraryPage {
                 self.is_add_hovered = hovered;
                 iced::Task::none()
             }
+            Message::FilterHovered(hovered) => {
+                self.is_filter_hovered = hovered;
+                iced::Task::none()
+            }
+            Message::FilterPressed => {
+                let filter = self.browser.games.filter.clone();
+                self.filter_modal = Some(FilterModal::new(filter));
+                iced::Task::none()
+            }
+            Message::FilterModal(modal_msg) => {
+                if let Some(modal) = &mut self.filter_modal {
+                    modal.update(modal_msg.clone());
+                    match modal_msg {
+                        filter::Message::Apply => {
+                            self.browser.games.filter = modal.filter.clone();
+                            self.persist_filter();
+                            self.filter_modal = None;
+                        }
+                        filter::Message::Cancel => {
+                            self.filter_modal = None;
+                        }
+                        _ => {}
+                    }
+                }
+                iced::Task::none()
+            }
             Message::OpenAddModal => {
                 self.add_game_modal = Some(AddGameModal::default());
                 iced::Task::none()
@@ -227,8 +309,49 @@ impl LibraryPage {
         }
     }
 
+    /// Persist the current library filter to settings if the corresponding
+    /// setting is enabled. Best-effort: failures only log.
+    fn persist_filter(&self) {
+        let Ok(settings_ptr) = monarch_utils::commands::get_settings() else {
+            return;
+        };
+        let Ok(mut settings) = settings_ptr.write() else {
+            return;
+        };
+        if !settings.monarch.persist_library_filters {
+            return;
+        }
+        settings.monarch.library_filter_steam = self.browser.games.filter.steam;
+        settings.monarch.library_filter_epic = self.browser.games.filter.epic;
+        settings.monarch.library_filter_installed = self.browser.games.filter.installed;
+        settings.monarch.library_filter_uninstalled = self.browser.games.filter.uninstalled;
+        if let Err(e) = monarch_utils::commands::write_settings(&settings) {
+            error!("Failed to persist library filter | Err: {e}");
+        }
+    }
+
+    /// Load the persisted library filter at startup when the setting is
+    /// enabled.
+    fn load_persisted_filter(&mut self) {
+        let Ok(settings_ptr) = monarch_utils::commands::get_settings() else {
+            return;
+        };
+        let Ok(settings) = settings_ptr.read() else {
+            return;
+        };
+        if !settings.monarch.persist_library_filters {
+            return;
+        }
+        self.browser.games.filter = LibraryFilter {
+            steam: settings.monarch.library_filter_steam,
+            epic: settings.monarch.library_filter_epic,
+            installed: settings.monarch.library_filter_installed,
+            uninstalled: settings.monarch.library_filter_uninstalled,
+        };
+    }
+
     pub fn view(&self) -> Element<'_, Message> {
-        let modal_active = self.add_game_modal.is_some();
+        let modal_active = self.add_game_modal.is_some() || self.filter_modal.is_some();
 
         let refresh_rotation = if self.is_refreshing {
             -(self.tick_counter as f32 / 60.0) * std::f32::consts::TAU
@@ -237,10 +360,9 @@ impl LibraryPage {
         };
 
         let refresh_btn = if modal_active {
-            other_primary_button("Scan for games", None, false, REFRESH.clone(), 0.0)
+            icon_button(None, false, REFRESH.clone(), 0.0)
         } else {
-            mouse_area(other_primary_button(
-                "Scan for games",
+            mouse_area(icon_button(
                 Some(Message::RefreshLibrary),
                 self.is_scanner_hovered,
                 REFRESH.clone(),
@@ -252,10 +374,9 @@ impl LibraryPage {
         };
 
         let add_btn = if modal_active {
-            other_primary_button("Add game manually", None, false, ADD_FOLDER.clone(), 0.0)
+            icon_button(None, false, ADD_FOLDER.clone(), 0.0)
         } else {
-            mouse_area(other_primary_button(
-                "Add game manually",
+            mouse_area(icon_button(
                 Some(Message::OpenAddModal),
                 self.is_add_hovered,
                 ADD_FOLDER.clone(),
@@ -263,6 +384,20 @@ impl LibraryPage {
             ))
             .on_enter(Message::AddGameHovered(true))
             .on_exit(Message::AddGameHovered(false))
+            .into()
+        };
+
+        let filter_btn = if modal_active {
+            icon_button(None, false, FILTER.clone(), 0.0)
+        } else {
+            mouse_area(icon_button(
+                Some(Message::FilterPressed),
+                self.is_filter_hovered,
+                FILTER.clone(),
+                0.0,
+            ))
+            .on_enter(Message::FilterHovered(true))
+            .on_exit(Message::FilterHovered(false))
             .into()
         };
 
@@ -288,7 +423,7 @@ impl LibraryPage {
 
         let base_content = container(
             column![
-                container(row![refresh_btn, add_btn].spacing(10))
+                container(row![refresh_btn, add_btn, filter_btn].spacing(10))
                     .width(Fill)
                     .padding(30)
                     .align_x(alignment::Horizontal::Left)
@@ -302,6 +437,8 @@ impl LibraryPage {
 
         if let Some(modal) = &self.add_game_modal {
             iced::widget::stack![base_content, modal.view().map(Message::AddModal)].into()
+        } else if let Some(modal) = &self.filter_modal {
+            iced::widget::stack![base_content, modal.view().map(Message::FilterModal)].into()
         } else {
             base_content.into()
         }
@@ -321,14 +458,20 @@ impl Default for LibraryPage {
             }
         }
 
-        Self {
+        let mut page = Self {
             browser,
             is_refreshing: false,
             dot_count: 3,
             tick_counter: 0,
             is_scanner_hovered: false,
             is_add_hovered: false,
+            is_filter_hovered: false,
             add_game_modal: None,
-        }
+            filter_modal: None,
+        };
+
+        page.load_persisted_filter();
+
+        page
     }
 }

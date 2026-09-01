@@ -68,6 +68,28 @@ pub async fn remove_game(game: &MonarchGame) -> Result<()> {
         .with_context(|| "library::remove_game() -> ")
 }
 
+/// Marks a game as uninstalled (is_installed = false) in both state and db.
+pub async fn mark_game_uninstalled(game: &MonarchGame) -> Result<()> {
+    let pool: Arc<SqlitePool>;
+    let mut updated: MonarchGame = game.clone();
+    updated.is_installed = false;
+
+    match MONARCH_STATE.write() {
+        Ok(mut state) => {
+            state
+                .update_game(updated.clone())
+                .with_context(|| "library::mark_game_uninstalled() -> ")?;
+            pool = state.get_db_pool_arc();
+        }
+        Err(e) => {
+            bail!("library::mark_game_uninstalled() Failed to lock on MONARCH_STATE | Err: {e}")
+        }
+    }
+    monarch_sql::mark_game_uninstalled(&pool, game)
+        .await
+        .with_context(|| "library::mark_game_uninstalled() -> ")
+}
+
 /// Updates the properties of a game in the library.
 pub async fn update_game_properties(game: &MonarchGame) -> Result<()> {
     let pool: Arc<SqlitePool>;

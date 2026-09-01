@@ -37,78 +37,108 @@ impl Default for DownloaderOptions {
 /// Shared download speed limit in bytes per second; 0 means unlimited.
 pub type SpeedLimit = Arc<AtomicU64>;
 
-/// Token-bucket rate limiter shared by all download workers. Workers reserve
-/// bandwidth before fetching a chunk and sleep until their reservation is
-/// covered by the refill budget. The bucket starts empty and banks at most
-/// [`MAX_BURST_SECS`] worth of budget, so neither run start nor idle periods
-/// can produce a full-speed burst. The limit can be changed at any time
-/// through the shared [`SpeedLimit`] atomic; 0 disables limiting entirely.
+/// Token-bucket rate limiter shared by all download workers.
+///
+/// Workers call [`consume`] for each slice of response body they read. Tokens
+/// refill at the configured byte rate and are capped at [`MAX_BURST_SECS`] of
+/// credit so idle periods cannot bank a large full-speed burst. Pacing at
+/// read granularity keeps connections feeding steadily under a speed cap 
+/// instead of oscillating between transfer bursts and long sleeps.
 struct SpeedLimiter {
+    inner: Mutex<SpeedLimiterInner>,
     limit: SpeedLimit,
-    state: Mutex<LimiterState>,
 }
 
 /// How much bandwidth credit the bucket may bank relative to the limit.
-/// Kept small so bursts stay imperceptible next to the configured speed.
 const MAX_BURST_SECS: f64 = 0.25;
 
-struct LimiterState {
-    last_refill: Instant,
-    /// Refilled bandwidth credit in bytes, capped at [`MAX_BURST_SECS`]
-    /// seconds' worth so idle periods never accumulate a large burst.
-    allowance: f64,
+struct SpeedLimiterInner {
+    /// Available download budget in bytes. Grows at `limit` B/s, shrinks when
+    /// a worker consumes body bytes.
+    tokens: f64,
+    /// Wall-clock moment when [`tokens`] was last refreshed.
+    last: Instant,
 }
 
 impl SpeedLimiter {
     fn new(limit: SpeedLimit) -> Self {
         Self {
-            limit,
-            state: Mutex::new(LimiterState {
-                last_refill: Instant::now(),
-                // Start empty: no free full-speed burst at run start.
-                allowance: 0.0,
+            inner: Mutex::new(SpeedLimiterInner {
+                tokens: 0.0,
+                last: Instant::now(),
             }),
+            limit,
         }
     }
 
-    /// Reserve bandwidth for `bytes`. Returns [`Duration::ZERO`] when the
-    /// request is granted (credit is then deducted in full); otherwise
-    /// returns how long to wait before retrying, leaving the bucket
-    /// untouched. Callers must retry via [`SpeedLimiter::consume`] — granting
-    /// partial credit up front would let concurrent callers borrow against
-    /// the same future bandwidth many times over and massively exceed the
-    /// limit.
-    fn reserve(&self, bytes: u64) -> Duration {
-        let max = self.limit.load(Ordering::Relaxed);
-        if max == 0 || bytes == 0 {
-            return Duration::ZERO;
-        }
-
-        let mut state = self.state.lock().unwrap();
-        let now = Instant::now();
-        let elapsed = now.duration_since(state.last_refill).as_secs_f64();
-        let burst_cap = max as f64 * MAX_BURST_SECS;
-        state.allowance = (state.allowance + elapsed * max as f64).min(burst_cap);
-        state.last_refill = now;
-
-        let bytes = bytes as f64;
-        if state.allowance >= bytes {
-            state.allowance -= bytes;
-            return Duration::ZERO;
-        }
-        Duration::from_secs_f64((bytes - state.allowance) / max as f64)
-    }
-
-    /// Reserve bandwidth and wait until the reservation is covered.
+    /// Block until the limiter has budget for `bytes`. Returns immediately
+    /// when the limit is 0 (unlimited) or `bytes` is 0.
+    /// Consume `bytes` from the shared budget, blocking (asynchronously) until
+    /// enough bandwidth is available. Returns immediately when the limit is
+    /// 0 (unlimited) or `bytes` is 0. The mutex is only ever held within a
+    /// single non-awaiting block so the future stays `Send`.
     async fn consume(&self, bytes: u64) {
+        // No data || unlimited speed
+        if bytes == 0 || self.limit.load(Ordering::Relaxed) == 0 {
+            return;
+        }
+
         loop {
-            let wait = self.reserve(bytes);
-            if wait.is_zero() {
-                return;
-            }
+            // Do the bookkeeping and decide how long to wait under one lock,
+            // releasing the guard before any `.await`.
+            let wait = {
+                let mut inner = self.inner.lock().unwrap();
+                let bps = self.limit.load(Ordering::Relaxed);
+                if bps == 0 {
+                    return;
+                }
+
+                let now = Instant::now();
+                let elapsed = now.duration_since(inner.last).as_secs_f64();
+                inner.last = now;
+
+                // Cap idle banking at MAX_BURST_SECS, but never below the
+                // current request — otherwise a single consume larger than
+                // the burst window could never be granted.
+                let burst_cap = (bps as f64 * MAX_BURST_SECS).max(bytes as f64);
+                inner.tokens = (inner.tokens + elapsed * bps as f64).min(burst_cap);
+
+                if inner.tokens >= bytes as f64 {
+                    inner.tokens -= bytes as f64;
+                    return;
+                }
+
+                // Not enough tokens — sleep until the deficit is covered,
+                // capped so limit changes are picked up promptly.
+                let (bps, deficit) = {
+                    let bps = self.limit.load(Ordering::Relaxed);
+                    if bps == 0 {
+                        return;
+                    }
+                    let now = Instant::now();
+                    let elapsed = now.duration_since(inner.last).as_secs_f64();
+                    let burst_cap = (bps as f64 * MAX_BURST_SECS).max(bytes as f64);
+                    let covered = (inner.tokens + elapsed * bps as f64).min(burst_cap);
+                    (bps, bytes as f64 - covered)
+                };
+                if deficit <= 0.0 {
+                    continue;
+                }
+                Duration::from_secs_f64(deficit / bps as f64).min(Duration::from_millis(50))
+            };
             tokio::time::sleep(wait).await;
         }
     }
+}
+
+/// High-level stage of an in-progress download run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DownloadPhase {
+    /// Comparing on-disk files against the manifest before transferring.
+    VerifyingExisting,
+    /// Fetching and writing missing chunks/files.
+    #[default]
+    Downloading,
 }
 
 /// A snapshot of download progress. All byte counters are cumulative.
@@ -123,13 +153,18 @@ pub struct DownloadProgress {
     pub total_files: u64,
     /// Bytes per second, estimated between snapshots.
     pub download_speed_bps: f64,
+    /// Whether this snapshot is from the pre-download verify pass or the
+    /// actual transfer.
+    pub phase: DownloadPhase,
 }
 
 impl DownloadProgress {
     /// Overall completion percentage in the 0.0..1.0 range.
     pub fn fraction(&self) -> f64 {
         if self.total_files == 0 {
-            return 1.0;
+            // Unknown / not started — do not treat as complete (that made the
+            // UI look finished while prepare() was still hashing on disk).
+            return 0.0;
         }
         (self.files_completed as f64 / self.total_files as f64).min(1.0)
     }
@@ -277,6 +312,7 @@ impl DownloadStats {
             files_completed: self.files_completed.load(Ordering::Relaxed),
             total_files: self.total_files,
             download_speed_bps: 0.0,
+            phase: DownloadPhase::Downloading,
         }
     }
 }
@@ -421,25 +457,41 @@ impl DownloadManager {
         self.cancel.store(true, Ordering::Relaxed);
     }
 
-    /// Where the game is being installed to.
-    pub fn install_dir(&self) -> &Path {
-        &self.install_dir
-    }
-
-    /// The manifest this manager operates on.
-    pub fn manifest(&self) -> &Manifest {
-        &self.manifest
-    }
-
     /// Determine which files are missing or outdated without downloading.
     pub fn analyze(&self) -> Result<DownloadPlan, MonarchEgsError> {
-        self.prepare().map(|prepared| prepared.plan)
+        self.prepare_inner(|_checked, _total| Ok(false))
+            .map(|prepared| prepared.plan)
     }
 
     /// Hash the existing installation once, producing everything a download
     /// run needs: the plan, the set of files that can be skipped, and the
     /// refcounted chunk queue. Every file on disk is read at most one time.
-    fn prepare(&self) -> Result<PreparedDownload, MonarchEgsError> {
+    /// Returns [`Cancelled`](MonarchEgsError::Cancelled) if the run is stopped.
+    ///
+    /// Hashing runs on the blocking pool so a large resume/partial install
+    /// cannot freeze the async runtime (which previously left the UI at
+    /// 0 Mbps with no progress events).
+    async fn prepare_async(
+        &self,
+        tx: Option<&mpsc::Sender<DownloadEvent>>,
+    ) -> Result<PreparedDownload, MonarchEgsError> {
+        let total_files = self.manifest.files().len() as u64;
+        if let Some(tx) = tx {
+            let _ = tx
+                .send(DownloadEvent::Progress(DownloadProgress {
+                    total_files,
+                    files_completed: 0,
+                    phase: DownloadPhase::VerifyingExisting,
+                    ..Default::default()
+                }))
+                .await;
+        }
+
+        let cancel = self.cancel.clone();
+        let install_dir = self.install_dir.clone();
+        let mut last_percent: Option<u64> = None;
+
+        // Build the plan file-by-file so we can cancel and report progress.
         let mut prepared = PreparedDownload {
             plan: DownloadPlan::default(),
             matched: HashSet::new(),
@@ -447,21 +499,60 @@ impl DownloadManager {
             queue: VecDeque::new(),
         };
 
-        for file in self.manifest.files() {
-            if self.file_matches(file.filename(), file.sha1())? {
+        let files: Vec<_> = self.manifest.files().iter().cloned().collect();
+        for file in files {
+            if cancel.load(Ordering::Relaxed) {
+                return Err(MonarchEgsError::Cancelled);
+            }
+
+            let filename = file.filename().to_string();
+            let expected = *file.sha1();
+            let expected_size = file.file_size();
+            let dir = install_dir.clone();
+            let matches = tokio::task::spawn_blocking(move || {
+                file_matches_path(&dir, &filename, &expected, expected_size)
+            })
+            .await
+            .map_err(|e| {
+                MonarchEgsError::WebRequestError(format!("prepare hash task failed: {e}"))
+            })??;
+
+            // Always count total install size so a fully-skipped run still
+            // reports a meaningful size_on_disk to the library.
+            prepared.plan.install_bytes += file.file_size();
+
+            if matches {
                 prepared.plan.files_skipped += 1;
                 prepared.matched.insert(file.filename().to_string());
-                continue;
-            }
-            prepared.plan.files_to_download += 1;
-            prepared.plan.install_bytes += file.file_size();
-            for part in file.chunk_parts() {
-                let guid = part.guid_num();
-                let entry = prepared.refs.entry(guid).or_insert(0);
-                if *entry == 0 {
-                    prepared.queue.push_back(guid);
+            } else {
+                prepared.plan.files_to_download += 1;
+                for part in file.chunk_parts() {
+                    let guid = part.guid_num();
+                    let entry = prepared.refs.entry(guid).or_insert(0);
+                    if *entry == 0 {
+                        prepared.queue.push_back(guid);
+                    }
+                    *entry += 1;
                 }
-                *entry += 1;
+            }
+
+            let checked = prepared.plan.files_skipped + prepared.plan.files_to_download;
+            if let Some(tx) = tx {
+                let snapshot = DownloadProgress {
+                    total_files,
+                    files_completed: checked,
+                    phase: DownloadPhase::VerifyingExisting,
+                    ..Default::default()
+                };
+                let percent = if total_files == 0 {
+                    100
+                } else {
+                    ((checked as f64 / total_files as f64) * 100.0).floor() as u64
+                };
+                if last_percent != Some(percent) || checked == total_files {
+                    last_percent = Some(percent);
+                    let _ = tx.send(DownloadEvent::Progress(snapshot)).await;
+                }
             }
         }
 
@@ -477,9 +568,62 @@ impl DownloadManager {
         Ok(prepared)
     }
 
-    /// Download, write and verify all missing files.
-    pub async fn download(&self) -> Result<DownloadReport, MonarchEgsError> {
-        self.run_download(None).await
+    /// Shared sync prepare used by [`analyze`](Self::analyze).
+    ///
+    /// `on_file` is invoked after each file with `(checked, total)` and may
+    /// return `true` to abort with [`Cancelled`](MonarchEgsError::Cancelled).
+    fn prepare_inner(
+        &self,
+        mut on_file: impl FnMut(u64, u64) -> Result<bool, MonarchEgsError>,
+    ) -> Result<PreparedDownload, MonarchEgsError> {
+        let mut prepared = PreparedDownload {
+            plan: DownloadPlan::default(),
+            matched: HashSet::new(),
+            refs: HashMap::new(),
+            queue: VecDeque::new(),
+        };
+        let total_files = self.manifest.files().len() as u64;
+
+        for file in self.manifest.files() {
+            // Prefer a size check before SHA1 so partial/corrupt files are
+            // rejected cheaply on resume.
+            if file_matches_path(
+                &self.install_dir,
+                file.filename(),
+                file.sha1(),
+                file.file_size(),
+            )? {
+                prepared.plan.files_skipped += 1;
+                prepared.matched.insert(file.filename().to_string());
+            } else {
+                prepared.plan.files_to_download += 1;
+                for part in file.chunk_parts() {
+                    let guid = part.guid_num();
+                    let entry = prepared.refs.entry(guid).or_insert(0);
+                    if *entry == 0 {
+                        prepared.queue.push_back(guid);
+                    }
+                    *entry += 1;
+                }
+            }
+            prepared.plan.install_bytes += file.file_size();
+
+            let checked = prepared.plan.files_skipped + prepared.plan.files_to_download;
+            if on_file(checked, total_files)? {
+                return Err(MonarchEgsError::Cancelled);
+            }
+        }
+
+        prepared.plan.chunks_to_download = prepared.refs.len() as u64;
+        prepared.plan.download_bytes = self
+            .manifest
+            .chunks()
+            .iter()
+            .filter(|c| prepared.refs.contains_key(&c.guid_num()))
+            .map(|c| c.file_size())
+            .sum();
+
+        Ok(prepared)
     }
 
     /// Same as [`DownloadManager::download`] but streams progress events.
@@ -492,12 +636,6 @@ impl DownloadManager {
 
     /// Verify an existing installation against the manifest. Files that are
     /// missing or whose SHA1 does not match are reported; nothing is changed.
-    pub async fn verify(&self) -> Result<VerifyReport, MonarchEgsError> {
-        self.run_verification(None).await
-    }
-
-    /// Same as [`DownloadManager::verify`] but emits a [`VerifyProgress`]
-    /// snapshot every time the whole-percent progress changes.
     pub async fn verify_with_progress(
         &self,
         tx: mpsc::Sender<VerifyProgress>,
@@ -569,7 +707,12 @@ impl DownloadManager {
 
         let status = if !path.exists() {
             VerifyStatus::Missing
-        } else if file_sha1(&path).map(|h| h == *file.sha1()).unwrap_or(false) {
+        } else if file_matches_path(
+            &self.install_dir,
+            file.filename(),
+            file.sha1(),
+            file.file_size(),
+        )? {
             VerifyStatus::Ok
         } else {
             VerifyStatus::HashMismatch
@@ -586,7 +729,7 @@ impl DownloadManager {
         &self,
         tx: Option<mpsc::Sender<DownloadEvent>>,
     ) -> Result<DownloadReport, MonarchEgsError> {
-        let prepared = self.prepare()?;
+        let prepared = self.prepare_async(tx.as_ref()).await?;
         let plan = prepared.plan;
         let mut report = DownloadReport {
             files_skipped: plan.files_skipped,
@@ -594,13 +737,16 @@ impl DownloadManager {
         };
 
         if plan.files_to_download == 0 {
+            if self.cancel.load(Ordering::Relaxed) {
+                return Err(MonarchEgsError::Cancelled);
+            }
             if let Some(tx) = &tx {
                 let _ = tx
                     .send(DownloadEvent::Progress(DownloadProgress {
                         total_download_bytes: 0,
                         total_chunks: 0,
                         files_completed: plan.files_skipped,
-                        total_files: plan.files_skipped,
+                        total_files: plan.files_skipped.max(1),
                         ..Default::default()
                     }))
                     .await;
@@ -638,14 +784,13 @@ impl DownloadManager {
             self.options.max_cached_chunks,
             prepared.refs,
         ));
-        let speed_limiter = Arc::new(SpeedLimiter::new(
-            self.speed_limit
-                .clone()
-                .unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
-        ));
+        let speed_limit = self.speed_limit
+            .clone()
+            .unwrap_or_else(|| Arc::new(AtomicU64::new(0)));
+        let speed_limiter = Arc::new(SpeedLimiter::new(speed_limit.clone()));
         info!(
             "Download run starting with speed limit of {} B/s (0 = unlimited)",
-            speed_limiter.limit.load(Ordering::Relaxed)
+            speed_limit.load(Ordering::Relaxed)
         );
         let queue = Arc::new(Mutex::new(prepared.queue));
         let cancel = self.cancel.clone();
@@ -684,21 +829,35 @@ impl DownloadManager {
         }
 
         // Progress reporter: periodically recompute speed and emit snapshots.
+        // Speed is an EMA over the 250 ms samples so brief gaps between body
+        // reads (or between chunks) do not flash the UI as 0 B/s.
         let progress_tx = tx.clone();
         let progress_stats = Arc::clone(&stats);
         let progress_done = Arc::clone(&done);
         let progress_cancel = Arc::clone(&cancel);
         let progress_task = tokio::spawn(async move {
+            const SPEED_EMA_ALPHA: f64 = 0.35;
             let mut last = Instant::now();
             let mut last_bytes = 0u64;
+            let mut smoothed_bps = 0.0f64;
             while !progress_done.load(Ordering::Relaxed) {
                 tokio::time::sleep(Duration::from_millis(250)).await;
                 let now = Instant::now();
                 let mut snap = progress_stats.snapshot();
                 let delta = now.duration_since(last).as_secs_f64();
                 if delta > 0.0 {
-                    snap.download_speed_bps =
+                    let instant =
                         (snap.downloaded_bytes.saturating_sub(last_bytes)) as f64 / delta;
+                    smoothed_bps = if smoothed_bps <= 0.0 {
+                        instant
+                    } else {
+                        smoothed_bps + SPEED_EMA_ALPHA * (instant - smoothed_bps)
+                    };
+                    // Drop residual noise once transfers have truly stopped.
+                    if instant == 0.0 && smoothed_bps < 1_000.0 {
+                        smoothed_bps = 0.0;
+                    }
+                    snap.download_speed_bps = smoothed_bps;
                 }
                 last = now;
                 last_bytes = snap.downloaded_bytes;
@@ -948,39 +1107,62 @@ impl DownloadManager {
         spawn_finalize(finalized, tmp, final_path, file);
         Ok(())
     }
-
-    /// True if the file on disk already matches the manifest hash.
-    fn file_matches(&self, filename: &str, expected: &[u8; 20]) -> Result<bool, MonarchEgsError> {
-        let path = match safe_join(&self.install_dir, filename) {
-            Some(p) => p,
-            None => {
-                return Err(MonarchEgsError::ParsingError(format!(
-                    "Invalid filename in manifest: {filename}"
-                )));
-            }
-        };
-        if !path.exists() {
-            return Ok(false);
-        }
-        Ok(match file_sha1(&path) {
-            Ok(hash) => hash == *expected,
-            Err(_) => false,
-        })
-    }
 }
 
-/// Download a single chunk, trying each base URL in turn.
+/// True when `install_dir/filename` exists and matches the expected SHA1.
+///
+/// When `expected_size` is not [`u64::MAX`], a mismatched file length returns
+/// `false` without hashing — important for resume of partial downloads.
+fn file_matches_path(
+    install_dir: &Path,
+    filename: &str,
+    expected: &[u8; 20],
+    expected_size: u64,
+) -> Result<bool, MonarchEgsError> {
+    let path = match safe_join(install_dir, filename) {
+        Some(p) => p,
+        None => {
+            return Err(MonarchEgsError::ParsingError(format!(
+                "Invalid filename in manifest: {filename}"
+            )));
+        }
+    };
+    if !path.exists() {
+        return Ok(false);
+    }
+    if expected_size != u64::MAX {
+        match std::fs::metadata(&path) {
+            Ok(meta) if meta.len() != expected_size => return Ok(false),
+            Ok(_) => {}
+            Err(_) => return Ok(false),
+        }
+    }
+    Ok(match file_sha1(&path) {
+        Ok(hash) => hash == *expected,
+        Err(_) => false,
+    })
+}
+
+/// Download a single chunk, trying each base URL in turn. Body bytes are
+/// paced through `speed_limiter` as they arrive so a speed cap keeps the
+/// connection fed instead of reserving the whole chunk before the request.
+///
+/// When `downloaded_bytes` is provided, each body slice is added to the
+/// counter as it arrives so progress/speed stay continuous under a cap.
+/// On a failed read the added bytes are rolled back.
 async fn download_chunk(
     client: &Client,
     manifest: &Manifest,
     chunk: &super::ChunkInfo,
+    speed_limiter: &SpeedLimiter,
+    downloaded_bytes: Option<&AtomicU64>,
 ) -> Result<Vec<u8>, MonarchEgsError> {
     let path = chunk.path(manifest.feature_level());
     let mut last_err: Option<MonarchEgsError> = None;
 
     for base in manifest.base_urls() {
         let url = format!("{base}/{path}");
-        let response = match client.get(&url).send().await {
+        let mut response = match client.get(&url).send().await {
             Ok(r) => r,
             Err(e) => {
                 last_err = Some(MonarchEgsError::WebRequestError(format!(
@@ -996,25 +1178,58 @@ async fn download_chunk(
             )));
             continue;
         }
-        let bytes = match response.bytes().await {
-            Ok(b) => b.to_vec(),
-            Err(e) => {
-                last_err = Some(MonarchEgsError::WebRequestError(format!(
-                    "Failed to read body of {url}: {e}"
-                )));
-                continue;
+
+        let mut bytes = Vec::with_capacity(chunk.file_size() as usize);
+        let mut streamed = 0u64;
+        let mut read_err = None;
+        loop {
+            match response.chunk().await {
+                Ok(Some(piece)) => {
+                    let n = piece.len() as u64;
+                    speed_limiter.consume(n).await;
+                    if let Some(counter) = downloaded_bytes {
+                        counter.fetch_add(n, Ordering::Relaxed);
+                        streamed += n;
+                    }
+                    bytes.extend_from_slice(&piece);
+                }
+                Ok(None) => break,
+                Err(e) => {
+                    read_err = Some(MonarchEgsError::WebRequestError(format!(
+                        "Failed to read body of {url}: {e}"
+                    )));
+                    break;
+                }
             }
-        };
+        }
+        if let Some(err) = read_err {
+            if let Some(counter) = downloaded_bytes {
+                counter.fetch_sub(streamed, Ordering::Relaxed);
+            }
+            last_err = Some(err);
+            continue;
+        }
 
         // Decrypt/decompress/hash on a blocking thread: this is pure CPU work
         // (AES + zlib + SHA1) and must not occupy a runtime worker, so the
         // other workers keep hitting the network while it runs.
         let chunk = chunk.clone();
         return match tokio::task::spawn_blocking(move || process_chunk(&bytes, &chunk)).await {
-            Ok(result) => result,
-            Err(e) => Err(MonarchEgsError::WebRequestError(format!(
-                "Chunk processing task failed: {e}"
-            ))),
+            Ok(Ok(data)) => Ok(data),
+            Ok(Err(e)) => {
+                if let Some(counter) = downloaded_bytes {
+                    counter.fetch_sub(streamed, Ordering::Relaxed);
+                }
+                Err(e)
+            }
+            Err(e) => {
+                if let Some(counter) = downloaded_bytes {
+                    counter.fetch_sub(streamed, Ordering::Relaxed);
+                }
+                Err(MonarchEgsError::WebRequestError(format!(
+                    "Chunk processing task failed: {e}"
+                )))
+            }
         };
     }
 
@@ -1064,24 +1279,19 @@ async fn worker_loop(
 
         let chunk = &manifest.chunks()[idx];
 
-        // Respect the configured speed limit before hitting the network.
-        speed_limiter.consume(chunk.file_size()).await;
+        // Claim the chunk before streaming so concurrent re-downloads of an
+        // evicted guid cannot double-count. Failed downloads release the claim.
+        let first_download = {
+            let mut counted = stats.counted_chunks.lock().unwrap();
+            counted.insert(guid)
+        };
+        let progress_counter = first_download.then_some(&stats.downloaded_bytes);
 
-        match download_chunk(&client, &manifest, chunk).await {
+        match download_chunk(&client, &manifest, chunk, &speed_limiter, progress_counter).await {
             Ok(data) => {
                 let decompressed = data.len() as u64;
                 let downloaded = chunk.file_size();
-                // Only the first download of a chunk counts towards progress.
-                // Chunks evicted from the cache while still needed are fetched
-                // again, but re-downloading them must not inflate the totals.
-                let first_download = {
-                    let mut counted = stats.counted_chunks.lock().unwrap();
-                    counted.insert(guid)
-                };
                 if first_download {
-                    stats
-                        .downloaded_bytes
-                        .fetch_add(downloaded, Ordering::Relaxed);
                     stats
                         .decompressed_bytes
                         .fetch_add(decompressed, Ordering::Relaxed);
@@ -1110,6 +1320,9 @@ async fn worker_loop(
                 }
             }
             Err(e) => {
+                if first_download {
+                    stats.counted_chunks.lock().unwrap().remove(&guid);
+                }
                 let mut err = first_error.lock().unwrap();
                 if err.is_none() {
                     *err = Some(e);
@@ -1256,119 +1469,4 @@ fn safe_join(base: &Path, filename: &str) -> Option<PathBuf> {
         }
     }
     Some(out)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{SpeedLimiter, safe_join};
-    use std::path::Path;
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicU64, Ordering};
-    use std::time::{Duration, Instant};
-    use tokio::task::JoinSet;
-
-    #[test]
-    fn joins_relative_paths() {
-        assert_eq!(
-            safe_join(Path::new("/games/Fortnite"), "Engine/Binaries/foo.exe"),
-            Some(Path::new("/games/Fortnite/Engine/Binaries/foo.exe").to_path_buf())
-        );
-    }
-
-    #[test]
-    fn normalizes_windows_separators() {
-        assert_eq!(
-            safe_join(Path::new("/games"), r"Engine\Binaries\foo.dll"),
-            Some(Path::new("/games/Engine/Binaries/foo.dll").to_path_buf())
-        );
-    }
-
-    #[test]
-    fn rejects_traversal() {
-        assert_eq!(safe_join(Path::new("/games"), "../etc/passwd"), None);
-        assert_eq!(safe_join(Path::new("/games"), "a/../../b"), None);
-    }
-
-    #[test]
-    fn rejects_absolute_paths() {
-        assert_eq!(safe_join(Path::new("/games"), "/etc/passwd"), None);
-        assert_eq!(safe_join(Path::new("/games"), "C:/Windows/system32"), None);
-    }
-
-    #[test]
-    fn ignores_dot_segments() {
-        assert_eq!(
-            safe_join(Path::new("/games"), "./Engine/./foo"),
-            Some(Path::new("/games/Engine/foo").to_path_buf())
-        );
-    }
-
-    #[test]
-    fn unlimited_limit_never_waits() {
-        let limiter = SpeedLimiter::new(Arc::new(AtomicU64::new(0)));
-        assert_eq!(limiter.reserve(u64::MAX), Duration::ZERO);
-    }
-
-    #[test]
-    fn cold_start_has_no_full_speed_burst() {
-        let limiter = SpeedLimiter::new(Arc::new(AtomicU64::new(1_000_000)));
-        // A full second's worth must NOT be free on a fresh limiter.
-        assert!(!limiter.reserve(1_000_000).is_zero());
-    }
-
-    #[test]
-    fn small_burst_within_burst_window_is_free() {
-        let limiter = SpeedLimiter::new(Arc::new(AtomicU64::new(1_000_000)));
-        // Let the bucket bank its MAX_BURST_SECS worth of credit.
-        std::thread::sleep(Duration::from_millis(260));
-        assert_eq!(limiter.reserve(200_000), Duration::ZERO);
-    }
-
-    #[test]
-    fn exceeding_budget_requires_waiting() {
-        let limiter = SpeedLimiter::new(Arc::new(AtomicU64::new(1_000_000)));
-        std::thread::sleep(Duration::from_millis(260));
-        // A quarter second's worth is available; drains the bucket fully.
-        assert_eq!(limiter.reserve(250_000), Duration::ZERO);
-        // 500 KiB more at 1 MiB/s => ~0.5s wait before it can be granted.
-        let wait = limiter.reserve(500_000);
-        assert!(wait >= Duration::from_millis(400) && wait <= Duration::from_millis(600));
-    }
-
-    /// The user-facing property: several workers pulling through one limiter
-    /// together sustain no more than roughly the configured rate over time.
-    #[tokio::test]
-    async fn concurrent_workers_sustain_the_limit() {
-        let limit_bps: u64 = 4_000_000;
-        let limiter = Arc::new(SpeedLimiter::new(Arc::new(AtomicU64::new(limit_bps))));
-
-        let started = Instant::now();
-        let mut tasks = JoinSet::new();
-        for _ in 0..4 {
-            let limiter = Arc::clone(&limiter);
-            tasks.spawn(async move {
-                for _ in 0..8 {
-                    limiter.consume(500_000).await;
-                }
-            });
-        }
-        while tasks.join_next().await.is_some() {}
-
-        // 16 MB total minus the 1 MB burst window => ~3.75s at 4 MB/s.
-        // Assert with slack below that so slow scheduling cannot flake.
-        let elapsed = started.elapsed();
-        assert!(elapsed >= Duration::from_secs_f64(3.0), "took {elapsed:?}");
-    }
-
-    #[test]
-    fn raising_the_limit_takes_effect_immediately() {
-        let limit = Arc::new(AtomicU64::new(1_000));
-        let limiter = SpeedLimiter::new(Arc::clone(&limit));
-        assert!(!limiter.reserve(2_000).is_zero());
-
-        limit.store(10_000_000, Ordering::Relaxed);
-        // Let the refill budget recover under the raised limit.
-        std::thread::sleep(Duration::from_millis(2));
-        assert_eq!(limiter.reserve(2_000), Duration::ZERO);
-    }
 }

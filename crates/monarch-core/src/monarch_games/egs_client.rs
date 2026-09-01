@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use tokio::task::{self, JoinHandle};
 use tracing::{error, info};
 
-use monarch_egs::{Manifest, Session, User, get_game_manifest};
+use monarch_egs::{Manifest, Session, SupportedPlatforms, User, check_platform_support, get_game_manifest};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
@@ -58,6 +58,13 @@ impl EgsClient {
         }
 
         Ok(())
+    }
+
+    /// Checks which platforms are supported for a game by its namespace.
+    pub async fn check_platform_support(&self, namespace: &str) -> Result<SupportedPlatforms> {
+        check_platform_support(&self.user, namespace)
+            .await
+            .with_context(|| "egs_client::check_platform_support() Failed to check platform support")
     }
 
     pub fn credentials_exist(&self) -> bool {
@@ -129,9 +136,17 @@ impl EgsClient {
             bail!("Missing Epic Games asset catalog_id or app_name — refresh the library")
         }
 
+        // Map the OS target to the Epic Games platform identifier
+        let platform = match opts.os.as_str() {
+            "linux" => "Linux",
+            "windows" => "Windows",
+            "macos" => "Mac",
+            _ => "Windows",
+        };
+
         let token = self.user.session().get_access_token().await;
         let manifest: Manifest =
-            get_game_manifest(&token, "Windows", &namespace, &catalog_id, &app_name)
+            get_game_manifest(&token, platform, &namespace, &catalog_id, &app_name)
                 .await
                 .with_context(|| {
                     "egs_client::prepare_download_job() Failed to fetch game manifest from Epic Games! | Err: "

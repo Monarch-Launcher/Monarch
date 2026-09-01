@@ -15,6 +15,9 @@ use monarch_core::monarch_games::monarchgame::MonarchGame;
 #[derive(Clone, Debug)]
 pub enum Message {
     BackPressed,
+    /// Uninstall finished successfully; parent should drop the library card
+    /// and navigate back to the library page.
+    GameUninstalled(String),
     LaunchGame,
     DownloadGame,
     DownloadModalMessage(download_modal::Message),
@@ -50,6 +53,10 @@ impl GameDetailsPage {
         match msg {
             Message::BackPressed => {
                 // This will be handled by the parent to navigate back
+                iced::Task::none()
+            }
+            Message::GameUninstalled(_) => {
+                // Handled by the parent App (library remove + navigate).
                 iced::Task::none()
             }
             Message::LaunchGame => self.launch_game(),

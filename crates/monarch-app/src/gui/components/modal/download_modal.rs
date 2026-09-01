@@ -1,10 +1,12 @@
 use iced::widget::{button, column, combo_box, radio, row, text, text_input, Space};
 use iced::{alignment, Element, Length, Task};
 
+use crate::gui::components::common::{open_folder_dialog, secondary_button};
 use crate::gui::styles;
 use monarch_core::monarch_games::commands::proton_versions;
 use monarch_core::monarch_games::stores::DownloadOptions;
 use monarch_core::monarch_utils::monarch_vdf::ProtonVersion;
+use monarch_egs::SupportedPlatforms;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OsTarget {
@@ -15,9 +17,11 @@ pub enum OsTarget {
 #[derive(Clone, Debug)]
 pub enum Message {
     FolderChanged(String),
+    BrowseFolder,
     OsSelected(OsTarget),
     CompatibilityLoaded(Vec<ProtonVersion>),
     CompatibilitySelected(ProtonVersion),
+    PlatformSupportLoaded(Result<SupportedPlatforms, String>),
     Confirm,
     Cancel,
 }
@@ -29,6 +33,9 @@ pub struct DownloadModal {
     pub compatibility_layers: combo_box::State<ProtonVersion>,
     pub selected_compatibility: Option<ProtonVersion>,
     pub os_target: OsTarget,
+    pub platform_support: Option<SupportedPlatforms>,
+    /// True while we're waiting for the EGS platform support check to return.
+    loading_platform_support: bool,
 }
 
 impl DownloadModal {
@@ -36,14 +43,15 @@ impl DownloadModal {
         let options = DownloadOptions {
             folder: "".to_string(),
             store: store.clone(),
-            game_name: name,
-            game_store: store,
-            game_store_id: store_id,
+            game_name: name.clone(),
+            game_store: store.clone(),
+            game_store_id: store_id.clone(),
             os: std::env::consts::OS.to_string(),
             compatibility: None,
         };
 
         let is_linux = std::env::consts::OS == "linux";
+        let needs_platform_check = store == "epicgames";
 
         let modal = Self {
             options,
@@ -58,7 +66,11 @@ impl DownloadModal {
             } else {
                 OsTarget::Windows
             },
+            platform_support: None,
+            loading_platform_support: needs_platform_check,
         };
+
+        let mut tasks = Vec::new();
 
         if is_linux {
             let task = Task::perform(
@@ -72,10 +84,36 @@ impl DownloadModal {
                     Err(_) => Message::CompatibilityLoaded(vec![]),
                 },
             );
-            (modal, task)
-        } else {
-            (modal, Task::none())
+            tasks.push(task);
         }
+
+        // Check platform support for Epic Games Store games
+        if needs_platform_check {
+            let task = Task::perform(
+                async move {
+                    let game = monarch_core::monarch_games::monarchgame::MonarchGame::new(
+                        &name, -1, "epicgames", &store_id, "", "",
+                    );
+                    monarch_core::monarch_games::commands::check_egs_platform_support(&game).await
+                },
+                Message::PlatformSupportLoaded,
+            );
+            tasks.push(task);
+        }
+
+        if tasks.is_empty() {
+            (modal, Task::none())
+        } else {
+            (modal, Task::batch(tasks))
+        }
+    }
+
+    /// Returns true if Linux is supported for download.
+    pub fn linux_supported(&self) -> bool {
+        self.platform_support
+            .as_ref()
+            .map(|p| p.linux)
+            .unwrap_or(true) // Default to true if not loaded yet
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -84,7 +122,20 @@ impl DownloadModal {
                 self.options.folder = f;
                 Task::none()
             }
+            Message::BrowseFolder => Task::future(open_folder_dialog()).then(|handle| match handle {
+                Some(file_handle) => Task::done(Message::FolderChanged(
+                    file_handle.path().to_string_lossy().to_string(),
+                )),
+                None => Task::none(),
+            }),
             Message::OsSelected(os) => {
+                // Don't allow selecting while loading or if not supported
+                if self.loading_platform_support {
+                    return Task::none();
+                }
+                if os == OsTarget::Linux && !self.linux_supported() {
+                    return Task::none();
+                }
                 self.os_target = os;
                 self.options.os = match os {
                     OsTarget::Linux => "linux".to_string(),
@@ -101,23 +152,75 @@ impl DownloadModal {
                 self.selected_compatibility = Some(version);
                 Task::none()
             }
+            Message::PlatformSupportLoaded(result) => {
+                self.loading_platform_support = false;
+                match result {
+                    Ok(support) => {
+                        let linux_supported = support.linux;
+                        self.platform_support = Some(support);
+                        // If Linux is not supported and currently selected, switch to Windows
+                        if !linux_supported && self.os_target == OsTarget::Linux {
+                            self.os_target = OsTarget::Windows;
+                            self.options.os = "windows".to_string();
+                        }
+                    }
+                    Err(e) => {
+                        // On error, assume all platforms are supported
+                        tracing::error!("Failed to check platform support: {}", e);
+                        self.platform_support = Some(SupportedPlatforms {
+                            windows: true,
+                            linux: true,
+                            macos: true,
+                        });
+                    }
+                }
+                Task::none()
+            }
             Message::Confirm | Message::Cancel => Task::none(), // Handled by parent
         }
     }
 
     pub fn view(&self) -> Element<'_, Message> {
+        let linux_supported = self.linux_supported();
+
         let os_selector = if cfg!(target_os = "linux") {
-            column![
-                Space::new().height(Length::Fixed(15.0)),
-                text("OS Target").size(16),
-                row![
+            let native_option = if self.loading_platform_support {
+                column![
+                    text("Native").style(|theme: &iced::Theme| {
+                        iced::widget::text::Style {
+                            color: Some(theme.palette().text.scale_alpha(0.3)),
+                        }
+                    }),
+                ]
+            } else if linux_supported {
+                column![
                     radio(
                         "Native",
                         OsTarget::Linux,
                         Some(self.os_target),
                         Message::OsSelected
                     ),
-                    Space::new().width(Length::Fixed(15.0)),
+                ]
+            } else {
+                column![
+                    text("Native (Not available)").style(|theme: &iced::Theme| {
+                        iced::widget::text::Style {
+                            color: Some(theme.palette().text.scale_alpha(0.3)),
+                        }
+                    }),
+                ]
+            };
+
+            let windows_option = if self.loading_platform_support {
+                column![
+                    text("Windows").style(|theme: &iced::Theme| {
+                        iced::widget::text::Style {
+                            color: Some(theme.palette().text.scale_alpha(0.3)),
+                        }
+                    }),
+                ]
+            } else {
+                column![
                     radio(
                         "Windows",
                         OsTarget::Windows,
@@ -125,7 +228,30 @@ impl DownloadModal {
                         Message::OsSelected
                     ),
                 ]
-                .spacing(10)
+            };
+
+            let loading_text = if self.loading_platform_support {
+                column![
+                    text("Getting OS versions...").style(|theme: &iced::Theme| {
+                        iced::widget::text::Style {
+                            color: Some(theme.palette().text.scale_alpha(0.5)),
+                        }
+                    }),
+                ]
+            } else {
+                column![]
+            };
+
+            column![
+                Space::new().height(Length::Fixed(15.0)),
+                text("OS Target").size(16),
+                row![
+                    native_option,
+                    Space::new().width(Length::Fixed(15.0)),
+                    windows_option,
+                ]
+                .spacing(10),
+                loading_text,
             ]
             .spacing(5)
         } else {
@@ -155,12 +281,18 @@ impl DownloadModal {
             text(format!("Store: {}", self.options.store)).size(16),
             Space::new().height(Length::Fixed(15.0)),
             text("Installation Folder").size(16),
-            text_input(
-                "Leave blank for default install location...",
-                &self.options.folder
-            )
-            .on_input(Message::FolderChanged)
-            .padding(10),
+            row![
+                text_input(
+                    "Leave blank for default install location...",
+                    &self.options.folder
+                )
+                .on_input(Message::FolderChanged)
+                .padding(10)
+                .width(Length::Fill),
+                Space::new().width(Length::Fixed(10.0)),
+                secondary_button("Browse", Some(Message::BrowseFolder)),
+            ]
+            .align_y(alignment::Vertical::Center),
             os_selector,
             compat_selector,
             Space::new().height(Length::Fixed(20.0)),

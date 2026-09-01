@@ -28,6 +28,7 @@ pub enum Message {
     MaxDownloadSpeedChanged(String),
     MaxDownloadSpeedUnitSelected(SpeedPrefix),
     ToggleAutoUpdateCheck(bool),
+    TogglePersistLibraryFilters(bool),
     LibraryFolderChanged(String),
     BrowseLibraryFolder,
     ClearCache,
@@ -70,6 +71,7 @@ impl Message {
             | Message::MaxDownloadSpeedChanged(_)
             | Message::MaxDownloadSpeedUnitSelected(_)
             | Message::ToggleAutoUpdateCheck(_)
+            | Message::TogglePersistLibraryFilters(_)
             | Message::LibraryFolderChanged(_)
             | Message::ResetDefaults
             | Message::ToggleSteam(_)
@@ -173,6 +175,9 @@ impl SettingsPage {
             }
             Message::ToggleAutoUpdateCheck(state) => {
                 self.toggle_auto_update_check(&mut write_guard.unwrap(), state)
+            }
+            Message::TogglePersistLibraryFilters(state) => {
+                self.toggle_persist_library_filters(&mut write_guard.unwrap(), state)
             }
             Message::LibraryFolderChanged(folder) => {
                 self.change_library_folder(&mut write_guard.unwrap(), &folder)

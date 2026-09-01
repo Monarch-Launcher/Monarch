@@ -197,8 +197,9 @@ impl App {
         };
         subscriptions.push(page_subscription);
 
-        // Poll the downloader so queue changes and completion (which triggers a
-        // library refresh) are picked up even when no download is in flight.
+        // Poll the downloader so queue changes and completion (which upserts
+        // the installed game into the library UI) are picked up even when no
+        // download is in flight.
         subscriptions.push(
             iced::time::every(std::time::Duration::from_millis(250)).map(|_| {
                 AppMessage::Page(pages::Message::Download(pages::download::Message::Tick))
@@ -284,6 +285,13 @@ impl App {
                             self.active_tab = self.previous_tab;
                             iced::Task::none()
                         }
+                        pages::game_details::Message::GameUninstalled(game_id) => {
+                            // Drop the card immediately and return to the library.
+                            self.active_tab = PageTab::Library;
+                            self.library_page
+                                .update(pages::library::Message::GameRemoved(game_id))
+                                .map(|m| AppMessage::Page(pages::Message::Library(m)))
+                        }
                         pages::game_details::Message::LaunchGame => self
                             .game_details_page
                             .update(pages::game_details::Message::LaunchGame)
@@ -326,13 +334,15 @@ impl App {
                         .map(|m| AppMessage::Page(pages::Message::StoreDetails(m))),
                 },
                 pages::Message::Download(msg) => {
-                    if matches!(msg, pages::download::Message::DownloadFinished) {
-                        // A download just finished: the game was registered in
-                        // the library before completion was published, so
-                        // re-scan to pick it up (and mark it installed).
+                    if let pages::download::Message::DownloadFinished(game_id) = &msg {
+                        // The backend already wrote the installed game into
+                        // MONARCH_STATE; upsert that one card instead of a full
+                        // store refresh.
+                        let game_id = game_id.clone();
+                        let _ = self.download_page.update(msg);
                         return self
                             .library_page
-                            .update(pages::library::Message::RefreshLibrary)
+                            .update(pages::library::Message::GameInstalled(game_id))
                             .map(|m| AppMessage::Page(pages::Message::Library(m)));
                     }
                     self.download_page

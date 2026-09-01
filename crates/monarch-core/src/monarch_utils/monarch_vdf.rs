@@ -120,8 +120,8 @@ pub fn get_proton_versions(libraryfolders_vdf: &Path) -> Result<Vec<ProtonVersio
                 if let Some(name) = path.file_name() {
                     let name_string = name.to_str().unwrap_or("").to_string();
                     if name_string.starts_with("Proton") {
-                        let proton_path = path.join("proton");
-                        let proton_path_string = proton_path.to_str().unwrap_or("").to_string();
+                        // umu expects the Proton directory, not the `proton` script.
+                        let proton_path_string = path.to_str().unwrap_or("").to_string();
 
                         proton_versions.push(ProtonVersion {
                             name: name_string,
