@@ -8,6 +8,10 @@ pub enum Message {
     SearchPage,
     SettingsPage,
     DownloadPage,
+    MinimizeWindow,
+    MaximizeWindow,
+    CloseWindow,
+    DragWindow,
 }
 
 #[derive(Default)]
@@ -141,22 +145,88 @@ impl Header {
             }
         };
 
-        let mut nav = row![home_button, library_button, search_button, settings_button]
+        let nav = row![home_button, library_button, search_button, settings_button]
             .spacing(10)
-            .width(Length::Fill)
             .align_y(alignment::Vertical::Center);
 
-        nav = nav.push(Space::new().width(Length::Fill));
-        nav = nav.push(speed_widget);
+        let drag_logo = button(row![logo].align_y(alignment::Vertical::Center))
+            .on_press(Message::DragWindow)
+            .padding(iced::Padding {
+                right: 20.0,
+                ..Default::default()
+            })
+            .style(crate::gui::styles::header::drag);
+
+        let drag_spacer = button(Space::new())
+            .on_press(Message::DragWindow)
+            .width(Length::Fill)
+            .padding(0)
+            .style(crate::gui::styles::header::drag);
+
+        fn window_button<F>(
+            icon: &svg::Handle,
+            msg: Message,
+            style: F,
+            svg_color: iced::Color,
+            svg_hover_color: iced::Color,
+        ) -> Element<'_, Message>
+        where
+            F: Fn(&iced::Theme, button::Status) -> button::Style + 'static,
+        {
+            button(
+                svg(icon.clone())
+                    .width(Length::Fixed(12.0))
+                    .height(Length::Fixed(12.0))
+                    .style(move |_theme, status| iced::widget::svg::Style {
+                        color: Some(match status {
+                            iced::widget::svg::Status::Idle => svg_color,
+                            iced::widget::svg::Status::Hovered => svg_hover_color,
+                        }),
+                    }),
+            )
+            .on_press(msg)
+            .width(Length::Fixed(36.0))
+            .height(Length::Fixed(28.0))
+            .padding(iced::Padding::from([8.0, 12.0]))
+            .style(style)
+            .into()
+        }
+
+        let window_controls = row![
+            speed_widget,
+            window_button(
+                &crate::gui::resources::WINDOW_MINIMIZE,
+                Message::MinimizeWindow,
+                crate::gui::styles::header::window_control,
+                iced::Color::from_rgba8(255, 127, 0, 0.7),
+                iced::Color::from_rgb8(255, 127, 0),
+            ),
+            window_button(
+                &crate::gui::resources::WINDOW_MAXIMIZE,
+                Message::MaximizeWindow,
+                crate::gui::styles::header::window_control,
+                iced::Color::from_rgba8(255, 127, 0, 0.7),
+                iced::Color::from_rgb8(255, 127, 0),
+            ),
+            window_button(
+                &crate::gui::resources::WINDOW_CLOSE,
+                Message::CloseWindow,
+                crate::gui::styles::header::window_control_close,
+                iced::Color::from_rgba8(255, 127, 0, 0.7),
+                iced::Color::from_rgb8(255, 127, 0),
+            ),
+        ]
+        .spacing(4)
+        .align_y(alignment::Vertical::Center);
 
         let content = container(
-            row![logo, nav]
+            row![drag_logo, nav, drag_spacer, window_controls]
                 .align_y(alignment::Vertical::Center)
-                .spacing(10),
+                .width(Length::Fill),
         )
         .padding(iced::Padding {
             top: 6.0,
-            right: 10.0,
+            right: 0.0,
             bottom: 6.0,
             left: 10.0,
         })

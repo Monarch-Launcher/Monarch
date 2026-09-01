@@ -118,7 +118,10 @@ impl App {
                     },
                 ));
 
-                let (id, task) = window::open(window::Settings::default());
+                let (id, task) = window::open(window::Settings {
+                    decorations: false,
+                    ..Default::default()
+                });
                 (
                     App::new(id),
                     task.map(|_| AppMessage::HeaderMessage(header::Message::HomePage)),
@@ -244,6 +247,18 @@ impl App {
                     }
                     header::Message::DownloadPage => {
                         self.active_tab = PageTab::Download;
+                    }
+                    header::Message::MinimizeWindow => {
+                        return iced::window::minimize(self.app_id, true);
+                    }
+                    header::Message::MaximizeWindow => {
+                        return iced::window::toggle_maximize(self.app_id);
+                    }
+                    header::Message::CloseWindow => {
+                        return iced::window::close(self.app_id);
+                    }
+                    header::Message::DragWindow => {
+                        return iced::window::drag(self.app_id);
                     }
                 }
                 iced::Task::none()

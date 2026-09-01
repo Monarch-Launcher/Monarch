@@ -107,3 +107,18 @@ pub static FILTER: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/filter-svgrepo-com.svg");
     svg::Handle::from_memory(bytes.to_vec())
 });
+
+pub static WINDOW_MINIMIZE: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/window-minimize.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static WINDOW_MAXIMIZE: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/window-maximize.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static WINDOW_CLOSE: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/window-close.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});

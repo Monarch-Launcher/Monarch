@@ -83,3 +83,95 @@ pub fn active_button(theme: &Theme, status: widget_button::Status) -> widget_but
         _ => widget_button::Style::default(),
     }
 }
+
+pub fn window_control(theme: &Theme, status: widget_button::Status) -> widget_button::Style {
+    let palette = theme.palette();
+
+    match status {
+        widget_button::Status::Active => widget_button::Style {
+            background: None,
+            text_color: Color {
+                a: 0.5,
+                ..palette.text
+            },
+            ..Default::default()
+        },
+        widget_button::Status::Hovered => widget_button::Style {
+            background: Some(Color::from_rgba8(60, 60, 75, 0.9).into()),
+            text_color: palette.text,
+            ..Default::default()
+        },
+        widget_button::Status::Pressed => widget_button::Style {
+            background: Some(Color::from_rgba8(40, 40, 55, 1.0).into()),
+            text_color: palette.text,
+            ..Default::default()
+        },
+        _ => widget_button::Style::default(),
+    }
+}
+
+pub fn window_control_close(theme: &Theme, status: widget_button::Status) -> widget_button::Style {
+    let palette = theme.palette();
+
+    match status {
+        widget_button::Status::Active => widget_button::Style {
+            background: None,
+            text_color: Color {
+                a: 0.5,
+                ..palette.text
+            },
+            ..Default::default()
+        },
+        widget_button::Status::Hovered => widget_button::Style {
+            background: Some(palette.danger.into()),
+            text_color: Color::WHITE,
+            ..Default::default()
+        },
+        widget_button::Status::Pressed => widget_button::Style {
+            background: Some(Color {
+                a: 0.8,
+                ..palette.danger
+            }
+            .into()),
+            text_color: Color::WHITE,
+            ..Default::default()
+        },
+        _ => widget_button::Style::default(),
+    }
+}
+
+pub fn drag(_theme: &Theme, status: widget_button::Status) -> widget_button::Style {
+    match status {
+        widget_button::Status::Active => widget_button::Style {
+            background: None,
+            text_color: Color::TRANSPARENT,
+            border: Border {
+                radius: 0.0.into(),
+                width: 0.0,
+                color: Color::TRANSPARENT,
+            },
+            ..Default::default()
+        },
+        widget_button::Status::Hovered => widget_button::Style {
+            background: None,
+            text_color: Color::TRANSPARENT,
+            border: Border {
+                radius: 0.0.into(),
+                width: 0.0,
+                color: Color::TRANSPARENT,
+            },
+            ..Default::default()
+        },
+        widget_button::Status::Pressed => widget_button::Style {
+            background: None,
+            text_color: Color::TRANSPARENT,
+            border: Border {
+                radius: 0.0.into(),
+                width: 0.0,
+                color: Color::TRANSPARENT,
+            },
+            ..Default::default()
+        },
+        _ => widget_button::Style::default(),
+    }
+}
