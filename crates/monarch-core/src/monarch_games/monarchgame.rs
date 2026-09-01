@@ -16,6 +16,8 @@ use crate::monarch_utils::monarch_fs::path_exists;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[cfg(target_os = "linux")]
+use crate::monarch_games::linux::egs::egs_run;
+#[cfg(target_os = "linux")]
 use crate::monarch_games::linux::umu::umu_run;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -229,6 +231,21 @@ impl GameType for MonarchGame {
 
         #[cfg(target_os = "linux")]
         {
+            // Epic Games games installed and managed by Monarch launch through
+            // the EGS path so they get online-auth arguments and the manifest's
+            // launch executable + arguments.
+            let is_managed_egs = game.managed_by_monarch
+                && game
+                    .stores
+                    .iter()
+                    .any(|store| store.name == "epicgames");
+
+            if is_managed_egs {
+                return egs_run(&game)
+                    .await
+                    .with_context(|| "monarchgame::launch() -> ");
+            }
+
             if game.executable_path.is_some() {
                 return umu_run(&game)
                     .await
