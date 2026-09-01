@@ -10,7 +10,7 @@ pub mod monarch_sql;
 pub mod monarch_state;
 pub mod monarch_terminal;
 pub mod monarch_vdf;
-pub mod monarch_downloader;
+pub mod monarch_game_downloader;
 //pub mod quicklaunch;
 
 #[cfg(target_os = "windows")]

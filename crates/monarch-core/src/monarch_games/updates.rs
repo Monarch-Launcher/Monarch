@@ -17,7 +17,7 @@ use monarch_egs::{GameUpdate, InstalledBuild};
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_games::stores::DownloadOptions;
-use crate::monarch_utils::monarch_downloader::DownloadJob;
+use crate::monarch_utils::monarch_game_downloader::DownloadJob;
 use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 

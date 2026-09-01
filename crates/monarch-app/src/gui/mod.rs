@@ -121,6 +121,7 @@ impl App {
 
                 let (id, task) = window::open(window::Settings {
                     decorations: false,
+                    size: iced::Size::new(1600.0, 900.0),
                     ..Default::default()
                 });
                 (

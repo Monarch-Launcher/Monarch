@@ -255,17 +255,6 @@ impl SettingsPage {
         )
     }
 
-    pub fn install_legendary_task(&self) {
-        if monarch_games::commands::legendary_is_installed() {
-            show_error("legendary already detected on system! Cannot install another version.");
-            return;
-        }
-
-        if let Err(e) = monarch_games::commands::install_legendary() {
-            show_error(&e);
-        }
-    }
-
     #[cfg(target_os = "linux")]
     pub fn remove_umu(&self) {
         if let Err(e) = monarch_games::commands::remove_umu() {
@@ -275,12 +264,6 @@ impl SettingsPage {
 
     pub fn remove_steamcmd(&self) {
         if let Err(e) = monarch_games::commands::remove_steamcmd() {
-            show_error(e);
-        }
-    }
-
-    pub fn remove_legendary(&self) {
-        if let Err(e) = monarch_games::commands::remove_legendary() {
             show_error(e);
         }
     }

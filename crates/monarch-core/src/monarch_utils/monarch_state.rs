@@ -1,4 +1,4 @@
-use crate::monarch_utils::monarch_downloader::MonarchDownloader;
+use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_fs::get_library_db_path;
 use crate::monarch_utils::monarch_settings;
 use crate::{

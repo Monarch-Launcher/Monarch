@@ -61,15 +61,13 @@ impl DownloadJob {
             game.compatibility = Some(compat);
         }
 
-        // Folder names must be Wine-safe (no `:`, etc.) so Proton can map the
-        // install as a Windows path after download.
-        #[cfg(target_os = "linux")]
+        // Folder names must not contain Windows-invalid characters (`:`, etc.)
+        // since the install dir maps to a Windows path on all platforms,
+        // including Wine/Proton after download.
         let folder_name = {
             use crate::monarch_utils::monarch_fs::sanitize_install_folder_name_wine;
             sanitize_install_folder_name_wine(&game.name)
         };
-        #[cfg(not(target_os = "linux"))]
-        let folder_name = game.name.clone();
 
         Self {
             id: NEXT_JOB_ID.fetch_add(1, Ordering::Relaxed),

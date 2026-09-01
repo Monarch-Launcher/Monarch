@@ -2,7 +2,7 @@ mod view;
 
 use std::time::Instant;
 
-use monarch_core::monarch_utils::monarch_downloader::{
+use monarch_core::monarch_utils::monarch_game_downloader::{
     DownloadJobInfo, DownloadSnapshot, JobState, MonarchDownloader,
 };
 use monarch_core::monarch_utils::monarch_state::MONARCH_STATE;

@@ -362,39 +362,73 @@ pub fn copy_cache_to_library(cache_path: &Path) -> Result<PathBuf> {
 ---------- Wine / Proton path helpers ----------
 */
 
-/// Characters that are legal in Linux folder names but break Wine/Proton paths
-/// (notably `:`, which Windows treats as a drive separator).
-fn wine_unsafe_path_char(c: char) -> bool {
-    matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*')
+/// Reserved Windows device names (case-insensitive) that cannot be used as a
+/// file or directory name on Windows (and therefore break Wine mappings too).
+/// `COM1-9`/`LPT1-9`, plus a few raw ones that Windows also reserves.
+fn is_windows_reserved_name(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+    // Strip a trailing dot or space before comparing (Windows ignores them),
+    // so "CON." / "CON " are treated as reserved too.
+    let trimmed = name.trim_end_matches(['.', ' ']);
+    let upper = trimmed.to_ascii_uppercase();
+    const RAW: [&str; 9] = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5"];
+    // COM6-9 + LPT1-9 not spelled out above.
+    const RAW_TAIL: [&str; 4] = ["COM6", "COM7", "COM8", "COM9"];
+    if RAW.contains(&upper.as_str()) || RAW_TAIL.contains(&upper.as_str()) {
+        return true;
+    }
+    if let Some(tail) = upper.strip_prefix("LPT") {
+        return tail.len() == 1 && tail.chars().next().is_some_and(|c| c.is_ascii_digit());
+    }
+    false
 }
 
-/// True if any path component contains characters Wine cannot use in a folder name.
+/// Characters that are invalid in Windows folder names (and therefore break
+/// Wine/Proton paths too — notably `:`, which Windows treats as a drive
+/// separator). This is the intersection of characters rejected on Windows,
+/// Wine and Linux POSIX paths alike.
+fn unsafe_folder_char(c: char) -> bool {
+    matches!(c, '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*')
+}
+
+/// True if any path component contains characters that are unsafe in a Windows
+/// (or Wine/Proton) directory name.
 pub fn path_has_wine_unsafe_chars(path: &Path) -> bool {
     path.to_string_lossy()
         .chars()
-        .any(wine_unsafe_path_char)
+        .any(unsafe_folder_char)
 }
 
-/// Folder name safe for both Linux installs and Wine drive mappings.
+/// Produce a directory name that is safe on Windows, Wine/Proton and Linux.
 ///
-/// Replaces Wine-invalid characters with spaces and collapses whitespace.
+/// Replaces invalid characters with spaces, collapses whitespace, trims
+/// trailing dots and spaces (which Windows silently strips and can collide),
+/// and replaces reserved device names (CON, NUL, ...) so they cannot shadow
+/// DOS devices.
 pub fn sanitize_install_folder_name_wine(name: &str) -> String {
-    let sanitized: String = name
+    let mut sanitized: String = name
         .chars()
-        .map(|c| if wine_unsafe_path_char(c) { ' ' } else { c })
+        .map(|c| if unsafe_folder_char(c) { ' ' } else { c })
         .collect::<String>()
         .split_whitespace()
         .collect::<Vec<_>>()
-        .join(" ");
+        .join(" ")
+        .trim_end_matches(['.', ' '])
+        .to_string();
+
     if sanitized.is_empty() {
-        "Game".to_string()
-    } else {
-        sanitized
+        return "Game".to_string();
     }
+    if is_windows_reserved_name(&sanitized) {
+        sanitized.push_str(" Game");
+    }
+    sanitized
 }
 
-/// If `install_dir`'s folder name contains Wine-invalid characters, rename it
-/// to a sanitized sibling directory.
+/// If `install_dir`'s folder name contains unsafe characters, rename it to a
+/// sanitized sibling directory.
 ///
 /// Returns `Ok(None)` when already safe, or `Ok(Some(new_path))` after a rename.
 pub fn ensure_wine_safe_install_dir(install_dir: &Path) -> Result<Option<PathBuf>> {
@@ -417,14 +451,14 @@ pub fn ensure_wine_safe_install_dir(install_dir: &Path) -> Result<Option<PathBuf
     let safe_dir = parent.join(&safe_name);
     if safe_dir.exists() {
         bail!(
-            "Install folder contains characters Proton cannot use ('{}'), and the safe path '{}' already exists. Rename or reinstall the game.",
+            "Install folder contains characters that are not safe ('{}'), and the safe path '{}' already exists. Rename or reinstall the game.",
             folder_name,
             safe_dir.display()
         );
     }
 
     warn!(
-        "monarch_fs::ensure_wine_safe_install_dir() Renaming for Wine compatibility: '{}' -> '{}'",
+        "monarch_fs::ensure_wine_safe_install_dir() Renaming for safe directory name: '{}' -> '{}'",
         install_dir.display(),
         safe_dir.display()
     );

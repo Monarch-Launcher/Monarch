@@ -11,7 +11,7 @@ use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
-use crate::monarch_utils::monarch_downloader::DownloadJob;
+use crate::monarch_utils::monarch_game_downloader::DownloadJob;
 use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
@@ -20,6 +20,12 @@ use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 use super::stores::StoreType;
+
+#[cfg(target_os = "linux")]
+use super::linux::egs;
+
+#[cfg(target_os = "windows")]
+use super::windows::egs;
 
 pub struct EgsClient {
     user: User,
@@ -397,6 +403,65 @@ impl StoreType for EgsClient {
     }
 
     async fn launch_game(&self, game: &MonarchGame) -> Result<()> {
-        unimplemented!()
+        #[cfg(target_os = "linux")]
+        {
+            // Epic Games games installed and managed by Monarch launch through
+            // the EGS path so they get online-auth arguments and the manifest's
+            // launch executable + arguments.
+            let is_managed_egs = game.managed_by_monarch
+                && game
+                    .stores
+                    .iter()
+                    .any(|store| store.name == "epicgames");
+
+            if is_managed_egs {
+                return egs_run(&game)
+                    .await
+                    .with_context(|| "monarchgame::launch() -> ");
+            }
+
+            if game.executable_path.is_some() {
+                return umu_run(&game)
+                    .await
+                    .with_context(|| "monarchgame::launch() -> ");
+            }
+
+            if let Some(comp) = &game.compatibility {
+                if comp.contains("UMU") {
+                    return umu_run(&game)
+                        .await
+                        .with_context(|| "monarchgame::launch() -> ");
+                }
+            }
+        }
+        
+        #[cfg(target_os = "windows")]
+        {
+            // Epic Games games installed and managed by Monarch launch through
+            // the EGS path so they get online-auth arguments and the manifest's
+            // launch executable + arguments.
+            let is_managed_egs = game.managed_by_monarch
+                && game
+                    .stores
+                    .iter()
+                    .any(|store| store.name == "epicgames");
+
+            if is_managed_egs {
+                return egs::egs_run(&game)
+                    .await
+                    .with_context(|| "monarchgame::launch() -> ");
+            }
+
+            /*
+             * TODO: Handle launching exes
+            if game.executable_path.is_some() {
+                return (&game)
+                    .await
+                    .with_context(|| "monarchgame::launch() -> ");
+            }
+            */
+        }
+
+        Ok(())
     }
 }

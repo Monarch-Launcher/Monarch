@@ -9,7 +9,7 @@ use tracing::{error, info};
 
 use super::monarch_fs::{create_dir, generate_monarch_home, get_settings_path, path_exists};
 use crate::monarch_games::monarch_client::generate_default_folder;
-use crate::monarch_games::{legendary_client, steam_client};
+use crate::monarch_games::steam_client;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[cfg(target_os = "linux")]
@@ -48,9 +48,6 @@ pub struct MonarchSettings {
 
     #[serde(default)]
     pub steamcmd_bin: String,
-
-    #[serde(default)]
-    pub legendary_bin: String,
 
     /// Whether download speeds are shown in bits per second (b/s) instead of
     /// bytes per second (B/s).
@@ -153,7 +150,6 @@ impl Settings {
                 start_minimized: false,
                 umu_bin: String::new(),
                 steamcmd_bin: String::new(),
-                legendary_bin: String::new(),
                 show_download_speed_in_bits: false,
                 max_download_speed_value: 0.0,
                 max_download_speed_prefix: default_max_speed_prefix(),
@@ -205,9 +201,6 @@ impl Settings {
         self.monarch.steamcmd_bin = steam_client::get_steamcmd_exe()
             .to_string_lossy()
             .to_string();
-        self.monarch.legendary_bin = legendary_client::get_legendary_exe()
-            .to_string_lossy()
-            .to_string();
 
         if let Err(e) = write_settings(&self) {
             error!("monarch_settings::fix_settings() Failed to write settings! | Err: {e}")
@@ -240,9 +233,6 @@ impl Default for Settings {
         let steamcmd_bin: String = steam_client::get_steamcmd_exe()
             .to_string_lossy()
             .to_string();
-        let legendary_bin: String = legendary_client::get_legendary_exe()
-            .to_string_lossy()
-            .to_string();
 
         let monarch: MonarchSettings = MonarchSettings {
             monarch_home: home_path_str,
@@ -252,7 +242,6 @@ impl Default for Settings {
             start_minimized: false,
             umu_bin,
             steamcmd_bin,
-            legendary_bin,
             show_download_speed_in_bits: false,
             max_download_speed_value: 0.0,
             max_download_speed_prefix: default_max_speed_prefix(),

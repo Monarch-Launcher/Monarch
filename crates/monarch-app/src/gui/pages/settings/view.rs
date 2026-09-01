@@ -108,14 +108,35 @@ impl SettingsPage {
     }
 
     fn view_monarch(&self, settings: &Settings) -> Element<'_, Message, Theme> {
-        let umu_bin: String;
-        let umu_installed: &str = if monarch_games::commands::umu_is_installed() {
-            umu_bin = format!("Using umu-run located at: {}", settings.monarch.umu_bin);
-            "Installed"
-        } else {
-            umu_bin = "".to_string();
-            "Not installed"
-        };
+
+        #[cfg(target_os = "linux")]
+        {
+            let umu_bin: String;
+            let umu_installed: &str = if monarch_games::commands::umu_is_installed() {
+                umu_bin = format!("Using umu-run located at: {}", settings.monarch.umu_bin);
+                "Installed"
+            } else {
+                umu_bin = "".to_string();
+                "Not installed"
+            };
+
+            let umu_status = column![
+                row![
+                    text(format!("UMU Launcher: {}", umu_installed)).size(16).width(Length::Shrink),
+                    Space::new().width(Length::Fill),
+                    primary_button("Install UMU Launcher", Some(Message::InstallUmu)),
+                    Space::new().width(10),
+                    danger_button("Remove UMU Launcher", Some(Message::RemoveUmu)),
+                ]
+                .align_y(alignment::Vertical::Center),
+                text(umu_bin).size(14).color([0.5, 0.5, 0.5]),
+                Space::new().height(25),
+            ];
+            
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        let umu_status = column![];
 
         column![
             self.section_header("General"),
@@ -124,18 +145,7 @@ impl SettingsPage {
                 .size(20)
                 .color([0.7, 0.7, 0.7]),
             Space::new().height(20),
-
-            row![
-                text(format!("UMU Launcher: {}", umu_installed)).size(16).width(Length::Shrink),
-                Space::new().width(Length::Fill),
-                primary_button("Install UMU Launcher", Some(Message::InstallUmu)),
-                Space::new().width(10),
-                danger_button("Remove UMU Launcher", Some(Message::RemoveUmu)),
-            ]
-            .align_y(alignment::Vertical::Center),
-            text(umu_bin).size(14).color([0.5, 0.5, 0.5]),
-            Space::new().height(25),
-
+            umu_status,
             row![
                 text("Quicklaunch (Requires restart. Shortcut: Ctrl+Enter) (NOT IMPLEMENTED - WIP)")
                     .size(16)
@@ -422,17 +432,6 @@ impl SettingsPage {
     }
 
     fn view_epic(&self, settings: &Settings) -> Element<'_, Message, Theme> {
-        let legendary_bin: String;
-        let legendary_installed: &str = if monarch_games::commands::legendary_is_installed() {
-            legendary_bin = format!(
-                "Using legendary located at: {}",
-                settings.monarch.legendary_bin
-            );
-            "Installed"
-        } else {
-            legendary_bin = "".to_string();
-            "Not installed"
-        };
         let epic_login: &str = if settings.epic.username.is_empty() {
             ""
         } else {
@@ -449,18 +448,6 @@ impl SettingsPage {
                 toggler(settings.epic.manage).on_toggle(Message::ToggleEpic),
             ]
             .align_y(alignment::Vertical::Center),
-            Space::new().height(25),
-            row![
-                text(format!("Legendary: {}", legendary_installed))
-                    .size(16)
-                    .width(Length::Shrink),
-                Space::new().width(Length::Fill),
-                primary_button("Install Legendary", Some(Message::InstallLegendary)),
-                Space::new().width(10),
-                danger_button("Remove Legendary", Some(Message::RemoveLegendary)),
-            ]
-            .align_y(alignment::Vertical::Center),
-            text(legendary_bin).size(14).color([0.5, 0.5, 0.5]),
             Space::new().height(25),
             row![
                 Space::new().width(Length::Fill),
@@ -504,8 +491,6 @@ impl SettingsPage {
                 Space::new().width(10),
                 primary_button("Save", Some(Message::SaveEpicAuthCode)),
             ],
-            Space::new().height(10),
-            danger_button("TEST FUNCTIONALITY", Some(Message::TestEpicFunctionality)),
             Space::new().width(10),
             text(format!("Logged in as: {epic_login}"))
                 .size(14)

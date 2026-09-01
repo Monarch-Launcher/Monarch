@@ -2,14 +2,13 @@ use super::monarch_client;
 use super::monarchgame::MonarchGame;
 use anyhow::Result;
 use std::path::PathBuf;
-use tracing::{error, info, warn};
+use tracing::{error, info, warn, debug};
 
 use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::games::GameType;
-use crate::monarch_games::legendary_client::{self, LegendaryClient};
 use crate::monarch_games::monarchgame::MonarchWebApiGame;
 use crate::monarch_games::steam_client;
 use crate::monarch_games::stores::DownloadOptions;
@@ -64,7 +63,7 @@ pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebA
     }
 
     if filter.egs {
-        let client = LegendaryClient::new();
+        let client = EgsClient::new();
         games.append(
             &mut client
                 .search_games(&name, &filter)
@@ -159,6 +158,7 @@ pub async fn download_game(game: &MonarchGame, opts: &mut DownloadOptions) -> Re
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
     info!("Installing: {}", opts.game_name);
+    debug!("Using options: {:?}", opts);
 
     if opts.folder.is_empty() {
         match MONARCH_STATE.read() {
@@ -768,31 +768,6 @@ pub async fn install_steamcmd() -> Result<(), String> {
     Ok(())
 }
 
-pub fn legendary_is_installed() -> bool {
-    legendary_client::legendary_is_installed()
-}
-
-pub fn install_legendary() -> Result<(), String> {
-    if let Err(e) = legendary_client::install_legendary() {
-        error!(
-            "monarch_games::commands::install_legendary() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-        return Err(String::from("Failed to download Legendary!"));
-    }
-
-    let client: LegendaryClient = LegendaryClient::new();
-    if let Err(e) = client.login() {
-        error!(
-            "monarch_games::commands::install_legendary() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-        return Err(String::from("Failed to login to Legendary!"));
-    }
-
-    Ok(())
-}
-
 #[cfg(target_os = "linux")]
 pub fn remove_umu() -> Result<(), String> {
     if let Err(e) = umu::remove_umu() {
@@ -812,17 +787,6 @@ pub fn remove_steamcmd() -> Result<(), String> {
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
         return Err(String::from("Failed to remove SteamCMD!"));
-    }
-    Ok(())
-}
-
-pub fn remove_legendary() -> Result<(), String> {
-    if let Err(e) = legendary_client::remove_legendary() {
-        error!(
-            "monarch_games::commands::remove_steamcmd() -> {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
-        return Err(String::from("Failed to remove Legendary!"));
     }
     Ok(())
 }

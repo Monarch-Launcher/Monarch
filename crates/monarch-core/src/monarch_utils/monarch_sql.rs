@@ -643,6 +643,30 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
                 "monarch_sql::repair_or_migrate_db() Failed to get columns in table 'library'"
             })?;
 
+    /*
+     * Older Monarch versions could create these tables without a PRIMARY KEY
+     * or UNIQUE constraint on their key column. That breaks the ON CONFLICT()
+     * upserts used by update_game(), so detect it up front on a committed
+     * snapshot (before the transaction starts) so the tables can be rebuilt
+     * with the correct schema further down.
+     */
+    let library_needs_rebuild = !column_is_unique_key(pool, "library", "id")
+        .await
+        .with_context(|| {
+            "monarch_sql::repair_or_migrate_db() Failed to check 'library' key column! | Err: "
+        })?;
+    let stores_needs_rebuild = !column_is_unique_key(pool, "stores", "monarch_game_id")
+        .await
+        .with_context(|| {
+            "monarch_sql::repair_or_migrate_db() Failed to check 'stores' key column! | Err: "
+        })?;
+    let mut properties_needs_rebuild =
+        !column_is_unique_key(pool, "properties", "monarch_game_id")
+            .await
+            .with_context(|| {
+                "monarch_sql::repair_or_migrate_db() Failed to check 'properties' key column! | Err: "
+            })?;
+
     let mut tx = pool.begin().await.with_context(|| {
         "monarch_sql::repair_or_migrate_db() Failed to start transaction! | Err: "
     })?;
@@ -674,6 +698,15 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
     .with_context(|| {
         "monarch_sql::repair_or_migrate_db() Failed to sanitize library.managed_by_monarch values! | Err: "
     })?;
+
+    if library_needs_rebuild {
+        warn!(
+            "monarch_sql::repair_or_migrate_db() 'library' table missing PRIMARY KEY on 'id'! Rebuilding..."
+        );
+        rebuild_table(&mut tx, "library", TYPED_MONARCH_GAME_FIELDS, MONARCH_GAME_FIELDS)
+            .await
+            .with_context(|| "monarch_sql::repair_or_migrate_db() -> ")?;
+    }
 
     /*
      * Then fix the stores table.
@@ -711,6 +744,15 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
             .await
             .with_context(|| format!("monarch_sql::repair_or_migrate_db() Failed to add column {} to stores! | Err: ", col.0))?;
         }
+    }
+
+    if stores_needs_rebuild {
+        warn!(
+            "monarch_sql::repair_or_migrate_db() 'stores' table missing PRIMARY KEY on 'monarch_game_id'! Rebuilding..."
+        );
+        rebuild_table(&mut tx, "stores", TYPED_STORE_INFO_FIELDS, STORE_INFO_FIELDS)
+            .await
+            .with_context(|| "monarch_sql::repair_or_migrate_db() -> ")?;
     }
 
     /*
@@ -805,6 +847,9 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
             .with_context(|| {
                 "monarch_sql::repair_or_migrate_db() Failed to drop old properties table! | Err: "
             })?;
+
+        // The fresh table uses the current schema, which includes the PRIMARY KEY.
+        properties_needs_rebuild = false;
     }
 
     /*
@@ -821,6 +866,20 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
     .with_context(|| {
         "monarch_sql::repair_or_migrate_db() Failed to sanitize properties.size_on_disk values! | Err: "
     })?;
+
+    if properties_needs_rebuild {
+        warn!(
+            "monarch_sql::repair_or_migrate_db() 'properties' table missing PRIMARY KEY on 'monarch_game_id'! Rebuilding..."
+        );
+        rebuild_table(
+            &mut tx,
+            "properties",
+            TYPED_MONARCH_GAME_PROPERTIES_FIELDS,
+            MONARCH_GAME_PROPERTIES_FIELDS,
+        )
+        .await
+        .with_context(|| "monarch_sql::repair_or_migrate_db() -> ")?;
+    }
 
     tx.commit().await.with_context(|| {
         "monarch_sql::repair_or_migrate_db() Failed to commit transaction | Err: "
@@ -862,4 +921,127 @@ async fn get_column_type(
     }
 
     Ok(None)
+}
+
+/// Checks whether a table constrains the given column with a PRIMARY KEY or
+/// a single-column UNIQUE index, as required by the ON CONFLICT() upserts.
+async fn column_is_unique_key(
+    pool: &SqlitePool,
+    table_name: &str,
+    column_name: &str,
+) -> Result<bool> {
+    // A PRIMARY KEY constraint shows up in PRAGMA table_info with pk > 0.
+    let table_info = sqlx::query(&format!("PRAGMA table_info('{}')", table_name))
+        .fetch_all(pool)
+        .await
+        .with_context(|| {
+            format!(
+                "monarch_sql::column_is_unique_key() Failed to read columns for table '{}' | Err: ",
+                table_name
+            )
+        })?;
+
+    for row in &table_info {
+        let name: String = row.get(1);
+        let primary_key_position: i32 = row.get(5);
+        if name == column_name && primary_key_position > 0 {
+            return Ok(true);
+        }
+    }
+
+    // A UNIQUE index also satisfies ON CONFLICT, but only when it covers
+    // exactly the conflict target column.
+    let indexes = sqlx::query(&format!("PRAGMA index_list('{}')", table_name))
+        .fetch_all(pool)
+        .await
+        .with_context(|| {
+            format!(
+                "monarch_sql::column_is_unique_key() Failed to read indexes for table '{}' | Err: ",
+                table_name
+            )
+        })?;
+
+    for index in &indexes {
+        let unique: i32 = index.get(2);
+        if unique == 0 {
+            continue;
+        }
+        let index_name: String = index.get(1);
+        let index_columns = sqlx::query(&format!("PRAGMA index_info('{}')", index_name))
+            .fetch_all(pool)
+            .await
+            .with_context(|| {
+                format!(
+                    "monarch_sql::column_is_unique_key() Failed to read index '{}' | Err: ",
+                    index_name
+                )
+            })?;
+
+        if index_columns.len() == 1 {
+            let name: String = index_columns[0].get(2);
+            if name == column_name {
+                return Ok(true);
+            }
+        }
+    }
+
+    Ok(false)
+}
+
+/// Rebuilds a table with the given (current) schema, preserving all existing
+/// rows. Used to restore PRIMARY KEY / UNIQUE constraints that older Monarch
+/// versions left out, which otherwise break every ON CONFLICT upsert.
+async fn rebuild_table(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    table_name: &str,
+    typed_fields: &str,
+    fields: &str,
+) -> Result<()> {
+    let old_table = format!("{}_old", table_name);
+    let column_list = fields.trim_start_matches('(').trim_end_matches(')');
+
+    sqlx::query(&format!("ALTER TABLE {} RENAME TO {}", table_name, old_table))
+        .execute(&mut **tx)
+        .await
+        .with_context(|| {
+            format!(
+                "monarch_sql::rebuild_table() Failed to rename old {} table! | Err: ",
+                table_name
+            )
+        })?;
+
+    sqlx::query(&format!("CREATE TABLE {} {}", table_name, typed_fields))
+        .execute(&mut **tx)
+        .await
+        .with_context(|| {
+            format!(
+                "monarch_sql::rebuild_table() Failed to create new {} table! | Err: ",
+                table_name
+            )
+        })?;
+
+    sqlx::query(&format!(
+        "INSERT INTO {} ({}) SELECT {} FROM {}",
+        table_name, column_list, column_list, old_table
+    ))
+    .execute(&mut **tx)
+    .await
+    .with_context(|| {
+        format!(
+            "monarch_sql::rebuild_table() Failed to migrate {} rows! | Err: ",
+            table_name
+        )
+    })?;
+
+    sqlx::query(&format!("DROP TABLE {}", old_table))
+        .execute(&mut **tx)
+        .await
+        .with_context(|| {
+            format!(
+                "monarch_sql::rebuild_table() Failed to drop old {} table! | Err: ",
+                table_name
+            )
+        })?;
+
+    Ok(())
 }

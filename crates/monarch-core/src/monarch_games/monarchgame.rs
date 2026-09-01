@@ -7,16 +7,14 @@ use tracing::error;
 
 use super::games::GameType;
 use super::stores::StoreType;
+use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::games::SearchResult;
-use crate::monarch_games::legendary_client::LegendaryClient;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::path_exists;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
-#[cfg(target_os = "linux")]
-use crate::monarch_games::linux::egs::egs_run;
 #[cfg(target_os = "linux")]
 use crate::monarch_games::linux::umu::umu_run;
 
@@ -184,7 +182,7 @@ impl GameType for MonarchGame {
             "monarch" => Box::new(MonarchClient::new()),
             "steam" => Box::new(SteamClient::new()),
             "steamcmd" => Box::new(SteamClient::new()),
-            "epicgames" => Box::new(LegendaryClient::new()),
+            "epicgames" => Box::new(EgsClient::new()),
             _ => {
                 panic!("Invalid store: {:?}", self.stores)
             }
@@ -229,37 +227,7 @@ impl GameType for MonarchGame {
             }
         };
 
-        #[cfg(target_os = "linux")]
-        {
-            // Epic Games games installed and managed by Monarch launch through
-            // the EGS path so they get online-auth arguments and the manifest's
-            // launch executable + arguments.
-            let is_managed_egs = game.managed_by_monarch
-                && game
-                    .stores
-                    .iter()
-                    .any(|store| store.name == "epicgames");
-
-            if is_managed_egs {
-                return egs_run(&game)
-                    .await
-                    .with_context(|| "monarchgame::launch() -> ");
-            }
-
-            if game.executable_path.is_some() {
-                return umu_run(&game)
-                    .await
-                    .with_context(|| "monarchgame::launch() -> ");
-            }
-
-            if let Some(comp) = &game.compatibility {
-                if comp.contains("UMU") {
-                    return umu_run(&game)
-                        .await
-                        .with_context(|| "monarchgame::launch() -> ");
-                }
-            }
-        }
+        
 
         game.get_store()
             .launch_game(&game)

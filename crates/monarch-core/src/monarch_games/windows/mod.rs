@@ -1,2 +1,2 @@
 pub mod steam;
-pub mod legendary;
+pub mod egs;

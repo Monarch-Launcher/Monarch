@@ -229,7 +229,7 @@ impl Header {
             .style(crate::gui::styles::header::container),
         )
         .on_press(Message::DragWindow)
-        .interaction(iced::mouse::Interaction::Pointer);
+        .interaction(iced::mouse::Interaction::Idle);
 
         let accent_line =
             rule::horizontal(1).style(|theme: &iced::Theme| iced::widget::rule::Style {
