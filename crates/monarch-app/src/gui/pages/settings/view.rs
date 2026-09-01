@@ -108,9 +108,8 @@ impl SettingsPage {
     }
 
     fn view_monarch(&self, settings: &Settings) -> Element<'_, Message, Theme> {
-
         #[cfg(target_os = "linux")]
-        {
+        let umu_status = {
             let umu_bin: String;
             let umu_installed: &str = if monarch_games::commands::umu_is_installed() {
                 umu_bin = format!("Using umu-run located at: {}", settings.monarch.umu_bin);
@@ -120,9 +119,11 @@ impl SettingsPage {
                 "Not installed"
             };
 
-            let umu_status = column![
+            column![
                 row![
-                    text(format!("UMU Launcher: {}", umu_installed)).size(16).width(Length::Shrink),
+                    text(format!("UMU Launcher: {}", umu_installed))
+                        .size(16)
+                        .width(Length::Shrink),
                     Space::new().width(Length::Fill),
                     primary_button("Install UMU Launcher", Some(Message::InstallUmu)),
                     Space::new().width(10),
@@ -131,9 +132,8 @@ impl SettingsPage {
                 .align_y(alignment::Vertical::Center),
                 text(umu_bin).size(14).color([0.5, 0.5, 0.5]),
                 Space::new().height(25),
-            ];
-            
-        }
+            ]
+        };
 
         #[cfg(not(target_os = "linux"))]
         let umu_status = column![];

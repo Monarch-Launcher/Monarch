@@ -5,17 +5,19 @@ use async_trait::async_trait;
 use tokio::task::{self, JoinHandle};
 use tracing::{error, info};
 
-use monarch_egs::{Manifest, Session, SupportedPlatforms, User, check_platform_support, get_game_manifest};
+use monarch_egs::{
+    check_platform_support, get_game_manifest, Manifest, Session, SupportedPlatforms, User,
+};
 
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
-use crate::monarch_utils::monarch_game_downloader::DownloadJob;
-use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_fs::{
     generate_cache_image_path, generate_library_image_path, get_monarch_home,
 };
+use crate::monarch_utils::monarch_game_downloader::DownloadJob;
+use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
@@ -23,6 +25,9 @@ use super::stores::StoreType;
 
 #[cfg(target_os = "linux")]
 use super::linux::egs;
+
+#[cfg(target_os = "linux")]
+use super::linux::umu::umu_run;
 
 #[cfg(target_os = "windows")]
 use super::windows::egs;
@@ -70,7 +75,9 @@ impl EgsClient {
     pub async fn check_platform_support(&self, namespace: &str) -> Result<SupportedPlatforms> {
         check_platform_support(&self.user, namespace)
             .await
-            .with_context(|| "egs_client::check_platform_support() Failed to check platform support")
+            .with_context(|| {
+                "egs_client::check_platform_support() Failed to check platform support"
+            })
     }
 
     pub fn credentials_exist(&self) -> bool {
@@ -197,9 +204,7 @@ impl EgsClient {
             if asset.namespace == "ue" || !seen_namespaces.insert(asset.namespace.clone()) {
                 continue;
             }
-            if let Some(chosen) =
-                monarch_egs::pick_asset_for_namespace(&assets, &asset.namespace)
-            {
+            if let Some(chosen) = monarch_egs::pick_asset_for_namespace(&assets, &asset.namespace) {
                 chosen_assets.push(chosen.clone());
             }
         }
@@ -409,13 +414,10 @@ impl StoreType for EgsClient {
             // the EGS path so they get online-auth arguments and the manifest's
             // launch executable + arguments.
             let is_managed_egs = game.managed_by_monarch
-                && game
-                    .stores
-                    .iter()
-                    .any(|store| store.name == "epicgames");
+                && game.stores.iter().any(|store| store.name == "epicgames");
 
             if is_managed_egs {
-                return egs_run(&game)
+                return egs::egs_run(&game)
                     .await
                     .with_context(|| "monarchgame::launch() -> ");
             }
@@ -434,17 +436,14 @@ impl StoreType for EgsClient {
                 }
             }
         }
-        
+
         #[cfg(target_os = "windows")]
         {
             // Epic Games games installed and managed by Monarch launch through
             // the EGS path so they get online-auth arguments and the manifest's
             // launch executable + arguments.
             let is_managed_egs = game.managed_by_monarch
-                && game
-                    .stores
-                    .iter()
-                    .any(|store| store.name == "epicgames");
+                && game.stores.iter().any(|store| store.name == "epicgames");
 
             if is_managed_egs {
                 return egs::egs_run(&game)
