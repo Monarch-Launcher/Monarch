@@ -137,6 +137,19 @@ pub async fn download_artwork(game: &MonarchGame) -> Result<(), String> {
     Ok(())
 }
 
+/// Tell backend to generate a greyscale version of the game's thumbnail.
+/// Returns early if the greyscale image already exists on disk.
+pub async fn download_greyscale(game: &MonarchGame) -> Result<(), String> {
+    if let Err(e) = game.download_greyscale().await {
+        error!(
+            "monarch_games::commands::download_greyscale() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to download greyscale thumbnail"));
+    }
+    Ok(())
+}
+
 /// Launch a game
 pub async fn launch_game(game: &MonarchGame) -> Result<(), String> {
     info!("Launching game: {}", game.name);

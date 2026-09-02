@@ -105,6 +105,11 @@ impl LibraryPage {
                             );
                         }
 
+                        if !game.is_installed {
+                            info!("Downloading greyscale for: {}", game.name);
+                            let _ = monarch_games::commands::download_greyscale(&game).await;
+                        }
+
                         info!("Updating game properties for : {}", game.name);
                         let mut game = game;
                         monarch_games::commands::get_game_properties(&mut game).await;
@@ -120,18 +125,20 @@ impl LibraryPage {
             Message::UpdateGames(games) => {
                 self.is_refreshing = false;
 
-                let processed_games: Vec<MonarchGame> = games
-                    .iter()
-                    .cloned()
-                    .map(|mut game| {
-                        game.thumbnail_path = "".to_string();
-                        game
-                    })
-                    .collect();
+                // Update the browser with the games as-is. Existing games keep
+                // their cached thumbnail paths, so already-downloaded images
+                // render immediately instead of being blanked to a placeholder.
+                let _ = self
+                    .browser
+                    .update(gamecard::GameCardMessage::UpdateGames(games.clone()));
 
-                // Trigger download tasks
-                let download_tasks = iced::Task::batch(games.into_iter().map(|mut game| {
-                    iced::Task::perform(
+                // Trigger download tasks. Each game emits GameUpdated as soon as
+                // its images are ready (artwork/thumbnail/greyscale early-return
+                // when already cached), then chains a second task that performs
+                // the slower properties enrichment — removing the network call
+                // from the image-critical path.
+                let download_tasks = iced::Task::batch(games.into_iter().map(|game| {
+                    let image_task: iced::Task<MonarchGame> = iced::Task::perform(
                         async move {
                             info!("Downloading artwork for: {}", game.name);
                             let _ = monarch_games::commands::download_artwork(&game).await;
@@ -145,18 +152,33 @@ impl LibraryPage {
                                 );
                             }
 
-                            info!("Updating game properties for : {}", game.name);
-                            monarch_games::commands::get_game_properties(&mut game).await;
+                            if !game.is_installed {
+                                info!("Downloading greyscale for: {}", game.name);
+                                let _ = monarch_games::commands::download_greyscale(&game).await;
+                            }
+
                             game
                         },
-                        Message::GameUpdated,
+                        |game| game,
+                    );
+
+                    image_task.then(
+                        |mut game| {
+                            iced::Task::batch([
+                                iced::Task::done(Message::GameUpdated(game.clone())),
+                                iced::Task::perform(
+                                    async move {
+                                        info!("Updating game properties for : {}", game.name);
+                                        monarch_games::commands::get_game_properties(&mut game)
+                                            .await;
+                                        game
+                                    },
+                                    Message::GameUpdated,
+                                ),
+                            ])
+                        },
                     )
                 }));
-
-                // Update browser games
-                let _ = self
-                    .browser
-                    .update(gamecard::GameCardMessage::UpdateGames(processed_games));
 
                 download_tasks
             }

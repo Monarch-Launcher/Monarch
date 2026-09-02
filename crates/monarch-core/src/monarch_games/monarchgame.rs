@@ -1,5 +1,6 @@
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
+use image::ImageFormat;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -12,7 +13,7 @@ use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::download_image;
-use crate::monarch_utils::monarch_fs::path_exists;
+use crate::monarch_utils::monarch_fs::{generate_greyscale_path, path_exists};
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[cfg(target_os = "linux")]
@@ -117,6 +118,35 @@ impl MonarchGame {
         Ok(())
     }
 
+    /// Download or generate a greyscale version of the thumbnail.
+    /// Returns early if the greyscale image already exists on disk.
+    /// The file is saved next to the original thumbnail with a `_grey` suffix.
+    pub async fn download_greyscale(&self) -> Result<()> {
+        let source_path = PathBuf::from(&self.thumbnail_path);
+        if !path_exists(&source_path) {
+            return Ok(());
+        }
+
+        let grey_path = generate_greyscale_path(&source_path);
+        if path_exists(&grey_path) {
+            return Ok(());
+        }
+
+        let bytes = std::fs::read(&source_path)
+            .with_context(|| "monarchgame::download_greyscale() Failed to read thumbnail")?;
+
+        let img = image::load_from_memory(&bytes)
+            .with_context(|| "monarchgame::download_greyscale() Failed to decode image")?;
+
+        let grey = img.grayscale().to_rgba8();
+        let mut file = std::fs::File::create(&grey_path)
+            .with_context(|| "monarchgame::download_greyscale() Failed to create greyscale file")?;
+        grey.write_to(&mut file, ImageFormat::Png)
+            .with_context(|| "monarchgame::download_greyscale() Failed to write greyscale image")?;
+
+        Ok(())
+    }
+
     /// Randomly generates a Monarch ID
     pub fn manually_generate_id(&mut self) {
         let mut id: String = format!("MONARCH-{}", rand::random::<u32>());
@@ -138,6 +168,17 @@ impl MonarchGame {
 
     pub fn is_installed(&self) -> bool {
         self.is_installed
+    }
+
+    /// Returns the path to the greyscale version of this game's thumbnail,
+    /// or an empty string if no thumbnail path is set.
+    pub fn greyscale_path(&self) -> String {
+        if self.thumbnail_path.is_empty() {
+            return String::new();
+        }
+        generate_greyscale_path(std::path::Path::new(&self.thumbnail_path))
+            .to_string_lossy()
+            .to_string()
     }
 
     pub fn has_properties(&self) -> bool {

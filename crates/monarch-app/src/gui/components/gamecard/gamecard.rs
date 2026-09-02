@@ -8,33 +8,18 @@ pub struct GameCard {
     pub game: MonarchGame,
     hover: bool,
     hover_factor: f32,
-    grayscale_handle: Option<iced::widget::image::Handle>,
 }
 
 impl GameCard {
     pub fn new(game: MonarchGame) -> Self {
-        let grayscale_handle = if !game.is_installed {
-            load_grayscale(&game.thumbnail_path)
-        } else {
-            None
-        };
-
         Self {
             game,
             hover: false,
             hover_factor: 0.0,
-            grayscale_handle,
         }
     }
 
     pub fn update_game(&mut self, game: MonarchGame) {
-        if !game.is_installed
-            && (self.game.thumbnail_path != game.thumbnail_path || self.grayscale_handle.is_none())
-        {
-            self.grayscale_handle = load_grayscale(&game.thumbnail_path);
-        } else if game.is_installed {
-            self.grayscale_handle = None;
-        }
         self.game = game;
     }
 }
@@ -81,7 +66,10 @@ impl GameCard {
         let scale = 1.0 + (self.hover_factor * 0.05);
         let (width, height) = (base_width * scale, base_height * scale);
 
-        let image_widget: Element<'_, GameCardMessage> = if self.game.thumbnail_path.is_empty() {
+        let thumbnail_exists = !self.game.thumbnail_path.is_empty()
+            && std::path::Path::new(&self.game.thumbnail_path).exists();
+
+        let image_widget: Element<'_, GameCardMessage> = if !thumbnail_exists {
             container(
                 image(crate::gui::resources::LOGO_LARGE.clone())
                     .width(Length::Fixed(width))
@@ -105,8 +93,9 @@ impl GameCard {
             .into()
         } else {
             let handle = if !self.game.is_installed {
-                if let Some(h) = &self.grayscale_handle {
-                    h.clone()
+                let grey = self.game.greyscale_path();
+                if !grey.is_empty() && std::path::Path::new(&grey).exists() {
+                    iced::widget::image::Handle::from_path(grey)
                 } else {
                     iced::widget::image::Handle::from_path(self.game.thumbnail_path.clone())
                 }
@@ -171,18 +160,4 @@ impl GameCard {
 
         area.into()
     }
-}
-
-fn load_grayscale(path: &str) -> Option<iced::widget::image::Handle> {
-    if path.is_empty() {
-        return None;
-    }
-    let img = ::image::open(path).ok()?;
-    let gray_img = img.grayscale();
-    let rgba = gray_img.to_rgba8();
-    let (width, height) = rgba.dimensions();
-    let pixels = rgba.into_raw();
-    Some(iced::widget::image::Handle::from_rgba(
-        width, height, pixels,
-    ))
 }

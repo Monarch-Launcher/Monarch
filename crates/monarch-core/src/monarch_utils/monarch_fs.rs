@@ -337,6 +337,14 @@ fn generate_image_filename(name: &str) -> String {
     filename
 }
 
+/// Given a thumbnail path, returns the corresponding greyscale image path
+/// by inserting `_grey` before the `.png` extension.
+pub fn generate_greyscale_path(thumbnail_path: &Path) -> PathBuf {
+    let stem = thumbnail_path.file_stem().and_then(|s| s.to_str()).unwrap_or("image");
+    let parent = thumbnail_path.parent().unwrap_or_else(|| Path::new("."));
+    parent.join(format!("{stem}_grey.png"))
+}
+
 pub fn is_in_cache_dir(path: &Path) -> bool {
     let cache_path: PathBuf = get_resources_cache();
     path.starts_with(cache_path)
