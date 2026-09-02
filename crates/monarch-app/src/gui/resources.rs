@@ -118,6 +118,11 @@ pub static WINDOW_MAXIMIZE: LazyLock<svg::Handle> = LazyLock::new(|| {
     svg::Handle::from_memory(bytes.to_vec())
 });
 
+pub static WINDOW_RESTORE: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/window-restore.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
 pub static WINDOW_CLOSE: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/window-close.svg");
     svg::Handle::from_memory(bytes.to_vec())

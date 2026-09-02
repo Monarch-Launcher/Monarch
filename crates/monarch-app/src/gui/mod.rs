@@ -52,6 +52,7 @@ pub enum AppMessage {
     CloseModal,
     ConfirmModalAction(Box<AppMessage>),
     OpenLogs,
+    ToggleFullscreen(iced::window::Mode),
 }
 
 pub static GUI_SENDER: LazyLock<
@@ -80,6 +81,7 @@ static EXTERNAL_RECEIVER: Mutex<Option<futures::channel::mpsc::UnboundedReceiver
 
 pub struct App {
     app_id: Id,
+    is_fullscreen: bool,
 
     header: Header,
     active_tab: PageTab,
@@ -253,8 +255,9 @@ impl App {
                     header::Message::MinimizeWindow => {
                         return iced::window::minimize(self.app_id, true);
                     }
-                    header::Message::MaximizeWindow => {
-                        return iced::window::toggle_maximize(self.app_id);
+                    header::Message::ToggleFullscreen => {
+                        return iced::window::mode(self.app_id)
+                            .map(AppMessage::ToggleFullscreen);
                     }
                     header::Message::CloseWindow => {
                         return iced::window::close(self.app_id);
@@ -264,6 +267,17 @@ impl App {
                     }
                 }
                 iced::Task::none()
+            }
+            AppMessage::ToggleFullscreen(current_mode) => {
+                let new_mode = match current_mode {
+                    iced::window::Mode::Fullscreen => iced::window::Mode::Windowed,
+                    _ => iced::window::Mode::Fullscreen,
+                };
+                let entering_fullscreen = new_mode == iced::window::Mode::Fullscreen;
+                #[cfg(target_os = "windows")]
+                crate::window::set_rounded_corners(!entering_fullscreen);
+                self.is_fullscreen = entering_fullscreen;
+                iced::window::set_mode(self.app_id, new_mode)
             }
             AppMessage::ResizeWindow(direction) => {
                 return iced::window::drag_resize(self.app_id, direction);
@@ -505,6 +519,7 @@ impl App {
                             self.download_page.current_download_speed(),
                             show_speed_in_bits,
                             monarch_core::monarch_games::commands::get_pending_download_count(),
+                            self.is_fullscreen,
                         )
                         .map(AppMessage::HeaderMessage),
                 )
@@ -599,6 +614,7 @@ impl Default for App {
     fn default() -> Self {
         Self {
             app_id: Id::unique(),
+            is_fullscreen: false,
             header: Header::default(),
             active_tab: PageTab::Home,
             previous_tab: PageTab::Home,

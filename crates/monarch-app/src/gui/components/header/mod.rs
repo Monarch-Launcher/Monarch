@@ -9,7 +9,7 @@ pub enum Message {
     SettingsPage,
     DownloadPage,
     MinimizeWindow,
-    MaximizeWindow,
+    ToggleFullscreen,
     CloseWindow,
     DragWindow,
 }
@@ -26,6 +26,7 @@ impl Header {
         download_speed: Option<f64>,
         speed_in_bits: bool,
         pending_downloads: usize,
+        is_fullscreen: bool,
     ) -> Element<'_, Message> {
         let logo = image(crate::gui::resources::LOGO.clone()).height(Length::Fixed(32.0));
 
@@ -188,8 +189,12 @@ impl Header {
                 iced::Color::from_rgb8(255, 127, 0),
             ),
             window_button(
-                &crate::gui::resources::WINDOW_MAXIMIZE,
-                Message::MaximizeWindow,
+                if is_fullscreen {
+                    &crate::gui::resources::WINDOW_RESTORE
+                } else {
+                    &crate::gui::resources::WINDOW_MAXIMIZE
+                },
+                Message::ToggleFullscreen,
                 crate::gui::styles::header::window_control,
                 iced::Color::from_rgba8(255, 127, 0, 0.7),
                 iced::Color::from_rgb8(255, 127, 0),
