@@ -15,7 +15,7 @@ use std::fmt::Debug;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 use crate::monarch_games::{monarchgame::MonarchGame, stores::DownloadOptions};
 use crate::monarch_utils::monarch_state::MONARCH_STATE;

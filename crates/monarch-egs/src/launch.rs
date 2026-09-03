@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::Manifest;
 use crate::auth::{Session, User};
 
 use crate::utils::err::MonarchEgsError;
@@ -38,33 +37,16 @@ pub async fn build_egs_launch_command(
     session: &mut Session,
     user: &User,
     app_name: &str,
+    exe_path: &Path,
     install_dir: &Path,
-    manifest: Option<&Manifest>,
     compat: CompatLayer,
     wine_prefix: Option<&Path>,
+    egs_launch_commands: &str,
     extra_args: &[String],
 ) -> Result<EgsLaunchCommand, MonarchEgsError> {
-    // --- resolve the game executable path -----------------------------------
-    let game_exe = match manifest {
-        Some(m) => {
-            let rel = m.launch_exe();
-            if rel.is_empty() {
-                return Err(MonarchEgsError::ParsingError(
-                    "Manifest has no launch_exe".into(),
-                ));
-            }
-            install_dir.join(rel)
-        }
-        None => {
-            return Err(MonarchEgsError::ParsingError(
-                "A manifest is required to resolve the game executable".into(),
-            ));
-        }
-    };
-
     let mut environment: HashMap<String, String> = HashMap::new();
-    let exe_path: String;
     let mut compat_args: Vec<String> = Vec::new();
+    let exe_command: String;
 
     match &compat {
         CompatLayer::Proton(proton_path) => {
@@ -89,20 +71,19 @@ pub async fn build_egs_launch_command(
                 .or_default();
 
             // umu-run expects the game exe as a relative path from install_dir
-            let rel_exe = game_exe
-                .strip_prefix(install_dir)
-                .unwrap_or(&game_exe);
-            exe_path = "umu-run".into();
+            let rel_exe = exe_path.strip_prefix(install_dir)
+                .unwrap_or(&exe_path);
+            exe_command = "umu-run".into();
             compat_args.push(rel_exe.to_string_lossy().to_string());
         }
         CompatLayer::Wine(wine_bin) => {
             let prefix = resolve_prefix(wine_prefix, app_name);
-            exe_path = wine_bin.to_string_lossy().to_string();
+            exe_command = wine_bin.to_string_lossy().to_string();
             environment.insert("WINEPREFIX".into(), prefix);
-            compat_args.push(game_exe.to_string_lossy().to_string());
+            compat_args.push(exe_path.to_string_lossy().to_string());
         }
         CompatLayer::None => {
-            exe_path = game_exe.to_string_lossy().to_string();
+            exe_command = exe_path.to_string_lossy().to_string();
         }
     }
 
@@ -111,11 +92,8 @@ pub async fn build_egs_launch_command(
 
     // --- manifest launch_command (extra exe args from Epic metadata) ---------
     let mut manifest_args: Vec<String> = Vec::new();
-    if let Some(m) = manifest {
-        let cmd = m.launch_command();
-        if !cmd.is_empty() {
-            manifest_args.extend(cmd.split_whitespace().map(String::from));
-        }
+    if !egs_launch_commands.is_empty() {
+        manifest_args.extend(egs_launch_commands.split_whitespace().map(String::from));
     }
 
     // --- assemble final arg list --------------------------------------------
@@ -126,7 +104,7 @@ pub async fn build_egs_launch_command(
     args.extend(extra_args.iter().cloned());
 
     Ok(EgsLaunchCommand {
-        executable: exe_path,
+        executable: exe_command,
         args,
         working_directory: install_dir.to_path_buf(),
         environment,

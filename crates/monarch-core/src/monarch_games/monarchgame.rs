@@ -58,6 +58,7 @@ impl MonarchGame {
         id: i32,
         store: &str,
         store_id: &str,
+        store_url: &str,
         exec_path: &str,
         thumbnail_path: &str,
     ) -> Self {
@@ -73,7 +74,7 @@ impl MonarchGame {
             stores: vec![StoreInfo {
                 name: store.to_string(),
                 store_id: store_id.to_string(),
-                store_url: "".to_string(),
+                store_url: store_url.to_string(),
             }],
             executable_path,
             thumbnail_path: thumbnail_path.to_string(),
@@ -267,9 +268,7 @@ impl GameType for MonarchGame {
                 );
             }
         };
-
         
-
         game.get_store()
             .launch_game(&game)
             .await

@@ -92,7 +92,7 @@ impl DownloadModal {
             let task = Task::perform(
                 async move {
                     let game = monarch_core::monarch_games::monarchgame::MonarchGame::new(
-                        &name, -1, "epicgames", &store_id, "", "",
+                        &name, -1, "epicgames", &store_id, "", "", "",
                     );
                     monarch_core::monarch_games::commands::check_egs_platform_support(&game).await
                 },

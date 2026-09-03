@@ -113,7 +113,7 @@ impl EgsClient {
     /// to the global downloader.
     pub async fn prepare_download_job(
         &self,
-        game: &MonarchGame,
+        game: &mut MonarchGame,
         opts: &DownloadOptions,
     ) -> Result<DownloadJob> {
         let mut namespace: String = String::new();
@@ -164,6 +164,9 @@ impl EgsClient {
                 .with_context(|| {
                     "egs_client::prepare_download_job() Failed to fetch game manifest from Epic Games! | Err: "
                 })?;
+
+        // Add some missing properties to the game from Manifest
+        game.properties.other.insert("egs_manifest_launch_command".to_string(), manifest.launch_command().to_string());
 
         Ok(DownloadJob::new(game, opts.clone(), manifest))
     }
@@ -343,7 +346,7 @@ impl StoreType for EgsClient {
             .collect()
     }
 
-    async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()> {
+    async fn install_game(&self, game: &mut MonarchGame, opts: &DownloadOptions) -> Result<()> {
         let job = self.prepare_download_job(game, opts).await?;
 
         // Submit the job to the global downloader, which routes it to the EGS
@@ -373,11 +376,11 @@ impl StoreType for EgsClient {
         Ok(())
     }
 
-    async fn uninstall_game(&self, game: &MonarchGame) -> Result<()> {
+    async fn uninstall_game(&self, _game: &MonarchGame) -> Result<()> {
         unimplemented!()
     }
 
-    async fn update_game(&self, game: &MonarchGame) -> Result<()> {
+    async fn update_game(&self, _game: &MonarchGame) -> Result<()> {
         unimplemented!()
     }
 

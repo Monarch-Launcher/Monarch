@@ -79,7 +79,7 @@ impl StoreType for MonarchClient {
             .collect()
     }
 
-    async fn install_game(&self, _game: &MonarchGame, _opts: &DownloadOptions) -> Result<()> {
+    async fn install_game(&self, _game: &mut MonarchGame, _opts: &DownloadOptions) -> Result<()> {
         error!("monarch_client::install_game() Not implemented!");
         bail!("monarch_client::install_game() currently not supported!")
     }

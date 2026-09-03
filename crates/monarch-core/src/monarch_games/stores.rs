@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[async_trait]
 pub trait StoreType: Send + Sync {
     async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn SearchResult>>;
-    async fn install_game(&self, game: &MonarchGame, opts: &DownloadOptions) -> Result<()>;
+    async fn install_game(&self, game: &mut MonarchGame, opts: &DownloadOptions) -> Result<()>;
     async fn uninstall_game(&self, game: &MonarchGame) -> Result<()>;
     async fn update_game(&self, game: &MonarchGame) -> Result<()>;
     fn game_is_installed(&self, store_id: &str) -> bool;

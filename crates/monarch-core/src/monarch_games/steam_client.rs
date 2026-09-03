@@ -55,7 +55,7 @@ impl StoreType for SteamClient {
             .collect::<Vec<Box<dyn SearchResult>>>()
     }
 
-    async fn install_game(&self, game: &MonarchGame, _opts: &DownloadOptions) -> Result<()> {
+    async fn install_game(&self, game: &mut MonarchGame, _opts: &DownloadOptions) -> Result<()> {
         let game: MonarchGame = download_game(&game.name, &game.get_store_id())
             .await
             .with_context(|| "steam_client::install_game() -> ")?;
@@ -656,7 +656,7 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
                 .unwrap(),
         )
     };
-    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, "", &thumbnail_path);
+    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
     monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
 }

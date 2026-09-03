@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use iced::window::Id;
 use std::{collections::HashMap, path::PathBuf};
-use tracing::{error, warn};
+use tracing::{error, warn, info};
 
 use crate::gui::{show_error, AppMessage};
 
@@ -36,11 +36,13 @@ impl TermInstance {
         if shell.is_empty() {
             #[cfg(target_os = "windows")]
             {
+                info!("No $SHELL was set, defaulting to powershell.exe");
                 shell = "powershell.exe".to_string()
             }
 
             #[cfg(target_os = "linux")]
             {
+                info!("No $SHELL was set, defaulting to /bin/sh");
                 shell = "/bin/sh".to_string()
             }
         }
@@ -51,10 +53,36 @@ impl TermInstance {
             None
         };
 
+        let (program, args) = {
+            #[cfg(target_os = "windows")]
+            {
+                (
+                    shell.clone(),
+                    vec![
+                        "-NoExit".to_string(),
+                        "-Command".to_string(),
+                        command.clone(),
+                    ],
+                )
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                let escaped_shell = shell.replace('"', "\\\"");
+                (
+                    shell.clone(),
+                    vec![
+                        "-c".to_string(),
+                        format!("{}; exec \"{}\"", command.clone(), escaped_shell),
+                    ],
+                )
+            }
+        };
+
         let term_settings = iced_term::settings::Settings {
             backend: iced_term::settings::BackendSettings {
-                program: shell.to_string(),
-                args: vec!["-c".to_string(), command.clone()],
+                program,
+                args,
                 env: env.clone(),
                 working_directory: workdir_path,
                 ..Default::default()

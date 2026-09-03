@@ -116,7 +116,7 @@ pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir();
     path.push("steamcmd");
     path.push("steamcmd.exe");
-    let args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
+    let _args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
 
     /*
        run_in_terminal(

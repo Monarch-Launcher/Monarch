@@ -441,7 +441,7 @@ impl App {
             ),
             AppMessage::OpenTerminalRaw(command, env, workdir, tx) => {
                 let settings = window::Settings {
-                    decorations: false,
+                    decorations: true,
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);

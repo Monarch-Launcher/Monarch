@@ -105,12 +105,12 @@ impl GameDetailsPage {
                         }
                     }
 
-                    let game: MonarchGame = self.game.as_ref().unwrap().lock().unwrap().clone();
+                    let mut game: MonarchGame = self.game.as_ref().unwrap().lock().unwrap().clone();
 
                     iced::Task::perform(
                         async move {
                             let _ = monarch_core::monarch_games::commands::download_game(
-                                &game, &mut opts,
+                                &mut game, &mut opts,
                             )
                             .await;
                         },

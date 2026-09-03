@@ -252,8 +252,11 @@ pub struct SteamGameProperties {
     name: String,
     appid: String,
     installdir: String,
-    LastPlayed: String,
-    SizeOnDisk: u64,
+
+    #[serde(rename = "LastPlayed")]
+    last_played: String,
+    #[serde(rename = "SizeOnDisk")]
+    size_on_disk: u64,
 }
 
 impl SteamGameProperties {
@@ -277,8 +280,8 @@ impl Into<MonarchGameProperties> for SteamGameProperties {
     fn into(self) -> MonarchGameProperties {
         MonarchGameProperties {
             install_dir: self.installdir,
-            size_on_disk: self.SizeOnDisk,
-            last_played: self.LastPlayed,
+            size_on_disk: self.size_on_disk,
+            last_played: self.last_played,
             time_played: "WIP".to_string(),
             description: "WIP".to_string(),
             version: "".to_string(),
@@ -297,8 +300,8 @@ pub fn get_game_properties_from_manifest(
         name: "Error".to_string(),
         appid: "Error".to_string(),
         installdir: "Error".to_string(),
-        LastPlayed: "".to_string(),
-        SizeOnDisk: 0,
+        last_played: "".to_string(),
+        size_on_disk: 0,
     };
 
     let library_folders: LibraryFolders = match LibraryFolders::read(libraryfolders_vdf) {

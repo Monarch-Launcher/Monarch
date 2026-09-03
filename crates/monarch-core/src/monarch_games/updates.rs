@@ -298,7 +298,7 @@ async fn queue_detected_updates(updates: &[MonarchGameUpdate], installs: &[Manag
         }) else {
             continue;
         };
-        let game = install.game.clone();
+        let mut game = install.game.clone();
 
         // Update in place: the download handler writes into <folder>/<game>,
         // so reuse the parent of the recorded install directory.
@@ -312,7 +312,7 @@ async fn queue_detected_updates(updates: &[MonarchGameUpdate], installs: &[Manag
             compatibility: game.compatibility.clone(),
         };
 
-        match client.prepare_download_job(&game, &opts).await {
+        match client.prepare_download_job(&mut game, &opts).await {
             Ok(job) => prepared.push((game, job)),
             Err(e) => {
                 warn!(
