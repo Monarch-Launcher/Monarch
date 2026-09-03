@@ -2,37 +2,25 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::auth::{Session, User};
-
 use crate::utils::err::MonarchEgsError;
 
 /// Which compatibility layer to use when running a Windows game on Linux.
 pub enum CompatLayer {
-    /// Proton — path to the Proton distribution directory
-    /// (e.g. `~/.steam/steam/steamapps/common/Proton 8.0`).
     Proton(PathBuf),
-    /// Wine — path to the `wine` / `wine64` binary.
     Wine(PathBuf),
-    /// No compatibility layer (native Windows or caller handles it).
     None,
 }
 
 /// Assembled launch information for an EGS game.
 pub struct EgsLaunchCommand {
-    /// The executable to invoke (umu-run, wine64, or the game .exe directly).
     pub executable: String,
-    /// Full argument list: compat layer args + exe + auth args + launch_command + extra.
     pub args: Vec<String>,
-    /// Working directory — the game install directory.
     pub working_directory: PathBuf,
     /// Environment variables required by the compatibility layer.
     pub environment: HashMap<String, String>,
 }
 
 /// Build the complete launch command for an Epic Games Store game on Linux.
-///
-/// Combines the compatibility layer (Proton/Wine), the game executable,
-/// Epic authentication parameters, manifest launch arguments, and any
-/// caller-supplied extra arguments into a single [`EgsLaunchCommand`].
 pub async fn build_egs_launch_command(
     session: &mut Session,
     user: &User,
@@ -62,17 +50,11 @@ pub async fn build_egs_launch_command(
                 "STEAM_COMPAT_INSTALL_PATH".into(),
                 install_dir.to_string_lossy().to_string(),
             );
-            environment.insert(
-                "WINEDLLOVERRIDES".into(),
-                "winemenubuilder.exe=d".into(),
-            );
-            environment
-                .entry("LD_PRELOAD".into())
-                .or_default();
+            environment.insert("WINEDLLOVERRIDES".into(), "winemenubuilder.exe=d".into());
+            environment.entry("LD_PRELOAD".into()).or_default();
 
             // umu-run expects the game exe as a relative path from install_dir
-            let rel_exe = exe_path.strip_prefix(install_dir)
-                .unwrap_or(&exe_path);
+            let rel_exe = exe_path.strip_prefix(install_dir).unwrap_or(&exe_path);
             exe_command = "umu-run".into();
             compat_args.push(rel_exe.to_string_lossy().to_string());
         }
@@ -87,16 +69,16 @@ pub async fn build_egs_launch_command(
         }
     }
 
-    // --- build Epic Games Store auth arguments ------------------------------
+    // build Epic Games Store auth arguments
     let auth_args = build_egs_auth_args(session, user, app_name).await;
 
-    // --- manifest launch_command (extra exe args from Epic metadata) ---------
+    // manifest launch_command
     let mut manifest_args: Vec<String> = Vec::new();
     if !egs_launch_commands.is_empty() {
         manifest_args.extend(egs_launch_commands.split_whitespace().map(String::from));
     }
 
-    // --- assemble final arg list --------------------------------------------
+    // assemble final arg list
     let mut args: Vec<String> = Vec::new();
     args.extend(compat_args);
     args.extend(auth_args);
@@ -134,14 +116,7 @@ fn resolve_prefix(wine_prefix: Option<&Path>, app_name: &str) -> String {
 }
 
 /// Build the Epic authentication command-line arguments.
-///
-/// These are the same flags the official Epic Games Launcher and Legendary
-/// pass to game executables for online authentication.
-async fn build_egs_auth_args(
-    session: &mut Session,
-    user: &User,
-    app_name: &str,
-) -> Vec<String> {
+async fn build_egs_auth_args(session: &mut Session, user: &User, app_name: &str) -> Vec<String> {
     let token = session.get_access_token().await;
     let account_id = session.get_account_id();
     let display_name = user.display_name();

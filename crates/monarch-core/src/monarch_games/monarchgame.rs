@@ -16,9 +16,6 @@ use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::{generate_greyscale_path, path_exists};
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
-#[cfg(target_os = "linux")]
-use crate::monarch_games::linux::umu::umu_run;
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MonarchGame {
     pub name: String,
@@ -268,7 +265,7 @@ impl GameType for MonarchGame {
                 );
             }
         };
-        
+
         game.get_store()
             .launch_game(&game)
             .await

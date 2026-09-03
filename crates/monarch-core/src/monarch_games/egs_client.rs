@@ -41,6 +41,7 @@ impl EgsClient {
         Self { user: User::new() }
     }
 
+    // Gets the existing user from monarch_egs.json file
     pub async fn load_existing_user(&mut self) -> Result<()> {
         let session: Session = self
             .load_session_from_file()
@@ -166,7 +167,10 @@ impl EgsClient {
                 })?;
 
         // Add some missing properties to the game from Manifest
-        game.properties.other.insert("egs_manifest_launch_command".to_string(), manifest.launch_command().to_string());
+        game.properties.other.insert(
+            "egs_manifest_launch_command".to_string(),
+            manifest.launch_command().to_string(),
+        );
 
         Ok(DownloadJob::new(game, opts.clone(), manifest))
     }

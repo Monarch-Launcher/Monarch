@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use tracing::{error, info};
 
-use monarch_egs::{CompatLayer, Manifest, get_game_manifest, build_egs_launch_command};
+use monarch_egs::{build_egs_launch_command, CompatLayer};
 
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::games::GameType;
@@ -12,11 +12,6 @@ use crate::monarch_utils::monarch_fs::{
     self, ensure_wine_safe_install_dir, get_monarch_home, wine_prefix_dir,
 };
 use crate::monarch_utils::monarch_terminal;
-
-/// Platform identifier used when fetching the manifest for a Monarch-managed
-/// install. Games are downloaded as Windows build manifests regardless of the
-/// host OS (they run through Proton/Wine on Linux).
-const MANAGED_PLATFORM: &str = "Windows";
 
 /// Launches an Epic Games Store game installed and managed by Monarch.
 ///
@@ -35,25 +30,20 @@ pub async fn egs_run(game: &MonarchGame) -> Result<()> {
         // Without a session we cannot fetch a manifest or provide Epic auth
         // args, so fall back to launching the recorded executable directly
         // through umu (no online authentication).
-        info!("linux::egs::egs_run() No Epic credentials found, launching '{}' without online auth", game.name);
+        info!(
+            "linux::egs::egs_run() No Epic credentials found, launching '{}' without online auth",
+            game.name
+        );
         return launch_without_auth(game).await;
     }
 
-    let (app_name, catalog_id, namespace) = epic_metadata(game)?;
-
+    let app_name: String = game
+        .properties
+        .other
+        .get("app_name")
+        .cloned()
+        .unwrap_or("".to_string());
     let install_dir = resolve_install_dir(game)?;
-
-    let token = client.user().session().get_access_token().await;
-    let manifest: Manifest = get_game_manifest(
-        &token,
-        MANAGED_PLATFORM,
-        &namespace,
-        &catalog_id,
-        &app_name,
-    )
-    .await
-    .with_context(|| "linux::egs::egs_run() Failed to fetch game manifest! | Err: ")?;
-
     let compat = resolve_compat(game)?;
     let prefix = wine_prefix_dir(&format!("umu-{}", game.get_store_id()));
 
@@ -62,25 +52,37 @@ pub async fn egs_run(game: &MonarchGame) -> Result<()> {
         &mut session,
         client.user(),
         &app_name,
+        &Path::new(&game.executable_path.clone().unwrap_or("".to_string())),
         &install_dir,
-        Some(&manifest),
         compat,
         Some(&prefix),
+        &game
+            .properties
+            .other
+            .get("egs_manifest_launch_command")
+            .unwrap_or(&"".to_string()),
         &extra_args(game),
     )
     .await
     .with_context(|| "linux::egs::egs_run() Failed to build launch command! | Err: ")?;
 
-    spawn(launch.executable, launch.args, &install_dir, launch.environment)
-        .await
+    spawn(
+        launch.executable,
+        launch.args,
+        &install_dir,
+        launch.environment,
+    )
+    .await
 }
 
 /// Builds the compatibility layer from the game's recorded Proton path.
 fn resolve_compat(game: &MonarchGame) -> Result<CompatLayer> {
-    let compatibility = game
-        .compatibility
-        .clone()
-        .ok_or_else(|| anyhow::anyhow!("linux::egs::resolve_compat() No compatibility layer set for {}", game.name))?;
+    let compatibility = game.compatibility.clone().ok_or_else(|| {
+        anyhow::anyhow!(
+            "linux::egs::resolve_compat() No compatibility layer set for {}",
+            game.name
+        )
+    })?;
     Ok(CompatLayer::Proton(PathBuf::from(compatibility)))
 }
 
@@ -92,30 +94,6 @@ fn extra_args(game: &MonarchGame) -> Vec<String> {
         .split_whitespace()
         .map(String::from)
         .collect()
-}
-
-/// Collects the Epic metadata (app name, catalog id, namespace) required to
-/// fetch the game manifest.
-fn epic_metadata(game: &MonarchGame) -> Result<(String, String, String)> {
-    let catalog_id = game
-        .properties
-        .other
-        .get("catalog_id")
-        .cloned()
-        .unwrap_or_default();
-    let app_name = game
-        .properties
-        .other
-        .get("app_name")
-        .cloned()
-        .unwrap_or_default();
-    let namespace = game.get_store_id();
-
-    if catalog_id.is_empty() || app_name.is_empty() || namespace.is_empty() {
-        bail!("linux::egs::epic_metadata() Missing Epic Games metadata (app_name/catalog_id/namespace) for '{}'", game.name)
-    }
-
-    Ok((app_name, catalog_id, namespace))
 }
 
 /// Resolves the on-disk install directory, preferring the recorded path.
@@ -134,7 +112,10 @@ fn resolve_install_dir(game: &MonarchGame) -> Result<PathBuf> {
             }
         }
     }
-    bail!("linux::egs::resolve_install_dir() Unable to locate install directory for '{}'", game.name)
+    bail!(
+        "linux::egs::resolve_install_dir() Unable to locate install directory for '{}'",
+        game.name
+    )
 }
 
 /// Spawns the built launch command in a terminal window.
@@ -151,7 +132,10 @@ async fn spawn(
     }
 
     info!("linux::egs::spawn() Launch command: {}", command);
-    info!("linux::egs::spawn() Working directory: {}", workdir.display());
+    info!(
+        "linux::egs::spawn() Working directory: {}",
+        workdir.display()
+    );
 
     let rx = monarch_terminal::spawn_terminal(
         command,
@@ -177,18 +161,24 @@ fn quote_arg(arg: &str) -> String {
 /// executable through umu-launcher without online authentication.
 #[cfg(target_os = "linux")]
 async fn launch_without_auth(game: &MonarchGame) -> Result<()> {
-    let compatibility = game
-        .compatibility
-        .clone()
-        .ok_or_else(|| anyhow::anyhow!("linux::egs::launch_without_auth() No compatibility layer set for {}", game.name))?;
+    let compatibility = game.compatibility.clone().ok_or_else(|| {
+        anyhow::anyhow!(
+            "linux::egs::launch_without_auth() No compatibility layer set for {}",
+            game.name
+        )
+    })?;
 
-    let exe = PathBuf::from(
-        game.executable_path
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("linux::egs::launch_without_auth() No executable path set for {}", game.name))?,
-    );
+    let exe = PathBuf::from(game.executable_path.as_ref().ok_or_else(|| {
+        anyhow::anyhow!(
+            "linux::egs::launch_without_auth() No executable path set for {}",
+            game.name
+        )
+    })?);
     if !exe.is_file() {
-        bail!("linux::egs::launch_without_auth() Executable not found: {}", exe.display());
+        bail!(
+            "linux::egs::launch_without_auth() Executable not found: {}",
+            exe.display()
+        );
     }
 
     let install_dir = resolve_install_dir(game)?;
@@ -203,32 +193,33 @@ async fn launch_without_auth(game: &MonarchGame) -> Result<()> {
         )
     })?;
 
-    let mut env_vars: std::collections::HashMap<String, String> = std::collections::HashMap::from([
-        ("PROTONPATH".to_string(), compatibility),
-        ("GAMEID".to_string(), gameid_arg.clone()),
-        ("STORE".to_string(), "egs".to_string()),
-        ("WINEPREFIX".to_string(), prefix.to_string_lossy().to_string()),
-        (
-            "STEAM_COMPAT_DATA_PATH".to_string(),
-            prefix.to_string_lossy().to_string(),
-        ),
-        (
-            "STEAM_COMPAT_INSTALL_PATH".to_string(),
-            install_dir.to_string_lossy().to_string(),
-        ),
-        (
-            "WINEDLLOVERRIDES".to_string(),
-            "winemenubuilder.exe=d".to_string(),
-        ),
-    ]);
-    env_vars
-        .entry("LD_PRELOAD".to_string())
-        .or_default();
+    let mut env_vars: std::collections::HashMap<String, String> =
+        std::collections::HashMap::from([
+            ("PROTONPATH".to_string(), compatibility),
+            ("GAMEID".to_string(), gameid_arg.clone()),
+            ("STORE".to_string(), "egs".to_string()),
+            (
+                "WINEPREFIX".to_string(),
+                prefix.to_string_lossy().to_string(),
+            ),
+            (
+                "STEAM_COMPAT_DATA_PATH".to_string(),
+                prefix.to_string_lossy().to_string(),
+            ),
+            (
+                "STEAM_COMPAT_INSTALL_PATH".to_string(),
+                install_dir.to_string_lossy().to_string(),
+            ),
+            (
+                "WINEDLLOVERRIDES".to_string(),
+                "winemenubuilder.exe=d".to_string(),
+            ),
+        ]);
+    env_vars.entry("LD_PRELOAD".to_string()).or_default();
 
     let exe_arg = monarch_fs::relative_launch_exe_arg(&safe_exe, &install_dir);
-    let umu: PathBuf = monarch_fs::find_linux_binary("umu-run").unwrap_or(
-        get_monarch_home().join("umu").join("umu-run"),
-    );
+    let umu: PathBuf = monarch_fs::find_linux_binary("umu-run")
+        .unwrap_or(get_monarch_home().join("umu").join("umu-run"));
     let launch_command: String = format!("{} {}", umu.display(), exe_arg);
 
     let launch_args = game.launch_args.as_deref().unwrap_or_default().trim();
@@ -240,7 +231,10 @@ async fn launch_without_auth(game: &MonarchGame) -> Result<()> {
         format!("{launch_command} {launch_args}")
     };
 
-    info!("linux::egs::launch_without_auth() Launch command: {}", full_command);
+    info!(
+        "linux::egs::launch_without_auth() Launch command: {}",
+        full_command
+    );
 
     let rx = monarch_terminal::spawn_terminal(
         full_command,
@@ -273,7 +267,9 @@ async fn ensure_safe_paths(
     game.executable_path = Some(safe_exe.to_string_lossy().to_string());
 
     if let Err(e) = crate::monarch_library::library::update_game_properties(&game).await {
-        error!("linux::egs::ensure_safe_paths() Failed to persist renamed install paths | Err: {e}");
+        error!(
+            "linux::egs::ensure_safe_paths() Failed to persist renamed install paths | Err: {e}"
+        );
     }
 
     Ok((safe_dir, safe_exe))
