@@ -2,7 +2,7 @@ use reqwest::Result;
 
 use crate::auth::session::{Session, SessionTokenType};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct User {
     display_name: String,
     session: Session,

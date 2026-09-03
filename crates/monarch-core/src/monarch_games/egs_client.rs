@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use tokio::task::{self, JoinHandle};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use monarch_egs::{
     check_platform_support, get_game_manifest, Manifest, Session, SupportedPlatforms, User,
@@ -222,8 +222,10 @@ impl EgsClient {
             let namespace = asset.namespace.clone();
             let catalog_id = asset.catalog_item_id.clone();
             let app_name = asset.app_name.clone();
+            let egs_user: User = self.user.clone();
 
             let task: JoinHandle<Result<MonarchGame>> = task::spawn(async move {
+                // Parse general game metadata via monarch-launcher.com
                 info!("Parsing {} via {}.", namespace, monarch_url);
                 let url = format!(
                     "{}/api/games?store_id={}&store=epicgames",
@@ -239,22 +241,64 @@ impl EgsClient {
 
                 let response_text: String = response.text().await.unwrap();
 
-                if let Ok(games) = serde_json::from_str::<Vec<MonarchWebApiGame>>(&response_text) {
-                    if !games.is_empty() {
-                        let mut monarch_game = games[0].clone().into_monarchgame();
-                        monarch_game
-                            .properties
-                            .other
-                            .insert("catalog_id".to_string(), catalog_id);
-                        monarch_game
-                            .properties
-                            .other
-                            .insert("app_name".to_string(), app_name);
-                        return Ok(monarch_game);
+                let mut game: MonarchGame;
+                match serde_json::from_str::<Vec<MonarchWebApiGame>>(&response_text) {
+                    Ok(games) => {
+                        if !games.is_empty() {
+                            game = games[0].clone().into_monarchgame();
+                            game.properties
+                                .other
+                                .insert("catalog_id".to_string(), catalog_id.clone());
+                            game.properties
+                                .other
+                                .insert("app_name".to_string(), app_name);
+                        } else {
+                            bail!("egs_client::get_user_games() Failed to parse response as MonarchWebApiGame | Err: Vec is empty")
+                        }
                     }
-                }
+                    Err(e) => {
+                        bail!("egs_client::get_user_games() Failed to parse response as MonarchWebApiGame | Err: {e}")
+                    }
+                };
 
-                bail!("egs_client::get_user_games() Failed to parse response as MonarchWebApiGame!")
+                // Parse EGS specific metadata
+                let meta = match monarch_egs::get_game_metadata(
+                    &egs_user,
+                    &namespace,
+                    &catalog_id,
+                    "US",
+                    "en",
+                )
+                .await
+                {
+                    Ok(m) => m,
+                    Err(e) => {
+                        warn!(
+                            "Failed to get metadata for {} from EGS! | Err: {}",
+                            game.name, e
+                        );
+                        bail!("egs_client::get_user_games() Failed to get metadata for {} from EGS! | Err: {}", game.name, e)
+                    }
+                };
+
+                game.properties.other.insert(
+                    "requires_ot".to_string(),
+                    meta.custom_attributes
+                        .get("OwnershipToken")
+                        .cloned()
+                        .unwrap_or_default()
+                        .value,
+                );
+                game.properties.other.insert(
+                    "offline_enabled".to_string(),
+                    meta.custom_attributes
+                        .get("CanRunOffline")
+                        .cloned()
+                        .unwrap_or_default()
+                        .value,
+                );
+
+                Ok(game)
             });
 
             tasks.push(task);

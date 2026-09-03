@@ -10,9 +10,9 @@ pub use download::{
     DownloaderOptions, Manifest, PrepManifestData, VerifyProgress, VerifyReport, VerifyStatus,
     get_game_manifest,
 };
-pub use launch::{build_egs_launch_command, CompatLayer, EgsLaunchCommand};
 pub use games::{
-    Entitlement, GameAsset, GameUpdate, InstalledBuild, Platform, SupportedPlatforms,
-    check_platform_support, check_updates, latest_build_version, owned_assets, owned_games,
-    pick_asset_for_namespace,
+    AttributeValue, Entitlement, GameAsset, GameMetadata, GameUpdate, InstalledBuild, MainGameItem,
+    Platform, ReleaseInfo, SupportedPlatforms, check_platform_support, check_updates,
+    get_game_metadata, latest_build_version, owned_assets, owned_games, pick_asset_for_namespace,
 };
+pub use launch::{CompatLayer, EgsLaunchCommand, build_egs_launch_command};
