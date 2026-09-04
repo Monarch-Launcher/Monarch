@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub type TerminalDone = Arc<Mutex<Option<futures::channel::oneshot::Sender<()>>>>;
 
-type TerminalHandler = Box<
-    dyn FnMut(String, HashMap<String, String>, Option<String>, TerminalDone) + Send,
->;
+type TerminalHandler =
+    Box<dyn FnMut(String, HashMap<String, String>, Option<String>, TerminalDone) + Send>;
 
 static TERMINAL_HANDLER: LazyLock<Mutex<Option<TerminalHandler>>> =
     LazyLock::new(|| Mutex::new(None));
@@ -37,4 +36,41 @@ pub fn spawn_terminal(
     }
 
     rx
+}
+
+/// Returns the call command to the system shell
+pub fn get_system_shell() -> String {
+    let mut shell: String = match std::env::var("SHELL") {
+        Ok(sh) => sh,
+        Err(e) => {
+            warn!("TermInstance::new() Failed to get $SHELL var! | Err: {e}");
+            "".to_string()
+        }
+    };
+
+    // Just try your best if $SHELL variable isn't set
+    if shell.is_empty() {
+        #[cfg(target_os = "windows")]
+        {
+            info!("No $SHELL was set, defaulting to powershell.exe");
+            shell = "powershell.exe".to_string()
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            info!("No $SHELL was set, defaulting to /bin/sh");
+            shell = "/bin/sh".to_string()
+        }
+    }
+
+    shell
+}
+
+/// Quote an argument for a shell / terminal command string.
+pub fn quote_arg(arg: &str) -> String {
+    if arg.chars().any(|c| c.is_whitespace() || c == '\'') {
+        format!("'{}'", arg.replace('\'', "'\\''"))
+    } else {
+        arg.to_string()
+    }
 }

@@ -11,7 +11,7 @@ pub trait StoreType: Send + Sync {
     async fn update_game(&self, game: &MonarchGame) -> Result<()>;
     fn game_is_installed(&self, store_id: &str) -> bool;
     fn store_enabled(&self) -> bool;
-    async fn launch_game(&self, game: &MonarchGame) -> Result<()>;
+    async fn launch_game(&mut self, game: &MonarchGame) -> Result<()>;
 }
 
 #[derive(Debug, Deserialize, Serialize)]

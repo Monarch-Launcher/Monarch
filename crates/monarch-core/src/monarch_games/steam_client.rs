@@ -18,8 +18,8 @@ use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::library;
 use crate::monarch_utils::monarch_credentials::get_password;
-use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
+use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_settings::{get_settings, LauncherSettings};
 
 #[cfg(target_os = "windows")]
@@ -94,7 +94,7 @@ impl StoreType for SteamClient {
         unimplemented!()
     }
 
-    async fn launch_game(&self, game: &MonarchGame) -> Result<()> {
+    async fn launch_game(&mut self, game: &MonarchGame) -> Result<()> {
         match game.get_store_name().as_str() {
             "steam" => launch_client_game(game),
             "steamcmd" => {
@@ -656,7 +656,8 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
                 .unwrap(),
         )
     };
-    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
+    let mut monarch_game =
+        MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
     monarch_game.thumbnail_url = cover_url;
     Ok(monarch_game)
 }

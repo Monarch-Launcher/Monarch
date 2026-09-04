@@ -103,7 +103,7 @@ impl StoreType for MonarchClient {
         false
     }
 
-    async fn launch_game(&self, game: &MonarchGame) -> Result<()> {
+    async fn launch_game(&mut self, game: &MonarchGame) -> Result<()> {
         game.launch().await
     }
 }
@@ -461,7 +461,11 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     let monarch_url: &'static str = std::env!("MONARCH_URL");
     let search_term: String = format!("{monarch_url}/api/games?search={}", search_term);
 
-    let response = monarch_http::client().get(search_term).send().await.unwrap();
+    let response = monarch_http::client()
+        .get(search_term)
+        .send()
+        .await
+        .unwrap();
     let resp_content = response.text().await.unwrap();
 
     let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&resp_content).unwrap();

@@ -49,42 +49,27 @@ pub struct MonarchSettings {
     #[serde(default)]
     pub steamcmd_bin: String,
 
-    /// Whether download speeds are shown in bits per second (b/s) instead of
-    /// bytes per second (B/s).
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub show_download_speed_in_bits: bool,
 
-    /// User-configured maximum download speed. The unit's base (bit or byte)
-    /// follows [`Self::show_download_speed_in_bits`]. 0 means unlimited.
     #[serde(default)]
     pub max_download_speed_value: f64,
 
-    /// Unit prefix of [`Self::max_download_speed_value`]: "k", "m" or "g".
-    /// Prefixes are decimal (kb/s = 1000 b/s), matching how network speeds
-    /// are conventionally written.
     #[serde(default = "default_max_speed_prefix")]
     pub max_download_speed_prefix: String,
 
-    /// Whether Monarch checks for updates of installed games managed by
-    /// Monarch when it starts up.
     #[serde(default = "default_true")]
     pub check_updates_on_startup: bool,
 
-    /// Whether the library filter (store/status selection) is remembered
-    /// across restarts.
     #[serde(default)]
     pub persist_library_filters: bool,
 
-    /// Persisted library filter: show Steam games.
     #[serde(default)]
     pub library_filter_steam: bool,
-    /// Persisted library filter: show Epic Games.
     #[serde(default)]
     pub library_filter_epic: bool,
-    /// Persisted library filter: show installed games.
     #[serde(default)]
     pub library_filter_installed: bool,
-    /// Persisted library filter: show ready-to-install games.
     #[serde(default)]
     pub library_filter_uninstalled: bool,
 }

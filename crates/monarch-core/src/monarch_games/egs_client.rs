@@ -1,39 +1,267 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use tokio::task::{self, JoinHandle};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
-use monarch_egs::{
-    check_platform_support, get_game_manifest, Manifest, Session, SupportedPlatforms, User,
-};
-
-use crate::monarch_games::games::SearchResult;
+use super::stores::StoreType;
+use crate::monarch_games::games::{GameType, SearchResult};
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::{
-    generate_cache_image_path, generate_library_image_path, get_monarch_home,
+    self, generate_cache_image_path, generate_library_image_path, get_monarch_home, wine_prefix_dir,
 };
 use crate::monarch_utils::monarch_game_downloader::DownloadJob;
-use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::monarch_state::MONARCH_STATE;
-
-use super::stores::StoreType;
+use crate::monarch_utils::{monarch_http, monarch_terminal};
+use monarch_egs::{
+    check_platform_support, get_game_manifest, AttributeValue, EgsLaunchCommand, Manifest, Session,
+    SupportedPlatforms, User,
+};
 
 #[cfg(target_os = "linux")]
-use super::linux::egs;
-
-#[cfg(target_os = "linux")]
-use super::linux::umu::umu_run;
+use monarch_egs::CompatLayer;
 
 #[cfg(target_os = "windows")]
 use super::windows::egs;
+#[cfg(target_os = "windows")]
+use monarch_egs::CompatLayer;
 
 pub struct EgsClient {
     user: User,
+}
+
+#[async_trait]
+impl StoreType for EgsClient {
+    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
+        let monarch_url: &'static str = std::env!("MONARCH_URL");
+        let search_term: String =
+            format!("{}/api/games?search={}?store=epicgames", monarch_url, name,);
+
+        let response = match monarch_http::client().get(search_term).send().await {
+            Ok(resp) => resp,
+            Err(e) => {
+                error!("egs::search_games() reqwest::get() failed! | Err: {}", e);
+                return Vec::new();
+            }
+        };
+
+        let resp_content = match response.text().await {
+            Ok(content) => content,
+            Err(e) => {
+                error!(
+                    "monarch_client::search_games() response.text() failed! | Err: {}",
+                    e
+                );
+                return Vec::new();
+            }
+        };
+
+        let mut web_games: Vec<Box<MonarchWebApiGame>> =
+            match serde_json::from_str::<Vec<MonarchWebApiGame>>(&resp_content) {
+                Ok(games) => games.into_iter().map(Box::new).collect(),
+                Err(e) => {
+                    error!(
+                        "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
+                        e
+                    );
+                    return Vec::new();
+                }
+            };
+
+        for game in web_games.iter_mut() {
+            let thumbnail_path = String::from(
+                generate_cache_image_path(&game.name.clone(), GameImageType::Cover)
+                    .to_str()
+                    .unwrap(),
+            );
+            game.thumbnail_path = thumbnail_path;
+        }
+
+        web_games
+            .into_iter()
+            .map(|g| g as Box<dyn SearchResult>)
+            .collect()
+    }
+
+    async fn install_game(&self, game: &mut MonarchGame, opts: &DownloadOptions) -> Result<()> {
+        let job = self.prepare_download_job(game, opts).await?;
+
+        // Submit the job to the global downloader, which routes it to the EGS
+        // download handler (and on to monarch_egs) once registered.
+        match MONARCH_STATE.read() {
+            Ok(state) => match state.get_downloader_ptr().write() {
+                Ok(mut downloader) => {
+                    if let Err(e) = downloader.register_egs_handler() {
+                        error!(
+                            "egs_client::install_game() Failed to register EGS download handler | Err: {e}"
+                        );
+                        bail!("Failed to register EGS download handler!")
+                    }
+                    downloader.start_download(job);
+                }
+                Err(e) => {
+                    error!("egs_client::install_game() Failed to lock on downloader | Err: {e}");
+                    bail!("Failed to lock on downloader!")
+                }
+            },
+            Err(e) => {
+                error!("egs_client::install_game() Failed to lock on MONARCH_STATE | Err: {e}");
+                bail!("Failed to lock on MONARCH_STATE!")
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn uninstall_game(&self, _game: &MonarchGame) -> Result<()> {
+        unimplemented!()
+    }
+
+    async fn update_game(&self, _game: &MonarchGame) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn game_is_installed(&self, _store_id: &str) -> bool {
+        false
+    }
+
+    fn store_enabled(&self) -> bool {
+        let settings_lock = match get_settings() {
+            Ok(lock) => lock,
+            Err(e) => {
+                error!("egs::store_enabled() get_settings() failed! | Err: {}", e);
+                return false;
+            }
+        };
+        let settings = match settings_lock.read() {
+            Ok(settings) => settings,
+            Err(e) => {
+                error!(
+                    "egs::store_enabled() settings_lock.read() failed! | Err: {}",
+                    e
+                );
+                return false;
+            }
+        };
+
+        settings.epic.manage
+    }
+
+    async fn launch_game(&mut self, game: &MonarchGame) -> Result<()> {
+        if self.credentials_exist() {
+            self.load_existing_user()
+                .await
+                .with_context(|| "linux::egs::egs_run() -> ")?;
+        } else {
+            error!("linux::egs::egs_run() No Epic credentials found, launching '{}' without online auth", game.name);
+            bail!("linux::egs::egs_run() Monarch currently requires a user to be signed into EGS to run EGS games!")
+        }
+
+        let app_name: String = game
+            .properties
+            .other
+            .get("app_name")
+            .cloned()
+            .unwrap_or("".to_string());
+        let install_dir = game.properties.install_dir.clone();
+
+        #[cfg(target_os = "linux")]
+        let compat: CompatLayer = {
+            if let Some(layer) = game.compatibility.clone() {
+                CompatLayer::Proton(PathBuf::from(layer))
+            } else {
+                CompatLayer::None
+            }
+        };
+        #[cfg(target_os = "windows")]
+        let compat: CompatLayer = CompatLayer::None;
+
+        let prefix: PathBuf = wine_prefix_dir(&format!("umu-{}", game.get_store_id()));
+
+        let user_args: Vec<String> = game
+            .launch_args
+            .as_deref()
+            .unwrap_or_default()
+            .split_whitespace()
+            .map(String::from)
+            .collect();
+
+        let namespace: String = game.get_store_id();
+        let ot_path: Option<String> = if game
+            .properties
+            .other
+            .get("requires_ot")
+            .unwrap()
+            .contains("true")
+        {
+            let catalog_id: &str = game.properties.other.get("catalog_id").unwrap();
+            let ownership_token: Vec<u8> = self
+                .user
+                .session()
+                .get_ownership_token(&namespace, catalog_id)
+                .await
+                .with_context(|| "egs_client::launch_game() -> ")?;
+
+            let token_path: PathBuf =
+                monarch_fs::write_ownership_token(&namespace, catalog_id, &ownership_token)
+                    .with_context(|| "egs_client::launch_game() -> ")?;
+            Some(token_path.to_string_lossy().to_string())
+        } else {
+            None
+        };
+
+        let egs_launch_command: EgsLaunchCommand = monarch_egs::build_egs_launch_command(
+            self.user(),
+            &app_name,
+            &namespace,
+            &Path::new(&game.executable_path.clone().unwrap_or("".to_string())),
+            &Path::new(&install_dir),
+            compat,
+            Some(&prefix),
+            &game
+                .properties
+                .other
+                .get("egs_manifest_launch_command")
+                .unwrap_or(&"".to_string()),
+            &user_args,
+            ot_path,
+        )
+        .await
+        .with_context(|| "linux::egs::egs_run() Failed to build launch command! | Err: ")?;
+
+        let mut launch_command: String = egs_launch_command.executable;
+        for arg in &egs_launch_command.args {
+            launch_command.push(' ');
+            launch_command.push_str(&monarch_terminal::quote_arg(arg));
+        }
+
+        debug!("linux::egs::spawn() Launch command: {launch_command}",);
+        debug!(
+            "linux::egs::spawn() Working directory: {}",
+            egs_launch_command.working_directory.display()
+        );
+
+        let rx = monarch_terminal::spawn_terminal(
+            launch_command,
+            egs_launch_command.environment,
+            Some(
+                egs_launch_command
+                    .working_directory
+                    .to_string_lossy()
+                    .to_string(),
+            ),
+        );
+
+        if let Err(e) = rx.await {
+            error!("linux::egs::spawn() Terminal command failed! | Err: {e}");
+        }
+
+        Ok(())
+    }
 }
 
 impl EgsClient {
@@ -277,7 +505,14 @@ impl EgsClient {
                             "Failed to get metadata for {} from EGS! | Err: {}",
                             game.name, e
                         );
-                        bail!("egs_client::get_user_games() Failed to get metadata for {} from EGS! | Err: {}", game.name, e)
+                        // Exit early with successful game instead of err
+                        game.properties
+                            .other
+                            .insert("requires_ot".to_string(), "false".to_string());
+                        game.properties
+                            .other
+                            .insert("offline_enabled".to_string(), "false".to_string());
+                        return Ok(game);
                     }
                 };
 
@@ -286,7 +521,9 @@ impl EgsClient {
                     meta.custom_attributes
                         .get("OwnershipToken")
                         .cloned()
-                        .unwrap_or_default()
+                        .unwrap_or(AttributeValue {
+                            value: "false".to_string(),
+                        })
                         .value,
                 );
                 game.properties.other.insert(
@@ -294,7 +531,9 @@ impl EgsClient {
                     meta.custom_attributes
                         .get("CanRunOffline")
                         .cloned()
-                        .unwrap_or_default()
+                        .unwrap_or(AttributeValue {
+                            value: "false".to_string(),
+                        })
                         .value,
                 );
 
@@ -338,180 +577,5 @@ impl EgsClient {
         std::fs::write(&path, json_content.to_string()).with_context(|| {
             "egs::store_session_to_file() Failed to write EGS credentials to file! | Err: "
         })
-    }
-}
-
-#[async_trait]
-impl StoreType for EgsClient {
-    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
-        let monarch_url: &'static str = std::env!("MONARCH_URL");
-        let search_term: String =
-            format!("{}/api/games?search={}?store=epicgames", monarch_url, name,);
-
-        let response = match monarch_http::client().get(search_term).send().await {
-            Ok(resp) => resp,
-            Err(e) => {
-                error!("egs::search_games() reqwest::get() failed! | Err: {}", e);
-                return Vec::new();
-            }
-        };
-
-        let resp_content = match response.text().await {
-            Ok(content) => content,
-            Err(e) => {
-                error!(
-                    "monarch_client::search_games() response.text() failed! | Err: {}",
-                    e
-                );
-                return Vec::new();
-            }
-        };
-
-        let mut web_games: Vec<Box<MonarchWebApiGame>> =
-            match serde_json::from_str::<Vec<MonarchWebApiGame>>(&resp_content) {
-                Ok(games) => games.into_iter().map(Box::new).collect(),
-                Err(e) => {
-                    error!(
-                        "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
-                        e
-                    );
-                    return Vec::new();
-                }
-            };
-
-        for game in web_games.iter_mut() {
-            let thumbnail_path = String::from(
-                generate_cache_image_path(&game.name.clone(), GameImageType::Cover)
-                    .to_str()
-                    .unwrap(),
-            );
-            game.thumbnail_path = thumbnail_path;
-        }
-
-        web_games
-            .into_iter()
-            .map(|g| g as Box<dyn SearchResult>)
-            .collect()
-    }
-
-    async fn install_game(&self, game: &mut MonarchGame, opts: &DownloadOptions) -> Result<()> {
-        let job = self.prepare_download_job(game, opts).await?;
-
-        // Submit the job to the global downloader, which routes it to the EGS
-        // download handler (and on to monarch_egs) once registered.
-        match MONARCH_STATE.read() {
-            Ok(state) => match state.get_downloader_ptr().write() {
-                Ok(mut downloader) => {
-                    if let Err(e) = downloader.register_egs_handler() {
-                        error!(
-                            "egs_client::install_game() Failed to register EGS download handler | Err: {e}"
-                        );
-                        bail!("Failed to register EGS download handler!")
-                    }
-                    downloader.start_download(job);
-                }
-                Err(e) => {
-                    error!("egs_client::install_game() Failed to lock on downloader | Err: {e}");
-                    bail!("Failed to lock on downloader!")
-                }
-            },
-            Err(e) => {
-                error!("egs_client::install_game() Failed to lock on MONARCH_STATE | Err: {e}");
-                bail!("Failed to lock on MONARCH_STATE!")
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn uninstall_game(&self, _game: &MonarchGame) -> Result<()> {
-        unimplemented!()
-    }
-
-    async fn update_game(&self, _game: &MonarchGame) -> Result<()> {
-        unimplemented!()
-    }
-
-    fn game_is_installed(&self, _store_id: &str) -> bool {
-        false
-    }
-
-    fn store_enabled(&self) -> bool {
-        let settings_lock = match get_settings() {
-            Ok(lock) => lock,
-            Err(e) => {
-                error!("egs::store_enabled() get_settings() failed! | Err: {}", e);
-                return false;
-            }
-        };
-        let settings = match settings_lock.read() {
-            Ok(settings) => settings,
-            Err(e) => {
-                error!(
-                    "egs::store_enabled() settings_lock.read() failed! | Err: {}",
-                    e
-                );
-                return false;
-            }
-        };
-
-        settings.epic.manage
-    }
-
-    async fn launch_game(&self, game: &MonarchGame) -> Result<()> {
-        #[cfg(target_os = "linux")]
-        {
-            // Epic Games games installed and managed by Monarch launch through
-            // the EGS path so they get online-auth arguments and the manifest's
-            // launch executable + arguments.
-            let is_managed_egs = game.managed_by_monarch
-                && game.stores.iter().any(|store| store.name == "epicgames");
-
-            if is_managed_egs {
-                return egs::egs_run(&game)
-                    .await
-                    .with_context(|| "monarchgame::launch() -> ");
-            }
-
-            if game.executable_path.is_some() {
-                return umu_run(&game)
-                    .await
-                    .with_context(|| "monarchgame::launch() -> ");
-            }
-
-            if let Some(comp) = &game.compatibility {
-                if comp.contains("UMU") {
-                    return umu_run(&game)
-                        .await
-                        .with_context(|| "monarchgame::launch() -> ");
-                }
-            }
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            // Epic Games games installed and managed by Monarch launch through
-            // the EGS path so they get online-auth arguments and the manifest's
-            // launch executable + arguments.
-            let is_managed_egs = game.managed_by_monarch
-                && game.stores.iter().any(|store| store.name == "epicgames");
-
-            if is_managed_egs {
-                return egs::egs_run(&game)
-                    .await
-                    .with_context(|| "monarchgame::launch() -> ");
-            }
-
-            /*
-             * TODO: Handle launching exes
-            if game.executable_path.is_some() {
-                return (&game)
-                    .await
-                    .with_context(|| "monarchgame::launch() -> ");
-            }
-            */
-        }
-
-        Ok(())
     }
 }

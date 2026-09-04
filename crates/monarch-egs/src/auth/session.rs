@@ -1,3 +1,5 @@
+use crate::utils::err::MonarchEgsError;
+
 use super::user::User;
 use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
@@ -7,6 +9,7 @@ use std::{
 };
 
 static OAUTH_HOST: &str = "account-public-service-prod03.ol.epicgames.com";
+static ECOMMERCE_HOST: &str = "ecommerceintegration-public-service-ecomprod02.ol.epicgames.com";
 static BASIC_USERNAME: &str = "34a02cf8f4414e29b15921876da36f9a";
 static BASIC_PASSWORD: &str = "daafbccc737745039dffe53d94fc76cf";
 static VERSION: &str = "15.18.2-29993784+++Portal+Release-Live";
@@ -15,6 +18,15 @@ static LABEL: &str = "Live";
 pub enum SessionTokenType {
     AuthCode(String),
     RefreshToken(String),
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GameToken {
+    #[serde(rename = "expiresInSeconds")]
+    pub expires_in_seconds: u32,
+    pub code: String,
+    #[serde(rename = "creatingClientId")]
+    pub creating_client_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +92,56 @@ impl Session {
 
     pub fn get_label(&self) -> String {
         self.label.clone()
+    }
+
+    pub async fn get_game_token(&mut self) -> Result<GameToken, MonarchEgsError> {
+        let url: String = format!("https://{OAUTH_HOST}/account/api/oauth/exchange");
+        let client: Client = Client::new();
+
+        let response: Response = client
+            .get(url)
+            .bearer_auth(self.get_access_token().await)
+            .send()
+            .await
+            .unwrap();
+
+        let token: GameToken = response.json().await.map_err(|e| {
+            MonarchEgsError::ParsingError(format!(
+                "Session::get_game_token() Failed to parse response in GameToken! | Err: {e}"
+            ))
+        })?;
+
+        Ok(token)
+    }
+
+    pub async fn get_ownership_token(
+        &mut self,
+        namespace: &str,
+        catalog_id: &str,
+    ) -> Result<Vec<u8>, MonarchEgsError> {
+        let url: String = format!(
+            "https://{ECOMMERCE_HOST}/ecommerceintegration/api/public/platforms/EPIC/identities/{}/ownershipToken",
+            self.account_id
+        );
+        let client: Client = Client::new();
+        let form: HashMap<&str, String> =
+            HashMap::from([("nsCatalogItemId", format!("{namespace}:{catalog_id}"))]);
+
+        let response: Response = client
+            .get(url)
+            .bearer_auth(self.get_access_token().await)
+            .form(&form)
+            .send()
+            .await
+            .unwrap();
+
+        let token: Vec<u8> = response.bytes().await.map_err(|e| {
+            MonarchEgsError::ParsingError(format!(
+                "Session::get_ownership_token() Failed to parse response in GameToken! | Err: {e}"
+            ))
+        })?.to_vec();
+
+        Ok(token)
     }
 
     async fn authenticate_token(token: SessionTokenType, user: Option<&mut User>) -> Self {

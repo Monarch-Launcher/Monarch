@@ -1,7 +1,8 @@
 use anyhow::{bail, Result};
 use iced::window::Id;
+use monarch_core::monarch_utils::monarch_terminal;
 use std::{collections::HashMap, path::PathBuf};
-use tracing::{error, warn, info};
+use tracing::error;
 
 use crate::gui::{show_error, AppMessage};
 
@@ -24,28 +25,7 @@ impl TermInstance {
         workdir: Option<String>,
         completion_tx: Option<futures::channel::oneshot::Sender<()>>,
     ) -> Result<Self> {
-        let mut shell: String = match std::env::var("SHELL") {
-            Ok(sh) => sh,
-            Err(e) => {
-                warn!("TermInstance::new() Failed to get $SHELL var! | Err: {e}");
-                "".to_string()
-            }
-        };
-
-        // Just try your best if $SHELL variable isn't set
-        if shell.is_empty() {
-            #[cfg(target_os = "windows")]
-            {
-                info!("No $SHELL was set, defaulting to powershell.exe");
-                shell = "powershell.exe".to_string()
-            }
-
-            #[cfg(target_os = "linux")]
-            {
-                info!("No $SHELL was set, defaulting to /bin/sh");
-                shell = "/bin/sh".to_string()
-            }
-        }
+        let shell: String = monarch_terminal::get_system_shell();
 
         let workdir_path: Option<PathBuf> = if let Some(wd) = &workdir {
             Some(PathBuf::from(wd))

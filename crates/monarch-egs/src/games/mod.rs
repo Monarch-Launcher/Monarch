@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 mod assets;
 mod info;
+mod launch;
 mod updates;
 mod user;
 
@@ -41,5 +42,6 @@ pub use assets::{
     GameAsset, SupportedPlatforms, check_platform_support, owned_assets, pick_asset_for_namespace,
 };
 pub use info::{AttributeValue, GameMetadata, MainGameItem, ReleaseInfo, get_game_metadata};
+pub use launch::{CompatLayer, EgsLaunchCommand, build_egs_launch_command};
 pub use updates::{GameUpdate, InstalledBuild, check_updates, latest_build_version};
 pub use user::owned_games;

@@ -1,5 +1,7 @@
 use anyhow::{bail, Context, Result};
 use regex::Regex;
+use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, process::exit};
 use tracing::{error, info, warn};
@@ -340,7 +342,10 @@ fn generate_image_filename(name: &str) -> String {
 /// Given a thumbnail path, returns the corresponding greyscale image path
 /// by inserting `_grey` before the `.png` extension.
 pub fn generate_greyscale_path(thumbnail_path: &Path) -> PathBuf {
-    let stem = thumbnail_path.file_stem().and_then(|s| s.to_str()).unwrap_or("image");
+    let stem = thumbnail_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("image");
     let parent = thumbnail_path.parent().unwrap_or_else(|| Path::new("."));
     parent.join(format!("{stem}_grey.png"))
 }
@@ -381,7 +386,9 @@ fn is_windows_reserved_name(name: &str) -> bool {
     // so "CON." / "CON " are treated as reserved too.
     let trimmed = name.trim_end_matches(['.', ' ']);
     let upper = trimmed.to_ascii_uppercase();
-    const RAW: [&str; 9] = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5"];
+    const RAW: [&str; 9] = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5",
+    ];
     // COM6-9 + LPT1-9 not spelled out above.
     const RAW_TAIL: [&str; 4] = ["COM6", "COM7", "COM8", "COM9"];
     if RAW.contains(&upper.as_str()) || RAW_TAIL.contains(&upper.as_str()) {
@@ -404,9 +411,7 @@ fn unsafe_folder_char(c: char) -> bool {
 /// True if any path component contains characters that are unsafe in a Windows
 /// (or Wine/Proton) directory name.
 pub fn path_has_wine_unsafe_chars(path: &Path) -> bool {
-    path.to_string_lossy()
-        .chars()
-        .any(unsafe_folder_char)
+    path.to_string_lossy().chars().any(unsafe_folder_char)
 }
 
 /// Produce a directory name that is safe on Windows, Wine/Proton and Linux.
@@ -502,4 +507,35 @@ pub fn relative_launch_exe_arg(exe: &Path, install_dir: &Path) -> String {
         }
         Err(_) => format!("'{}'", exe.display()),
     }
+}
+
+/*
+---------- EGS Helper functions ----------
+*/
+
+pub fn write_ownership_token(namespace: &str, catalog_id: &str, data: &[u8]) -> Result<PathBuf> {
+    let mut temp_dir: PathBuf = std::env::temp_dir();
+    temp_dir = temp_dir
+        .join("monarch")
+        .join("egs")
+        .join(format!("{namespace}_{catalog_id}"));
+
+    create_dir(&temp_dir).with_context(|| format!("monarch_fs::write_ownership_token() -> "))?;
+    let token_path: PathBuf = temp_dir.join("ot.otv");
+
+    let mut ownership_token_file: File = fs::File::create_new(&token_path).with_context(|| {
+        format!(
+            "monarch_fs::write_ownership_token() Failed to create new file: {} | Err: ",
+            token_path.display()
+        )
+    })?;
+
+    ownership_token_file.write(data).with_context(|| {
+        format!(
+            "monarch_fs::write_ownership_token() Failed to write ownership token to : {} | Err: ",
+            token_path.display()
+        )
+    })?;
+
+    Ok(token_path)
 }

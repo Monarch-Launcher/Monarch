@@ -1,5 +1,5 @@
 mod session;
 mod user;
 
-pub use session::Session;
+pub use session::{GameToken, Session};
 pub use user::User;

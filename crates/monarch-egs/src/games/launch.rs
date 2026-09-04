@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::GameToken;
 use crate::auth::{Session, User};
 use crate::utils::err::MonarchEgsError;
 
@@ -22,15 +23,16 @@ pub struct EgsLaunchCommand {
 
 /// Build the complete launch command for an Epic Games Store game on Linux.
 pub async fn build_egs_launch_command(
-    session: &mut Session,
     user: &User,
     app_name: &str,
+    namespace: &str,
     exe_path: &Path,
     install_dir: &Path,
     compat: CompatLayer,
     wine_prefix: Option<&Path>,
     egs_launch_commands: &str,
     extra_args: &[String],
+    ot_path: Option<String>,
 ) -> Result<EgsLaunchCommand, MonarchEgsError> {
     let mut environment: HashMap<String, String> = HashMap::new();
     let mut compat_args: Vec<String> = Vec::new();
@@ -70,7 +72,7 @@ pub async fn build_egs_launch_command(
     }
 
     // build Epic Games Store auth arguments
-    let auth_args = build_egs_auth_args(session, user, app_name).await;
+    let auth_args: Vec<String> = build_egs_auth_args(user, app_name, namespace, ot_path).await;
 
     // manifest launch_command
     let mut manifest_args: Vec<String> = Vec::new();
@@ -116,20 +118,34 @@ fn resolve_prefix(wine_prefix: Option<&Path>, app_name: &str) -> String {
 }
 
 /// Build the Epic authentication command-line arguments.
-async fn build_egs_auth_args(session: &mut Session, user: &User, app_name: &str) -> Vec<String> {
-    let token = session.get_access_token().await;
-    let account_id = session.get_account_id();
-    let display_name = user.display_name();
+async fn build_egs_auth_args(
+    user: &User,
+    app_name: &str,
+    namespace: &str,
+    ot_path: Option<String>,
+) -> Vec<String> {
+    let mut session: Session = user.session();
 
-    vec![
+    let token: GameToken = session.get_game_token().await.unwrap();
+    let account_id: String = session.get_account_id();
+    let display_name: String = user.display_name();
+
+    let mut auth_args: Vec<String> = vec![
         "-AUTH_LOGIN=unused".into(),
-        format!("-AUTH_PASSWORD={token}"),
+        format!("-AUTH_PASSWORD={}", token.code),
         "-AUTH_TYPE=exchangecode".into(),
         format!("-epicapp={app_name}"),
         "-epicenv=Prod".into(),
         format!("-epicusername={display_name}"),
         format!("-epicuserid={account_id}"),
         "-epiclocale=en-US".into(),
+        format!("-epicsandboxid={namespace}"),
         "-EpicPortal".into(),
-    ]
+    ];
+
+    if let Some(path) = ot_path {
+        auth_args.push(format!("-epicovt={path}"));
+    }
+
+    auth_args
 }
