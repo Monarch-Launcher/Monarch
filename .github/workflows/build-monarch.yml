@@ -37,6 +37,7 @@ jobs:
       - name: build
         env:
           MONARCH_URL: https://api.monarch-launcher.com
+          EPICLOGIN_URL: https://www.epicgames.com/id/login?redirectUrl=https%3A//www.epicgames.com/id/api/redirect%3FclientId%3D34a02cf8f4414e29b15921876da36f9a%26responseType%3Dcode
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           args: ${{ matrix.args }}
         run: cargo build --release ${{ matrix.args }}
