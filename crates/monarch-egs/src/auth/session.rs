@@ -103,7 +103,11 @@ impl Session {
             .bearer_auth(self.get_access_token().await)
             .send()
             .await
-            .unwrap();
+            .map_err(|e| {
+                MonarchEgsError::WebRequestError(format!(
+                    "Session::get_game_token() Failed to send request! | Err: {e}"
+                ))
+            })?;
 
         let token: GameToken = response.json().await.map_err(|e| {
             MonarchEgsError::ParsingError(format!(

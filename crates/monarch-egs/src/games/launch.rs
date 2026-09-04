@@ -72,7 +72,7 @@ pub async fn build_egs_launch_command(
     }
 
     // build Epic Games Store auth arguments
-    let auth_args: Vec<String> = build_egs_auth_args(user, app_name, namespace, ot_path).await;
+    let auth_args: Vec<String> = build_egs_auth_args(user, app_name, namespace, ot_path).await?;
 
     // manifest launch_command
     let mut manifest_args: Vec<String> = Vec::new();
@@ -123,10 +123,10 @@ async fn build_egs_auth_args(
     app_name: &str,
     namespace: &str,
     ot_path: Option<String>,
-) -> Vec<String> {
+) -> Result<Vec<String>, MonarchEgsError> {
     let mut session: Session = user.session();
 
-    let token: GameToken = session.get_game_token().await.unwrap();
+    let token: GameToken = session.get_game_token().await?;
     let account_id: String = session.get_account_id();
     let display_name: String = user.display_name();
 
@@ -147,5 +147,5 @@ async fn build_egs_auth_args(
         auth_args.push(format!("-epicovt={path}"));
     }
 
-    auth_args
+    Ok(auth_args)
 }

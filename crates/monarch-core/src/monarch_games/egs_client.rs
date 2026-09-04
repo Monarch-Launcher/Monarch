@@ -24,9 +24,6 @@ use monarch_egs::{
 
 #[cfg(target_os = "linux")]
 use monarch_egs::CompatLayer;
-
-#[cfg(target_os = "windows")]
-use super::windows::egs;
 #[cfg(target_os = "windows")]
 use monarch_egs::CompatLayer;
 
@@ -157,8 +154,8 @@ impl StoreType for EgsClient {
                 .await
                 .with_context(|| "linux::egs::egs_run() -> ")?;
         } else {
-            error!("linux::egs::egs_run() No Epic credentials found, launching '{}' without online auth", game.name);
-            bail!("linux::egs::egs_run() Monarch currently requires a user to be signed into EGS to run EGS games!")
+            error!("egs_client::launch_game() No Epic credentials found, launching '{}' without online auth", game.name);
+            bail!("egs_client::launch_game() Monarch currently requires a user to be signed into EGS to run EGS games!")
         }
 
         let app_name: String = game
@@ -231,17 +228,18 @@ impl StoreType for EgsClient {
             ot_path,
         )
         .await
-        .with_context(|| "linux::egs::egs_run() Failed to build launch command! | Err: ")?;
+        .with_context(|| "egs_client::launch_game() Failed to build launch command! | Err: ")?;
 
-        let mut launch_command: String = egs_launch_command.executable;
+        let mut launch_command: String =
+            monarch_terminal::quote_arg(&egs_launch_command.executable);
         for arg in &egs_launch_command.args {
             launch_command.push(' ');
             launch_command.push_str(&monarch_terminal::quote_arg(arg));
         }
 
-        debug!("linux::egs::spawn() Launch command: {launch_command}",);
+        debug!("egs_client::launch_game() Launch command: {launch_command}",);
         debug!(
-            "linux::egs::spawn() Working directory: {}",
+            "egs_client::launch_game() Working directory: {}",
             egs_launch_command.working_directory.display()
         );
 
@@ -257,7 +255,7 @@ impl StoreType for EgsClient {
         );
 
         if let Err(e) = rx.await {
-            error!("linux::egs::spawn() Terminal command failed! | Err: {e}");
+            error!("egs_client::launch_game() Terminal command failed! | Err: {e}");
         }
 
         Ok(())

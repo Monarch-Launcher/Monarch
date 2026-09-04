@@ -41,7 +41,7 @@ impl TermInstance {
                     vec![
                         "-NoExit".to_string(),
                         "-Command".to_string(),
-                        command.clone(),
+                        format!("\"& {}\"", command.clone()),
                     ],
                 )
             }
