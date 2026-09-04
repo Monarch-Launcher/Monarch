@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pause icon, same geometric style as play_icon.svg -->
+<svg fill="#000000" height="800px" width="800px" version="1.1" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+<g>
+	<rect x="80" y="42.667" width="128" height="426.667" rx="16"/>
+	<rect x="304" y="42.667" width="128" height="426.667" rx="16"/>
+</g>
+</svg>

@@ -30,9 +30,14 @@ jobs:
       - name: do Rust cache
         uses: Swatinem/rust-cache@v2
 
+      - name: install mold (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: sudo apt-get update && sudo apt-get install -y mold
+
       - name: build
         env:
           MONARCH_URL: https://api.monarch-launcher.com
+          EPICLOGIN_URL: https://www.epicgames.com/id/login?redirectUrl=https%3A//www.epicgames.com/id/api/redirect%3FclientId%3D34a02cf8f4414e29b15921876da36f9a%26responseType%3Dcode
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           args: ${{ matrix.args }}
         run: cargo build --release ${{ matrix.args }}
