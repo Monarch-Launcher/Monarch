@@ -30,6 +30,10 @@ jobs:
       - name: do Rust cache
         uses: Swatinem/rust-cache@v2
 
+      - name: install mold (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: sudo apt-get update && sudo apt-get install -y mold
+
       - name: build
         env:
           MONARCH_URL: https://api.monarch-launcher.com
