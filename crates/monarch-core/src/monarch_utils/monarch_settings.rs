@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::{Arc, RwLock};
 use toml::Table;
 use tracing::{error, info};
 
@@ -266,16 +265,6 @@ impl Default for Settings {
             quicklaunch,
             steam,
             epic,
-        }
-    }
-}
-
-/// Function to do unsafe read of SETTINGS_STATE
-pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
-    match MONARCH_STATE.read() {
-        Ok(state) => Ok(state.get_settings_ptr()),
-        Err(e) => {
-            bail!("monarch_settings::get_settings() Failed to aqcuire read lock on MONARCH_STATE | Err: {e}")
         }
     }
 }

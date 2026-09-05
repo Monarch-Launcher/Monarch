@@ -18,11 +18,16 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tracing::{debug, error, info};
 
 use crate::monarch_games::{monarchgame::MonarchGame, stores::DownloadOptions};
+use crate::monarch_utils::monarch_state::MonarchState;
 
 use monarch_egs::{DownloadEvent, DownloadManager, DownloadProgress};
 
 pub trait DownloadHandler: Debug + Send + Sync {
-    fn download(&self, job: &DownloadJob) -> Result<(), String>;
+    fn download(
+        &self,
+        job: &DownloadJob,
+        state_handle: Arc<RwLock<MonarchState>>,
+    ) -> Result<(), String>;
     fn cancel(&self, job: &DownloadJob) -> Result<(), String>;
     fn is_downloading(&self) -> bool;
     /// Applies a maximum download speed in bytes/s (0 = unlimited). Handlers
@@ -195,6 +200,8 @@ pub struct MonarchDownloader {
     /// Maximum download speed in bytes/s (0 = unlimited), shared with every
     /// registered handler so updates propagate to running downloads.
     speed_limit_bps: Arc<AtomicU64>,
+
+    state_handle: Arc<RwLock<MonarchState>>,
 }
 
 /// The main downloader struct.
@@ -203,7 +210,7 @@ pub struct MonarchDownloader {
 /// It also handles the registration of new download handlers for different stores.
 impl MonarchDownloader {
     /// Creates a new downloader instance.
-    pub fn new() -> Self {
+    pub fn new(state_handle: Arc<RwLock<MonarchState>>) -> Self {
         Self {
             ongoing: None,
             queue: Vec::new(),
@@ -211,6 +218,7 @@ impl MonarchDownloader {
             status: Arc::new(RwLock::new(None)),
             paused: std::collections::HashSet::new(),
             speed_limit_bps: Arc::new(AtomicU64::new(0)),
+            state_handle,
         }
     }
 
@@ -388,7 +396,7 @@ impl MonarchDownloader {
 
         if let Some(handler) = self.download_handlers.get(&store) {
             if let Some(ongoing) = self.ongoing.as_ref() {
-                let _ = handler.download(ongoing);
+                let _ = handler.download(ongoing, self.state_handle.clone());
             }
         }
     }
@@ -512,6 +520,7 @@ async fn add_installed_game_to_library(
     launch_command: String,
     build_version: String,
     install_bytes: u64,
+    state_handle: Arc<RwLock<MonarchState>>,
 ) {
     let mut installed = game;
     installed.is_installed = true;
@@ -530,7 +539,7 @@ async fn add_installed_game_to_library(
         installed.launch_args = Some(launch_command);
     }
 
-    let already_installed = MONARCH_STATE
+    let already_installed = state_handle
         .read()
         .ok()
         .map(|state| state.get_game(&installed.id).is_some())
@@ -598,7 +607,11 @@ impl EgsDownloadHandler {
 }
 
 impl DownloadHandler for EgsDownloadHandler {
-    fn download(&self, job: &DownloadJob) -> Result<(), String> {
+    fn download(
+        &self,
+        job: &DownloadJob,
+        state_handle: Arc<RwLock<MonarchState>>,
+    ) -> Result<(), String> {
         let manifest: monarch_egs::Manifest = job
             .manifest
             .downcast_ref::<monarch_egs::Manifest>()
@@ -741,6 +754,7 @@ impl DownloadHandler for EgsDownloadHandler {
                             launch_command,
                             build_version,
                             report.install_bytes,
+                            state_handle,
                         )
                         .await;
 
@@ -799,13 +813,10 @@ impl DownloadHandler for EgsDownloadHandler {
             }
         });
 
-        self.runs.lock().unwrap().insert(
-            job_id,
-            RunSlot {
-                generation,
-                handle,
-            },
-        );
+        self.runs
+            .lock()
+            .unwrap()
+            .insert(job_id, RunSlot { generation, handle });
 
         Ok(())
     }

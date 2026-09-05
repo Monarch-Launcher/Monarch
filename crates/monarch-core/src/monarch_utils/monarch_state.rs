@@ -119,9 +119,11 @@ impl MonarchState {
     /// Check against the current list of games if an id is already in use.
     /// Used when generating ids for locally imported game binaries.
     pub fn binary_game_id_collision(&self, id: &str) -> bool {
-        for game in self.library_games.iter() {
-            if game.id == id {
-                return true;
+        for game_lock in self.library_games.iter() {
+            if let Ok(game) = game_lock.read() {
+                if game.id == id {
+                    return true;
+                }
             }
         }
         false

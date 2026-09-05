@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties};
@@ -214,25 +214,6 @@ pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Res
                 .to_str()
                 .unwrap()
                 .to_string();
-
-            match MONARCH_STATE.write() {
-                Ok(mut state) => {
-                    if let Err(e) = state.update_game(game.clone()) {
-                        error!(
-                            "monarch_vdf::set_install_dir() -> {}",
-                            e.chain().map(|e| e.to_string()).collect::<String>()
-                        );
-                        warn!("Failed to update game in state: {}", game.name);
-                    }
-                }
-                Err(e) => {
-                    error!("monarch_vdf::set_install_dir() Failed to get lock on MONARCH_STATE | Err: {}", e);
-                    bail!(
-                        "monarch_vdf::set_install_dir() Failed to lock on MONARCH_STATE | Err: {}",
-                        e
-                    )
-                }
-            }
 
             return Ok(());
         }
