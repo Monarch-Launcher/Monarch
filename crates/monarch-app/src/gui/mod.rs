@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::RwLock};
 
 use futures::channel::mpsc::Sender;
 use iced::{
@@ -9,6 +9,7 @@ use iced::{
     Subscription,
 };
 use iced_term;
+use monarch_core::monarch_utils::monarch_state::MonarchState;
 use std::sync::{Arc, LazyLock, Mutex};
 use tracing::info;
 
@@ -96,6 +97,8 @@ pub struct App {
 
     active_terminals: HashMap<Id, TermInstance>,
     active_modal: Option<ModalState>,
+
+    state: Arc<RwLock<MonarchState>>, // Moving monarch state from a singleton to an app state as single source of truth
 }
 
 impl App {
@@ -256,8 +259,7 @@ impl App {
                         return iced::window::minimize(self.app_id, true);
                     }
                     header::Message::ToggleFullscreen => {
-                        return iced::window::mode(self.app_id)
-                            .map(AppMessage::ToggleFullscreen);
+                        return iced::window::mode(self.app_id).map(AppMessage::ToggleFullscreen);
                     }
                     header::Message::CloseWindow => {
                         return iced::window::close(self.app_id);
@@ -538,11 +540,10 @@ impl App {
             .width(Fill)
             .height(Fill);
 
-        let app_content: Element<'_, AppMessage> =
-            iced::widget::stack![frame, resize_handles()]
-                .width(Fill)
-                .height(Fill)
-                .into();
+        let app_content: Element<'_, AppMessage> = iced::widget::stack![frame, resize_handles()]
+            .width(Fill)
+            .height(Fill)
+            .into();
 
         let Some(modal_state) = &self.active_modal else {
             return app_content;
@@ -627,6 +628,7 @@ impl Default for App {
             download_page: pages::download::DownloadPage::default(),
             active_terminals: HashMap::new(),
             active_modal: None,
+            state: Arc::new(RwLock::new(MonarchState::new())),
         }
     }
 }
@@ -638,20 +640,20 @@ impl Default for App {
 /// corresponding direction from the OS via [`iced::window::drag_resize`].
 fn resize_handles() -> iced::Element<'static, AppMessage> {
     use iced::widget::{column, container, mouse_area, row, Space};
-    use iced::{mouse, Length, window::Direction};
+    use iced::{mouse, window::Direction, Length};
 
     // A mouse area wrapped in a fixed-size container, since `MouseArea` itself
     // takes the size of its content.
-    let handle = |direction: Direction,
-                  interaction: mouse::Interaction,
-                  width: Length,
-                  height: Length| {
-        container(mouse_area(Space::new().width(Length::Fill).height(Length::Fill))
-            .on_press(AppMessage::ResizeWindow(direction))
-            .interaction(interaction))
-        .width(width)
-        .height(height)
-    };
+    let handle =
+        |direction: Direction, interaction: mouse::Interaction, width: Length, height: Length| {
+            container(
+                mouse_area(Space::new().width(Length::Fill).height(Length::Fill))
+                    .on_press(AppMessage::ResizeWindow(direction))
+                    .interaction(interaction),
+            )
+            .width(width)
+            .height(height)
+        };
 
     let h = crate::gui::styles::window::RESIZE_HANDLE;
 

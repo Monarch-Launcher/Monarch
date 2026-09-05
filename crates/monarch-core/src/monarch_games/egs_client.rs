@@ -15,7 +15,6 @@ use crate::monarch_utils::monarch_fs::{
 };
 use crate::monarch_utils::monarch_game_downloader::DownloadJob;
 use crate::monarch_utils::monarch_settings::get_settings;
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::{monarch_http, monarch_terminal};
 use monarch_egs::{
     check_platform_support, get_game_manifest, AttributeValue, EgsLaunchCommand, Manifest, Session,

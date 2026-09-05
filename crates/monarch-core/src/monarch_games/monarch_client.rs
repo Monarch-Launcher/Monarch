@@ -8,7 +8,6 @@ use crate::monarch_games::monarchgame::{
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_settings::get_settings;
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::{monarch_http, monarch_terminal, monarch_vdf};
 use crate::{monarch_library::library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};

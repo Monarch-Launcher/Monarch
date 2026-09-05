@@ -18,7 +18,6 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tracing::{debug, error, info};
 
 use crate::monarch_games::{monarchgame::MonarchGame, stores::DownloadOptions};
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 use monarch_egs::{DownloadEvent, DownloadManager, DownloadProgress};
 

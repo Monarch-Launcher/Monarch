@@ -5,7 +5,6 @@ use sqlx::SqlitePool;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_sql;
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 /// Returns games stored in library.db3
 pub async fn get_games() -> Result<Vec<MonarchGame>> {

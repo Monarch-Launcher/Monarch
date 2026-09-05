@@ -3,7 +3,6 @@ use crate::{
         games::GameType,
         monarchgame::{MonarchGame, MonarchGameProperties},
     },
-    monarch_utils::monarch_state::MONARCH_STATE,
     monarch_utils::monarch_vdf,
 };
 

@@ -10,7 +10,6 @@ use tracing::{error, info};
 use super::monarch_fs::{create_dir, generate_monarch_home, get_settings_path, path_exists};
 use crate::monarch_games::monarch_client::generate_default_folder;
 use crate::monarch_games::steam_client;
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[cfg(target_os = "linux")]
 use crate::monarch_games::linux::umu;

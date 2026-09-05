@@ -2,7 +2,7 @@ use super::monarch_client;
 use super::monarchgame::MonarchGame;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
-use tracing::{error, info, warn, debug};
+use tracing::{debug, error, info, warn};
 
 use super::monarch_client::MonarchClient;
 use super::steam_client::SteamClient;
@@ -15,18 +15,17 @@ use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_library::{self, library};
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_fs::path_exists;
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 use crate::monarch_utils::monarch_vdf::ProtonVersion;
 use monarch_egs::SupportedPlatforms;
 
-#[cfg(target_os = "macos")]
-use super::macos::steam;
 #[cfg(target_os = "linux")]
 use super::linux::steam;
 #[cfg(target_os = "linux")]
-use crate::monarch_utils::monarch_vdf::get_proton_versions;
-#[cfg(target_os = "linux")]
 use super::linux::umu;
+#[cfg(target_os = "macos")]
+use super::macos::steam;
+#[cfg(target_os = "linux")]
+use crate::monarch_utils::monarch_vdf::get_proton_versions;
 
 /*
 ---------- General game related functions ----------
@@ -163,7 +162,10 @@ pub async fn launch_game(game: &MonarchGame) -> Result<(), String> {
 }
 
 /// Tells Monarch to download specified game
-pub async fn download_game(game: &mut MonarchGame, opts: &mut DownloadOptions) -> Result<Vec<MonarchGame>, String> {
+pub async fn download_game(
+    game: &mut MonarchGame,
+    opts: &mut DownloadOptions,
+) -> Result<Vec<MonarchGame>, String> {
     // For best user experience Monarch downloads all games by itself
     // instead of having to rely on 3rd party launchers.
     info!("Installing: {}", opts.game_name);
@@ -267,7 +269,9 @@ pub async fn check_for_game_updates() -> Result<Vec<super::updates::MonarchGameU
             error!(
                 "monarch_games::commands::check_for_game_updates() Update check panicked! | Err: {panic:?}"
             );
-            Err(String::from("Something went wrong while checking for updates!"))
+            Err(String::from(
+                "Something went wrong while checking for updates!",
+            ))
         }
     }
 }
@@ -319,7 +323,9 @@ pub async fn verify_game_integrity(
             error!(
                 "monarch_games::commands::verify_game_integrity() Verification panicked! | Err: {panic:?}"
             );
-            Err(String::from("Something went wrong while verifying game files!"))
+            Err(String::from(
+                "Something went wrong while verifying game files!",
+            ))
         }
     }
 }
@@ -421,7 +427,8 @@ fn remove_install_dir(game: &MonarchGame) -> Result<()> {
         "monarch_games::commands::remove_install_dir() Removing install folder: {}",
         game.properties.install_dir
     );
-    monarch_fs::remove_dir(&Path::new(&game.properties.install_dir)).with_context(|| "monarch_games::commands::remove_install_dir() -> ")
+    monarch_fs::remove_dir(&Path::new(&game.properties.install_dir))
+        .with_context(|| "monarch_games::commands::remove_install_dir() -> ")
 }
 
 pub async fn move_game_to_monarch(
@@ -508,9 +515,7 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
 
 /// Checks which platforms are supported for a game from Epic Games Store.
 /// Returns SupportedPlatforms indicating Windows/Linux/Mac support.
-pub async fn check_egs_platform_support(
-    game: &MonarchGame,
-) -> Result<SupportedPlatforms, String> {
+pub async fn check_egs_platform_support(game: &MonarchGame) -> Result<SupportedPlatforms, String> {
     let namespace = game
         .stores
         .iter()

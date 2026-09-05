@@ -8,7 +8,6 @@ use tracing::{error, info, warn};
 
 use crate::monarch_games::monarchgame::GameImageType;
 use crate::monarch_utils::monarch_settings;
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 use super::monarch_settings::Settings;
 

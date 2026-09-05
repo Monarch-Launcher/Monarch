@@ -12,7 +12,6 @@ use tracing::{error, info, warn};
 
 use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties};
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[derive(Debug, Serialize, Deserialize)]
 

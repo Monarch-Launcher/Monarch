@@ -14,7 +14,6 @@ use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::{generate_greyscale_path, path_exists};
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MonarchGame {

@@ -1,30 +1,23 @@
-use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_fs::get_library_db_path;
+use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_settings;
 use crate::{
     monarch_games::monarchgame::MonarchGame, monarch_games::updates::MonarchGameUpdate,
     monarch_utils::monarch_settings::Settings,
 };
-use anyhow::{bail, Result};
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::SqlitePool;
-use std::sync::RwLock;
-use std::sync::{Arc, LazyLock};
+use std::collections::VecDeque;
+use std::sync::{Arc, RwLock};
 use tracing::{error, warn};
-
-/// Global app state of app logic.
-/// Initialises a blank MonarchState to avoid RwLock deadlock on init.
-/// Therefore it uses new() here and can call MonarchState::init() in the main.rs init() function.
-pub static MONARCH_STATE: LazyLock<RwLock<MonarchState>> =
-    LazyLock::new(|| RwLock::new(MonarchState::new()));
 
 /// A struct for storing some sort of global state that
 /// the backend can access to recieve relevant info.
 #[derive(Debug)]
 pub struct MonarchState {
-    library_games: Vec<MonarchGame>,
+    library_games: Vec<Arc<RwLock<MonarchGame>>>,
     /// Updates found by the latest update check for games managed by Monarch.
-    available_updates: Vec<MonarchGameUpdate>,
+    available_updates: VecDeque<MonarchGameUpdate>,
     settings: Arc<RwLock<Settings>>,
     downloader: Arc<RwLock<MonarchDownloader>>,
 
@@ -41,7 +34,7 @@ impl MonarchState {
     pub fn new() -> Self {
         Self {
             library_games: Vec::new(),
-            available_updates: Vec::new(),
+            available_updates: VecDeque::new(),
             settings: Arc::new(RwLock::new(Settings::new())),
             downloader: Arc::new(RwLock::new(MonarchDownloader::new())),
             library_conn: None,
@@ -90,19 +83,19 @@ impl MonarchState {
     }
 
     /// Returns what the backend thinks is the users library.
-    pub fn get_library_games(&self) -> Vec<MonarchGame> {
-        self.library_games.clone()
+    pub fn get_library_games(&self) -> &[Arc<RwLock<MonarchGame>>] {
+        &self.library_games
     }
 
     /// For setting known library games.
     /// Should probably only be run when refreshing library.
-    pub fn set_library_games(&mut self, games: &[MonarchGame]) {
+    pub fn set_library_games(&mut self, games: &[Arc<RwLock<MonarchGame>>]) {
         self.library_games = games.to_vec();
     }
 
     /// Simple abstraction for pushing new game into MONARCH_STATE
     pub fn push_game(&mut self, game: MonarchGame) {
-        self.library_games.push(game);
+        self.library_games.push(Arc::new(RwLock::new(game)));
     }
 
     /// Simple abstraction for removing a game at index
@@ -110,25 +103,14 @@ impl MonarchState {
         self.library_games.remove(index);
     }
 
-    /// Update a game.
-    /// Useful when updating game properties and want to let
-    /// the backend state know of it.
-    pub fn update_game(&mut self, game: MonarchGame) -> Result<()> {
-        for (i, self_game) in self.library_games.iter_mut().enumerate() {
-            if self_game.id == game.id {
-                self.library_games[i] = game;
-                return Ok(());
-            }
-        }
-        bail!("monarch_state::update_game() No matching game found!")
-    }
-
-    /// Returns a library game with matching id.
+    /// Returns reference to library game with matching id.
     /// Useful when you might need some properties of a game.
-    pub fn get_game(&self, id: &str) -> Option<MonarchGame> {
-        for game in self.library_games.iter() {
-            if game.id == id {
-                return Some(game.clone());
+    pub fn get_game(&self, id: &str) -> Option<Arc<RwLock<MonarchGame>>> {
+        for game_lock in self.library_games.iter() {
+            if let Ok(game) = game_lock.read() {
+                if game.id == id {
+                    return Some(game_lock.clone());
+                }
             }
         }
         None
@@ -146,21 +128,31 @@ impl MonarchState {
     }
 
     /// Updates found by the latest update check for games managed by Monarch.
-    pub fn get_available_updates(&self) -> Vec<MonarchGameUpdate> {
-        self.available_updates.clone()
+    pub fn get_available_updates(&self) -> &VecDeque<MonarchGameUpdate> {
+        &self.available_updates
     }
 
-    /// For storing the result of an update check.
-    pub fn set_available_updates(&mut self, updates: Vec<MonarchGameUpdate>) {
-        self.available_updates = updates;
+    /// Gets update from front of the queue
+    pub fn pop_update(&mut self) -> Option<MonarchGameUpdate> {
+        self.available_updates.pop_front()
     }
 
-    /// Get a copy of the Arc<RwLock<Settings>> contained in MONARCH_STATE
+    /// Push an update to the front of the queue
+    pub fn push_front_update(&mut self, update: MonarchGameUpdate) {
+        self.available_updates.push_front(update);
+    }
+
+    /// Push an update to the back of the queue
+    pub fn push_back_update(&mut self, update: MonarchGameUpdate) {
+        self.available_updates.push_back(update);
+    }
+
+    /// Get a copy of the Arc<RwLock<Settings>> contained in MonarchState
     pub fn get_settings_ptr(&self) -> Arc<RwLock<Settings>> {
         self.settings.clone()
     }
 
-    /// Get a copy of the Arc<RwLock<MonarchDownloader>> contained in MONARCH_STATE
+    /// Get a copy of the Arc<RwLock<MonarchDownloader>> contained in MonarchState
     pub fn get_downloader_ptr(&self) -> Arc<RwLock<MonarchDownloader>> {
         self.downloader.clone()
     }
