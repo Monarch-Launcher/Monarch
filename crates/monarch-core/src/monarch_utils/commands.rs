@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use tracing::error;
@@ -57,7 +57,11 @@ pub fn open_external_link(url: &str) {
 
 /// Returns settings read from settings.toml
 pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
-    monarch_settings::get_settings()
+    let settings: Settings = monarch_settings::read_settings()
+        .with_context(|| "monarch_settings::get_settings() -> ")?
+        .try_into()
+        .with_context(|| "monarch_settings::get_settings() Failed to parse toml content into Settings struct! | Err: ")?;
+    Ok(Arc::new(RwLock::new(settings)))
 }
 
 /// Write setting to settings.toml
@@ -168,12 +172,12 @@ pub fn delete_secret(
 /// Manually clear all images in the resources/cache directory
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
-pub fn clear_cached_images() {
-    clear_all_cache();
+pub fn clear_cached_images(settings_lock: Arc<RwLock<Settings>>) {
+    clear_all_cache(settings_lock);
 }
 
-pub fn get_cache_size() -> Result<u64, String> {
-    let cache_dir = monarch_fs::get_resources_cache();
+pub fn get_cache_size(settings_lock: Arc<RwLock<Settings>>) -> Result<u64, String> {
+    let cache_dir = monarch_fs::get_resources_cache(settings_lock);
     match fs_extra::dir::get_size(&cache_dir) {
         Ok(size) => Ok(size as u64),
         Err(e) => {

@@ -7,6 +7,7 @@
 
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::sleep;
 use std::time::SystemTime;
@@ -14,10 +15,12 @@ use std::{fs, time::Duration};
 use sysinfo::{System, SystemExt};
 use tracing::{error, info};
 
+use crate::monarch_utils::monarch_settings::Settings;
+
 use super::monarch_fs::get_resources_cache;
 
 /// Runs HouseKeeper loop on seperate thread
-pub fn start() {
+pub fn start(settings_lock: Arc<RwLock<Settings>>) {
     thread::spawn(move || {
         let mut sys: System = System::new();
 
@@ -25,7 +28,7 @@ pub fn start() {
             sys.refresh_cpu();
 
             if low_system_usage(&sys) {
-                clear_cached_thumbnails();
+                clear_cached_thumbnails(settings_lock);
 
                 break; // For now assume that program will be restarted at some point within next few days.
                        // Can therefor stop the housekeeping service
@@ -50,8 +53,8 @@ fn low_system_usage(system: &System) -> bool {
 */
 
 /// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
-pub fn clear_cached_thumbnails() {
-    let path: PathBuf = get_resources_cache();
+pub fn clear_cached_thumbnails(settings_lock: Arc<RwLock<Settings>>) {
+    let path: PathBuf = get_resources_cache(settings_lock);
     match fs::read_dir(path) {
         Ok(files) => {
             clear_dir(files);
@@ -104,9 +107,9 @@ fn time_to_remove(file: &Path) -> bool {
 }
 
 /// Removes all files in /resources/cache, meant for UI so that user can clear folder if wanted
-pub fn clear_all_cache() {
+pub fn clear_all_cache(settings_lock: Arc<RwLock<Settings>>) {
     info!("Manually clearing all cached images...");
-    let path: PathBuf = get_resources_cache();
+    let path: PathBuf = get_resources_cache(settings_lock);
 
     match fs::read_dir(&path) {
         Ok(files) => {

@@ -1,5 +1,4 @@
 use crate::monarch_utils::monarch_fs::get_library_db_path;
-use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_settings;
 use crate::{
     monarch_games::monarchgame::MonarchGame, monarch_games::updates::MonarchGameUpdate,
@@ -19,7 +18,6 @@ pub struct MonarchState {
     /// Updates found by the latest update check for games managed by Monarch.
     available_updates: VecDeque<MonarchGameUpdate>,
     settings: Arc<RwLock<Settings>>,
-    downloader: Arc<RwLock<MonarchDownloader>>,
 
     library_conn: Option<Arc<SqlitePool>>, // Using Arc<> allows for copying the 'ptr' across async threads
 }
@@ -36,7 +34,6 @@ impl MonarchState {
             library_games: Vec::new(),
             available_updates: VecDeque::new(),
             settings: Arc::new(RwLock::new(Settings::new())),
-            downloader: Arc::new(RwLock::new(MonarchDownloader::new())),
             library_conn: None,
         }
     }
@@ -71,13 +68,10 @@ impl MonarchState {
                 0
             }
         };
-        if let Ok(mut downloader) = self.downloader.write() {
-            downloader.set_max_download_speed_bps(max_speed_bps);
-        }
 
         self.library_conn = Some(Arc::new(SqlitePool::connect_lazy_with(
             SqliteConnectOptions::new()
-                .filename(get_library_db_path())
+                .filename(get_library_db_path(self.settings.clone()))
                 .create_if_missing(true),
         )));
     }
@@ -152,11 +146,6 @@ impl MonarchState {
     /// Get a copy of the Arc<RwLock<Settings>> contained in MonarchState
     pub fn get_settings_ptr(&self) -> Arc<RwLock<Settings>> {
         self.settings.clone()
-    }
-
-    /// Get a copy of the Arc<RwLock<MonarchDownloader>> contained in MonarchState
-    pub fn get_downloader_ptr(&self) -> Arc<RwLock<MonarchDownloader>> {
-        self.downloader.clone()
     }
 
     pub fn get_db_pool_arc(&self) -> Arc<SqlitePool> {
