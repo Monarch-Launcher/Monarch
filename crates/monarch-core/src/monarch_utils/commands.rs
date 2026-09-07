@@ -8,6 +8,7 @@ use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{LauncherSettings, Settings};
 use crate::monarch_utils::monarch_credentials::get_password;
+use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::{monarch_fs, monarch_settings};
 
 /*
@@ -73,12 +74,17 @@ pub fn write_settings(settings: &Settings) -> Result<()> {
 
 /// Applies the maximum download speed (bytes/s, 0 = unlimited) to the global
 /// downloader so running and queued downloads pick it up immediately.
-pub fn set_max_download_speed_bps(bps: u64) -> Result<(), String> {
-    let state = MONARCH_STATE.read().map_err(|e| e.to_string())?;
-    let downloader = state.get_downloader_ptr();
-    let mut downloader = downloader.write().map_err(|e| e.to_string())?;
-    downloader.set_max_download_speed_bps(bps);
-    Ok(())
+pub fn set_max_download_speed_bps(downloader_lock: Arc<RwLock<MonarchDownloader>>, bps: u64) -> Result<(), String> {
+    match downloader_lock.write() {
+        Ok(mut downloader) => {
+            downloader.set_max_download_speed_bps(bps);
+            Ok(())
+        }
+        Err(e) => {
+            error!("monarch_utils::commands::set_max_download_speed_bps() Failed to acquire lock on MonarchDownloader! | Err: {e}");
+            return Err(String::from("Failed to set new download speed!"))
+        }
+    }
 }
 
 /*

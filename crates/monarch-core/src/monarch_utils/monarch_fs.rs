@@ -17,10 +17,10 @@ use crate::monarch_utils::monarch_settings::{self, Settings};
 /// Folder to store image resources for game thumbnails etc...
 pub fn verify_monarch_folders(settings_lock: Arc<RwLock<Settings>>) {
     let paths: [PathBuf; 5] = [
-        get_monarch_home(settings_lock),
-        get_resources_path(),
-        get_resources_cache(),
-        get_resources_library(),
+        get_monarch_home(settings_lock.clone()),
+        get_resources_path(settings_lock.clone()),
+        get_resources_cache(settings_lock.clone()),
+        get_resources_library(settings_lock),
         get_settings_path().expect("Panic while getting settings.toml path!"),
     ];
 

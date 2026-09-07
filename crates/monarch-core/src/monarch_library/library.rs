@@ -1,66 +1,47 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use anyhow::{bail, Context, Result};
 use sqlx::SqlitePool;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_utils::monarch_sql;
+use crate::monarch_utils::monarch_state::MonarchState;
 
 /// Returns games stored in library.db3
-pub async fn get_games() -> Result<Vec<MonarchGame>> {
-    let pool: Arc<SqlitePool>;
-    match MONARCH_STATE.read() {
-        Ok(state) => {
-            pool = state.get_db_pool_arc();
-        }
-        Err(e) => {
-            bail!("library::get_games() Failed to lock on MONARCH_STATE! | Err: {e}")
-        }
-    }
-
+pub async fn get_games(pool: Arc<SqlitePool>) -> Result<Vec<MonarchGame>> {
     return monarch_sql::get_library(&pool)
         .await
         .with_context(|| "monarch_library::get_games() -> ");
 }
 
 /// Functionality for adding a new persistent game that's been installed.
-pub async fn add_game(game: &MonarchGame) -> Result<()> {
-    let pool: Arc<SqlitePool>;
-    match MONARCH_STATE.write() {
-        Ok(mut state) => {
-            state.push_game(game.clone());
-            pool = state.get_db_pool_arc();
-        }
-        Err(e) => {
-            bail!("library::add_game() Failed to lock on MONARCH_STATE | Err: {e}")
-        }
-    }
+pub async fn add_game(pool: Arc<SqlitePool>, game: &MonarchGame) -> Result<()> {
     return monarch_sql::insert_game(&pool, game)
         .await
         .with_context(|| "library::add_game() -> ");
 }
 
 /// Functionality for persistently removing a game from library
-pub async fn remove_game(game: &MonarchGame) -> Result<()> {
+pub async fn remove_game(state_handle: Arc<RwLock<MonarchState>>, game: &MonarchGame) -> Result<()> {
     let pool: Arc<SqlitePool>;
-    let mut games: Vec<MonarchGame>;
-    match MONARCH_STATE.write() {
+    match state_handle.write() {
         Ok(mut state) => {
-            games = state.get_library_games();
+            pool = state.get_db_pool_arc();
+            let games: Vec<Arc<RwLock<MonarchGame>>> = state.get_library_games().to_vec();
 
-            for (i, g) in games.iter_mut().enumerate() {
-                if g.id == game.id {
-                    state.remove_game(i);
-                    break;
+            for (i, g_lock) in games.iter().enumerate() {
+                if let Ok(g) = g_lock.read() {
+                    if g.id == game.id {
+                        state.remove_game(i);
+                        break;
+                    }
                 }
             }
-
-            pool = state.get_db_pool_arc();
         }
         Err(e) => {
-            bail!("library::remove_game() Failed to get write lock on MONARCH_STATE | Err: {e}")
+            bail!("library::remove_game() Failed to acquire lock on MonarchState! | Err: {e}")
         }
-    }
+    };
 
     monarch_sql::remove_game(&pool, game)
         .await
@@ -68,58 +49,33 @@ pub async fn remove_game(game: &MonarchGame) -> Result<()> {
 }
 
 /// Marks a game as uninstalled (is_installed = false) in both state and db.
-pub async fn mark_game_uninstalled(game: &MonarchGame) -> Result<()> {
-    let pool: Arc<SqlitePool>;
-    let mut updated: MonarchGame = game.clone();
-    updated.is_installed = false;
-
-    match MONARCH_STATE.write() {
-        Ok(mut state) => {
-            state
-                .update_game(updated.clone())
-                .with_context(|| "library::mark_game_uninstalled() -> ")?;
-            pool = state.get_db_pool_arc();
-        }
-        Err(e) => {
-            bail!("library::mark_game_uninstalled() Failed to lock on MONARCH_STATE | Err: {e}")
-        }
-    }
+pub async fn mark_game_uninstalled_in_db(pool: Arc<SqlitePool>, game: &MonarchGame) -> Result<()> {
     monarch_sql::mark_game_uninstalled(&pool, game)
         .await
         .with_context(|| "library::mark_game_uninstalled() -> ")
 }
 
 /// Updates the properties of a game in the library.
-pub async fn update_game_properties(game: &MonarchGame) -> Result<()> {
-    let pool: Arc<SqlitePool>;
-    match MONARCH_STATE.write() {
-        Ok(mut state) => {
-            state
-                .update_game(game.clone())
-                .with_context(|| "games_library::update_game_properties() -> ")?;
-            pool = state.get_db_pool_arc();
-        }
-        Err(e) => {
-            bail!("library::update_game_properties() Failed to lock on MONARCH_STATE | Err: {e}")
-        }
-    }
+pub async fn update_game_properties_in_db(pool: Arc<SqlitePool>, game: &MonarchGame) -> Result<()> {
     monarch_sql::update_game(&pool, game)
         .await
         .with_context(|| "library::update_game_properties() -> ")
 }
 
 /// Overwrites library games
-pub async fn overwrite_games(games: &[MonarchGame]) -> Result<()> {
+pub async fn overwrite_games(state_handle: Arc<RwLock<MonarchState>>, games: &[MonarchGame]) -> Result<()> {
     let pool: Arc<SqlitePool>;
-    match MONARCH_STATE.write() {
+    match state_handle.write() {
         Ok(mut state) => {
             pool = state.get_db_pool_arc();
-            state.set_library_games(games);
+            let game_ptrs: Vec<Arc<RwLock<MonarchGame>>> = games.iter().map(|g| Arc::new(RwLock::new(g.clone()))).collect();
+            state.set_library_games(&game_ptrs);
         }
         Err(e) => {
             bail!("library::overwrite_games() Failed to get MONARCH_STATE write lock! | Err: {e}")
         }
     }
+
     monarch_sql::overwrite_games(&pool, games)
         .await
         .with_context(|| "library::overwrite_games() -> ")

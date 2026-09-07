@@ -10,6 +10,7 @@
  */
 
 use anyhow::{bail, Result};
+use sqlx::SqlitePool;
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -545,20 +546,23 @@ async fn add_installed_game_to_library(
         .map(|state| state.get_game(&installed.id).is_some())
         .unwrap_or(false);
 
-    let result = if already_installed {
-        crate::monarch_library::library::update_game_properties(&installed).await
-    } else {
-        crate::monarch_library::library::add_game(&installed).await
-    };
+    if let Ok(state) = state_handle.read() {
+        let pool: Arc<SqlitePool> = state.get_db_pool_arc();
+        let result = if already_installed {
+            crate::monarch_library::library::update_game_properties_in_db(pool, &installed).await
+        } else {
+            crate::monarch_library::library::add_game(pool, &installed).await
+        };
 
     if let Err(e) = result {
-        error!(
-            "egs_download::Failed to add {} to library | Err: {e}",
-            installed.name
-        );
+            error!(
+                "egs_download::Failed to add {} to library | Err: {e}",
+                installed.name
+            );
+        }
     }
 }
-
+ 
 /// Downloads Epic Games titles using `monarch_egs` directly, no external CLI
 /// required. The store-specific manifest is carried in the [`DownloadJob`].
 /// Progress events are published to the shared status slot for the UI to poll.
