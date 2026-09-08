@@ -14,7 +14,6 @@ use crate::monarch_utils::monarch_fs::{
     self, generate_cache_image_path, generate_library_image_path, get_monarch_home, wine_prefix_dir,
 };
 use crate::monarch_utils::monarch_game_downloader::DownloadJob;
-use crate::monarch_utils::monarch_settings::get_settings;
 use crate::monarch_utils::{monarch_http, monarch_terminal};
 use monarch_egs::{
     check_platform_support, get_game_manifest, AttributeValue, EgsLaunchCommand, Manifest, Session,

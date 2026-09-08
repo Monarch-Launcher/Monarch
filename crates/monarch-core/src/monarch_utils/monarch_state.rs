@@ -143,6 +143,15 @@ impl MonarchState {
         self.available_updates.push_back(update);
     }
 
+    /// Remove specific game update, by game id
+    pub fn remove_update(&mut self, game_id: &str) -> Option<MonarchGameUpdate> {
+        self.available_updates
+            .iter()
+            .position(|update| update.game_id == game_id)
+            .map(|idx| self.available_updates.remove(idx))
+            .flatten()
+    }
+
     /// Get a copy of the Arc<RwLock<Settings>> contained in MonarchState
     pub fn get_settings_ptr(&self) -> Arc<RwLock<Settings>> {
         self.settings.clone()

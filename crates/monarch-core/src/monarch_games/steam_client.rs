@@ -20,7 +20,7 @@ use crate::monarch_library::library;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
 use crate::monarch_utils::monarch_http;
-use crate::monarch_utils::monarch_settings::{get_settings, LauncherSettings};
+use crate::monarch_utils::monarch_settings::LauncherSettings;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;

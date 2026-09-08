@@ -1,9 +1,10 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use image::ImageFormat;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 use tracing::error;
 
 use super::games::GameType;
@@ -14,6 +15,7 @@ use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::{generate_greyscale_path, path_exists};
+use crate::monarch_utils::monarch_state::MonarchState;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MonarchGame {
@@ -145,9 +147,9 @@ impl MonarchGame {
     }
 
     /// Randomly generates a Monarch ID
-    pub fn manually_generate_id(&mut self) {
+    pub fn manually_generate_id(&mut self, state_handle: Arc<RwLock<MonarchState>>) {
         let mut id: String = format!("MONARCH-{}", rand::random::<u32>());
-        match MONARCH_STATE.read() {
+        match state_handle.read() {
             Ok(state) => {
                 while state.binary_game_id_collision(&id) {
                     id = format!("MONARCH-{}", rand::random::<u32>());
@@ -195,12 +197,7 @@ impl MonarchGame {
             compatibility: None,
             summary: other.summary.clone(),
             artwork_url: other.artwork_url.clone(),
-            artwork_path: crate::monarch_utils::monarch_fs::generate_cache_image_path(
-                &other.name,
-                GameImageType::Artwork,
-            )
-            .to_string_lossy()
-            .to_string(),
+            artwork_path: String::new(),
             properties: MonarchGameProperties::default(),
             imported: false,
             is_installed: false,
@@ -250,23 +247,8 @@ impl GameType for MonarchGame {
     }
 
     async fn launch(&self) -> Result<()> {
-        let game: MonarchGame = match MONARCH_STATE.read() {
-            Ok(state) => match state.get_game(&self.id) {
-                Some(game) => game,
-                None => {
-                    bail!("monarchgame::launch() -> Game not found");
-                }
-            },
-            Err(e) => {
-                bail!(
-                    "monarchgame::launch() Failed to lock on MONARCH_STATE | Err: {}",
-                    e
-                );
-            }
-        };
-
-        game.get_store()
-            .launch_game(&game)
+        self.get_store()
+            .launch_game(&self)
             .await
             .with_context(|| "monarchgame::launch() -> ")
     }

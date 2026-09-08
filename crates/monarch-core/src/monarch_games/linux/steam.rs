@@ -1,6 +1,7 @@
 use super::super::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::parse_steam_ids;
 use crate::monarch_utils::monarch_fs::{self, get_monarch_home};
+use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_terminal::spawn_terminal;
 use crate::monarch_utils::{
     monarch_fs::{create_dir, get_unix_home, path_exists},
@@ -12,6 +13,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::{Arc, RwLock};
 use tar::Archive;
 use tracing::{error, info};
 
@@ -22,9 +24,9 @@ use tracing::{error, info};
 */
 
 /// Installs SteamCMD for user in .local/share/monarch/steamcmd
-pub async fn install_steamcmd() -> Result<()> {
-    let tar_dest: PathBuf = get_monarch_home().join("steamcmd.tar.gz");
-    let dest_path: PathBuf = get_monarch_home().join("steamcmd");
+pub async fn install_steamcmd(settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
+    let tar_dest: PathBuf = get_monarch_home(settings_handle.clone()).join("steamcmd.tar.gz");
+    let dest_path: PathBuf = get_monarch_home(settings_handle).join("steamcmd");
 
     if !path_exists(&dest_path) {
         create_dir(&dest_path).with_context(|| "linux::steam::install_steamcmd() -> ")?;
@@ -151,13 +153,15 @@ pub async fn install_steamcmd() -> Result<()> {
 }
 
 /// Returns path to the SteamCMD binary used in SteamCMD commands
-pub fn get_steamcmd_exe() -> PathBuf {
+pub fn get_steamcmd_exe(settings_handle: Arc<RwLock<Settings>>) -> PathBuf {
     if let Some(p) = monarch_fs::find_linux_binary("steamcmd") {
         return p;
     }
 
     // Fallback to .local/share/monarch/steamcmd/steamcmd.sh
-    let fallback_path: PathBuf = get_monarch_home().join("steamcmd").join("steamcmd.sh");
+    let fallback_path: PathBuf = get_monarch_home(settings_handle)
+        .join("steamcmd")
+        .join("steamcmd.sh");
     if fallback_path.exists() {
         return fallback_path;
     }
@@ -166,15 +170,20 @@ pub fn get_steamcmd_exe() -> PathBuf {
 }
 
 /// Returns whether or not SteamCMD is installed
-pub fn steamcmd_is_installed() -> bool {
-    get_steamcmd_exe().exists()
+pub fn steamcmd_is_installed(settings_handle: Arc<RwLock<Settings>>) -> bool {
+    get_steamcmd_exe(settings_handle).exists()
 }
 
 /// Runs specified command via SteamCMD
 /// Is currently async to work with Windows version
 /// TODO: Come back and add a way of showing the output of SteamCMD
-pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
-    let steamcmd_path: String = get_steamcmd_exe().to_string_lossy().to_string();
+pub async fn steamcmd_command(
+    settings_handle: Arc<RwLock<Settings>>,
+    args: Vec<&str>,
+) -> Result<()> {
+    let steamcmd_path: String = get_steamcmd_exe(settings_handle)
+        .to_string_lossy()
+        .to_string();
     let workdir: String = get_unix_home()
         .unwrap()
         .join(".local")

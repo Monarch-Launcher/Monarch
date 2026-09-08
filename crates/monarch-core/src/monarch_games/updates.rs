@@ -9,6 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 use std::thread;
 use tracing::{error, info, warn};
 
@@ -17,8 +18,9 @@ use monarch_egs::{GameUpdate, InstalledBuild};
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_games::stores::DownloadOptions;
-use crate::monarch_utils::monarch_game_downloader::DownloadJob;
-use crate::monarch_utils::monarch_settings::get_settings;
+use crate::monarch_utils::monarch_game_downloader::{DownloadJob, MonarchDownloader};
+use crate::monarch_utils::monarch_settings::Settings;
+use crate::monarch_utils::monarch_state::MonarchState;
 
 /// Platform used when installing games through monarch_egs. Managed installs
 /// always use Windows builds, even on Linux/macOS (via umu/proton).
@@ -53,7 +55,10 @@ struct ManagedInstall {
 /// Spawns the start-up update check on a background thread with its own tokio
 /// runtime, mirroring housekeeping::start(), so start-up is never blocked on
 /// network requests.
-pub fn start_startup_check() {
+pub fn start_startup_check(
+    state_handle: Arc<RwLock<MonarchState>>,
+    downloader_handle: Arc<RwLock<MonarchDownloader>>,
+) {
     thread::spawn(|| {
         let runtime = match tokio::runtime::Runtime::new() {
             Ok(runtime) => runtime,
@@ -68,8 +73,9 @@ pub fn start_startup_check() {
         // The Epic session handling in monarch_egs panics on some network
         // failures. Catch it here so a failed check can never take Monarch
         // down during start-up.
-        let check =
-            futures::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(run_startup_check()));
+        let check = futures::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(
+            run_startup_check(state_handle, downloader_handle),
+        ));
 
         if let Err(panic) = runtime.block_on(check) {
             error!(
@@ -80,15 +86,30 @@ pub fn start_startup_check() {
 }
 
 /// Runs the start-up update check unless the user disabled it in settings.
-pub async fn run_startup_check() {
-    if !auto_update_check_enabled() {
+pub async fn run_startup_check(
+    state_handle: Arc<RwLock<MonarchState>>,
+    downloader_handle: Arc<RwLock<MonarchDownloader>>,
+) {
+    let settings_handle: Arc<RwLock<Settings>>;
+    match state_handle.read() {
+        Ok(state) => {
+            settings_handle = state.get_settings_ptr();
+        }
+        Err(e) => {
+            error!("updates::run_startup_check() | Err: {e}");
+            info!("Skipping update checks.");
+            return;
+        }
+    }
+
+    if !auto_update_check_enabled(settings_handle) {
         info!(
-            "monarch_games::updates::run_startup_check() Skipping start-up update check, disabled in settings"
-        );
+                "monarch_games::updates::run_startup_check() Skipping start-up update check, disabled in settings"
+            );
         return;
     }
 
-    match check_for_game_updates().await {
+    match check_for_game_updates(state_handle, downloader_handle).await {
         Ok(updates) if updates.is_empty() => {
             info!(
                 "monarch_games::updates::run_startup_check() All games managed by Monarch are up to date"
@@ -113,32 +134,27 @@ pub async fn run_startup_check() {
 }
 
 /// Whether automatic start-up update checks are enabled in settings.
-fn auto_update_check_enabled() -> bool {
-    match get_settings() {
-        Ok(settings_lock) => settings_lock
-            .read()
-            .map(|settings| settings.monarch.check_updates_on_startup)
-            .unwrap_or_else(|e| {
-                error!(
-                    "monarch_games::updates::auto_update_check_enabled() Failed to lock on settings | Err: {e}"
-                );
-                false
-            }),
-        Err(e) => {
+fn auto_update_check_enabled(settings_lock: Arc<RwLock<Settings>>) -> bool {
+    settings_lock
+        .read()
+        .map(|settings| settings.monarch.check_updates_on_startup)
+        .unwrap_or_else(|e| {
             error!(
-                "monarch_games::updates::auto_update_check_enabled() Failed to get settings | Err: {e}"
+                "monarch_games::updates::auto_update_check_enabled() Failed to lock on settings | Err: {e}"
             );
             false
-        }
-    }
+        })
 }
 
 /// Checks all installed games managed by Monarch for available updates and
-/// stores the result in MONARCH_STATE. Can also be triggered manually, e.g.
+/// stores the result in MonarchState. Can also be triggered manually, e.g.
 /// from a "check for updates" button.
-pub async fn check_for_game_updates() -> Result<Vec<MonarchGameUpdate>, String> {
-    let games: Vec<MonarchGame> = match MONARCH_STATE.read() {
-        Ok(state) => state.get_library_games(),
+pub async fn check_for_game_updates(
+    state_handle: Arc<RwLock<MonarchState>>,
+    downloader_handle: Arc<RwLock<MonarchDownloader>>,
+) -> Result<Vec<MonarchGameUpdate>, String> {
+    let games: Vec<Arc<RwLock<MonarchGame>>> = match state_handle.read() {
+        Ok(state) => state.get_library_games().to_vec(),
         Err(e) => {
             error!(
                 "monarch_games::updates::check_for_game_updates() Failed to lock on MONARCH_STATE | Err: {e}"
@@ -150,7 +166,7 @@ pub async fn check_for_game_updates() -> Result<Vec<MonarchGameUpdate>, String> 
     let installs = collect_managed_installs(&games);
 
     if installs.is_empty() {
-        store_available_updates(Vec::new());
+        store_available_updates(state_handle, &Vec::new());
         return Ok(Vec::new());
     }
 
@@ -159,7 +175,7 @@ pub async fn check_for_game_updates() -> Result<Vec<MonarchGameUpdate>, String> 
         info!(
             "monarch_games::updates::check_for_game_updates() No Epic Games credentials found, skipping update check"
         );
-        store_available_updates(Vec::new());
+        store_available_updates(state_handle, &Vec::new());
         return Ok(Vec::new());
     }
 
@@ -195,12 +211,17 @@ pub async fn check_for_game_updates() -> Result<Vec<MonarchGameUpdate>, String> 
         })
         .collect();
 
-    store_available_updates(game_updates.clone());
+    store_available_updates(state_handle.clone(), &game_updates);
+
+    let settings_handle: Arc<RwLock<Settings>> = match state_handle.read() {
+        Ok(state) => state.get_settings_ptr(),
+        Err(e) => return Err(format!("... | Err: {e}")),
+    };
 
     // Queue the detected updates so they are ready to download from the
     // download page, without starting them automatically.
     if !game_updates.is_empty() {
-        queue_detected_updates(&game_updates, &installs).await;
+        queue_detected_updates(settings_handle, downloader_handle, &game_updates, &installs).await;
     }
 
     Ok(game_updates)
@@ -210,7 +231,11 @@ pub async fn check_for_game_updates() -> Result<Vec<MonarchGameUpdate>, String> 
 /// comparison as the start-up check but scoped to one game; a detected update
 /// is queued for download without starting it, and the stored update-check
 /// results for other games are left untouched.
-pub async fn check_game_for_updates(game: &MonarchGame) -> Result<GameUpdateCheck, String> {
+pub async fn check_game_for_updates(
+    state_handle: Arc<RwLock<MonarchState>>,
+    downloader_handle: Arc<RwLock<MonarchDownloader>>,
+    game: &MonarchGame,
+) -> Result<GameUpdateCheck, String> {
     let Some(install) = collect_managed_install(game) else {
         return Err(format!(
             "{} cannot be checked because it was not installed by Monarch or its install metadata is incomplete.",
@@ -241,7 +266,7 @@ pub async fn check_game_for_updates(game: &MonarchGame) -> Result<GameUpdateChec
             "monarch_games::updates::check_game_for_updates() {} is up to date",
             game.name
         );
-        store_game_update_result(&game.id, None);
+        store_game_update_result(state_handle, &game.id, None);
         return Ok(GameUpdateCheck::UpToDate);
     };
 
@@ -259,27 +284,36 @@ pub async fn check_game_for_updates(game: &MonarchGame) -> Result<GameUpdateChec
         update,
     };
 
-    queue_detected_updates(std::slice::from_ref(&game_update), std::slice::from_ref(&install))
-        .await;
-    store_game_update_result(&game.id, Some(game_update));
+    let settings_handle: Arc<RwLock<Settings>> = match state_handle.read() {
+        Ok(state) => state.get_settings_ptr(),
+        Err(e) => return Err(format!("... | Err: {e}")),
+    };
 
-    Ok(GameUpdateCheck::UpdateAvailable { latest_build_version })
+    queue_detected_updates(
+        settings_handle,
+        downloader_handle,
+        std::slice::from_ref(&game_update),
+        std::slice::from_ref(&install),
+    )
+    .await;
+    store_game_update_result(state_handle, &game.id, Some(game_update));
+
+    Ok(GameUpdateCheck::UpdateAvailable {
+        latest_build_version,
+    })
 }
 
 /// Queues download jobs for the given updates without starting them. Jobs land
 /// at the back of the downloader queue where the user can start them from the
 /// download page. Games that are already queued or downloading are skipped.
-async fn queue_detected_updates(updates: &[MonarchGameUpdate], installs: &[ManagedInstall]) {
-    let default_folder: String = match get_settings() {
-        Ok(settings_lock) => settings_lock
-            .read()
-            .map(|settings| settings.monarch.game_folder.clone())
-            .unwrap_or_else(|e| {
-                error!(
-                    "monarch_games::updates::queue_detected_updates() Failed to lock on settings | Err: {e}"
-                );
-                String::new()
-            }),
+async fn queue_detected_updates(
+    settings_handle: Arc<RwLock<Settings>>,
+    downloader_handle: Arc<RwLock<MonarchDownloader>>,
+    updates: &[MonarchGameUpdate],
+    installs: &[ManagedInstall],
+) {
+    let default_folder: String = match settings_handle.read() {
+        Ok(settings) => settings.monarch.game_folder.clone(),
         Err(e) => {
             error!(
                 "monarch_games::updates::queue_detected_updates() Failed to get settings | Err: {e}"
@@ -327,40 +361,33 @@ async fn queue_detected_updates(updates: &[MonarchGameUpdate], installs: &[Manag
         return;
     }
 
-    match MONARCH_STATE.read() {
-        Ok(state) => match state.get_downloader_ptr().write() {
-            Ok(mut downloader) => {
-                if let Err(e) = downloader.register_egs_handler() {
-                    warn!(
-                        "monarch_games::updates::queue_detected_updates() Failed to register EGS download handler | Err: {e}"
-                    );
-                }
-
-                for (game, job) in prepared {
-                    if downloader.is_queued(&game) || downloader.is_downloading_game(&game) {
-                        info!(
-                            "monarch_games::updates::queue_detected_updates() {} already queued or downloading, skipping",
-                            game.name
-                        );
-                        continue;
-                    }
-
-                    info!(
-                        "monarch_games::updates::queue_detected_updates() Queuing update for {}",
-                        game.name
-                    );
-                    downloader.queue_download(job);
-                }
-            }
-            Err(e) => {
-                error!(
-                    "monarch_games::updates::queue_detected_updates() Failed to lock on downloader | Err: {e}"
+    match downloader_handle.write() {
+        Ok(mut downloader) => {
+            if let Err(e) = downloader.register_egs_handler() {
+                warn!(
+                    "monarch_games::updates::queue_detected_updates() Failed to register EGS download handler | Err: {e}"
                 );
             }
-        },
+
+            for (game, job) in prepared {
+                if downloader.is_queued(&game) || downloader.is_downloading_game(&game) {
+                    info!(
+                        "monarch_games::updates::queue_detected_updates() {} already queued or downloading, skipping",
+                        game.name
+                    );
+                    continue;
+                }
+
+                info!(
+                    "monarch_games::updates::queue_detected_updates() Queuing update for {}",
+                    game.name
+                );
+                downloader.queue_download(job);
+            }
+        }
         Err(e) => {
             error!(
-                "monarch_games::updates::queue_detected_updates() Failed to lock on MONARCH_STATE | Err: {e}"
+                "monarch_games::updates::queue_detected_updates() Failed to lock on downloader | Err: {e}"
             );
         }
     }
@@ -386,9 +413,13 @@ fn install_parent_folder(game: &MonarchGame, default_folder: &str) -> String {
 }
 
 /// Persists the latest update check results so the UI can pick them up.
-fn store_available_updates(updates: Vec<MonarchGameUpdate>) {
-    match MONARCH_STATE.write() {
-        Ok(mut state) => state.set_available_updates(updates),
+fn store_available_updates(state_handle: Arc<RwLock<MonarchState>>, updates: &[MonarchGameUpdate]) {
+    match state_handle.write() {
+        Ok(mut state) => {
+            for update in updates.iter() {
+                state.push_back_update(update.clone());
+            }
+        }
         Err(e) => {
             error!(
                 "monarch_games::updates::store_available_updates() Failed to lock on MONARCH_STATE | Err: {e}"
@@ -399,22 +430,21 @@ fn store_available_updates(updates: Vec<MonarchGameUpdate>) {
 
 /// Persists the result of a single-game update check, replacing any previous
 /// entry for that game while leaving other games' results untouched.
-fn store_game_update_result(game_id: &str, update: Option<MonarchGameUpdate>) {
-    match MONARCH_STATE.write() {
+fn store_game_update_result(
+    state_handle: Arc<RwLock<MonarchState>>,
+    game_id: &str,
+    update: Option<MonarchGameUpdate>,
+) {
+    match state_handle.write() {
         Ok(mut state) => {
-            let mut updates: Vec<MonarchGameUpdate> = state
-                .get_available_updates()
-                .into_iter()
-                .filter(|existing| existing.game_id != game_id)
-                .collect();
-            if let Some(update) = update {
-                updates.push(update);
+            let _ = state.remove_update(game_id);
+            if let Some(new_update) = update {
+                state.push_back_update(new_update);
             }
-            state.set_available_updates(updates);
         }
         Err(e) => {
             error!(
-                "monarch_games::updates::store_game_update_result() Failed to lock on MONARCH_STATE | Err: {e}"
+                "monarch_games::updates::store_game_update_result() Failed to acquire lock on state_handle | Err: {e}"
             );
         }
     }
@@ -423,8 +453,11 @@ fn store_game_update_result(game_id: &str, update: Option<MonarchGameUpdate>) {
 /// Collects library games whose files were installed by Monarch itself and
 /// therefore can only be updated through monarch_egs. Games missing the
 /// metadata required for a comparison are skipped.
-fn collect_managed_installs(games: &[MonarchGame]) -> Vec<ManagedInstall> {
-    games.iter().filter_map(collect_managed_install).collect()
+fn collect_managed_installs(games: &[Arc<RwLock<MonarchGame>>]) -> Vec<ManagedInstall> {
+    games
+        .iter()
+        .filter_map(|g| collect_managed_install(&g.read().unwrap()))
+        .collect()
 }
 
 /// Returns the metadata required to check `game` for updates, or `None` when
