@@ -7,12 +7,14 @@ use crate::monarch_games::monarchgame::{
 };
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
+use crate::monarch_utils::monarch_state::MonarchState;
 use crate::monarch_utils::{monarch_http, monarch_terminal, monarch_vdf};
 use crate::{monarch_library::library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 use tracing::{error, info, warn};
 
 pub struct MonarchClient {}
@@ -483,7 +485,7 @@ pub async fn find_games(search_term: &str) -> Vec<MonarchGame> {
     monarch_games
 }
 
-pub async fn get_game_properties(game: &mut MonarchGame) {
+pub async fn get_game_properties(state_handle: Arc<RwLock<MonarchState>>, game: &mut MonarchGame) {
     let mut store = game.get_store_name();
     if store == "steamcmd" {
         store = "steam".to_string();

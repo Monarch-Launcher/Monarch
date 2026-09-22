@@ -22,8 +22,12 @@ pub async fn add_game(pool: Arc<SqlitePool>, game: &MonarchGame) -> Result<()> {
 }
 
 /// Functionality for persistently removing a game from library
-pub async fn remove_game(state_handle: Arc<RwLock<MonarchState>>, game: &MonarchGame) -> Result<()> {
+pub async fn remove_game(
+    state_handle: Arc<RwLock<MonarchState>>,
+    game: &MonarchGame,
+) -> Result<()> {
     let pool: Arc<SqlitePool>;
+
     match state_handle.write() {
         Ok(mut state) => {
             pool = state.get_db_pool_arc();
@@ -63,12 +67,18 @@ pub async fn update_game_properties_in_db(pool: Arc<SqlitePool>, game: &MonarchG
 }
 
 /// Overwrites library games
-pub async fn overwrite_games(state_handle: Arc<RwLock<MonarchState>>, games: &[MonarchGame]) -> Result<()> {
+pub async fn overwrite_games(
+    state_handle: Arc<RwLock<MonarchState>>,
+    games: &[MonarchGame],
+) -> Result<()> {
     let pool: Arc<SqlitePool>;
     match state_handle.write() {
         Ok(mut state) => {
             pool = state.get_db_pool_arc();
-            let game_ptrs: Vec<Arc<RwLock<MonarchGame>>> = games.iter().map(|g| Arc::new(RwLock::new(g.clone()))).collect();
+            let game_ptrs: Vec<Arc<RwLock<MonarchGame>>> = games
+                .iter()
+                .map(|g| Arc::new(RwLock::new(g.clone())))
+                .collect();
             state.set_library_games(&game_ptrs);
         }
         Err(e) => {

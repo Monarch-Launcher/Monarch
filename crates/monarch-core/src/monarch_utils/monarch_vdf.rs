@@ -190,8 +190,8 @@ impl AppState {
     }
 }
 
-/// Sets the installation directory of a given Steam game
-pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Result<()> {
+/// Gets the installation directory of a given Steam game
+pub fn get_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Result<PathBuf> {
     let library_folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf)
         .with_context(|| "monarch_vdf::AppState::read() -> ")?;
 
@@ -208,14 +208,11 @@ pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Res
 
             let app_state: AppState =
                 AppState::read(&path).with_context(|| "monarch_vdf::AppState::read() -> ")?;
-            game.properties.install_dir = PathBuf::from(path.parent().unwrap())
+            let install_dir = PathBuf::from(path.parent().unwrap())
                 .join("common")
-                .join(app_state.installdir)
-                .to_str()
-                .unwrap()
-                .to_string();
+                .join(app_state.installdir);
 
-            return Ok(());
+            return Ok(install_dir);
         }
     }
 

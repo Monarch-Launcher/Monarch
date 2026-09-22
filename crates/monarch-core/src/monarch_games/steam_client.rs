@@ -5,7 +5,10 @@ use scraper::{Html, Selector};
 use serde::Deserialize;
 use serde_json::Value;
 use simple_steam_totp::generate;
+use sqlx::SqlitePool;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::RwLock;
 use tokio::task;
 use tracing::{debug, error, info, warn};
 
@@ -21,6 +24,8 @@ use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
 use crate::monarch_utils::monarch_http;
 use crate::monarch_utils::monarch_settings::LauncherSettings;
+use crate::monarch_utils::monarch_settings::Settings;
+use crate::monarch_utils::monarch_state::MonarchState;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -55,13 +60,43 @@ impl StoreType for SteamClient {
             .collect::<Vec<Box<dyn SearchResult>>>()
     }
 
-    async fn install_game(&self, game: &mut MonarchGame, _opts: &DownloadOptions) -> Result<()> {
-        let game: MonarchGame = download_game(&game.name, &game.get_store_id())
+    async fn install_game(
+        &self,
+        state_handle: Arc<RwLock<MonarchState>>,
+        game: &mut MonarchGame,
+        _opts: &DownloadOptions,
+    ) -> Result<()> {
+        let settings_handle: Arc<RwLock<Settings>>;
+        let db_pool: Arc<SqlitePool>;
+
+        match state_handle.read() {
+            Ok(state) => {
+                settings_handle = state.get_settings_ptr();
+                db_pool = state.get_db_pool_arc();
+            }
+            Err(e) => {
+                bail!("steam_client::install_game() Failed to acquire read lock on state_handle! | Err: {e}");
+            }
+        };
+
+        let game: MonarchGame = download_game(settings_handle, &game.name, &game.get_store_id())
             .await
             .with_context(|| "steam_client::install_game() -> ")?;
-        library::add_game(&game)
+
+        // First write to permanent store
+        library::add_game(db_pool, &game)
             .await
-            .with_context(|| "steam_client::install_game() -> ")
+            .with_context(|| "steam_client::install_game() -> ")?;
+
+        // Then add to the application state list of games
+        match state_handle.write() {
+            Ok(mut state) => state.push_game(game),
+            Err(e) => {
+                bail!("steam_client::install_game() Failed to acquire write lock on state_handle! | Err: {e}");
+            }
+        }
+
+        Ok(())
     }
 
     async fn uninstall_game(&self, game: &MonarchGame) -> Result<()> {
@@ -280,16 +315,13 @@ pub async fn launch_cmd_game(game: &MonarchGame) -> Result<()> {
 }
 
 /// Download a Steam game via Monarch and SteamCMD.
-pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
+pub async fn download_game(
+    settings_handle: Arc<RwLock<Settings>>,
+    name: &str,
+    id: &str,
+) -> Result<MonarchGame> {
     let login_arg = {
-        let settings_lock = match get_settings() {
-            Ok(lock) => lock,
-            Err(e) => bail!(
-                "steam_client::download_game() Failed to get settings | Err: {}",
-                e
-            ),
-        };
-        let settings = match settings_lock.read() {
+        let settings = match settings_handle.read() {
             Ok(settings) => settings,
             Err(e) => bail!(
                 "steam_client::download_game() Failed to get settings read lock | Err: {}",
@@ -332,7 +364,7 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
 
     // TODO: Wait for Steamcmd to return
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
-    steam::steamcmd_command(command)
+    steam::steamcmd_command(settings_handle, command)
         .await
         .with_context(|| "steam_client::download_game() -> ")?;
 
