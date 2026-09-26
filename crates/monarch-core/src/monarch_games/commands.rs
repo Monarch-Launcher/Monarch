@@ -39,11 +39,11 @@ use crate::monarch_utils::monarch_vdf::get_proton_versions;
 */
 
 /// Search for games on Monarch, currently only support Steam search
-pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebApiGame> {
+pub async fn search_games(settings_handle: Arc<RwLock<Settings>>, name: String, filter: SearchFilter) -> Vec<MonarchWebApiGame> {
     if filter.monarch {
         let client = MonarchClient::new();
         return client
-            .search_games(&name, &filter)
+            .search_games(settings_handle.clone(), &name, &filter)
             .await
             .into_iter()
             .map(|g| g.to_search_result())
@@ -56,7 +56,7 @@ pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebA
         let client = SteamClient::new();
         games.append(
             &mut client
-                .search_games(&name, &filter)
+                .search_games(settings_handle.clone(), &name, &filter)
                 .await
                 .into_iter()
                 .map(|g| g.to_search_result())
@@ -68,7 +68,7 @@ pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebA
         let client = EgsClient::new();
         games.append(
             &mut client
-                .search_games(&name, &filter)
+                .search_games(settings_handle, &name, &filter)
                 .await
                 .into_iter()
                 .map(|g| g.to_search_result())
@@ -80,9 +80,9 @@ pub async fn search_games(name: String, filter: SearchFilter) -> Vec<MonarchWebA
 }
 
 /// Manually refreshes the entire Monarch library, currently only supports Steam & Epic Games (kinda) still WIP
-pub async fn refresh_library() -> Result<Vec<MonarchGame>, String> {
-    match monarch_client::refresh_library().await {
-        Ok(games) => Ok(games),
+pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<(), String> {
+    match monarch_client::refresh_library(state_handle).await {
+        Ok(games) => Ok(()),
         Err(e) => {
             error!(
                 "monarch_games::commands::refresh_library() -> {}",

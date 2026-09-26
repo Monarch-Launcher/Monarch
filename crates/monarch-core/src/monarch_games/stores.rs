@@ -1,22 +1,14 @@
 use std::sync::{Arc, RwLock};
 
-use crate::{
-    monarch_games::{games::SearchResult, monarchgame::MonarchGame},
-    monarch_utils::monarch_state::MonarchState,
-};
+use crate::{monarch_games::{games::SearchResult, monarchgame::MonarchGame}, monarch_utils::monarch_settings::Settings};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait StoreType: Send + Sync {
-    async fn search_games(&self, name: &str, filter: &SearchFilter) -> Vec<Box<dyn SearchResult>>;
-    async fn install_game(
-        &self,
-        state_handle: Arc<RwLock<MonarchState>>,
-        game: &mut MonarchGame,
-        opts: &DownloadOptions,
-    ) -> Result<()>;
+    async fn search_games(&self, settings_handle: Arc<RwLock<Settings>>, name: &str, filter: &SearchFilter) -> Vec<Box<dyn SearchResult>>;
+    async fn install_game(&self, game: &mut MonarchGame, opts: &DownloadOptions) -> Result<()>;
     async fn uninstall_game(&self, game: &MonarchGame) -> Result<()>;
     async fn update_game(&self, game: &MonarchGame) -> Result<()>;
     fn game_is_installed(&self, store_id: &str) -> bool;

@@ -7,12 +7,15 @@ use crate::monarch_games::monarchgame::{
 };
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
+use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
-use crate::monarch_utils::{monarch_http, monarch_terminal, monarch_vdf};
+use crate::monarch_utils::{monarch_http, monarch_sql, monarch_terminal, monarch_vdf};
 use crate::{monarch_library::library, monarch_utils::monarch_fs};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
+use sqlx::SqlitePool;
 use std::collections::HashMap;
+use std::f32::consts::E;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use tracing::{error, info, warn};
@@ -27,7 +30,7 @@ impl MonarchClient {
 
 #[async_trait]
 impl StoreType for MonarchClient {
-    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
+    async fn search_games(&self, settings_handle: Arc<RwLock<Settings>>, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
         let monarch_url: &'static str = std::env!("MONARCH_URL");
         let search_term: String = format!("{monarch_url}/api/games?search={}", name);
         let response = match monarch_http::client().get(search_term).send().await {
@@ -66,7 +69,7 @@ impl StoreType for MonarchClient {
 
         for game in web_games.iter_mut() {
             let thumbnail_path = String::from(
-                generate_cache_image_path(&game.name.clone(), GameImageType::Cover)
+                generate_cache_image_path(settings_handle.clone(), &game.name.clone(), GameImageType::Cover)
                     .to_str()
                     .unwrap(),
             );
@@ -131,110 +134,79 @@ pub fn generate_default_folder() -> Result<PathBuf> {
 }
 
 /// Launches a game
-pub async fn launch_game(frontend_game: &MonarchGame) -> Result<()> {
+pub async fn launch_game(_state_handle: Arc<RwLock<MonarchState>>, _game_handle: Arc<RwLock<MonarchGame>>) -> Result<()> {
     /*
-        if let Err(e) = hide_quicklaunch(handle) {
-            warn!("monarch_client::launch_game() Error while hiding quicklaunch. Possibly already hidden. | Err: {e}");
-        }
-    */
+    let full_command: String;
 
-    let mut game: MonarchGame;
-    match MONARCH_STATE.read() {
-        Ok(state) => {
-            game = state
-                .get_game(&frontend_game.id)
-                .with_context(|| "monarch_client::launch_game() -> ")?;
-        }
-        Err(e) => {
-            error!(
-                "monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}",
-                e
-            );
-            bail!(
-                "monarch_client::launch_game() Failed to lock on MONARCH_STATE | Err: {}",
-                e
-            )
-        }
-    }
+    match game_handle.write() {
+        Ok(mut game) => {
+            // Check if game should be launched with exectutable, such as
+            // the game binary or Proton executable
+            if let Some(path) = &game.executable_path {
+                info!("Launching game with executable path: {}", path);
 
-    // Check if game should be launched with exectutable, such as
-    // the game binary or Proton executable
-    if let Some(path) = &game.executable_path {
-        info!("Launching game with executable path: {}", path);
+                // Reformat the launch command to work on the store
+                if cfg!(target_os = "windows") {
+                    game.executable_path = Some(format!(
+                        r#"Start-Process "{}""#,
+                        game.executable_path.unwrap()
+                    ));
+                } else {
+                    game.executable_path = Some(game.executable_path.unwrap().replace(" ", "\\ "));
+                }
 
-        // Reformat the launch command to work on the store
-        if cfg!(target_os = "windows") {
-            game.executable_path = Some(format!(
-                r#"Start-Process "{}""#,
-                game.executable_path.unwrap()
-            ));
-        } else {
-            game.executable_path = Some(game.executable_path.unwrap().replace(" ", "\\ "));
-        }
+                // Run with compatibility layer
+                if game.compatibility.is_some() {
+                    if cfg!(not(target_os = "linux")) {
+                        bail!("monarch_client::launch_game() User tried launching a game using compatibility layer on OS other than Linux! | Err: Cannot use compatibility layer under anything other than Linux!")
+                    }
 
-        // Run with compatibility layer
-        if game.compatibility.is_some() {
-            if cfg!(not(target_os = "linux")) {
-                bail!("monarch_client::launch_game() User tried launching a game using compatibility layer on OS other than Linux! | Err: Cannot use compatibility layer under anything other than Linux!")
+                    #[cfg(target_os = "linux")]
+                    {
+                        use super::linux;
+                        return linux::umu::umu_run(&mut game).await;
+                    };
+                }
+
+                // Run without compatibility layer
+                let launch_command: String = format!("{}", game.executable_path.unwrap_or_default());
+
+                // Order launch args and command in proper order
+                let full_command: String = if game
+                    .launch_args
+                    .clone()
+                    .unwrap_or_default()
+                    .find("%command%")
+                    .is_some()
+                {
+                    warn!("Using Steam %command% style launch arguments!");
+                    game.launch_args
+                        .unwrap()
+                        .replace("%command%", &launch_command)
+                } else {
+                    format!(
+                        "{} {}",
+                        launch_command,
+                        game.launch_args.unwrap_or_default()
+                    )
+                };
+                }
             }
-
-            #[cfg(target_os = "linux")]
-            {
-                use super::linux;
-                return linux::umu::umu_run(&mut game).await;
-            };
-        }
-
-        // Run without compatibility layer
-        let launch_command: String = format!("{}", game.executable_path.unwrap_or_default());
-
-        // Order launch args and command in proper order
-        let full_command: String = if game
-            .launch_args
-            .clone()
-            .unwrap_or_default()
-            .find("%command%")
-            .is_some()
-        {
-            warn!("Using Steam %command% style launch arguments!");
-            game.launch_args
-                .unwrap()
-                .replace("%command%", &launch_command)
-        } else {
-            format!(
-                "{} {}",
-                launch_command,
-                game.launch_args.unwrap_or_default()
-            )
-        };
-
-        let rx = monarch_terminal::spawn_terminal(full_command, HashMap::new(), None);
-        let _ = rx.await;
-
-        return Ok(());
-    }
-
-    // Otherwise launch via store
-    match game.get_store_name().as_str() {
-        "steam" => {
-            info!("Launching game via steam client: {}", game.get_store_id());
-            steam_client::launch_client_game(&game)
-                .with_context(|| "monarch_client::launch_game() -> ")
-        }
-        "steamcmd" => {
-            info!("Launching game via steamcmd: {}", game.get_store_id());
-            steam_client::launch_cmd_game(&game)
-                .await
-                .with_context(|| "monarch_client::launch_game() -> ")
-        }
-        &_ => {
-            bail!("monarch_client::launch_game() User tried launching a game on an invalid store: {} | Err: Invalid store!", game.get_store_name())
+        Err(e) => {
+            bail!("")
         }
     }
+
+    let rx = monarch_terminal::spawn_terminal(full_command, HashMap::new(), None);
+    let _ = rx.await;
+     */
+
+    return Ok(());
 }
 
 /// Downloads a game into default folder
-pub async fn download_game(name: &str, store: &str, store_id: &str) -> Result<Vec<MonarchGame>> {
+pub async fn download_game(_name: &str, _store: &str, _store_id: &str) -> Result<()> {
+    /*
     let settings_lock = match get_settings() {
         Ok(lock) => lock,
         Err(e) => {
@@ -287,17 +259,20 @@ pub async fn download_game(name: &str, store: &str, store_id: &str) -> Result<Ve
             new_game
         }
         &_ => bail!("monarch_client::download_game() Invalid store!"),
-    };
+    }; 
 
     library::add_game(&new_game)
         .await
         .with_context(|| "monarch_client::download_game() -> ")?;
 
     Ok(library::get_games().await.unwrap()) // Return new library
+*/
+    Ok(())
 }
 
 /// Remove an installed game
-pub async fn uninstall_game(store: &str, store_id: &str) -> Result<()> {
+pub async fn uninstall_game(_store: &str, _store_id: &str) -> Result<()> {
+    /*
     match store {
         "steam" => steam_client::uninstall_client_game(store_id),
         "steamcmd" => {
@@ -352,106 +327,144 @@ pub async fn uninstall_game(store: &str, store_id: &str) -> Result<()> {
             "monarch_client::uninstall_game() | Err: Invalid store passed as argument ( {store} )"
         ),
     }
+ */
+    Ok(())
 }
 
 /// Update a game
-pub async fn update_game(store: &str, store_id: &str) -> Result<()> {
-    match store {
-        "steam" => {
-            bail!("monarch_client::uninstall_game() | Err: Monarch currently does not support updating games from the steam desktop client!")
-        }
-        "steamcmd" => steam_client::update_game(store_id)
-            .await
-            .with_context(|| "monarch_client::uninstall_game() -> "),
-        &_ => bail!(
-            "monarch_client::uninstall_game() | Err: Invalid store passed as argument ( {store} )"
-        ),
-    }
+pub async fn update_game(_store: &str, _store_id: &str) -> Result<()> {
+    Ok(())
 }
 
 /// Returns autodetected games according to Monarch
-pub async fn refresh_library() -> Result<Vec<MonarchGame>> {
+pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<()> {
     info!("Manual refresh of library requested. Refreshing...");
-    let games: Vec<MonarchGame> = library::get_games()
-        .await
-        .with_context(|| "monarch_client::refresh_library() -> ")?;
 
-    let steam_games: Vec<MonarchGame> = steam_client::get_library().await;
+    let mut games: Vec<Arc<RwLock<MonarchGame>>>;
+    match state_handle.read() {
+        Ok(state) => {
+            games = state.get_library_games().to_vec();
+        }
+        Err(e) => {
+            bail!("")
+        }
+    }
+
+    let mut steam_games: Vec<MonarchGame> = steam_client::get_library().await;
 
     let mut egs_client: EgsClient = EgsClient::new();
     egs_client.load_existing_user().await.unwrap();
-    let epic_games: Vec<MonarchGame> = egs_client.get_library().await;
+    let mut epic_games: Vec<MonarchGame> = egs_client.get_library().await;
 
-    // Filter out removed games while keeping imported ones.
-    // Deduplicate games by their Monarch ID to prevent UNIQUE constraint errors in database.
-    let mut merged_games: HashMap<String, MonarchGame> = HashMap::new();
-
-    // 1. First, populate with existing library games that are either imported,
-    // still present in steam_games or epic_games, or installed on disk (so a
-    // refresh never drops a game Monarch itself has downloaded).
-    for lg in games {
-        let is_steam = steam_games.iter().any(|sg| *sg == lg || sg.id == lg.id);
-        let is_epic = epic_games.iter().any(|eg| *eg == lg || eg.id == lg.id);
-        if lg.imported || lg.is_installed || is_steam || is_epic {
-            let mut updated_game = lg.clone();
-            if is_steam {
-                updated_game.is_installed = true;
+    // Filter out removed games
+    games.iter_mut()
+        .filter(|game_handle| match game_handle.read() {
+            Ok(game) => {
+                match game.get_store_name().as_str() {
+                    "steam" => {
+                        for steam_game in steam_games.iter() {
+                            if game.id == steam_game.id {
+                                return true
+                            }
+                        }
+                        false
+                    }
+                    "epicgames" => {
+                        for epic_game in epic_games.iter() {
+                            if game.id == epic_game.id {
+                                return true
+                            }
+                        }
+                        false
+                    }
+                    _ => {
+                        return true
+                    }
+                }
             }
-            merged_games.insert(updated_game.id.clone(), updated_game);
+            Err(e) => {
+                true
+            }
+        })
+        .map(|game_handle| game_handle.clone())
+        .collect::<Vec<Arc<RwLock<MonarchGame>>>>();
+
+    // Add new Steam games
+    for steam_game in steam_games.iter_mut() {
+        let mut game_found: bool = false;
+        for game_handle in games.iter() {
+            if let Ok(mut game) = game_handle.write() {
+                if game.id == steam_game.id {
+                    steam_game.imported = game.imported.clone();
+                    steam_game.properties = game.properties.clone();
+                    steam_game.launch_args = game.launch_args.clone();
+                    steam_game.compatibility = game.compatibility.clone();
+                    if steam_game.executable_path.is_none() {
+                        steam_game.executable_path = game.executable_path.clone();
+                    }
+                    *game = steam_game.clone();
+                    game_found = true;
+                    break
+                }
+            }
+        }
+        if !game_found {
+            games.push(Arc::new(RwLock::new(steam_game.clone())));
         }
     }
 
-    // 2. Next, merge new Steam games, preserving properties if already present.
-    for sg in steam_games {
-        match merged_games.get_mut(&sg.id) {
-            Some(existing) => {
-                let mut updated_sg = sg.clone();
-                updated_sg.properties = existing.properties.clone();
-                updated_sg.launch_args = existing.launch_args.clone();
-                updated_sg.compatibility = existing.compatibility.clone();
-                updated_sg.imported = existing.imported || sg.imported;
-                if updated_sg.executable_path.is_none() {
-                    updated_sg.executable_path = existing.executable_path.clone();
+    // Add new Epic games
+    for epic_game in epic_games.iter_mut() {
+        let mut game_found: bool = false;
+        for game_handle in games.iter() {
+            if let Ok(mut game) = game_handle.write() {
+                if game.id == epic_game.id {
+                    epic_game.imported = game.imported.clone();
+                    epic_game.properties = game.properties.clone();
+                    epic_game.launch_args = game.launch_args.clone();
+                    epic_game.compatibility = game.compatibility.clone();
+                    if epic_game.executable_path.is_none() {
+                        epic_game.executable_path = game.executable_path.clone();
+                    }
+                    *game = epic_game.clone();
+                    game_found = true;
+                    break
                 }
-                *existing = updated_sg;
             }
-            None => {
-                merged_games.insert(sg.id.clone(), sg);
-            }
+        }
+        if !game_found {
+            games.push(Arc::new(RwLock::new(epic_game.clone())));
+        }
+    }
+    
+    let db_pool: Arc<SqlitePool>;
+    match state_handle.write() {
+        Ok(mut state) => {
+            state.set_library_games(&games);
+            db_pool = state.get_db_pool_arc();
+        }
+        Err(e) => {
+            bail!("")
         }
     }
 
-    // 3. Finally, merge Epic games. Refresh asset IDs (catalog_id/app_name) from
-    // the launcher assets list so install can use them without another API call.
-    for eg in epic_games {
-        match merged_games.get_mut(&eg.id) {
-            Some(existing) => {
-                if let Some(catalog_id) = eg.properties.other.get("catalog_id") {
-                    existing
-                        .properties
-                        .other
-                        .insert("catalog_id".to_string(), catalog_id.clone());
-                }
-                if let Some(app_name) = eg.properties.other.get("app_name") {
-                    existing
-                        .properties
-                        .other
-                        .insert("app_name".to_string(), app_name.clone());
-                }
+    for game_handle in games.iter() {
+        let game_clone: MonarchGame;
+        match game_handle.read() {
+            Ok(game) => {
+                game_clone = game.clone();
             }
-            None => {
-                merged_games.insert(eg.id.clone(), eg);
+            Err(e) => {
+                error!("");
+                continue;
             }
+        }
+        if let Err(e) = monarch_sql::update_game(&db_pool, &game_clone).await {
+            error!("");
         }
     }
 
-    let final_games: Vec<MonarchGame> = merged_games.into_values().collect();
-
-    library::overwrite_games(&final_games)
-        .await
-        .with_context(|| "monarch_client::refresh_library() -> ")?;
-
-    Ok(final_games)
+    Ok(())
 }
 
 /// Search for the name of a game and return the results.
