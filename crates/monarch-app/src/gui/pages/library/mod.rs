@@ -1,6 +1,9 @@
+use std::sync::{Arc, RwLock};
+
 use iced::widget::{column, container, mouse_area, row, text};
 use iced::Length::{self, Fill};
-use iced::{alignment, Element};
+use iced::{alignment, Element, Task};
+use monarch_core::monarch_utils::monarch_state::MonarchState;
 use tracing::{error, info};
 
 use crate::gui::components::common::icon_button;
@@ -10,7 +13,7 @@ use crate::gui::components::gamecard::game_browser::GameBrowser;
 use crate::gui::resources::{ADD_FOLDER, FILTER, REFRESH};
 use crate::gui::show_error;
 use monarch_core::monarch_games::monarchgame::MonarchGame;
-use monarch_core::{monarch_games, monarch_library, monarch_utils};
+use monarch_core::{monarch_games, monarch_utils};
 
 mod add_game;
 use add_game::AddGameModal;
@@ -26,11 +29,11 @@ pub enum Message {
     GameInstalled(String),
     /// Cheap post-uninstall update: drop the card without a full refresh.
     GameRemoved(String),
-    UpdateGames(Vec<MonarchGame>),
+    UpdateGames,
     UpdateGameProperties,
-    GameUpdated(MonarchGame),
+    GameUpdated(Arc<RwLock<MonarchGame>>),
     GameCard(gamecard::GameCardMessage),
-    OpenGameDetails(MonarchGame),
+    OpenGameDetails(Arc<RwLock<MonarchGame>>),
     Tick,
     ScannerHovered(bool),
     AddGameHovered(bool),
@@ -53,67 +56,109 @@ pub struct LibraryPage {
     is_filter_hovered: bool,
     add_game_modal: Option<AddGameModal>,
     filter_modal: Option<FilterModal>,
+
+    app_state: Arc<RwLock<MonarchState>>,
 }
 
 impl LibraryPage {
+    pub fn new(state_handle: Arc<RwLock<MonarchState>>) -> Self {
+        let mut browser: GameBrowser = GameBrowser::default();
+        if let Ok(state) = state_handle.read() {
+            let _ = browser.update(gamecard::GameCardMessage::UpdateGames(
+                state.get_library_games().to_vec(),
+            ));
+        }
+
+        let mut page = Self {
+            browser,
+            is_refreshing: false,
+            dot_count: 3,
+            tick_counter: 0,
+            is_scanner_hovered: false,
+            is_add_hovered: false,
+            is_filter_hovered: false,
+            add_game_modal: None,
+            filter_modal: None,
+
+            app_state: Arc::new(RwLock::new(MonarchState::new())),
+        };
+        page.load_persisted_filter();
+        page
+    }
+
     pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
         match msg {
             Message::RefreshLibrary => {
                 self.is_refreshing = true;
                 self.dot_count = 3;
                 self.tick_counter = 0;
+                let state_handle_clone = self.app_state.clone();
                 iced::Task::perform(
                     async move {
-                        match monarch_games::commands::refresh_library().await {
-                            Ok(games) => games,
-                            Err(e) => {
-                                show_error(e);
-                                Vec::new()
-                            }
+                        if let Err(e) =
+                            monarch_games::commands::refresh_library(state_handle_clone).await
+                        {
+                            show_error(e);
                         }
                     },
-                    Message::UpdateGames,
+                    |_| Message::UpdateGames,
                 )
             }
             Message::GameInstalled(game_id) => {
-                // Backend already persisted the install; sync just that card
-                // from in-memory state instead of a full library refresh.
-                let game = match monarch_library::commands::get_library() {
-                    Ok(games) => games.into_iter().find(|g| g.id == game_id),
+                let game_handle: Arc<RwLock<MonarchGame>> = match self.app_state.read() {
+                    Ok(state) => {
+                        match state
+                            .get_library_games()
+                            .iter()
+                            .cloned()
+                            .find(|g| g.read().unwrap().id == game_id)
+                        {
+                            Some(game) => game,
+                            None => return Task::none(),
+                        }
+                    }
                     Err(e) => {
-                        show_error(e);
-                        None
+                        error!("LibraryPage::update() Failed to acquire read lock on state_handle! | Err: {e}");
+                        show_error("Failed to finish game installation!");
+                        return Task::none();
                     }
                 };
 
-                let Some(game) = game else {
-                    return iced::Task::none();
-                };
+                self.browser.games.upsert_game(game_handle.clone());
 
-                self.browser.games.upsert_game(game.clone());
+                let state_handle_clone = self.app_state.clone();
 
                 iced::Task::perform(
                     async move {
-                        info!("Downloading artwork for: {}", game.name);
-                        let _ = monarch_games::commands::download_artwork(&game).await;
+                        let game_clone = game_handle.read().unwrap().clone();
+                        info!("Downloading artwork for: {}", game_clone.name);
+                        let _ =
+                            monarch_games::commands::download_artwork(game_handle.clone()).await;
 
-                        info!("Downloading cover for: {}", game.name);
-                        if let Err(e) = monarch_games::commands::download_thumbnail(&game).await {
+                        info!("Downloading cover for: {}", game_clone.name);
+                        if let Err(e) =
+                            monarch_games::commands::download_thumbnail(game_handle.clone()).await
+                        {
                             error!(
                                 "Failed to download thumbnail for game {} ({}): {}",
-                                game.id, game.thumbnail_url, e
+                                game_clone.id, game_clone.thumbnail_url, e
                             );
                         }
 
-                        if !game.is_installed {
-                            info!("Downloading greyscale for: {}", game.name);
-                            let _ = monarch_games::commands::download_greyscale(&game).await;
+                        if !game_clone.is_installed {
+                            info!("Downloading greyscale for: {}", game_clone.name);
+                            let _ =
+                                monarch_games::commands::download_greyscale(game_handle.clone())
+                                    .await;
                         }
 
-                        info!("Updating game properties for : {}", game.name);
-                        let mut game = game;
-                        monarch_games::commands::get_game_properties(&mut game).await;
-                        game
+                        info!("Updating game properties for : {}", game_clone.name);
+                        monarch_games::commands::get_game_properties(
+                            state_handle_clone,
+                            game_handle.clone(),
+                        )
+                        .await;
+                        game_handle
                     },
                     Message::GameUpdated,
                 )
@@ -122,39 +167,60 @@ impl LibraryPage {
                 self.browser.games.remove_game(&game_id);
                 iced::Task::none()
             }
-            Message::UpdateGames(games) => {
+            Message::UpdateGames => {
                 self.is_refreshing = false;
 
-                // Update the browser with the games as-is. Existing games keep
-                // their cached thumbnail paths, so already-downloaded images
-                // render immediately instead of being blanked to a placeholder.
+                let new_games = match self.app_state.read() {
+                    Ok(state) => state.get_library_games().to_vec(),
+                    Err(e) => {
+                        error!("LibraryPage::update() Failed to acquire read lock on state_handle! | Err: {e}");
+                        show_error("Failed to refresh library!");
+                        return Task::none();
+                    }
+                };
+                let state_handle = self.app_state.clone();
+
                 let _ = self
                     .browser
-                    .update(gamecard::GameCardMessage::UpdateGames(games.clone()));
+                    .update(gamecard::GameCardMessage::UpdateGames(new_games.clone()));
 
                 // Trigger download tasks. Each game emits GameUpdated as soon as
                 // its images are ready (artwork/thumbnail/greyscale early-return
                 // when already cached), then chains a second task that performs
                 // the slower properties enrichment — removing the network call
                 // from the image-critical path.
-                let download_tasks = iced::Task::batch(games.into_iter().map(|game| {
-                    let image_task: iced::Task<MonarchGame> = iced::Task::perform(
-                        async move {
-                            info!("Downloading artwork for: {}", game.name);
-                            let _ = monarch_games::commands::download_artwork(&game).await;
+                let download_tasks = iced::Task::batch(new_games.into_iter().map(move |game| {
+                    // `map`'s closure is FnMut (called once per game), so it can't
+                    // move `state_handle` itself; hand a fresh Arc to each task.
+                    let state_handle = state_handle.clone();
 
-                            info!("Downloading cover for: {}", game.name);
-                            if let Err(e) = monarch_games::commands::download_thumbnail(&game).await
+                    let image_task: iced::Task<Arc<RwLock<MonarchGame>>> = iced::Task::perform(
+                        async move {
+                            let game_clone = match game.read() {
+                                Ok(g) => g.clone(),
+                                Err(e) => {
+                                    error!("LibraryPage::update() Failed to acquire read lock on game! | Err: {e}");
+                                    return game.clone();
+                                }
+                            };
+
+                            info!("Downloading artwork for: {}", game_clone.name);
+                            let _ = monarch_games::commands::download_artwork(game.clone()).await;
+
+                            info!("Downloading cover for: {}", game_clone.name);
+                            if let Err(e) =
+                                monarch_games::commands::download_thumbnail(game.clone()).await
                             {
                                 error!(
                                     "Failed to download thumbnail for game {} ({}): {}",
-                                    game.id, game.thumbnail_url, e
+                                    game_clone.id, game_clone.thumbnail_url, e
                                 );
                             }
 
-                            if !game.is_installed {
-                                info!("Downloading greyscale for: {}", game.name);
-                                let _ = monarch_games::commands::download_greyscale(&game).await;
+                            if !game_clone.is_installed {
+                                info!("Downloading greyscale for: {}", game_clone.name);
+                                let _ =
+                                    monarch_games::commands::download_greyscale(game.clone()).await;
                             }
 
                             game
@@ -162,35 +228,47 @@ impl LibraryPage {
                         |game| game,
                     );
 
-                    image_task.then(
-                        |mut game| {
-                            iced::Task::batch([
-                                iced::Task::done(Message::GameUpdated(game.clone())),
-                                iced::Task::perform(
-                                    async move {
-                                        info!("Updating game properties for : {}", game.name);
-                                        monarch_games::commands::get_game_properties(&mut game)
-                                            .await;
-                                        game
-                                    },
-                                    Message::GameUpdated,
-                                ),
-                            ])
-                        },
-                    )
+                    image_task.then(move |game| {
+                        // `then`'s closure is also FnMut, so clone the handles
+                        // into the async block instead of moving them.
+                        let state = state_handle.clone();
+                        let props_handle = game.clone();
+
+                        iced::Task::batch([
+                            iced::Task::done(Message::GameUpdated(game)),
+                            iced::Task::perform(
+                                async move {
+                                    if let Ok(g) = props_handle.read() {
+                                        info!("Updating game properties for : {}", g.name);
+                                    }
+
+                                    monarch_games::commands::get_game_properties(
+                                        state,
+                                        props_handle.clone(),
+                                    )
+                                    .await;
+
+                                    props_handle
+                                },
+                                Message::GameUpdated,
+                            ),
+                        ])
+                    })
                 }));
 
                 download_tasks
             }
             Message::UpdateGameProperties => {
                 // Trigger download tasks
-                let update_tasks = iced::Task::batch(self.browser.games.games.iter().cloned().map(
-                    |mut gamecard| {
+                let update_tasks =
+                    iced::Task::batch(self.browser.games.games.iter().cloned().map(|gamecard| {
+                        let state_handle_clone = self.app_state.clone();
                         iced::Task::perform(
                             async move {
-                                if !gamecard.game.has_properties() {
+                                if !gamecard.game.read().unwrap().has_properties() {
                                     monarch_games::commands::get_game_properties(
-                                        &mut gamecard.game,
+                                        state_handle_clone,
+                                        gamecard.game.clone(),
                                     )
                                     .await;
                                 }
@@ -198,8 +276,7 @@ impl LibraryPage {
                             },
                             Message::GameUpdated,
                         )
-                    },
-                ));
+                    }));
 
                 update_tasks
             }
@@ -209,7 +286,7 @@ impl LibraryPage {
                     .games
                     .games
                     .iter_mut()
-                    .find(|c| c.game.id == game.id)
+                    .find(|c| c.game.read().unwrap().id == game.read().unwrap().id)
                 {
                     card.update_game(game);
                 }
@@ -219,8 +296,12 @@ impl LibraryPage {
                 // Check if it's a game press event
                 if let gamecard::GameCardMessage::GamePressed(id) = &game_card_message {
                     // Find the game and emit OpenGameDetails
-                    if let Some(game_card) =
-                        self.browser.games.games.iter().find(|g| g.game.id == *id)
+                    if let Some(game_card) = self
+                        .browser
+                        .games
+                        .games
+                        .iter()
+                        .find(|g| g.game.read().unwrap().id == *id)
                     {
                         return iced::Task::done(Message::OpenGameDetails(game_card.game.clone()));
                     }
@@ -288,7 +369,7 @@ impl LibraryPage {
                 iced::Task::none()
             }
             Message::OpenAddModal => {
-                self.add_game_modal = Some(AddGameModal::default());
+                self.add_game_modal = Some(AddGameModal::new(self.app_state.clone()));
                 iced::Task::none()
             }
             Message::AddModal(modal_msg) => {
@@ -318,8 +399,11 @@ impl LibraryPage {
                 }
             }
             Message::AddGame(game) => {
+                let state_handle_clone = self.app_state.clone();
                 iced::Task::perform(
-                    async move { monarch_games::commands::manual_add_game(game).await },
+                    async move {
+                        monarch_games::commands::manual_add_game(state_handle_clone, game).await
+                    },
                     |res| match res {
                         Ok(_) => Message::RefreshLibrary,
                         Err(e) => {
@@ -465,36 +549,5 @@ impl LibraryPage {
         } else {
             base_content.into()
         }
-    }
-}
-
-impl Default for LibraryPage {
-    fn default() -> Self {
-        let mut browser: GameBrowser = GameBrowser::default();
-
-        match monarch_library::commands::get_library() {
-            Ok(games) => {
-                let _ = browser.update(gamecard::GameCardMessage::UpdateGames(games));
-            }
-            Err(e) => {
-                show_error(e);
-            }
-        }
-
-        let mut page = Self {
-            browser,
-            is_refreshing: false,
-            dot_count: 3,
-            tick_counter: 0,
-            is_scanner_hovered: false,
-            is_add_hovered: false,
-            is_filter_hovered: false,
-            add_game_modal: None,
-            filter_modal: None,
-        };
-
-        page.load_persisted_filter();
-
-        page
     }
 }

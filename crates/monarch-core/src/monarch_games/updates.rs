@@ -153,6 +153,14 @@ pub async fn check_for_game_updates(
     state_handle: Arc<RwLock<MonarchState>>,
     downloader_handle: Arc<RwLock<MonarchDownloader>>,
 ) -> Result<Vec<MonarchGameUpdate>, String> {
+    let settings_handle: Arc<RwLock<Settings>>;
+    match state_handle.read() {
+        Ok(state) => { settings_handle = state.get_settings_ptr(); }
+        Err(e) => {
+            return Err(format!("updates::check_for_game_updates() Failed to acquire read lock on state_handle! | Err: {e}"))
+        }
+    }
+
     let games: Vec<Arc<RwLock<MonarchGame>>> = match state_handle.read() {
         Ok(state) => state.get_library_games().to_vec(),
         Err(e) => {
@@ -171,7 +179,7 @@ pub async fn check_for_game_updates(
     }
 
     let mut client = EgsClient::new();
-    if !client.credentials_exist() {
+    if !client.credentials_exist(settings_handle.clone()) {
         info!(
             "monarch_games::updates::check_for_game_updates() No Epic Games credentials found, skipping update check"
         );
@@ -180,7 +188,7 @@ pub async fn check_for_game_updates(
     }
 
     client
-        .load_existing_user()
+        .load_existing_user(settings_handle)
         .await
         .map_err(|e| format!("Failed to load Epic Games session | Err: {e}"))?;
 
@@ -236,6 +244,16 @@ pub async fn check_game_for_updates(
     downloader_handle: Arc<RwLock<MonarchDownloader>>,
     game: &MonarchGame,
 ) -> Result<GameUpdateCheck, String> {
+    let settings_handle: Arc<RwLock<Settings>>;
+    match state_handle.read() {
+        Ok(state) => {
+            settings_handle = state.get_settings_ptr();
+        }
+        Err(e) => return Err(format!(
+            "updates::check_game_for_updates() Failed to acquire read lock on state_handle! | Err: {e}"
+        )),
+    }
+
     let Some(install) = collect_managed_install(game) else {
         return Err(format!(
             "{} cannot be checked because it was not installed by Monarch or its install metadata is incomplete.",
@@ -244,14 +262,14 @@ pub async fn check_game_for_updates(
     };
 
     let mut client = EgsClient::new();
-    if !client.credentials_exist() {
+    if !client.credentials_exist(settings_handle.clone()) {
         return Err(String::from(
             "Sign in to the Epic Games Store to check this game for updates.",
         ));
     }
 
     client
-        .load_existing_user()
+        .load_existing_user(settings_handle)
         .await
         .map_err(|e| format!("Failed to load Epic Games session | Err: {e}"))?;
 
@@ -339,7 +357,6 @@ async fn queue_detected_updates(
             folder: install_parent_folder(&game, &default_folder),
             store: String::from("epicgames"),
             game_name: game.name.clone(),
-            game_store: String::from("epicgames"),
             game_store_id: update.update.namespace.clone(),
             os: std::env::consts::OS.to_string(),
             compatibility: game.compatibility.clone(),

@@ -39,7 +39,11 @@ use crate::monarch_utils::monarch_vdf::get_proton_versions;
 */
 
 /// Search for games on Monarch, currently only support Steam search
-pub async fn search_games(settings_handle: Arc<RwLock<Settings>>, name: String, filter: SearchFilter) -> Vec<MonarchWebApiGame> {
+pub async fn search_games(
+    settings_handle: Arc<RwLock<Settings>>,
+    name: String,
+    filter: SearchFilter,
+) -> Vec<MonarchWebApiGame> {
     if filter.monarch {
         let client = MonarchClient::new();
         return client
@@ -81,16 +85,14 @@ pub async fn search_games(settings_handle: Arc<RwLock<Settings>>, name: String, 
 
 /// Manually refreshes the entire Monarch library, currently only supports Steam & Epic Games (kinda) still WIP
 pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<(), String> {
-    match monarch_client::refresh_library(state_handle).await {
-        Ok(games) => Ok(()),
-        Err(e) => {
-            error!(
-                "monarch_games::commands::refresh_library() -> {}",
-                e.chain().map(|e| e.to_string()).collect::<String>()
-            );
-            Err(String::from("Failed to refresh library!"))
-        }
+    if let Err(e) = monarch_client::refresh_library(state_handle).await {
+        error!(
+            "monarch_games::commands::refresh_library() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+        return Err(String::from("Failed to refresh library!"));
     }
+    Ok(())
 }
 
 /// Tell backend to download cover/thumbnail for game.
@@ -185,7 +187,10 @@ pub async fn download_greyscale(game_handle: Arc<RwLock<MonarchGame>>) -> Result
 }
 
 /// Launch a game
-pub async fn launch_game(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(), String> {
+pub async fn launch_game(
+    settings_handle: Arc<RwLock<Settings>>,
+    game_handle: Arc<RwLock<MonarchGame>>,
+) -> Result<(), String> {
     // Clone the game to hold across .awaits
     let game_clone: MonarchGame = match game_handle.read() {
         Ok(game) => game.clone(),
@@ -197,7 +202,7 @@ pub async fn launch_game(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(), St
 
     info!("Launching game: {}", game_clone.name);
 
-    if let Err(e) = game_clone.launch().await {
+    if let Err(e) = game_clone.launch(settings_handle).await {
         error!(
             "monarch_games::commands::launch_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -212,7 +217,7 @@ pub async fn launch_game(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(), St
 
 /// Tells Monarch to download specified game
 pub async fn download_game(
-    state_handle: Arc<RwLock<MonarchState>>,
+    downloader_handle: Arc<RwLock<MonarchDownloader>>,
     game_handle: Arc<RwLock<MonarchGame>>,
     mut opts: DownloadOptions,
 ) -> Result<(), String> {
@@ -220,6 +225,15 @@ pub async fn download_game(
     // instead of having to rely on 3rd party launchers.
     info!("Installing: {}", opts.game_name);
     debug!("Using options: {:?}", opts);
+
+    let state_handle: Arc<RwLock<MonarchState>>;
+    match downloader_handle.read() {
+        Ok(downloader) => state_handle = downloader.state_handle.clone(),
+        Err(e) => {
+            error!("monarch_games::commands::download_game() Failed to acquire read lock on downloader_handle! | Err: {e}");
+            return Err(format!("Failed to start download for: {}", opts.game_name));
+        }
+    }
 
     if opts.folder.is_empty() {
         match state_handle.read() {
@@ -250,7 +264,7 @@ pub async fn download_game(
 
     if let Err(e) = game_clone
         .get_store()
-        .install_game(&mut game_clone, &opts)
+        .install_game(downloader_handle, &mut game_clone, &opts)
         .await
     {
         error!(
@@ -277,7 +291,10 @@ pub async fn download_game(
 }
 
 /// Tells Monarch to download specified game
-pub async fn update_game(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(), String> {
+pub async fn update_game(
+    settings_handle: Arc<RwLock<Settings>>,
+    game_handle: Arc<RwLock<MonarchGame>>,
+) -> Result<(), String> {
     // Clone the game to hold across .awaits
     let game_clone: MonarchGame = match game_handle.read() {
         Ok(game) => game.clone(),
@@ -289,7 +306,11 @@ pub async fn update_game(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(), St
 
     info!("Updating: {}", game_clone.name);
 
-    if let Err(e) = game_clone.get_store().update_game(&game_clone).await {
+    if let Err(e) = game_clone
+        .get_store()
+        .update_game(settings_handle, &game_clone)
+        .await
+    {
         error!(
             "monarch_games::commands::update_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -397,6 +418,7 @@ pub async fn check_game_for_updates(
 /// "Verify Integrity of Files" action. `on_progress` is invoked with
 /// (files checked, total files) whenever the whole-percent progress changes.
 pub async fn verify_game_integrity(
+    settings_handle: Arc<RwLock<Settings>>,
     game_handle: Arc<RwLock<MonarchGame>>,
     on_progress: Option<super::integrity::ProgressCallback>,
 ) -> Result<String, String> {
@@ -414,7 +436,7 @@ pub async fn verify_game_integrity(
     // Manifest fetching in monarch_egs unwraps on some network failures;
     // catch panics so a failed verification can never take Monarch down.
     let verify = futures::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(
-        super::integrity::verify_game_integrity(&game_clone, on_progress),
+        super::integrity::verify_game_integrity(settings_handle, &game_clone, on_progress),
     ));
 
     match verify.await {
@@ -445,7 +467,7 @@ pub fn get_pending_download_count(downloader_handle: Arc<RwLock<MonarchDownloade
 
 /// Tells Monarch to remove specified game
 pub async fn remove_game(
-    state_handle: Arc<RwLock<MonarchState>>,
+    settings_handle: Arc<RwLock<Settings>>,
     game_handle: Arc<RwLock<MonarchGame>>,
 ) -> Result<(), String> {
     // Clone the game to hold across .awaits
@@ -459,49 +481,16 @@ pub async fn remove_game(
 
     info!("Uninstalling: {}", game_clone.name);
 
-    if let Err(e) = game_clone.get_store().uninstall_game(&game_clone).await {
+    if let Err(e) = game_clone
+        .get_store()
+        .uninstall_game(settings_handle, &game_clone)
+        .await
+    {
         error!("monarch_games::commands::remove_game() -> {e}");
         return Err(format!("Failed to uninstall: {}", game_clone.name));
     }
 
     Ok(())
-
-    /*
-        match store.as_str() {
-            "steam" | "steamcmd" => {
-                if let Err(e) = monarch_client::uninstall_game(&store, &store_id).await {
-                    error!(
-                        "monarch_games::commands::remove_game() -> {}",
-                        e.chain().map(|e| e.to_string()).collect::<String>()
-                    );
-                    return Err(format!("Something went wrong while removing: {name}"));
-                }
-            }
-            "epicgames" => {
-                let game = match game {
-                    Some(game) => game,
-                    None => {
-                        error!(
-                            "monarch_games::commands::remove_game() Game not found in library: {name}"
-                        );
-                        return Err(format!("Something went wrong while removing: {name}"));
-                    }
-                };
-
-                if let Err(e) = library::mark_game_uninstalled(&game).await {
-                    error!(
-                        "monarch_games::commands::remove_game() -> {}",
-                        e.chain().map(|e| e.to_string()).collect::<String>()
-                    );
-                    return Err(format!("Something went wrong while removing: {name}"));
-                }
-            }
-            _ => {
-                error!("monarch_games::commands::remove_game() Unsupported store: {store}");
-                return Err(format!("Something went wrong while removing: {name}"));
-            }
-        }
-    */
 }
 
 /// Removes the install directory of a game that Monarch itself downloaded.
@@ -515,7 +504,10 @@ fn remove_install_dir(game: &MonarchGame) -> Result<()> {
 }
 
 /// TODO: Come back and figure out the multiple store differentiation
-pub async fn move_game_to_monarch(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(), String> {
+pub async fn move_game_to_monarch(
+    settings_handle: Arc<RwLock<Settings>>,
+    game_handle: Arc<RwLock<MonarchGame>>,
+) -> Result<(), String> {
     // Clone the game to hold across .awaits
     let game_clone: MonarchGame = match game_handle.read() {
         Ok(game) => game.clone(),
@@ -532,7 +524,11 @@ pub async fn move_game_to_monarch(game_handle: Arc<RwLock<MonarchGame>>) -> Resu
     );
 
     // First remove the game from old store
-    if let Err(e) = game_clone.get_store().uninstall_game(&game_clone).await {
+    if let Err(e) = game_clone
+        .get_store()
+        .uninstall_game(settings_handle, &game_clone)
+        .await
+    {
         error!(
             "monarch_games::commands::move_game_to_monarch() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -568,7 +564,9 @@ pub async fn update_game_properties(
         Ok(game) => game.clone(),
         Err(e) => {
             error!("monarch_games::commands::update_game_properties() Failed to acquire lock on game_handle! | Err: {e}");
-            return Err(format!("Failed to download cover for game"));
+            return Err(format!(
+                "Something went wrong while updating game properties!"
+            ));
         }
     };
 
@@ -576,7 +574,9 @@ pub async fn update_game_properties(
         Ok(state) => state.get_db_pool_arc(),
         Err(e) => {
             error!("monarch_games::commands::update_game_properties() Failed to acquire lock on state_handle! | Err: {e}");
-            return Err(format!("Failed to download cover for game"));
+            return Err(format!(
+                "Something went wrong while updating game properties!"
+            ));
         }
     };
 
@@ -635,6 +635,7 @@ pub fn proton_versions() -> Result<Vec<ProtonVersion>, String> {
 /// Checks which platforms are supported for a game from Epic Games Store.
 /// Returns SupportedPlatforms indicating Windows/Linux/Mac support.
 pub async fn check_egs_platform_support(
+    settings_handle: Arc<RwLock<Settings>>,
     game_handle: Arc<RwLock<MonarchGame>>,
 ) -> Result<SupportedPlatforms, String> {
     // Clone the game to hold across .awaits
@@ -662,7 +663,7 @@ pub async fn check_egs_platform_support(
     }
 
     let mut client = EgsClient::new();
-    if let Err(e) = client.load_existing_user().await {
+    if let Err(e) = client.load_existing_user(settings_handle).await {
         error!(
             "monarch_games::commands::check_egs_platform_support() Failed to load EGS user | Err: {}",
             e
@@ -814,10 +815,16 @@ pub async fn get_executables(
     }
 
     // Update the game properties
-    if let Ok(state) = state_handle.read() {
-        if let Err(e) =
-            library::update_game_properties_in_db(state.get_db_pool_arc(), &game_clone).await
-        {
+    //
+    // NOTE: The `RwLockReadGuard` must be dropped *before* the `.await` below.
+    // Holding it across the await makes the resulting future `!Send`, which
+    // breaks spawning (tokio, iced's Task::perform, etc.).
+    let db_pool = state_handle
+        .read()
+        .ok()
+        .map(|state| state.get_db_pool_arc());
+    if let Some(db_pool) = db_pool {
+        if let Err(e) = library::update_game_properties_in_db(db_pool, &game_clone).await {
             error!(
                 "monarch_games::commands::get_executables() -> {}",
                 e.chain().map(|e| e.to_string()).collect::<String>()
@@ -922,14 +929,14 @@ pub fn install_umu(settings_handle: Arc<RwLock<Settings>>) -> Result<(), String>
     }
 }
 
-pub fn steamcmd_is_installed() -> bool {
+pub fn steamcmd_is_installed(settings_handle: Arc<RwLock<Settings>>) -> bool {
     use super::steam_client;
-    steam_client::steamcmd_is_installed()
+    steam_client::steamcmd_is_installed(settings_handle)
 }
 
-pub async fn install_steamcmd() -> Result<(), String> {
+pub async fn install_steamcmd(settings_handle: Arc<RwLock<Settings>>) -> Result<(), String> {
     use super::steam_client;
-    if let Err(e) = steam_client::install_steamcmd().await {
+    if let Err(e) = steam_client::install_steamcmd(settings_handle).await {
         error!(
             "monarch_games::commands::install_steamcmd() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -951,8 +958,8 @@ pub fn remove_umu() -> Result<(), String> {
     Ok(())
 }
 
-pub fn remove_steamcmd() -> Result<(), String> {
-    if let Err(e) = steam_client::remove_steamcmd() {
+pub fn remove_steamcmd(settings_handle: Arc<RwLock<Settings>>) -> Result<(), String> {
+    if let Err(e) = steam_client::remove_steamcmd(settings_handle) {
         error!(
             "monarch_games::commands::remove_steamcmd() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

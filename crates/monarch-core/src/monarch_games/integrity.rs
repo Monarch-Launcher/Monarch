@@ -8,16 +8,17 @@
 */
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use tracing::{error, info, warn};
 
-use monarch_egs::{DownloadManager, VerifyProgress as EgsVerifyProgress, get_game_manifest};
+use monarch_egs::{get_game_manifest, DownloadManager, VerifyProgress as EgsVerifyProgress};
 
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client;
+use crate::monarch_utils::monarch_settings::Settings;
 
 /// Platform used when installing games through monarch_egs. Managed installs
 /// always use Windows builds, even on Linux/macOS (via umu/proton).
@@ -59,6 +60,7 @@ pub type ProgressCallback = Arc<dyn Fn(VerificationProgress) + Send + Sync>;
 /// is invoked every time the floored whole-percent progress changes; SteamCMD
 /// validation reports no per-file progress.
 pub async fn verify_game_integrity(
+    settings_handle: Arc<RwLock<Settings>>,
     game: &MonarchGame,
     on_progress: Option<ProgressCallback>,
 ) -> Result<String, String> {
@@ -69,11 +71,11 @@ pub async fn verify_game_integrity(
     }
 
     if game.stores.iter().any(|store| store.name == "epicgames") {
-        return verify_epic_install(game, on_progress).await;
+        return verify_epic_install(settings_handle, game, on_progress).await;
     }
 
     if game.stores.iter().any(|store| store.name == "steamcmd") {
-        return verify_steam_install(game).await;
+        return verify_steam_install(settings_handle, game).await;
     }
 
     Err(String::from(
@@ -83,6 +85,7 @@ pub async fn verify_game_integrity(
 
 /// Verifies a Monarch-installed Epic Games title against its CDN manifest.
 async fn verify_epic_install(
+    settings_handle: Arc<RwLock<Settings>>,
     game: &MonarchGame,
     on_progress: Option<ProgressCallback>,
 ) -> Result<String, String> {
@@ -90,7 +93,7 @@ async fn verify_epic_install(
     let install_dir = validated_install_dir(game)?;
 
     let mut client = EgsClient::new();
-    if !client.credentials_exist() {
+    if !client.credentials_exist(settings_handle.clone()) {
         info!(
             "monarch_games::integrity::verify_epic_install() No Epic Games credentials found, cannot verify {}",
             game.name
@@ -101,7 +104,7 @@ async fn verify_epic_install(
     }
 
     client
-        .load_existing_user()
+        .load_existing_user(settings_handle)
         .await
         .map_err(|e| format!("Failed to load Epic Games session | Err: {e}"))?;
 
@@ -138,7 +141,9 @@ async fn verify_epic_install(
     })
     .await
     .map_err(|e| format!("Integrity verification task failed | Err: {e}"))
-    .and_then(|verified| verified.map_err(|e| format!("Failed to verify the installation | Err: {e}")));
+    .and_then(|verified| {
+        verified.map_err(|e| format!("Failed to verify the installation | Err: {e}"))
+    });
 
     // The sender is dropped once verification finishes, ending the forwarder.
     let _ = forwarder.await;
@@ -167,8 +172,11 @@ async fn verify_epic_install(
 /// Validates a Monarch-installed SteamCMD title. SteamCMD has no read-only
 /// integrity check; `+app_update <id> validate` re-hashes every file and
 /// repairs anything that is missing or corrupt.
-async fn verify_steam_install(game: &MonarchGame) -> Result<String, String> {
-    steam_client::update_game(&game.get_store_id())
+async fn verify_steam_install(
+    settings_handle: Arc<RwLock<Settings>>,
+    game: &MonarchGame,
+) -> Result<String, String> {
+    steam_client::update_game(settings_handle, &game.get_store_id())
         .await
         .map_err(|e| {
             error!(

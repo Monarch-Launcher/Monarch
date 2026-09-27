@@ -24,7 +24,9 @@ pub struct MonarchState {
 
 impl Drop for MonarchState {
     fn drop(&mut self) {
-        futures::executor::block_on(self.library_conn.as_ref().unwrap().close());
+        if self.library_conn.is_some() {
+            futures::executor::block_on(self.library_conn.as_ref().unwrap().close());
+        }
     }
 }
 
@@ -56,18 +58,6 @@ impl MonarchState {
                 );
             }
         }
-
-        // Push the persisted download speed limit into the downloader so it
-        // applies from launch without any UI interaction.
-        let max_speed_bps = match self.settings.read() {
-            Ok(settings) => settings.monarch.max_download_speed_bps(),
-            Err(e) => {
-                error!(
-                    "monarch_state::init() Failed to lock on settings for speed limit! | Err: {e}"
-                );
-                0
-            }
-        };
 
         self.library_conn = Some(Arc::new(SqlitePool::connect_lazy_with(
             SqliteConnectOptions::new()

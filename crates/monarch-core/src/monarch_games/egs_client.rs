@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -13,7 +14,8 @@ use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::monarch_fs::{
     self, generate_cache_image_path, generate_library_image_path, get_monarch_home, wine_prefix_dir,
 };
-use crate::monarch_utils::monarch_game_downloader::DownloadJob;
+use crate::monarch_utils::monarch_game_downloader::{DownloadJob, MonarchDownloader};
+use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::{monarch_http, monarch_terminal};
 use monarch_egs::{
     check_platform_support, get_game_manifest, AttributeValue, EgsLaunchCommand, Manifest, Session,
@@ -31,7 +33,12 @@ pub struct EgsClient {
 
 #[async_trait]
 impl StoreType for EgsClient {
-    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
+    async fn search_games(
+        &self,
+        settings_handle: Arc<RwLock<Settings>>,
+        name: &str,
+        _filter: &SearchFilter,
+    ) -> Vec<Box<dyn SearchResult>> {
         let monarch_url: &'static str = std::env!("MONARCH_URL");
         let search_term: String =
             format!("{}/api/games?search={}?store=epicgames", monarch_url, name,);
@@ -69,9 +76,13 @@ impl StoreType for EgsClient {
 
         for game in web_games.iter_mut() {
             let thumbnail_path = String::from(
-                generate_cache_image_path(&game.name.clone(), GameImageType::Cover)
-                    .to_str()
-                    .unwrap(),
+                generate_cache_image_path(
+                    settings_handle.clone(),
+                    &game.name.clone(),
+                    GameImageType::Cover,
+                )
+                .to_str()
+                .unwrap(),
             );
             game.thumbnail_path = thumbnail_path;
         }
@@ -82,41 +93,48 @@ impl StoreType for EgsClient {
             .collect()
     }
 
-    async fn install_game(&self, game: &mut MonarchGame, opts: &DownloadOptions) -> Result<()> {
+    async fn install_game(
+        &self,
+        downloader_handle: Arc<RwLock<MonarchDownloader>>,
+        game: &mut MonarchGame,
+        opts: &DownloadOptions,
+    ) -> Result<()> {
         let job = self.prepare_download_job(game, opts).await?;
 
         // Submit the job to the global downloader, which routes it to the EGS
         // download handler (and on to monarch_egs) once registered.
-        match MONARCH_STATE.read() {
-            Ok(state) => match state.get_downloader_ptr().write() {
-                Ok(mut downloader) => {
-                    if let Err(e) = downloader.register_egs_handler() {
-                        error!(
+        match downloader_handle.write() {
+            Ok(mut downloader) => {
+                if let Err(e) = downloader.register_egs_handler() {
+                    error!(
                             "egs_client::install_game() Failed to register EGS download handler | Err: {e}"
                         );
-                        bail!("Failed to register EGS download handler!")
-                    }
-                    downloader.start_download(job);
+                    bail!("Failed to register EGS download handler!")
                 }
-                Err(e) => {
-                    error!("egs_client::install_game() Failed to lock on downloader | Err: {e}");
-                    bail!("Failed to lock on downloader!")
-                }
-            },
+                downloader.start_download(job);
+            }
             Err(e) => {
-                error!("egs_client::install_game() Failed to lock on MONARCH_STATE | Err: {e}");
-                bail!("Failed to lock on MONARCH_STATE!")
+                error!("egs_client::install_game() Failed to acquire write lock on downloader | Err: {e}");
+                bail!("Failed to lock on downloader!")
             }
         }
 
         Ok(())
     }
 
-    async fn uninstall_game(&self, _game: &MonarchGame) -> Result<()> {
+    async fn uninstall_game(
+        &self,
+        _settings_handle: Arc<RwLock<Settings>>,
+        _game: &MonarchGame,
+    ) -> Result<()> {
         unimplemented!()
     }
 
-    async fn update_game(&self, _game: &MonarchGame) -> Result<()> {
+    async fn update_game(
+        &self,
+        _settings_handle: Arc<RwLock<Settings>>,
+        _game: &MonarchGame,
+    ) -> Result<()> {
         unimplemented!()
     }
 
@@ -124,15 +142,8 @@ impl StoreType for EgsClient {
         false
     }
 
-    fn store_enabled(&self) -> bool {
-        let settings_lock = match get_settings() {
-            Ok(lock) => lock,
-            Err(e) => {
-                error!("egs::store_enabled() get_settings() failed! | Err: {}", e);
-                return false;
-            }
-        };
-        let settings = match settings_lock.read() {
+    fn store_enabled(&self, settings_handle: Arc<RwLock<Settings>>) -> bool {
+        let settings = match settings_handle.read() {
             Ok(settings) => settings,
             Err(e) => {
                 error!(
@@ -142,13 +153,16 @@ impl StoreType for EgsClient {
                 return false;
             }
         };
-
         settings.epic.manage
     }
 
-    async fn launch_game(&mut self, game: &MonarchGame) -> Result<()> {
-        if self.credentials_exist() {
-            self.load_existing_user()
+    async fn launch_game(
+        &mut self,
+        settings_handle: Arc<RwLock<Settings>>,
+        game: &MonarchGame,
+    ) -> Result<()> {
+        if self.credentials_exist(settings_handle.clone()) {
+            self.load_existing_user(settings_handle.clone())
                 .await
                 .with_context(|| "linux::egs::egs_run() -> ")?;
         } else {
@@ -175,7 +189,8 @@ impl StoreType for EgsClient {
         #[cfg(target_os = "windows")]
         let compat: CompatLayer = CompatLayer::None;
 
-        let prefix: PathBuf = wine_prefix_dir(&format!("umu-{}", game.get_store_id()));
+        let prefix: PathBuf =
+            wine_prefix_dir(settings_handle, &format!("umu-{}", game.get_store_id()));
 
         let user_args: Vec<String> = game
             .launch_args
@@ -266,28 +281,23 @@ impl EgsClient {
     }
 
     // Gets the existing user from monarch_egs.json file
-    pub async fn load_existing_user(&mut self) -> Result<()> {
+    pub async fn load_existing_user(
+        &mut self,
+        settings_handle: Arc<RwLock<Settings>>,
+    ) -> Result<()> {
         let session: Session = self
-            .load_session_from_file()
+            .load_session_from_file(settings_handle.clone())
             .with_context(|| "egs::load_existing_user() -> ")?;
 
         self.user = User::load_stored_user(session).await;
 
-        match get_settings() {
-            Ok(settings_lock) => match settings_lock.read() {
-                Ok(settings) => {
-                    self.user.set_display_name(&settings.epic.username);
-                }
-                Err(e) => {
-                    error!(
-                        "egs::load_existing_user() settings_lock.read() failed! | Err: {}",
-                        e
-                    );
-                }
-            },
+        match settings_handle.read() {
+            Ok(settings) => {
+                self.user.set_display_name(&settings.epic.username);
+            }
             Err(e) => {
                 error!(
-                    "egs::load_existing_user() get_settings() failed! | Err: {}",
+                    "egs::load_existing_user() settings_lock.read() failed! | Err: {}",
                     e
                 );
             }
@@ -305,8 +315,8 @@ impl EgsClient {
             })
     }
 
-    pub fn credentials_exist(&self) -> bool {
-        Self::get_epic_games_token_path().exists()
+    pub fn credentials_exist(&self, settings_handle: Arc<RwLock<Settings>>) -> bool {
+        Self::get_epic_games_token_path(settings_handle).exists()
     }
 
     pub fn open_epic_login(&self) {
@@ -314,13 +324,17 @@ impl EgsClient {
         self.user.start_auth();
     }
 
-    pub async fn save_epic_auth_code(&mut self, code: &str) -> Result<()> {
+    pub async fn save_epic_auth_code(
+        &mut self,
+        settings_handle: Arc<RwLock<Settings>>,
+        code: &str,
+    ) -> Result<()> {
         info!("Logging in using Epic Games auth code...");
         self.user.finish_auth(code).await.with_context(|| {
             "egs::save_epic_auth_code() Failed to authenticate using auth code! | Err: "
         })?;
 
-        self.store_session_to_file()
+        self.store_session_to_file(settings_handle)
             .with_context(|| "egs::save_epic_auth_code() -> ")
     }
 
@@ -399,16 +413,24 @@ impl EgsClient {
         Ok(DownloadJob::new(game, opts.clone(), manifest))
     }
 
-    pub async fn get_library(&self) -> Vec<MonarchGame> {
+    pub async fn get_library(&self, settings_handle: Arc<RwLock<Settings>>) -> Vec<MonarchGame> {
         let mut games = self.get_user_games().await;
 
         for game in games.iter_mut() {
-            game.thumbnail_path = generate_library_image_path(&game.name, GameImageType::Cover)
-                .to_string_lossy()
-                .to_string();
-            game.artwork_path = generate_library_image_path(&game.name, GameImageType::Artwork)
-                .to_string_lossy()
-                .to_string();
+            game.thumbnail_path = generate_library_image_path(
+                settings_handle.clone(),
+                &game.name,
+                GameImageType::Cover,
+            )
+            .to_string_lossy()
+            .to_string();
+            game.artwork_path = generate_library_image_path(
+                settings_handle.clone(),
+                &game.name,
+                GameImageType::Artwork,
+            )
+            .to_string_lossy()
+            .to_string();
         }
 
         games
@@ -550,12 +572,12 @@ impl EgsClient {
         results
     }
 
-    fn get_epic_games_token_path() -> PathBuf {
-        get_monarch_home().join("monarch_egs.json")
+    fn get_epic_games_token_path(settings_handle: Arc<RwLock<Settings>>) -> PathBuf {
+        get_monarch_home(settings_handle).join("monarch_egs.json")
     }
 
-    fn load_session_from_file(&self) -> Result<Session> {
-        let path: PathBuf = Self::get_epic_games_token_path();
+    fn load_session_from_file(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<Session> {
+        let path: PathBuf = Self::get_epic_games_token_path(settings_handle);
         let json_content_str: String = std::fs::read_to_string(&path).with_context(|| {
             format!(
                 "egs::load_session_from_file() Failed to read {} to String! | Err: ",
@@ -567,9 +589,9 @@ impl EgsClient {
         })
     }
 
-    fn store_session_to_file(&self) -> Result<()> {
+    fn store_session_to_file(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
         let json_content = serde_json::to_value(self.user.session()).unwrap();
-        let path: PathBuf = Self::get_epic_games_token_path();
+        let path: PathBuf = Self::get_epic_games_token_path(settings_handle);
         std::fs::write(&path, json_content.to_string()).with_context(|| {
             "egs::store_session_to_file() Failed to write EGS credentials to file! | Err: "
         })

@@ -218,7 +218,7 @@ pub fn steam_is_installed() -> bool {
 }
 
 /// Finds local steam library installed on current system
-pub async fn get_library() -> Vec<MonarchGame> {
+pub async fn get_library(settings_handle: Arc<RwLock<Settings>>) -> Vec<MonarchGame> {
     if !steam_is_installed() {
         info!("Steam not installed! Skipping...");
         return Vec::new();
@@ -243,7 +243,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
     };
 
     if !found_games.is_empty() {
-        games = parse_steam_ids(&found_games, false, true).await;
+        games = parse_steam_ids(settings_handle, &found_games, false, true).await;
     }
 
     games

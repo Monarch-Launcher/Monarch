@@ -10,7 +10,6 @@
  */
 
 use anyhow::{bail, Result};
-use sqlx::SqlitePool;
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -202,7 +201,7 @@ pub struct MonarchDownloader {
     /// registered handler so updates propagate to running downloads.
     speed_limit_bps: Arc<AtomicU64>,
 
-    state_handle: Arc<RwLock<MonarchState>>,
+    pub state_handle: Arc<RwLock<MonarchState>>,
 }
 
 /// The main downloader struct.
@@ -540,21 +539,26 @@ async fn add_installed_game_to_library(
         installed.launch_args = Some(launch_command);
     }
 
-    let already_installed = state_handle
-        .read()
-        .ok()
-        .map(|state| state.get_game(&installed.id).is_some())
-        .unwrap_or(false);
+    // Compute the library check and clone the DB pool out of the guard, then
+    // drop it before awaiting: a std RwLock guard held across `.await` makes
+    // this future `!Send`, which breaks the `tokio::spawn` wrapping it.
+    let (already_installed, pool) = match state_handle.read() {
+        Ok(state) => {
+            let already = state.get_game(&installed.id).is_some();
+            let pool = state.get_db_pool_arc();
+            (already, Some(pool))
+        }
+        Err(_) => (false, None),
+    };
 
-    if let Ok(state) = state_handle.read() {
-        let pool: Arc<SqlitePool> = state.get_db_pool_arc();
+    if let Some(pool) = pool {
         let result = if already_installed {
             crate::monarch_library::library::update_game_properties_in_db(pool, &installed).await
         } else {
             crate::monarch_library::library::add_game(pool, &installed).await
         };
 
-    if let Err(e) = result {
+        if let Err(e) = result {
             error!(
                 "egs_download::Failed to add {} to library | Err: {e}",
                 installed.name
@@ -562,7 +566,7 @@ async fn add_installed_game_to_library(
         }
     }
 }
- 
+
 /// Downloads Epic Games titles using `monarch_egs` directly, no external CLI
 /// required. The store-specific manifest is carried in the [`DownloadJob`].
 /// Progress events are published to the shared status slot for the UI to poll.

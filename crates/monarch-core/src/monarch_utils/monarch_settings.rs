@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::{Arc, RwLock};
 use toml::Table;
 use tracing::{error, info};
 
@@ -181,9 +182,10 @@ impl Settings {
         {
             self.monarch.umu_bin = umu::get_umu_exe().to_string_lossy().to_string();
         }
-        self.monarch.steamcmd_bin = steam_client::get_steamcmd_exe()
-            .to_string_lossy()
-            .to_string();
+        self.monarch.steamcmd_bin =
+            steam_client::get_steamcmd_exe(Arc::new(RwLock::new(self.clone())))
+                .to_string_lossy()
+                .to_string();
 
         if let Err(e) = write_settings(&self) {
             error!("monarch_settings::fix_settings() Failed to write settings! | Err: {e}")
@@ -213,9 +215,7 @@ impl Default for Settings {
         #[cfg(not(target_os = "linux"))]
         let umu_bin: String = String::new();
 
-        let steamcmd_bin: String = steam_client::get_steamcmd_exe()
-            .to_string_lossy()
-            .to_string();
+        let steamcmd_bin: String = String::new();
 
         let monarch: MonarchSettings = MonarchSettings {
             monarch_home: home_path_str,

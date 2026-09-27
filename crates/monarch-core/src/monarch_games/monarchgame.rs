@@ -15,6 +15,7 @@ use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::download_image;
 use crate::monarch_utils::monarch_fs::{generate_greyscale_path, path_exists};
+use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -246,9 +247,9 @@ impl GameType for MonarchGame {
         0.0
     }
 
-    async fn launch(&self) -> Result<()> {
+    async fn launch(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
         self.get_store()
-            .launch_game(&self)
+            .launch_game(settings_handle, &self)
             .await
             .with_context(|| "monarchgame::launch() -> ")
     }
