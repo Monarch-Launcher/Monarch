@@ -419,9 +419,10 @@ impl LibraryPage {
     /// Persist the current library filter to settings if the corresponding
     /// setting is enabled. Best-effort: failures only log.
     fn persist_filter(&self) {
-        let Ok(settings_ptr) = monarch_utils::commands::get_settings() else {
+        let Ok(state) = self.app_state.read() else {
             return;
         };
+        let settings_ptr = state.get_settings_ptr();
         let Ok(mut settings) = settings_ptr.write() else {
             return;
         };
@@ -440,9 +441,10 @@ impl LibraryPage {
     /// Load the persisted library filter at startup when the setting is
     /// enabled.
     fn load_persisted_filter(&mut self) {
-        let Ok(settings_ptr) = monarch_utils::commands::get_settings() else {
+        let Ok(state) = self.app_state.read() else {
             return;
         };
+        let settings_ptr = state.get_settings_ptr();
         let Ok(settings) = settings_ptr.read() else {
             return;
         };

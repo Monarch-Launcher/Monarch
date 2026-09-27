@@ -109,8 +109,13 @@ pub struct SettingsPage {
 }
 
 impl SettingsPage {
-    pub fn new(downloader_handle: Arc<RwLock<MonarchDownloader>>) -> Self {
-        let shared_settings = monarch_utils::commands::get_settings().unwrap_or_default();
+    pub fn new(
+        settings_handle: Arc<RwLock<Settings>>,
+        downloader_handle: Arc<RwLock<MonarchDownloader>>,
+    ) -> Self {
+        // Use the shared Settings pointer that App provides so this page edits
+        // the same settings as the rest of the app, not a divergent copy.
+        let shared_settings = settings_handle;
         let (steam_user, _epic_user, max_speed_tmp, max_speed_prefix) = match shared_settings.read()
         {
             Ok(s) => (

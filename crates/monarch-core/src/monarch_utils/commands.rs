@@ -6,6 +6,7 @@ use tracing::error;
 use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
+use super::monarch_state::MonarchState;
 use super::monarch_settings::{LauncherSettings, Settings};
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
@@ -57,12 +58,22 @@ pub fn open_external_link(url: &str) {
 }
 
 /// Returns settings read from settings.toml
-pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
-    let settings: Settings = monarch_settings::read_settings()
-        .with_context(|| "monarch_settings::get_settings() -> ")?
-        .try_into()
-        .with_context(|| "monarch_settings::get_settings() Failed to parse toml content into Settings struct! | Err: ")?;
-    Ok(Arc::new(RwLock::new(settings)))
+/// Returns the shared settings pointer held by MonarchState.
+///
+/// This must never re-read settings.toml from disk: it is exactly one Arc
+/// clone. The previous implementation re-read the file on every call, which
+/// meant every frame in the GUI render loop hit disk and spawned a divergent
+/// copy of Settings that never reflected (or propagated) in-memory changes.
+pub fn get_settings(state_handle: &Arc<RwLock<MonarchState>>) -> Result<Arc<RwLock<Settings>>> {
+    match state_handle.read() {
+        Ok(state) => Ok(state.get_settings_ptr()),
+        Err(e) => {
+            error!(
+                "monarch_utils::commands::get_settings() Failed to lock MonarchState! | Err: {e}"
+            );
+            bail!("monarch_utils::commands::get_settings() Failed to lock MonarchState! | Err: {e}")
+        }
+    }
 }
 
 /// Write setting to settings.toml

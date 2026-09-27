@@ -15,6 +15,7 @@ use monarch_core::{
         housekeeping,
         monarch_fs::verify_monarch_folders,
         monarch_game_downloader::MonarchDownloader,
+        monarch_settings::Settings,
         monarch_sql::{init_db, repair_or_migrate_db},
         monarch_state::MonarchState,
     },
@@ -116,6 +117,7 @@ pub struct App {
     active_terminals: HashMap<Id, TermInstance>,
     active_modal: Option<ModalState>,
 
+    settings: Arc<RwLock<Settings>>, // Shared pointer to the one true Settings held by MonarchState
     _state: Arc<RwLock<MonarchState>>, // Moving monarch state from a singleton to an app state as single source of truth
     downloader: Arc<RwLock<MonarchDownloader>>,
 }
@@ -148,13 +150,19 @@ impl App {
 
         let state_handle: Arc<RwLock<MonarchState>> = Arc::new(RwLock::new(state));
 
+        // Grab the shared Settings pointer once. Everything must use this same
+        // Arc<RwLock<Settings>> so all parts of the app agree on one state.
+        let settings_handle: Arc<RwLock<Settings>> =
+            state_handle.read().unwrap().get_settings_ptr();
+
         let downloader: MonarchDownloader = MonarchDownloader::new(state_handle.clone());
         let downloader_handle: Arc<RwLock<MonarchDownloader>> = Arc::new(RwLock::new(downloader));
 
         let home_page: HomePage = HomePage::new(state_handle.clone());
         let library_page: LibraryPage = LibraryPage::new(state_handle.clone());
         let search_page: SearchPage = SearchPage::new(state_handle.clone());
-        let settings_page: SettingsPage = SettingsPage::new(downloader_handle.clone());
+        let settings_page: SettingsPage =
+            SettingsPage::new(settings_handle.clone(), downloader_handle.clone());
         let game_details_page =
             GameDetailsPage::new(state_handle.clone(), downloader_handle.clone());
         let store_details_page: StoreDetailsPage =
@@ -188,6 +196,7 @@ impl App {
             download_page: download_page,
             active_terminals: HashMap::new(),
             active_modal: None,
+            settings: settings_handle,
             _state: state_handle,
             downloader: downloader_handle,
         }
@@ -573,11 +582,8 @@ impl App {
             return iced::widget::Space::new().into();
         }
 
-        let show_speed_in_bits = match monarch_core::monarch_utils::commands::get_settings() {
-            Ok(settings) => settings
-                .read()
-                .map(|s| s.monarch.show_download_speed_in_bits)
-                .unwrap_or(false),
+        let show_speed_in_bits = match self.settings.read() {
+            Ok(settings) => settings.monarch.show_download_speed_in_bits,
             Err(_) => false,
         };
 
