@@ -172,7 +172,10 @@ pub async fn download_artwork(
 
 /// Tell backend to generate a greyscale version of the game's thumbnail.
 /// Returns early if the greyscale image already exists on disk.
-pub async fn download_greyscale(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(), String> {
+pub async fn download_greyscale(
+    settings_handle: Arc<RwLock<Settings>>,
+    game_handle: Arc<RwLock<MonarchGame>>,
+) -> Result<(), String> {
     // Clone the game to hold across .awaits
     let game_clone: MonarchGame = match game_handle.read() {
         Ok(game) => game.clone(),
@@ -182,7 +185,7 @@ pub async fn download_greyscale(game_handle: Arc<RwLock<MonarchGame>>) -> Result
         }
     };
 
-    if let Err(e) = game_clone.download_greyscale().await {
+    if let Err(e) = game_clone.download_greyscale(settings_handle).await {
         error!(
             "monarch_games::commands::download_greyscale() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

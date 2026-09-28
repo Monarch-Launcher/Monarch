@@ -148,7 +148,7 @@ impl LibraryPage {
 
                         info!("Downloading cover for: {}", game_clone.name);
                         if let Err(e) = monarch_games::commands::download_thumbnail(
-                            settings_handle_clone,
+                            settings_handle_clone.clone(),
                             game_handle.clone(),
                         )
                         .await
@@ -161,9 +161,11 @@ impl LibraryPage {
 
                         if !game_clone.is_installed {
                             info!("Downloading greyscale for: {}", game_clone.name);
-                            let _ =
-                                monarch_games::commands::download_greyscale(game_handle.clone())
-                                    .await;
+                            let _ = monarch_games::commands::download_greyscale(
+                                settings_handle_clone.clone(),
+                                game_handle.clone(),
+                            )
+                            .await;
                         }
 
                         info!("Updating game properties for : {}", game_clone.name);
@@ -231,7 +233,7 @@ impl LibraryPage {
 
                             info!("Downloading cover for: {}", game_clone.name);
                             if let Err(e) =
-                                monarch_games::commands::download_thumbnail(settings_handle_clone, game.clone()).await
+                                monarch_games::commands::download_thumbnail(settings_handle_clone.clone(), game.clone()).await
                             {
                                 error!(
                                     "Failed to download thumbnail for game {} ({}): {}",
@@ -242,7 +244,7 @@ impl LibraryPage {
                             if !game_clone.is_installed {
                                 info!("Downloading greyscale for: {}", game_clone.name);
                                 let _ =
-                                    monarch_games::commands::download_greyscale(game.clone()).await;
+                                    monarch_games::commands::download_greyscale(settings_handle_clone, game.clone()).await;
                             }
 
                             game

@@ -678,7 +678,8 @@ pub async fn get_game_properties(
     // from the database, so without this the enrichment is lost on restart.
     if let Err(e) = library::update_game_properties_in_db(db_pool, game).await {
         error!(
-            "monarch_client::get_game_properties() Failed to persist game properties! | Err: {e}"
+            "monarch_client::get_game_properties() Failed to persist game properties! | Err: {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
         );
     }
 

@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use image::ImageFormat;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -13,7 +12,7 @@ use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
-use crate::monarch_utils::monarch_download::download_image;
+use crate::monarch_utils::monarch_download::{download_image, download_image_greyscale};
 use crate::monarch_utils::monarch_fs::{generate_greyscale_path, path_exists};
 use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
@@ -121,7 +120,7 @@ impl MonarchGame {
     /// Download or generate a greyscale version of the thumbnail.
     /// Returns early if the greyscale image already exists on disk.
     /// The file is saved next to the original thumbnail with a `_grey` suffix.
-    pub async fn download_greyscale(&self) -> Result<()> {
+    pub async fn download_greyscale(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
         let source_path = PathBuf::from(&self.thumbnail_path);
         if !path_exists(&source_path) {
             return Ok(());
@@ -132,17 +131,9 @@ impl MonarchGame {
             return Ok(());
         }
 
-        let bytes = std::fs::read(&source_path)
-            .with_context(|| "monarchgame::download_greyscale() Failed to read thumbnail")?;
-
-        let img = image::load_from_memory(&bytes)
-            .with_context(|| "monarchgame::download_greyscale() Failed to decode image")?;
-
-        let grey = img.grayscale().to_rgba8();
-        let mut file = std::fs::File::create(&grey_path)
-            .with_context(|| "monarchgame::download_greyscale() Failed to create greyscale file")?;
-        grey.write_to(&mut file, ImageFormat::Png)
-            .with_context(|| "monarchgame::download_greyscale() Failed to write greyscale image")?;
+        download_image_greyscale(settings_handle, &self.thumbnail_url, &grey_path)
+            .await
+            .with_context(|| "monarchgame::download_greyscale() -> ")?;
 
         Ok(())
     }
