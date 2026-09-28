@@ -75,7 +75,7 @@ impl StoreType for EgsClient {
             };
 
         for game in web_games.iter_mut() {
-            let thumbnail_path = String::from(
+            let cover_path = String::from(
                 generate_cache_image_path(
                     settings_handle.clone(),
                     &game.name.clone(),
@@ -84,7 +84,7 @@ impl StoreType for EgsClient {
                 .to_str()
                 .unwrap(),
             );
-            game.thumbnail_path = thumbnail_path;
+            game.cover_path = cover_path;
         }
 
         web_games
@@ -417,7 +417,7 @@ impl EgsClient {
         let mut games = self.get_user_games().await;
 
         for game in games.iter_mut() {
-            game.thumbnail_path = generate_library_image_path(
+            game.cover_path = generate_library_image_path(
                 settings_handle.clone(),
                 &game.name,
                 GameImageType::Cover,

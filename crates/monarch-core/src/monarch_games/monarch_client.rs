@@ -70,7 +70,7 @@ impl StoreType for MonarchClient {
             };
 
         for game in web_games.iter_mut() {
-            let thumbnail_path = String::from(
+            let cover_path = String::from(
                 generate_cache_image_path(
                     settings_handle.clone(),
                     &game.name.clone(),
@@ -79,7 +79,7 @@ impl StoreType for MonarchClient {
                 .to_str()
                 .unwrap(),
             );
-            game.thumbnail_path = thumbnail_path;
+            game.cover_path = cover_path;
         }
 
         web_games
@@ -525,7 +525,7 @@ pub async fn find_games(
 
     let mut monarch_games: Vec<MonarchGame> = Vec::new();
     for game in web_games {
-        let thumbnail_path = String::from(
+        let cover_path = String::from(
             generate_cache_image_path(
                 settings_handle.clone(),
                 &game.name.clone(),
@@ -535,7 +535,7 @@ pub async fn find_games(
             .unwrap(),
         );
         let mut new_monarchgame = MonarchGame::from(&game);
-        new_monarchgame.thumbnail_path = thumbnail_path;
+        new_monarchgame.cover_path = cover_path;
         monarch_games.push(new_monarchgame);
     }
 

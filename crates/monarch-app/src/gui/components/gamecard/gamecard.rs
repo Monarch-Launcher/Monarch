@@ -72,13 +72,13 @@ impl GameCard {
         let scale = 1.0 + (self.hover_factor * 0.05);
         let (width, height) = (base_width * scale, base_height * scale);
 
-        let mut thumbnail_exists: bool = true;
+        let mut cover_exists: bool = true;
         if let Ok(game) = self.game.read() {
-            thumbnail_exists = !game.thumbnail_path.is_empty()
-                && std::path::Path::new(&game.thumbnail_path).exists();
+            cover_exists =
+                !game.cover_path.is_empty() && std::path::Path::new(&game.cover_path).exists();
         }
 
-        let image_widget: Element<'_, GameCardMessage> = if !thumbnail_exists {
+        let image_widget: Element<'_, GameCardMessage> = if !cover_exists {
             self.draw_fallback_cover(width, height)
         } else {
             match self.game.read() {
@@ -157,10 +157,10 @@ impl GameCard {
             if !grey.is_empty() && std::path::Path::new(&grey).exists() {
                 iced::widget::image::Handle::from_path(grey)
             } else {
-                iced::widget::image::Handle::from_path(game.thumbnail_path.clone())
+                iced::widget::image::Handle::from_path(game.cover_path.clone())
             }
         } else {
-            iced::widget::image::Handle::from_path(game.thumbnail_path.clone())
+            iced::widget::image::Handle::from_path(game.cover_path.clone())
         };
 
         container(

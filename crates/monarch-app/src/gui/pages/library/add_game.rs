@@ -159,7 +159,7 @@ impl AddGameModal {
                     {
                         if let Ok(game) = card.game.read() {
                             self.name = game.name.clone();
-                            self.thumb_path = game.thumbnail_path.clone();
+                            self.thumb_path = game.cover_path.clone();
                             self.artwork_path = game.artwork_path.clone();
                         }
                         // We don't have exec path from search results obviously
@@ -189,7 +189,7 @@ impl AddGameModal {
             .iter()
             .cloned()
             .map(|mut game| {
-                game.thumbnail_path = "".to_string();
+                game.cover_path = "".to_string();
                 game
             })
             .collect();
@@ -211,10 +211,10 @@ impl AddGameModal {
             };
             iced::Task::perform(
                 async move {
-                    if let Err(e) = monarch_games::commands::download_thumbnail(settings_handle, game.clone()).await
+                    if let Err(e) = monarch_games::commands::download_cover(settings_handle, game.clone()).await
                     {
                         error!(
-                            "Failed to download thumbnail for game {}: {}",
+                            "Failed to download cover for game {}: {}",
                             game.read().unwrap().id,
                             e
                         );
@@ -251,10 +251,10 @@ impl AddGameModal {
                     secondary_button("Browse", Some(Message::ExecPathDialog))
                 ]
                 .spacing(10),
-                text("Thumbnail Path / URL").size(16),
+                text("Cover Path / URL").size(16),
                 row![
                     input_field(
-                        "Path or URL to game thumbnail",
+                        "Path or URL to game cover",
                         &self.thumb_path,
                         Message::ThumbPathChanged
                     ),
@@ -264,7 +264,7 @@ impl AddGameModal {
                 text("Artwork Path / URL").size(16),
                 row![
                     input_field(
-                        "Path or URL to game thumbnail",
+                        "Path or URL to game cover",
                         &self.artwork_path,
                         Message::ArtworkPathChanged
                     ),

@@ -49,7 +49,7 @@ impl SearchPage {
             .cloned()
             .map(|mut game| {
                 if let Ok(state) = self.app_state.read() {
-                    game.thumbnail_path = generate_cache_image_path(
+                    game.cover_path = generate_cache_image_path(
                         state.get_settings_ptr(),
                         &game.name,
                         GameImageType::Cover,
@@ -80,14 +80,14 @@ impl SearchPage {
 
                 iced::Task::perform(
                     async move {
-                        if let Err(e) = monarch_games::commands::download_thumbnail(
+                        if let Err(e) = monarch_games::commands::download_cover(
                             settings_handle.clone(),
                             game.clone(),
                         )
                         .await
                         {
                             error!(
-                                "Failed to download thumbnail for game {}: {}",
+                                "Failed to download cover for game {}: {}",
                                 game.read().unwrap().id,
                                 e
                             );

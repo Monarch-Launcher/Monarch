@@ -626,7 +626,7 @@ async fn parse_id_monarch_com(
                 .to_str()
                 .unwrap(),
             );
-            monarch_game.thumbnail_path = path;
+            monarch_game.cover_path = path;
         } else {
             let cover_path: String = String::from(
                 generate_library_image_path(
@@ -647,7 +647,7 @@ async fn parse_id_monarch_com(
                 .unwrap(),
             );
 
-            monarch_game.thumbnail_path = cover_path;
+            monarch_game.cover_path = cover_path;
             monarch_game.artwork_path = artwork_path;
         };
 
@@ -736,7 +736,7 @@ async fn parse_id_steampowered_com(
         format!("https://steamcdn-a.akamaihd.net/steam/apps/{id}/library_600x900_2x.jpg");
 
     // Parse content into MonarchGame
-    let thumbnail_path = if is_cache {
+    let cover_path = if is_cache {
         String::from(
             generate_cache_image_path(settings_handle.clone(), &name, GameImageType::Cover)
                 .to_str()
@@ -749,9 +749,8 @@ async fn parse_id_steampowered_com(
                 .unwrap(),
         )
     };
-    let mut monarch_game =
-        MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
-    monarch_game.thumbnail_url = cover_url;
+    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &cover_path);
+    monarch_game.cover_url = cover_url;
     Ok(monarch_game)
 }
 

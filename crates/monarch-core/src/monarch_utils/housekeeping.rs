@@ -29,7 +29,7 @@ pub fn start(settings_lock: Arc<RwLock<Settings>>) {
             sys.refresh_cpu();
 
             if low_system_usage(&sys) {
-                clear_cached_thumbnails(settings_lock);
+                clear_cached_covers(settings_lock);
 
                 break; // For now assume that program will be restarted at some point within next few days.
                        // Can therefor stop the housekeeping service
@@ -63,20 +63,20 @@ fn low_system_usage(system: &System) -> bool {
     Clearing images
 */
 
-/// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
-pub fn clear_cached_thumbnails(settings_lock: Arc<RwLock<Settings>>) {
+/// Clears out old cached covers (Don't like the indentaion level, will come back to rework later)
+pub fn clear_cached_covers(settings_lock: Arc<RwLock<Settings>>) {
     let path: PathBuf = get_resources_cache(settings_lock);
     match fs::read_dir(path) {
         Ok(files) => {
             clear_dir(files);
         }
         Err(e) => {
-            error!("housekeeping::clear_cached_thumbnails() Encountered error while running fs::read_dir() | Err: {e}");
+            error!("housekeeping::clear_cached_covers() Encountered error while running fs::read_dir() | Err: {e}");
         }
     }
 }
 
-/// Helper function to remove some indentation levels from clear_cached_thumbnails().
+/// Helper function to remove some indentation levels from clear_cached_covers().
 fn clear_dir(files: ReadDir) {
     let mut logged_event: bool = false;
 
@@ -89,22 +89,22 @@ fn clear_dir(files: ReadDir) {
                 info!("Monarch Housekeeper: Clearing cached images...");
                 logged_event = true;
             }
-            remove_thumbnail(&file_path);
+            remove_cover(&file_path);
         }
     }
 }
 
 /// Removes old cache file if old enough
-fn remove_thumbnail(file: &Path) {
+fn remove_cover(file: &Path) {
     if let Err(e) = fs::remove_file(file) {
         error!(
-            "housekeeping::remove_thumbnail() Error while removing: {path} | Err: {e}",
+            "housekeeping::remove_cover() Error while removing: {path} | Err: {e}",
             path = file.display()
         );
     }
 }
 
-/// Checks if it's time to remove cached thumbnail
+/// Checks if it's time to remove cached cover
 fn time_to_remove(file: &Path) -> bool {
     if let Ok(metadata) = fs::metadata(file) {
         if let Ok(time) = metadata.modified() {
@@ -127,7 +127,7 @@ pub fn clear_all_cache(settings_lock: Arc<RwLock<Settings>>) {
             for file in files {
                 match file {
                     Ok(f) => {
-                        remove_thumbnail(&f.path());
+                        remove_cover(&f.path());
                     }
                     Err(e) => {
                         error!("housekeeping::clear_all_cache() Could not read file! | Err: {e}");

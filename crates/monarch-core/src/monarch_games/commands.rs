@@ -95,8 +95,8 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
     Ok(())
 }
 
-/// Tell backend to download cover/thumbnail for game.
-pub async fn download_thumbnail(
+/// Tell backend to download cover/cover for game.
+pub async fn download_cover(
     settings_handle: Arc<RwLock<Settings>>,
     game_handle: Arc<RwLock<MonarchGame>>,
 ) -> Result<(), String> {
@@ -104,25 +104,25 @@ pub async fn download_thumbnail(
     let game_clone: MonarchGame = match game_handle.read() {
         Ok(game) => game.clone(),
         Err(e) => {
-            error!("monarch_games::commands::download_thumbnail() Failed to acquire lock on game_handle! | Err: {e}");
+            error!("monarch_games::commands::download_cover() Failed to acquire lock on game_handle! | Err: {e}");
             return Err(format!("Failed to download cover for game"));
         }
     };
 
-    if let Err(e) = game_clone.download_thumbnail(settings_handle).await {
+    if let Err(e) = game_clone.download_cover(settings_handle).await {
         error!(
-            "monarch_games::commands::download_thumbnail() -> {}",
+            "monarch_games::commands::download_cover() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(String::from("Failed to download thumbnail"));
+        return Err(String::from("Failed to download cover"));
     }
 
     // Make sure image has been saved
-    let path = PathBuf::from(&game_clone.thumbnail_path);
+    let path = PathBuf::from(&game_clone.cover_path);
     if !path_exists(&path) {
         warn!(
             "Cover reported finished downloading, not found: {}",
-            game_clone.thumbnail_path
+            game_clone.cover_path
         );
 
         for _ in 0..3 {
@@ -133,8 +133,8 @@ pub async fn download_thumbnail(
         }
 
         error!(
-            "monarch_games::commands::download_thumbnail() Could not find: {}",
-            game_clone.thumbnail_path
+            "monarch_games::commands::download_cover() Could not find: {}",
+            game_clone.cover_path
         );
         return Err(format!(
             "Failed to download cover for: {} \nCover image not found!",
@@ -145,7 +145,7 @@ pub async fn download_thumbnail(
     Ok(())
 }
 
-/// Tell backend to download cover/thumbnail for game.
+/// Tell backend to download cover/cover for game.
 pub async fn download_artwork(
     settings_handle: Arc<RwLock<Settings>>,
     game_handle: Arc<RwLock<MonarchGame>>,
@@ -170,7 +170,7 @@ pub async fn download_artwork(
     Ok(())
 }
 
-/// Tell backend to generate a greyscale version of the game's thumbnail.
+/// Tell backend to generate a greyscale version of the game's cover.
 /// Returns early if the greyscale image already exists on disk.
 pub async fn download_greyscale(
     settings_handle: Arc<RwLock<Settings>>,
@@ -190,7 +190,7 @@ pub async fn download_greyscale(
             "monarch_games::commands::download_greyscale() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
         );
-        return Err(String::from("Failed to download greyscale thumbnail"));
+        return Err(String::from("Failed to download greyscale cover"));
     }
     Ok(())
 }
@@ -204,7 +204,7 @@ pub async fn launch_game(
     let game_clone: MonarchGame = match game_handle.read() {
         Ok(game) => game.clone(),
         Err(e) => {
-            error!("monarch_games::commands::download_thumbnail() Failed to acquire lock on game_handle! | Err: {e}");
+            error!("monarch_games::commands::download_cover() Failed to acquire lock on game_handle! | Err: {e}");
             return Err(format!("Failed to download cover for game"));
         }
     };
@@ -714,19 +714,14 @@ pub async fn manual_add_game(
 
     game.manually_generate_id(state_handle);
 
-    if monarch_fs::is_in_cache_dir(
-        settings_handle.clone(),
-        &PathBuf::from(&(game.thumbnail_path)),
-    ) {
-        info!("Found thumbnail in cache, copying to library");
+    if monarch_fs::is_in_cache_dir(settings_handle.clone(), &PathBuf::from(&(game.cover_path))) {
+        info!("Found cover in cache, copying to library");
 
-        match monarch_fs::copy_cache_to_library(
-            settings_handle,
-            &PathBuf::from(&(game.thumbnail_path)),
-        ) {
+        match monarch_fs::copy_cache_to_library(settings_handle, &PathBuf::from(&(game.cover_path)))
+        {
             Ok(path) => {
-                info!("Copied thumbnail to library: {}", path.display());
-                game.thumbnail_path = path.to_str().unwrap().to_string();
+                info!("Copied cover to library: {}", path.display());
+                game.cover_path = path.to_str().unwrap().to_string();
             }
             Err(e) => {
                 error!(

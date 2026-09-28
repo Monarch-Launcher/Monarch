@@ -29,9 +29,9 @@ impl StoreDetailsPage {
                             .height(800)
                             .content_fit(iced::ContentFit::Cover),
                     )
-                } else if !game.thumbnail_path.is_empty() {
+                } else if !game.cover_path.is_empty() {
                     container(
-                        image(game.thumbnail_path.clone())
+                        image(game.cover_path.clone())
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .content_fit(iced::ContentFit::Cover),
@@ -70,9 +70,9 @@ impl StoreDetailsPage {
                 let back_btn =
                     container(secondary_button("← Back", Some(Message::BackPressed))).padding(40);
 
-                // Game cover/thumbnail
-                let game_cover = if !game.thumbnail_path.is_empty() {
-                    image(game.thumbnail_path.clone())
+                // Game cover/cover
+                let game_cover = if !game.cover_path.is_empty() {
+                    image(game.cover_path.clone())
                         .width(Length::Fixed(300.0))
                         .height(Length::Fixed(450.0))
                         .content_fit(iced::ContentFit::Cover)

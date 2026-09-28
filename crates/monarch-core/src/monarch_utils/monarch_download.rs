@@ -7,6 +7,7 @@ use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::RwLock;
+use tracing::debug;
 
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_settings::Settings;
@@ -36,7 +37,6 @@ pub async fn download_image(
         .bytes()
         .await
         .with_context(|| "monarch_download::download_image() Failed to read bytes! | Err")?;
-
     let img = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .with_context(|| "monarch_download::download_image() Error guessing format! | Err: ")?
@@ -98,6 +98,9 @@ async fn save_image_content(
         monarch_fs::create_dir(&temp_dir)
             .with_context(|| "monarch_download::save_image_content() -> ")?;
     }
+
+    debug!("Path: {}", path.display());
+
     let temp_file = temp_dir.join(path.file_name().unwrap());
 
     // Write to a temporary file

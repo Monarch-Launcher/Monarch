@@ -14,7 +14,7 @@ use crate::monarch_utils::monarch_settings::{self, Settings};
 ---------- General functions for filesystem tasks ----------
 */
 
-/// Folder to store image resources for game thumbnails etc...
+/// Folder to store image resources for game covers etc...
 pub fn verify_monarch_folders(settings_lock: Arc<RwLock<Settings>>) {
     let paths: [PathBuf; 5] = [
         get_monarch_home(settings_lock.clone()),
@@ -297,7 +297,7 @@ pub fn get_resources_cache(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
     path.join("cache")
 }
 
-/// Returns path to store thumbnails for games in library
+/// Returns path to store covers for games in library
 pub fn get_resources_library(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
     let path: PathBuf = get_resources_path(settings_lock);
     path.join("library")
@@ -344,14 +344,14 @@ fn generate_image_filename(name: &str) -> String {
     filename
 }
 
-/// Given a thumbnail path, returns the corresponding greyscale image path
+/// Given a cover path, returns the corresponding greyscale image path
 /// by inserting `_grey` before the `.png` extension.
-pub fn generate_greyscale_path(thumbnail_path: &Path) -> PathBuf {
-    let stem = thumbnail_path
+pub fn generate_greyscale_path(cover_path: &Path) -> PathBuf {
+    let stem = cover_path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("image");
-    let parent = thumbnail_path.parent().unwrap_or_else(|| Path::new("."));
+    let parent = cover_path.parent().unwrap_or_else(|| Path::new("."));
     parent.join(format!("{stem}_grey.png"))
 }
 

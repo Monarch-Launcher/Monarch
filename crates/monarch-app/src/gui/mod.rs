@@ -6,14 +6,14 @@ use iced::{
     window::{self, Id},
     Element,
     Length::Fill,
-    Subscription,
+    Subscription, Task,
 };
 use iced_term;
 use monarch_core::{
-    monarch_games::monarchgame::MonarchGame,
+    monarch_games::monarchgame::{GameImageType, MonarchGame},
     monarch_utils::{
         housekeeping,
-        monarch_fs::verify_monarch_folders,
+        monarch_fs::{generate_cache_image_path, verify_monarch_folders},
         monarch_game_downloader::MonarchDownloader,
         monarch_settings::Settings,
         monarch_sql::{init_db, repair_or_migrate_db},
@@ -21,7 +21,7 @@ use monarch_core::{
     },
 };
 use std::sync::{Arc, LazyLock, Mutex};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::gui::{
     components::{
@@ -489,25 +489,45 @@ impl App {
                 self.active_tab = PageTab::GameDetails;
                 iced::Task::none()
             }
-            AppMessage::OpenStoreDetails(game) => {
+            AppMessage::OpenStoreDetails(game_handle) => {
                 self.previous_tab = self.active_tab;
                 let props_task = self
                     .store_details_page
-                    .set_game(game.clone())
+                    .set_game(game_handle.clone())
                     .map(|m| AppMessage::Page(pages::Message::StoreDetails(m)));
 
                 self.active_tab = PageTab::StoreDetails;
 
-                let game_handle_clone = game.clone();
+                match game_handle.write() {
+                    Ok(mut game) => {
+                        if game.artwork_path.is_empty() {
+                            game.artwork_path = generate_cache_image_path(
+                                self.settings.clone(),
+                                &game.name,
+                                GameImageType::Artwork,
+                            )
+                            .to_string_lossy()
+                            .to_string();
+                        }
+
+                        if std::path::Path::new(&game.artwork_path).exists() {
+                            return props_task;
+                        }
+                    }
+                    Err(e) => {
+                        error!(
+                            "App::update() Failed to acquire write lock on game_handle! | Err: {e}"
+                        );
+                        show_error("Cannot open store page!");
+                        return props_task;
+                    }
+                }
+
+                let game_handle_clone = game_handle.clone();
                 let settings_handle_clone = self.settings.clone();
 
                 let artwork_task = iced::Task::perform(
                     async move {
-                        let artwork_path = game.read().unwrap().artwork_path.clone();
-                        if !artwork_path.is_empty() && std::path::Path::new(&artwork_path).exists()
-                        {
-                            return ();
-                        }
                         let _ = monarch_core::monarch_games::commands::download_artwork(
                             settings_handle_clone,
                             game_handle_clone,

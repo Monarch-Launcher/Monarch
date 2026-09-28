@@ -147,15 +147,15 @@ impl LibraryPage {
                         .await;
 
                         info!("Downloading cover for: {}", game_clone.name);
-                        if let Err(e) = monarch_games::commands::download_thumbnail(
+                        if let Err(e) = monarch_games::commands::download_cover(
                             settings_handle_clone.clone(),
                             game_handle.clone(),
                         )
                         .await
                         {
                             error!(
-                                "Failed to download thumbnail for game {} ({}): {}",
-                                game_clone.id, game_clone.thumbnail_url, e
+                                "Failed to download cover for game {} ({}): {}",
+                                game_clone.id, game_clone.cover_url, e
                             );
                         }
 
@@ -201,7 +201,7 @@ impl LibraryPage {
                     .update(gamecard::GameCardMessage::UpdateGames(new_games.clone()));
 
                 // Trigger download tasks. Each game emits GameUpdated as soon as
-                // its images are ready (artwork/thumbnail/greyscale early-return
+                // its images are ready (artwork/cover/greyscale early-return
                 // when already cached), then chains a second task that performs
                 // the slower properties enrichment — removing the network call
                 // from the image-critical path.
@@ -233,11 +233,11 @@ impl LibraryPage {
 
                             info!("Downloading cover for: {}", game_clone.name);
                             if let Err(e) =
-                                monarch_games::commands::download_thumbnail(settings_handle_clone.clone(), game.clone()).await
+                                monarch_games::commands::download_cover(settings_handle_clone.clone(), game.clone()).await
                             {
                                 error!(
-                                    "Failed to download thumbnail for game {} ({}): {}",
-                                    game_clone.id, game_clone.thumbnail_url, e
+                                    "Failed to download cover for game {} ({}): {}",
+                                    game_clone.id, game_clone.cover_url, e
                                 );
                             }
 
