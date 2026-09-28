@@ -15,6 +15,7 @@ use std::{fs, time::Duration};
 use sysinfo::{System, SystemExt};
 use tracing::{error, info};
 
+use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_settings::Settings;
 
 use super::monarch_fs::get_resources_cache;
@@ -39,6 +40,16 @@ pub fn start(settings_lock: Arc<RwLock<Settings>>) {
             sleep(Duration::new(3600, 0));
         }
     });
+}
+
+pub fn on_exit(settings_lock: Arc<RwLock<Settings>>) {
+    let temp_dir = monarch_fs::get_temp_dir(settings_lock);
+    if let Err(e) = monarch_fs::remove_dir(&temp_dir) {
+        error!(
+            "housekeeping::on_exit() Failed to remove temporary directory: {} | Err: {e}",
+            temp_dir.display()
+        )
+    }
 }
 
 /// Checks if system usage is sufficiently low to clear resources.

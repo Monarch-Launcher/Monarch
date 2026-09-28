@@ -10,7 +10,7 @@ use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
 use crate::monarch_utils::{monarch_http, monarch_sql, monarch_vdf};
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use sqlx::SqlitePool;
 use std::path::PathBuf;
@@ -391,7 +391,7 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
     egs_client
         .load_existing_user(settings_handle.clone())
         .await
-        .unwrap();
+        .with_context(|| "monarch_client -> ")?;
     let mut epic_games: Vec<MonarchGame> = egs_client.get_library(settings_handle).await;
 
     // Filter out removed games

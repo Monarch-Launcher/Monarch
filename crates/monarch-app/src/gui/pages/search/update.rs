@@ -8,11 +8,14 @@ use crate::gui::{
     pages::search::{Message, SearchPage},
     show_error,
 };
-use monarch_core::monarch_games::{
-    self,
-    games::SearchResult,
-    monarchgame::{MonarchGame, MonarchWebApiGame},
-    stores::SearchFilter,
+use monarch_core::{
+    monarch_games::{
+        self,
+        games::SearchResult,
+        monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame},
+        stores::SearchFilter,
+    },
+    monarch_utils::monarch_fs::generate_cache_image_path,
 };
 
 impl SearchPage {
@@ -45,7 +48,15 @@ impl SearchPage {
             .iter()
             .cloned()
             .map(|mut game| {
-                game.thumbnail_path = "".to_string();
+                if let Ok(state) = self.app_state.read() {
+                    game.thumbnail_path = generate_cache_image_path(
+                        state.get_settings_ptr(),
+                        &game.name,
+                        GameImageType::Cover,
+                    )
+                    .to_string_lossy()
+                    .to_string();
+                }
                 game
             })
             .collect();
@@ -58,10 +69,22 @@ impl SearchPage {
         // Trigger download tasks
         let download_tasks =
             iced::Task::batch(processed_game_handles.iter().cloned().map(|game| {
+                let settings_handle = match self.app_state.read() {
+                    Ok(state) => state.get_settings_ptr(),
+                    Err(e) => {
+                        error!("SearchPage::update_games() Failed to acquire read lock on state_handle! | Err: {e}");
+                        show_error("Failed to search for games!");
+                        return Task::none();
+                    }
+                };
+
                 iced::Task::perform(
                     async move {
-                        if let Err(e) =
-                            monarch_games::commands::download_thumbnail(game.clone()).await
+                        if let Err(e) = monarch_games::commands::download_thumbnail(
+                            settings_handle.clone(),
+                            game.clone(),
+                        )
+                        .await
                         {
                             error!(
                                 "Failed to download thumbnail for game {}: {}",

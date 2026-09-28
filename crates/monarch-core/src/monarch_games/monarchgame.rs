@@ -91,28 +91,28 @@ impl MonarchGame {
     }
 
     /// Download thumbnail for MonarchGame
-    pub async fn download_thumbnail(&self) -> Result<()> {
+    pub async fn download_thumbnail(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
         let path: PathBuf = PathBuf::from(&self.thumbnail_path);
 
         if path_exists(&path) {
             return Ok(());
         }
 
-        download_image(&self.thumbnail_url, &path)
+        download_image(settings_handle, &self.thumbnail_url, &path)
             .await
             .with_context(|| "monarchgame::download_thumbnail() -> ")?;
         Ok(())
     }
 
     /// Download thumbnail for MonarchGame
-    pub async fn download_artwork(&self) -> Result<()> {
+    pub async fn download_artwork(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
         let path: PathBuf = PathBuf::from(&self.artwork_path);
 
         if path_exists(&path) {
             return Ok(());
         }
 
-        download_image(&self.artwork_url, &path)
+        download_image(settings_handle, &self.artwork_url, &path)
             .await
             .with_context(|| "monarchgame::download_thumbnail() -> ")?;
         Ok(())

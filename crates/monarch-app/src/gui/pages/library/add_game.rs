@@ -201,9 +201,17 @@ impl AddGameModal {
 
         // Trigger download tasks
         let download_tasks = iced::Task::batch(processed_game_handles.iter().cloned().map(|game| {
+            let settings_handle = match self.app_state.read() {
+                Ok(state) => state.get_settings_ptr(),
+                Err(e) => {
+                    error!("SearchPage::update_games() Failed to acquire read lock on state_handle! | Err: {e}");
+                    show_error("Failed to search for games!");
+                    return Task::none();
+                }
+            };
             iced::Task::perform(
                 async move {
-                    if let Err(e) = monarch_games::commands::download_thumbnail(game.clone()).await
+                    if let Err(e) = monarch_games::commands::download_thumbnail(settings_handle, game.clone()).await
                     {
                         error!(
                             "Failed to download thumbnail for game {}: {}",

@@ -47,6 +47,12 @@ pub fn get_unix_home() -> Result<PathBuf> {
     Ok(PathBuf::from(home_path))
 }
 
+/// Returns a directory in the systems temporary directory
+/// for Monarch to do temporary work in.
+pub fn get_temp_dir(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
+    get_monarch_home(settings_lock).join("temp")
+}
+
 /// Returns the monarch data folder from settings.toml
 pub fn get_monarch_home(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
     match settings_lock.try_read() {

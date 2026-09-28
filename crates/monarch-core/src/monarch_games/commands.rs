@@ -96,7 +96,10 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
 }
 
 /// Tell backend to download cover/thumbnail for game.
-pub async fn download_thumbnail(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(), String> {
+pub async fn download_thumbnail(
+    settings_handle: Arc<RwLock<Settings>>,
+    game_handle: Arc<RwLock<MonarchGame>>,
+) -> Result<(), String> {
     // Clone the game to hold across .awaits
     let game_clone: MonarchGame = match game_handle.read() {
         Ok(game) => game.clone(),
@@ -106,7 +109,7 @@ pub async fn download_thumbnail(game_handle: Arc<RwLock<MonarchGame>>) -> Result
         }
     };
 
-    if let Err(e) = game_clone.download_thumbnail().await {
+    if let Err(e) = game_clone.download_thumbnail(settings_handle).await {
         error!(
             "monarch_games::commands::download_thumbnail() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -143,7 +146,10 @@ pub async fn download_thumbnail(game_handle: Arc<RwLock<MonarchGame>>) -> Result
 }
 
 /// Tell backend to download cover/thumbnail for game.
-pub async fn download_artwork(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(), String> {
+pub async fn download_artwork(
+    settings_handle: Arc<RwLock<Settings>>,
+    game_handle: Arc<RwLock<MonarchGame>>,
+) -> Result<(), String> {
     // Clone the game to hold across .awaits
     let game_clone: MonarchGame = match game_handle.read() {
         Ok(game) => game.clone(),
@@ -153,7 +159,7 @@ pub async fn download_artwork(game_handle: Arc<RwLock<MonarchGame>>) -> Result<(
         }
     };
 
-    if let Err(e) = game_clone.download_artwork().await {
+    if let Err(e) = game_clone.download_artwork(settings_handle).await {
         error!(
             "monarch_games::commands::download_artwork() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

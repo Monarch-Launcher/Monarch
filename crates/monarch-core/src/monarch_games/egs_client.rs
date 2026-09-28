@@ -316,7 +316,7 @@ impl EgsClient {
     }
 
     pub fn credentials_exist(&self, settings_handle: Arc<RwLock<Settings>>) -> bool {
-        Self::get_epic_games_token_path(settings_handle).exists()
+        get_epic_games_token_path(settings_handle).exists()
     }
 
     pub fn open_epic_login(&self) {
@@ -572,12 +572,8 @@ impl EgsClient {
         results
     }
 
-    fn get_epic_games_token_path(settings_handle: Arc<RwLock<Settings>>) -> PathBuf {
-        get_monarch_home(settings_handle).join("monarch_egs.json")
-    }
-
     fn load_session_from_file(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<Session> {
-        let path: PathBuf = Self::get_epic_games_token_path(settings_handle);
+        let path: PathBuf = get_epic_games_token_path(settings_handle);
         let json_content_str: String = std::fs::read_to_string(&path).with_context(|| {
             format!(
                 "egs::load_session_from_file() Failed to read {} to String! | Err: ",
@@ -591,9 +587,13 @@ impl EgsClient {
 
     fn store_session_to_file(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
         let json_content = serde_json::to_value(self.user.session()).unwrap();
-        let path: PathBuf = Self::get_epic_games_token_path(settings_handle);
+        let path: PathBuf = get_epic_games_token_path(settings_handle);
         std::fs::write(&path, json_content.to_string()).with_context(|| {
             "egs::store_session_to_file() Failed to write EGS credentials to file! | Err: "
         })
     }
+}
+
+fn get_epic_games_token_path(settings_handle: Arc<RwLock<Settings>>) -> PathBuf {
+    get_monarch_home(settings_handle).join("monarch_egs.json")
 }

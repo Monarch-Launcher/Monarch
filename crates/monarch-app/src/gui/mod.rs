@@ -174,6 +174,10 @@ impl App {
             "Initialised with MONARCH_STATE: {:?}",
             state_handle.read().unwrap()
         );
+        debug!(
+            "Initialised with SETTINGS: {:?}",
+            settings_handle.read().unwrap()
+        );
 
         monarch_core::monarch_games::updates::start_startup_check(
             state_handle.clone(),
@@ -495,6 +499,7 @@ impl App {
                 self.active_tab = PageTab::StoreDetails;
 
                 let game_handle_clone = game.clone();
+                let settings_handle_clone = self.settings.clone();
 
                 let artwork_task = iced::Task::perform(
                     async move {
@@ -504,6 +509,7 @@ impl App {
                             return ();
                         }
                         let _ = monarch_core::monarch_games::commands::download_artwork(
+                            settings_handle_clone,
                             game_handle_clone,
                         )
                         .await;
@@ -529,6 +535,7 @@ impl App {
             AppMessage::CloseWindow(id) => {
                 if id == self.app_id {
                     info!("Monarch close requested. Cleaning up...");
+                    housekeeping::on_exit(self.settings.clone());
                     return iced::exit();
                 }
                 iced::window::close(id)

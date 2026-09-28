@@ -80,7 +80,7 @@ impl LibraryPage {
             add_game_modal: None,
             filter_modal: None,
 
-            app_state: Arc::new(RwLock::new(MonarchState::new())),
+            app_state: state_handle,
         };
         page.load_persisted_filter();
         page
@@ -127,17 +127,31 @@ impl LibraryPage {
                 self.browser.games.upsert_game(game_handle.clone());
 
                 let state_handle_clone = self.app_state.clone();
+                let settings_handle_clone = match self.app_state.read() {
+                    Ok(state) => state.get_settings_ptr(),
+                    Err(e) => {
+                        error!("LibraryPage::update() Failed to acquire read lock on state_handle! | Err: {e}");
+                        show_error("Failed to get installed games!");
+                        return Task::none();
+                    }
+                };
 
                 iced::Task::perform(
                     async move {
                         let game_clone = game_handle.read().unwrap().clone();
                         info!("Downloading artwork for: {}", game_clone.name);
-                        let _ =
-                            monarch_games::commands::download_artwork(game_handle.clone()).await;
+                        let _ = monarch_games::commands::download_artwork(
+                            settings_handle_clone.clone(),
+                            game_handle.clone(),
+                        )
+                        .await;
 
                         info!("Downloading cover for: {}", game_clone.name);
-                        if let Err(e) =
-                            monarch_games::commands::download_thumbnail(game_handle.clone()).await
+                        if let Err(e) = monarch_games::commands::download_thumbnail(
+                            settings_handle_clone,
+                            game_handle.clone(),
+                        )
+                        .await
                         {
                             error!(
                                 "Failed to download thumbnail for game {} ({}): {}",
@@ -193,6 +207,14 @@ impl LibraryPage {
                     // `map`'s closure is FnMut (called once per game), so it can't
                     // move `state_handle` itself; hand a fresh Arc to each task.
                     let state_handle = state_handle.clone();
+                    let settings_handle_clone = match self.app_state.read() {
+                        Ok(state) => state.get_settings_ptr(),
+                        Err(e) => {
+                            error!("LibraryPage::update() Failed to acquire read lock on state_handle! | Err: {e}");
+                            show_error("Failed to refresh library!");
+                            return Task::none();
+                        }
+                    };
 
                     let image_task: iced::Task<Arc<RwLock<MonarchGame>>> = iced::Task::perform(
                         async move {
@@ -205,11 +227,11 @@ impl LibraryPage {
                             };
 
                             info!("Downloading artwork for: {}", game_clone.name);
-                            let _ = monarch_games::commands::download_artwork(game.clone()).await;
+                            let _ = monarch_games::commands::download_artwork(settings_handle_clone.clone(), game.clone()).await;
 
                             info!("Downloading cover for: {}", game_clone.name);
                             if let Err(e) =
-                                monarch_games::commands::download_thumbnail(game.clone()).await
+                                monarch_games::commands::download_thumbnail(settings_handle_clone, game.clone()).await
                             {
                                 error!(
                                     "Failed to download thumbnail for game {} ({}): {}",
