@@ -6,7 +6,7 @@ use iced::{
     window::{self, Id},
     Element,
     Length::Fill,
-    Subscription, Task,
+    Subscription,
 };
 use iced_term;
 use monarch_core::{

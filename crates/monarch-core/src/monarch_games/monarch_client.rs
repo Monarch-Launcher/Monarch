@@ -552,10 +552,14 @@ pub async fn get_game_properties(
 ) -> Result<()> {
     let db_pool: Arc<SqlitePool>;
     let settings_handle: Arc<RwLock<Settings>>;
+
+    let is_library_game: bool;
+
     match state_handle.read() {
         Ok(state) => {
             db_pool = state.get_db_pool_arc();
             settings_handle = state.get_settings_ptr();
+            is_library_game = state.get_game(&game.id).is_some();
         }
         Err(e) => {
             bail!("monarch_client::get_game_properties() Failed to acquire read lock on state_handle! | Err: {e}")
@@ -677,14 +681,16 @@ pub async fn get_game_properties(
     properties.other = preserved_other;
     game.properties = properties;
 
-    // Persist enriched properties to SQLite (and refresh the process-local
-    // cache inside update_game_properties). Startup rebuilds MONARCH_STATE
-    // from the database, so without this the enrichment is lost on restart.
-    if let Err(e) = library::update_game_properties_in_db(db_pool, game).await {
-        error!(
-            "monarch_client::get_game_properties() Failed to persist game properties! | Err: {}",
-            e.chain().map(|e| e.to_string()).collect::<String>()
-        );
+    // Persist updated properties in library.db
+    // Only persist games in library, avoid games from 
+    // search page.
+    if is_library_game {
+        if let Err(e) = library::update_game_properties_in_db(db_pool, game).await {
+            error!(
+                "monarch_client::get_game_properties() Failed to persist game properties! | Err: {}",
+                e.chain().map(|e| e.to_string()).collect::<String>()
+            );
+        }
     }
 
     Ok(())
