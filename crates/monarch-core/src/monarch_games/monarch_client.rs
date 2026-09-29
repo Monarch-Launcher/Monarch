@@ -388,14 +388,18 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
         steam_client::get_library(settings_handle.clone()).await;
 
     let mut egs_client: EgsClient = EgsClient::new();
-    egs_client
-        .load_existing_user(settings_handle.clone())
-        .await
-        .with_context(|| "monarch_client -> ")?;
-    let mut epic_games: Vec<MonarchGame> = egs_client.get_library(settings_handle).await;
+    let mut epic_games: Vec<MonarchGame> = if egs_client.credentials_exist(settings_handle.clone()) {
+        egs_client
+            .load_existing_user(settings_handle.clone())
+            .await
+            .with_context(|| "monarch_client -> ")?;
+        egs_client.get_library(settings_handle).await
+    } else {
+        vec![]
+    };
 
     // Filter out removed games
-    games
+    games = games
         .iter_mut()
         .filter(|game_handle| match game_handle.read() {
             Ok(game) => match game.get_store_name().as_str() {
