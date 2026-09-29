@@ -183,12 +183,14 @@ impl SettingsPage {
     }
 
     pub fn delete_epic_credentials(&mut self, settings: &mut Settings) {
-        settings.epic.username = "".to_string();
-        if let Err(e) = monarch_utils::commands::delete_password("epic", &mut settings.epic) {
-            error!("Failed to delete Epic credentials: {}", e);
-            show_error("Failed to delete Epic credentials!");
-            return;
+        let egs_client = EgsClient::new();
+        if let Err(e) = egs_client.delete_credentials_file(self.shared_settings.clone()) {
+            error!("SettingsPage::delete_epic_credentials() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+            show_error("Failed to delete monarch_egs.json file!");
+            return
         }
+        
+        settings.epic.username = "".to_string();
         self.write_settings(settings);
     }
 

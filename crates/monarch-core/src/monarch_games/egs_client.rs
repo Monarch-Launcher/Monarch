@@ -319,6 +319,15 @@ impl EgsClient {
         get_epic_games_token_path(settings_handle).exists()
     }
 
+    pub fn delete_credentials_file(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
+        if !self.credentials_exist(settings_handle.clone()) {
+            warn!("egs_client::delete_credentials_file() monarch_egs.json was not found! Nothing to do.");
+            return Ok(())
+        }
+
+        monarch_fs::remove_file(&get_epic_games_token_path(settings_handle)).with_context(|| "egs_client::delete_credentials_file -> ")
+    }
+
     pub fn open_epic_login(&self) {
         info!("User logging into Epic Games...");
         self.user.start_auth();

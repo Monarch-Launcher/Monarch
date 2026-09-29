@@ -194,8 +194,22 @@ pub fn remove_dir(path: &Path) -> Result<()> {
             "monarch_fs::remove_dir() Something went wrong trying to remove directory: {dir} | Err: ",
             dir = path.display()
         )
-    })?;
-    Ok(())
+    })
+}
+
+/// Attempts to recursively remove a directory and all its contents.
+/// Returns Ok if the path does not exist.
+pub fn remove_file(path: &Path) -> Result<()> {
+    if !path_exists(path) {
+        return Ok(());
+    }
+
+    fs::remove_file(path).with_context(|| {
+        format!(
+            "monarch_fs::remove_file() Something went wrong trying to remove directory: {dir} | Err: ",
+            dir = path.display()
+        )
+    })
 }
 
 /// Returns all found executables in a given directory
