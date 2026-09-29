@@ -3,6 +3,7 @@ use crate::utils::err::MonarchEgsError;
 use super::user::User;
 use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
+use tracing::error;
 use std::{
     collections::HashMap,
     time::{Duration, SystemTime},
@@ -175,12 +176,15 @@ impl Session {
 
         if response.status().is_server_error() {
             // TODO: Do something
+            error!("Got HTTP: {} | Response: {:?}", response.status().as_str(), response);
             panic!("http 5XX")
         } else if response.status().is_client_error() {
             // TODO: Do something
+            error!("Got HTTP: {} | Response: {:?}", response.status().as_str(), response);
             panic!("http 4XX")
         } else if !response.status().is_success() {
             // TODO: Do something
+            error!("Got HTTP: {} | Response: {:?}", response.status().as_str(), response);
             panic!("not 2XX")
         }
 
