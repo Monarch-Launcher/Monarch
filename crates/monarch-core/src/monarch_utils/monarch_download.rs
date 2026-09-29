@@ -99,8 +99,6 @@ async fn save_image_content(
             .with_context(|| "monarch_download::save_image_content() -> ")?;
     }
 
-    debug!("Path: {}", path.display());
-
     let temp_file = temp_dir.join(path.file_name().unwrap());
 
     // Write to a temporary file
