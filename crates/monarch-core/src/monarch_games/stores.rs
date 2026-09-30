@@ -17,7 +17,7 @@ pub trait StoreType: Send + Sync {
         filter: &SearchFilter,
     ) -> Vec<Box<dyn SearchResult>>;
     async fn install_game(
-        &self,
+        &mut self,
         downloader_handle: Arc<RwLock<MonarchDownloader>>,
         game: &mut MonarchGame,
         opts: &DownloadOptions,
@@ -28,7 +28,7 @@ pub trait StoreType: Send + Sync {
         game: &MonarchGame,
     ) -> Result<()>;
     async fn update_game(
-        &self,
+        &mut self,
         settings_handle: Arc<RwLock<Settings>>,
         game: &MonarchGame,
     ) -> Result<()>;

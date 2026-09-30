@@ -340,7 +340,7 @@ async fn queue_detected_updates(
         }
     };
 
-    let client = EgsClient::new();
+    let mut client = EgsClient::new();
     let mut prepared: Vec<(MonarchGame, DownloadJob)> = Vec::new();
 
     for update in updates {

@@ -5,7 +5,7 @@ use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGameProperties, MonarchWebApiGame};
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::library;
-use crate::monarch_utils::monarch_fs::{generate_cache_image_path, get_unix_home};
+use crate::monarch_utils::monarch_fs::{self, generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
@@ -13,7 +13,7 @@ use crate::monarch_utils::{monarch_http, monarch_sql, monarch_vdf};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use sqlx::SqlitePool;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use tracing::{error, info};
 
@@ -89,7 +89,7 @@ impl StoreType for MonarchClient {
     }
 
     async fn install_game(
-        &self,
+        &mut self,
         _downloader_handle: Arc<RwLock<MonarchDownloader>>,
         _game: &mut MonarchGame,
         _opts: &DownloadOptions,
@@ -108,7 +108,7 @@ impl StoreType for MonarchClient {
     }
 
     async fn update_game(
-        &self,
+        &mut self,
         _settings_handle: Arc<RwLock<Settings>>,
         _game: &MonarchGame,
     ) -> Result<()> {
@@ -388,7 +388,8 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
         steam_client::get_library(settings_handle.clone()).await;
 
     let mut egs_client: EgsClient = EgsClient::new();
-    let mut epic_games: Vec<MonarchGame> = if egs_client.credentials_exist(settings_handle.clone()) {
+    let mut epic_games: Vec<MonarchGame> = if egs_client.credentials_exist(settings_handle.clone())
+    {
         egs_client
             .load_existing_user(settings_handle.clone())
             .await
@@ -682,7 +683,7 @@ pub async fn get_game_properties(
     game.properties = properties;
 
     // Persist updated properties in library.db
-    // Only persist games in library, avoid games from 
+    // Only persist games in library, avoid games from
     // search page.
     if is_library_game {
         if let Err(e) = library::update_game_properties_in_db(db_pool, game).await {
@@ -694,4 +695,14 @@ pub async fn get_game_properties(
     }
 
     Ok(())
+}
+
+/// Removes the install directory of a game that Monarch itself downloaded.
+pub fn remove_install_dir(game: &MonarchGame) -> Result<()> {
+    info!(
+        "monarch_games::commands::remove_install_dir() Removing install folder: {}",
+        game.properties.install_dir
+    );
+    monarch_fs::remove_dir(&Path::new(&game.properties.install_dir))
+        .with_context(|| "monarch_games::commands::remove_install_dir() -> ")
 }

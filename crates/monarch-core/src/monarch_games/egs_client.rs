@@ -94,11 +94,31 @@ impl StoreType for EgsClient {
     }
 
     async fn install_game(
-        &self,
+        &mut self,
         downloader_handle: Arc<RwLock<MonarchDownloader>>,
         game: &mut MonarchGame,
         opts: &DownloadOptions,
     ) -> Result<()> {
+        if !self.user_loaded() {
+            let settings_handle = match downloader_handle.read() {
+                Ok(downloader) => match downloader.state_handle.read() {
+                    Ok(state) => state.get_settings_ptr(),
+                    Err(e) => {
+                        bail!("egs_client::install_game() Failed to acquire read lock on state_handle! | Err: {e}")
+                    }
+                },
+                Err(e) => {
+                    bail!("egs_client::install_game() Failed to acquire read lock on downloader_handle! | Err: {e}")
+                }
+            };
+
+            self.load_existing_user(settings_handle)
+                .await
+                .with_context(|| {
+                    "egs_client::install_game() Failed to load user credentials! | Err: "
+                })?;
+        }
+
         let job = self.prepare_download_job(game, opts).await?;
 
         // Submit the job to the global downloader, which routes it to the EGS
@@ -131,7 +151,7 @@ impl StoreType for EgsClient {
     }
 
     async fn update_game(
-        &self,
+        &mut self,
         _settings_handle: Arc<RwLock<Settings>>,
         _game: &MonarchGame,
     ) -> Result<()> {
@@ -307,12 +327,16 @@ impl EgsClient {
     }
 
     /// Checks which platforms are supported for a game by its namespace.
-    pub async fn check_platform_support(&self, namespace: &str) -> Result<SupportedPlatforms> {
-        check_platform_support(&self.user, namespace)
+    pub async fn check_platform_support(&mut self, namespace: &str) -> Result<SupportedPlatforms> {
+        check_platform_support(self.user(), namespace)
             .await
             .with_context(|| {
                 "egs_client::check_platform_support() Failed to check platform support"
             })
+    }
+
+    pub fn user_loaded(&self) -> bool {
+        !self.user.display_name().is_empty()
     }
 
     pub fn credentials_exist(&self, settings_handle: Arc<RwLock<Settings>>) -> bool {
@@ -352,15 +376,15 @@ impl EgsClient {
     }
 
     /// Read access to the underlying Epic Games user, e.g. for update checks.
-    pub fn user(&self) -> &User {
-        &self.user
+    pub fn user(&mut self) -> &mut User {
+        &mut self.user
     }
 
     /// Validates the game's Epic metadata, fetches the current install
     /// manifest and wraps everything in a [`DownloadJob`] ready to be handed
     /// to the global downloader.
     pub async fn prepare_download_job(
-        &self,
+        &mut self,
         game: &mut MonarchGame,
         opts: &DownloadOptions,
     ) -> Result<DownloadJob> {
@@ -422,7 +446,10 @@ impl EgsClient {
         Ok(DownloadJob::new(game, opts.clone(), manifest))
     }
 
-    pub async fn get_library(&self, settings_handle: Arc<RwLock<Settings>>) -> Vec<MonarchGame> {
+    pub async fn get_library(
+        &mut self,
+        settings_handle: Arc<RwLock<Settings>>,
+    ) -> Vec<MonarchGame> {
         let mut games = self.get_user_games().await;
 
         for game in games.iter_mut() {
@@ -445,10 +472,10 @@ impl EgsClient {
         games
     }
 
-    pub async fn get_user_games(&self) -> Vec<MonarchGame> {
+    pub async fn get_user_games(&mut self) -> Vec<MonarchGame> {
         // Launcher assets (not entitlements) carry the catalogItemId + appName
         // pair required by the CDN manifest endpoint.
-        let assets = match monarch_egs::owned_assets(&self.user, "Windows").await {
+        let assets = match monarch_egs::owned_assets(&mut self.user, "Windows").await {
             Ok(assets) => assets,
             Err(e) => {
                 error!(
@@ -477,7 +504,8 @@ impl EgsClient {
             let namespace = asset.namespace.clone();
             let catalog_id = asset.catalog_item_id.clone();
             let app_name = asset.app_name.clone();
-            let egs_user: User = self.user.clone();
+
+            let mut user_clone = self.user.clone();
 
             let task: JoinHandle<Result<MonarchGame>> = task::spawn(async move {
                 // Parse general game metadata via monarch-launcher.com
@@ -518,7 +546,7 @@ impl EgsClient {
 
                 // Parse EGS specific metadata
                 let meta = match monarch_egs::get_game_metadata(
-                    &egs_user,
+                    &mut user_clone,
                     &namespace,
                     &catalog_id,
                     "US",
@@ -594,7 +622,7 @@ impl EgsClient {
         })
     }
 
-    fn store_session_to_file(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
+    fn store_session_to_file(&mut self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
         let json_content = serde_json::to_value(self.user.session()).unwrap();
         let path: PathBuf = get_epic_games_token_path(settings_handle);
         std::fs::write(&path, json_content.to_string()).with_context(|| {

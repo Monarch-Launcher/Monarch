@@ -67,7 +67,7 @@ impl StoreType for SteamClient {
     }
 
     async fn install_game(
-        &self,
+        &mut self,
         downloader_handle: Arc<RwLock<MonarchDownloader>>,
         game: &mut MonarchGame,
         _opts: &DownloadOptions,
@@ -134,7 +134,7 @@ impl StoreType for SteamClient {
     }
 
     async fn update_game(
-        &self,
+        &mut self,
         settings_handle: Arc<RwLock<Settings>>,
         game: &MonarchGame,
     ) -> Result<()> {

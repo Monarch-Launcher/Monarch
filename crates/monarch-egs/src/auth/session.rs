@@ -8,6 +8,7 @@ use std::{
     collections::HashMap,
     time::{Duration, SystemTime},
 };
+use tracing::error;
 
 static OAUTH_HOST: &str = "account-public-service-prod03.ol.epicgames.com";
 static ECOMMERCE_HOST: &str = "ecommerceintegration-public-service-ecomprod02.ol.epicgames.com";

@@ -7,7 +7,6 @@ use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::RwLock;
-use tracing::debug;
 
 use crate::monarch_utils::monarch_fs;
 use crate::monarch_utils::monarch_settings::Settings;

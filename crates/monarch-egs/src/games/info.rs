@@ -44,13 +44,13 @@ pub struct MainGameItem {
 /// Returns metadata for a game from the EGS catalog API.
 /// This info is required for properly launching EGS games.
 pub async fn get_game_metadata(
-    user: &User,
+    user: &mut User,
     namespace: &str,
     catalog_id: &str,
     country_code: &str,
     locale: &str,
 ) -> Result<GameMetadata, MonarchEgsError> {
-    let mut session = user.session();
+    let session = user.session();
     let client = Client::new();
     let url: String =
         format!("https://{METADATA_URL}/catalog/api/shared/namespace/{namespace}/bulk/items");

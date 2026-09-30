@@ -1,9 +1,9 @@
 use super::monarch_client;
 use super::monarchgame::MonarchGame;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use sqlx::SqlitePool;
 use std::collections::VecDeque;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use tracing::{debug, error, info, warn};
 
@@ -502,16 +502,6 @@ pub async fn remove_game(
     Ok(())
 }
 
-/// Removes the install directory of a game that Monarch itself downloaded.
-fn remove_install_dir(game: &MonarchGame) -> Result<()> {
-    info!(
-        "monarch_games::commands::remove_install_dir() Removing install folder: {}",
-        game.properties.install_dir
-    );
-    monarch_fs::remove_dir(&Path::new(&game.properties.install_dir))
-        .with_context(|| "monarch_games::commands::remove_install_dir() -> ")
-}
-
 /// TODO: Come back and figure out the multiple store differentiation
 pub async fn move_game_to_monarch(
     settings_handle: Arc<RwLock<Settings>>,
@@ -860,7 +850,12 @@ pub async fn get_game_properties(
         }
     };
 
-    monarch_client::get_game_properties(state_handle, &mut game_clone).await;
+    if let Err(e) = monarch_client::get_game_properties(state_handle, &mut game_clone).await {
+        error!(
+            "monarch_games::commands::get_executables() -> {}",
+            e.chain().map(|e| e.to_string()).collect::<String>()
+        );
+    }
 
     match game_handle.write() {
         Ok(mut game) => {
