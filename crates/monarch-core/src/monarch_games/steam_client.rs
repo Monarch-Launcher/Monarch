@@ -5,7 +5,6 @@ use scraper::{Html, Selector};
 use serde::Deserialize;
 use serde_json::Value;
 use simple_steam_totp::generate;
-use sqlx::SqlitePool;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -74,7 +73,6 @@ impl StoreType for SteamClient {
     ) -> Result<()> {
         let state_handle: Arc<RwLock<MonarchState>>;
         let settings_handle: Arc<RwLock<Settings>>;
-        let db_pool: Arc<SqlitePool>;
 
         match downloader_handle.read() {
             Ok(downloader) => state_handle = downloader.state_handle.clone(),
@@ -86,7 +84,6 @@ impl StoreType for SteamClient {
         match state_handle.read() {
             Ok(state) => {
                 settings_handle = state.get_settings_ptr();
-                db_pool = state.get_db_pool_arc();
             }
             Err(e) => {
                 bail!("steam_client::install_game() Failed to acquire read lock on state_handle! | Err: {e}");
@@ -98,7 +95,7 @@ impl StoreType for SteamClient {
             .with_context(|| "steam_client::install_game() -> ")?;
 
         // First write to permanent store
-        library::add_game(db_pool, &game)
+        library::add_game(state_handle.clone(), &game)
             .await
             .with_context(|| "steam_client::install_game() -> ")?;
 

@@ -137,7 +137,7 @@ impl App {
                 .await
                 .expect("Failed to run repair_or_migrate_db()!"); // Verify database tables structure
 
-            let games = monarch_core::monarch_library::library::get_games(pool)
+            let games = monarch_core::monarch_library::library::get_games_from_db(pool)
                 .await
                 .expect("Didn't expect to fail!")
                 .iter()
@@ -155,7 +155,12 @@ impl App {
         let settings_handle: Arc<RwLock<Settings>> =
             state_handle.read().unwrap().get_settings_ptr();
 
-        let downloader: MonarchDownloader = MonarchDownloader::new(state_handle.clone());
+        let mut downloader: MonarchDownloader = MonarchDownloader::new(state_handle.clone());
+
+        if let Ok(settings) = settings_handle.read() {
+            downloader.set_max_download_speed_bps(settings.monarch.max_download_speed_bps());
+        }
+
         let downloader_handle: Arc<RwLock<MonarchDownloader>> = Arc::new(RwLock::new(downloader));
 
         let home_page: HomePage = HomePage::new(state_handle.clone());

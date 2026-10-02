@@ -689,12 +689,10 @@ pub async fn manual_add_game(
     info!("User adding game binary: {:?}", game);
 
     let settings_handle: Arc<RwLock<Settings>>;
-    let db_pool: Arc<SqlitePool>;
 
     match state_handle.read() {
         Ok(state) => {
             settings_handle = state.get_settings_ptr();
-            db_pool = state.get_db_pool_arc();
         }
         Err(e) => {
             error!("monarch_games::commands::manual_add_game() Failed to acquire lock on state_handle! | Err: {e}");
@@ -702,7 +700,7 @@ pub async fn manual_add_game(
         }
     };
 
-    game.manually_generate_id(state_handle);
+    game.manually_generate_id(state_handle.clone());
 
     if monarch_fs::is_in_cache_dir(settings_handle.clone(), &PathBuf::from(&(game.cover_path))) {
         info!("Found cover in cache, copying to library");
@@ -722,7 +720,7 @@ pub async fn manual_add_game(
         }
     }
 
-    if let Err(e) = monarch_library::library::add_game(db_pool, &game).await {
+    if let Err(e) = monarch_library::library::add_game(state_handle, &game).await {
         error!(
             "monarch_games::commands::manual_add_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()

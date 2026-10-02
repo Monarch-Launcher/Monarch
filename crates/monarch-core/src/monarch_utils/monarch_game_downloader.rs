@@ -551,19 +551,18 @@ async fn add_installed_game_to_library(
         Err(_) => (false, None),
     };
 
-    if let Some(pool) = pool {
-        let result = if already_installed {
-            crate::monarch_library::library::update_game_properties_in_db(pool, &installed).await
-        } else {
-            crate::monarch_library::library::add_game(pool, &installed).await
-        };
+    let result = if already_installed {
+        crate::monarch_library::library::update_game_properties_in_db(pool.unwrap(), &installed)
+            .await
+    } else {
+        crate::monarch_library::library::add_game(state_handle, &installed).await
+    };
 
-        if let Err(e) = result {
-            error!(
-                "egs_download::Failed to add {} to library | Err: {e}",
-                installed.name
-            );
-        }
+    if let Err(e) = result {
+        error!(
+            "egs_download::Failed to add {} to library | Err: {e}",
+            installed.name
+        );
     }
 }
 

@@ -8,14 +8,29 @@ use crate::monarch_utils::monarch_sql;
 use crate::monarch_utils::monarch_state::MonarchState;
 
 /// Returns games stored in library.db3
-pub async fn get_games(pool: Arc<SqlitePool>) -> Result<Vec<MonarchGame>> {
+pub async fn get_games_from_db(pool: Arc<SqlitePool>) -> Result<Vec<MonarchGame>> {
     return monarch_sql::get_library(&pool)
         .await
         .with_context(|| "monarch_library::get_games() -> ");
 }
 
 /// Functionality for adding a new persistent game that's been installed.
-pub async fn add_game(pool: Arc<SqlitePool>, game: &MonarchGame) -> Result<()> {
+pub async fn add_game(state_handle: Arc<RwLock<MonarchState>>, game: &MonarchGame) -> Result<()> {
+    let pool: Arc<SqlitePool>;
+
+    match state_handle.write() {
+        Ok(mut state) => {
+            pool = state.get_db_pool_arc();
+
+            if state.get_game(&game.id).is_none() {
+                state.push_game(game.clone());
+            }
+        }
+        Err(e) => {
+            bail!("library::add_game() Failed to acquire lock on state_handle! | Err: {e}")
+        }
+    }
+
     return monarch_sql::insert_game(&pool, game)
         .await
         .with_context(|| "library::add_game() -> ");
