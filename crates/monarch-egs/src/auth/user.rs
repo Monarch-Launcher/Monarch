@@ -25,8 +25,8 @@ impl User {
         }
     }
 
-    pub fn session(&self) -> Session {
-        self.session.clone()
+    pub fn session(&mut self) -> &mut Session {
+        &mut self.session
     }
 
     pub fn start_auth(&self) {

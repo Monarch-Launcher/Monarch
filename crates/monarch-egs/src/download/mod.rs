@@ -380,9 +380,9 @@ impl FileManifest {
 #[derive(Debug, Clone)]
 pub struct ChunkPart {
     guid: [u32; 4],
-    offset: u32,
-    size: u32,
-    file_offset: u32,
+    offset: u64,
+    size: u64,
+    file_offset: u64,
 }
 
 impl Default for ChunkPart {
@@ -398,17 +398,17 @@ impl Default for ChunkPart {
 
 impl ChunkPart {
     /// Offset within the decompressed chunk window.
-    pub fn offset(&self) -> u32 {
+    pub fn offset(&self) -> u64 {
         self.offset
     }
 
     /// Number of bytes this part contributes to the file.
-    pub fn size(&self) -> u32 {
+    pub fn size(&self) -> u64 {
         self.size
     }
 
     /// Offset within the assembled file.
-    pub fn file_offset(&self) -> u32 {
+    pub fn file_offset(&self) -> u64 {
         self.file_offset
     }
 
@@ -470,7 +470,6 @@ fn le_bytes(guid: &[u32; 4]) -> Vec<u8> {
 }
 
 fn base64_url_no_pad(data: &[u8]) -> String {
-    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
     URL_SAFE_NO_PAD.encode(data)
 }
-

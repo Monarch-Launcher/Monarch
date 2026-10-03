@@ -2,7 +2,6 @@ use crate::gui::{
     components::modal::download_modal,
     pages::store_details::{Message, StoreDetailsPage},
 };
-use monarch_core::monarch_games::monarchgame::MonarchGame;
 use monarch_core::monarch_utils;
 
 impl StoreDetailsPage {
@@ -21,12 +20,14 @@ impl StoreDetailsPage {
                         }
                     }
 
-                    let mut game: MonarchGame = self.game.as_ref().unwrap().lock().unwrap().clone();
-
+                    let downloader_handle_clone = self.downloader.clone();
+                    let game_handle_clone = self.game.as_ref().unwrap().clone();
                     iced::Task::perform(
                         async move {
                             let _ = monarch_core::monarch_games::commands::download_game(
-                                &mut game, &mut opts,
+                                downloader_handle_clone,
+                                game_handle_clone,
+                                opts,
                             )
                             .await;
                         },

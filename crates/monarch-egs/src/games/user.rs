@@ -6,8 +6,8 @@ use crate::{Session, User, games::Entitlement};
 
 static ENTITLEMENTS_URL: &str = "entitlement-public-service-prod08.ol.epicgames.com";
 
-pub async fn owned_games(user: &User) -> Vec<Entitlement> {
-    let mut session: Session = user.session();
+pub async fn owned_games(user: &mut User) -> Vec<Entitlement> {
+    let session: &mut Session = user.session();
 
     let client: Client = Client::new();
     let url: String = format!(

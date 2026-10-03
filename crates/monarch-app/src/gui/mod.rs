@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::RwLock};
 
 use futures::channel::mpsc::Sender;
 use iced::{
@@ -9,15 +9,35 @@ use iced::{
     Subscription,
 };
 use iced_term;
+use monarch_core::{
+    monarch_games::monarchgame::{GameImageType, MonarchGame},
+    monarch_utils::{
+        housekeeping,
+        monarch_fs::{generate_cache_image_path, verify_monarch_folders},
+        monarch_game_downloader::MonarchDownloader,
+        monarch_settings::Settings,
+        monarch_sql::{init_db, repair_or_migrate_db},
+        monarch_state::MonarchState,
+    },
+};
 use std::sync::{Arc, LazyLock, Mutex};
-use tracing::info;
+use tracing::{debug, error, info};
 
 use crate::gui::{
     components::{
         header::{self, Header},
         terminal::TermInstance,
     },
-    pages::{library, PageTab},
+    pages::{
+        download::DownloadPage,
+        game_details::GameDetailsPage,
+        home::HomePage,
+        library::{self, LibraryPage},
+        search::SearchPage,
+        settings::SettingsPage,
+        store_details::StoreDetailsPage,
+        PageTab,
+    },
 };
 
 pub mod components;
@@ -36,8 +56,8 @@ pub enum AppMessage {
     HeaderMessage(header::Message),
     Page(pages::Message),
     ResizeWindow(iced::window::Direction),
-    OpenGameDetails(monarch_core::monarch_games::monarchgame::MonarchGame),
-    OpenStoreDetails(monarch_core::monarch_games::monarchgame::MonarchGame),
+    OpenGameDetails(Arc<RwLock<MonarchGame>>),
+    OpenStoreDetails(Arc<RwLock<MonarchGame>>),
     OpenTerminal(Id),
     CloseTerminal(Id),
     CloseWindow(Id),
@@ -96,13 +116,98 @@ pub struct App {
 
     active_terminals: HashMap<Id, TermInstance>,
     active_modal: Option<ModalState>,
+
+    settings: Arc<RwLock<Settings>>, // Shared pointer to the one true Settings held by MonarchState
+    _state: Arc<RwLock<MonarchState>>, // Moving monarch state from a singleton to an app state as single source of truth
+    downloader: Arc<RwLock<MonarchDownloader>>,
 }
 
 impl App {
     fn new(id: Id) -> Self {
+        let mut state: MonarchState =
+            monarch_core::monarch_utils::monarch_state::MonarchState::new();
+
+        futures::executor::block_on(async {
+            state.init().await;
+            verify_monarch_folders(state.get_settings_ptr()); // Checks that directories are as Monarch expects
+
+            let pool = state.get_db_pool_arc();
+            init_db(&pool).await.expect("Failed to run init_db()!"); // Verify database tables exist
+            repair_or_migrate_db(&pool)
+                .await
+                .expect("Failed to run repair_or_migrate_db()!"); // Verify database tables structure
+
+            let games = monarch_core::monarch_library::library::get_games_from_db(pool)
+                .await
+                .expect("Didn't expect to fail!")
+                .iter()
+                .cloned()
+                .map(|g| Arc::new(RwLock::new(g)))
+                .collect::<Vec<Arc<RwLock<MonarchGame>>>>();
+
+            state.set_library_games(&games);
+        });
+
+        let state_handle: Arc<RwLock<MonarchState>> = Arc::new(RwLock::new(state));
+
+        // Grab the shared Settings pointer once. Everything must use this same
+        // Arc<RwLock<Settings>> so all parts of the app agree on one state.
+        let settings_handle: Arc<RwLock<Settings>> =
+            state_handle.read().unwrap().get_settings_ptr();
+
+        let mut downloader: MonarchDownloader = MonarchDownloader::new(state_handle.clone());
+
+        if let Ok(settings) = settings_handle.read() {
+            downloader.set_max_download_speed_bps(settings.monarch.max_download_speed_bps());
+        }
+
+        let downloader_handle: Arc<RwLock<MonarchDownloader>> = Arc::new(RwLock::new(downloader));
+
+        let home_page: HomePage = HomePage::new(state_handle.clone());
+        let library_page: LibraryPage = LibraryPage::new(state_handle.clone());
+        let search_page: SearchPage = SearchPage::new(state_handle.clone());
+        let settings_page: SettingsPage =
+            SettingsPage::new(settings_handle.clone(), downloader_handle.clone());
+        let game_details_page =
+            GameDetailsPage::new(state_handle.clone(), downloader_handle.clone());
+        let store_details_page: StoreDetailsPage =
+            StoreDetailsPage::new(state_handle.clone(), downloader_handle.clone());
+        let download_page: DownloadPage =
+            DownloadPage::new(state_handle.clone(), downloader_handle.clone());
+
+        debug!(
+            "Initialised with MONARCH_STATE: {:?}",
+            state_handle.read().unwrap()
+        );
+        debug!(
+            "Initialised with SETTINGS: {:?}",
+            settings_handle.read().unwrap()
+        );
+
+        monarch_core::monarch_games::updates::start_startup_check(
+            state_handle.clone(),
+            downloader_handle.clone(),
+        );
+        housekeeping::start(state_handle.read().unwrap().get_settings_ptr()); // Starts housekeeping loop
+
         Self {
             app_id: id,
-            ..Default::default()
+            is_fullscreen: false,
+            header: Header::default(),
+            active_tab: PageTab::Home,
+            previous_tab: PageTab::Home,
+            home_page: home_page,
+            library_page: library_page,
+            search_page: search_page,
+            settings_page: settings_page,
+            game_details_page: game_details_page,
+            store_details_page: store_details_page,
+            download_page: download_page,
+            active_terminals: HashMap::new(),
+            active_modal: None,
+            settings: settings_handle,
+            _state: state_handle,
+            downloader: downloader_handle,
         }
     }
 
@@ -256,8 +361,7 @@ impl App {
                         return iced::window::minimize(self.app_id, true);
                     }
                     header::Message::ToggleFullscreen => {
-                        return iced::window::mode(self.app_id)
-                            .map(AppMessage::ToggleFullscreen);
+                        return iced::window::mode(self.app_id).map(AppMessage::ToggleFullscreen);
                     }
                     header::Message::CloseWindow => {
                         return iced::window::close(self.app_id);
@@ -386,28 +490,54 @@ impl App {
             },
             AppMessage::OpenGameDetails(game) => {
                 self.previous_tab = self.active_tab;
-                self.game_details_page.set_game(Arc::new(Mutex::new(game)));
+                self.game_details_page.set_game(game);
                 self.active_tab = PageTab::GameDetails;
                 iced::Task::none()
             }
-            AppMessage::OpenStoreDetails(game) => {
+            AppMessage::OpenStoreDetails(game_handle) => {
                 self.previous_tab = self.active_tab;
                 let props_task = self
                     .store_details_page
-                    .set_game(Arc::new(Mutex::new(game.clone())))
+                    .set_game(game_handle.clone())
                     .map(|m| AppMessage::Page(pages::Message::StoreDetails(m)));
 
                 self.active_tab = PageTab::StoreDetails;
 
+                match game_handle.write() {
+                    Ok(mut game) => {
+                        if game.artwork_path.is_empty() {
+                            game.artwork_path = generate_cache_image_path(
+                                self.settings.clone(),
+                                &game.name,
+                                GameImageType::Artwork,
+                            )
+                            .to_string_lossy()
+                            .to_string();
+                        }
+
+                        if std::path::Path::new(&game.artwork_path).exists() {
+                            return props_task;
+                        }
+                    }
+                    Err(e) => {
+                        error!(
+                            "App::update() Failed to acquire write lock on game_handle! | Err: {e}"
+                        );
+                        show_error("Cannot open store page!");
+                        return props_task;
+                    }
+                }
+
+                let game_handle_clone = game_handle.clone();
+                let settings_handle_clone = self.settings.clone();
+
                 let artwork_task = iced::Task::perform(
                     async move {
-                        let artwork_path = game.artwork_path.clone();
-                        if !artwork_path.is_empty() && std::path::Path::new(&artwork_path).exists()
-                        {
-                            return ();
-                        }
-                        let _ =
-                            monarch_core::monarch_games::commands::download_artwork(&game).await;
+                        let _ = monarch_core::monarch_games::commands::download_artwork(
+                            settings_handle_clone,
+                            game_handle_clone,
+                        )
+                        .await;
                     },
                     |_| {
                         AppMessage::Page(pages::Message::StoreDetails(
@@ -430,6 +560,7 @@ impl App {
             AppMessage::CloseWindow(id) => {
                 if id == self.app_id {
                     info!("Monarch close requested. Cleaning up...");
+                    housekeeping::on_exit(self.settings.clone());
                     return iced::exit();
                 }
                 iced::window::close(id)
@@ -483,11 +614,8 @@ impl App {
             return iced::widget::Space::new().into();
         }
 
-        let show_speed_in_bits = match monarch_core::monarch_utils::commands::get_settings() {
-            Ok(settings) => settings
-                .read()
-                .map(|s| s.monarch.show_download_speed_in_bits)
-                .unwrap_or(false),
+        let show_speed_in_bits = match self.settings.read() {
+            Ok(settings) => settings.monarch.show_download_speed_in_bits,
             Err(_) => false,
         };
 
@@ -518,7 +646,9 @@ impl App {
                             self.active_tab,
                             self.download_page.current_download_speed(),
                             show_speed_in_bits,
-                            monarch_core::monarch_games::commands::get_pending_download_count(),
+                            monarch_core::monarch_games::commands::get_pending_download_count(
+                                self.downloader.clone(),
+                            ),
                             self.is_fullscreen,
                         )
                         .map(AppMessage::HeaderMessage),
@@ -538,11 +668,10 @@ impl App {
             .width(Fill)
             .height(Fill);
 
-        let app_content: Element<'_, AppMessage> =
-            iced::widget::stack![frame, resize_handles()]
-                .width(Fill)
-                .height(Fill)
-                .into();
+        let app_content: Element<'_, AppMessage> = iced::widget::stack![frame, resize_handles()]
+            .width(Fill)
+            .height(Fill)
+            .into();
 
         let Some(modal_state) = &self.active_modal else {
             return app_content;
@@ -610,27 +739,6 @@ fn external_subscription_stream(_: &()) -> iced::futures::stream::BoxStream<'sta
     .boxed()
 }
 
-impl Default for App {
-    fn default() -> Self {
-        Self {
-            app_id: Id::unique(),
-            is_fullscreen: false,
-            header: Header::default(),
-            active_tab: PageTab::Home,
-            previous_tab: PageTab::Home,
-            home_page: pages::home::HomePage::default(),
-            library_page: pages::library::LibraryPage::default(),
-            search_page: pages::search::SearchPage::default(),
-            settings_page: pages::settings::SettingsPage::default(),
-            game_details_page: pages::game_details::GameDetailsPage::default(),
-            store_details_page: pages::store_details::StoreDetailsPage::default(),
-            download_page: pages::download::DownloadPage::default(),
-            active_terminals: HashMap::new(),
-            active_modal: None,
-        }
-    }
-}
-
 /// Overlay of invisible resize handles along the window edges and corners.
 ///
 /// Each handle is a [`mouse_area`] that fires on mouse press (while the button
@@ -638,20 +746,20 @@ impl Default for App {
 /// corresponding direction from the OS via [`iced::window::drag_resize`].
 fn resize_handles() -> iced::Element<'static, AppMessage> {
     use iced::widget::{column, container, mouse_area, row, Space};
-    use iced::{mouse, Length, window::Direction};
+    use iced::{mouse, window::Direction, Length};
 
     // A mouse area wrapped in a fixed-size container, since `MouseArea` itself
     // takes the size of its content.
-    let handle = |direction: Direction,
-                  interaction: mouse::Interaction,
-                  width: Length,
-                  height: Length| {
-        container(mouse_area(Space::new().width(Length::Fill).height(Length::Fill))
-            .on_press(AppMessage::ResizeWindow(direction))
-            .interaction(interaction))
-        .width(width)
-        .height(height)
-    };
+    let handle =
+        |direction: Direction, interaction: mouse::Interaction, width: Length, height: Length| {
+            container(
+                mouse_area(Space::new().width(Length::Fill).height(Length::Fill))
+                    .on_press(AppMessage::ResizeWindow(direction))
+                    .interaction(interaction),
+            )
+            .width(width)
+            .height(height)
+        };
 
     let h = crate::gui::styles::window::RESIZE_HANDLE;
 

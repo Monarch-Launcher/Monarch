@@ -9,7 +9,8 @@
  * more platforms needs ands quirks.
  */
 
-use anyhow::{bail, Result};
+use anyhow::{Context, Result, bail};
+use sqlx::SqlitePool;
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -18,12 +19,17 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tracing::{debug, error, info};
 
 use crate::monarch_games::{monarchgame::MonarchGame, stores::DownloadOptions};
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
+use crate::monarch_library::library;
+use crate::monarch_utils::monarch_state::MonarchState;
 
 use monarch_egs::{DownloadEvent, DownloadManager, DownloadProgress};
 
 pub trait DownloadHandler: Debug + Send + Sync {
-    fn download(&self, job: &DownloadJob) -> Result<(), String>;
+    fn download(
+        &self,
+        job: &DownloadJob,
+        state_handle: Arc<RwLock<MonarchState>>,
+    ) -> Result<(), String>;
     fn cancel(&self, job: &DownloadJob) -> Result<(), String>;
     fn is_downloading(&self) -> bool;
     /// Applies a maximum download speed in bytes/s (0 = unlimited). Handlers
@@ -196,6 +202,8 @@ pub struct MonarchDownloader {
     /// Maximum download speed in bytes/s (0 = unlimited), shared with every
     /// registered handler so updates propagate to running downloads.
     speed_limit_bps: Arc<AtomicU64>,
+
+    pub state_handle: Arc<RwLock<MonarchState>>,
 }
 
 /// The main downloader struct.
@@ -204,7 +212,7 @@ pub struct MonarchDownloader {
 /// It also handles the registration of new download handlers for different stores.
 impl MonarchDownloader {
     /// Creates a new downloader instance.
-    pub fn new() -> Self {
+    pub fn new(state_handle: Arc<RwLock<MonarchState>>) -> Self {
         Self {
             ongoing: None,
             queue: Vec::new(),
@@ -212,6 +220,7 @@ impl MonarchDownloader {
             status: Arc::new(RwLock::new(None)),
             paused: std::collections::HashSet::new(),
             speed_limit_bps: Arc::new(AtomicU64::new(0)),
+            state_handle,
         }
     }
 
@@ -389,7 +398,7 @@ impl MonarchDownloader {
 
         if let Some(handler) = self.download_handlers.get(&store) {
             if let Some(ongoing) = self.ongoing.as_ref() {
-                let _ = handler.download(ongoing);
+                let _ = handler.download(ongoing, self.state_handle.clone());
             }
         }
     }
@@ -513,7 +522,8 @@ async fn add_installed_game_to_library(
     launch_command: String,
     build_version: String,
     install_bytes: u64,
-) {
+    state_handle: Arc<RwLock<MonarchState>>,
+) -> Result<()> {
     let mut installed = game;
     installed.is_installed = true;
     installed.managed_by_monarch = true;
@@ -531,24 +541,40 @@ async fn add_installed_game_to_library(
         installed.launch_args = Some(launch_command);
     }
 
-    let already_installed = MONARCH_STATE
-        .read()
-        .ok()
-        .map(|state| state.get_game(&installed.id).is_some())
-        .unwrap_or(false);
+    let mut game_exists: bool = false;
+    let db_pool: Arc<SqlitePool>;
+    match state_handle.read() {
+        Ok(state) => {
+            db_pool = state.get_db_pool_arc();
 
-    let result = if already_installed {
-        crate::monarch_library::library::update_game_properties(&installed).await
-    } else {
-        crate::monarch_library::library::add_game(&installed).await
-    };
-
-    if let Err(e) = result {
-        error!(
-            "egs_download::Failed to add {} to library | Err: {e}",
-            installed.name
-        );
+            if let Some(game_handle) = state.get_game(&installed.id) {
+                game_exists = true;
+                match game_handle.write() {
+                    Ok(mut g) => {
+                        *g = installed.clone();
+                    }
+                    Err(e) => {
+                        bail!("monarch_game_downloader::add_installed_game_to_library() Failed to acquire read lock on state_handle! | Err: {e}");
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            bail!("monarch_game_downloader::add_installed_game_to_library() Failed to acquire read lock on state_handle! | Err: {e}");
+        }
     }
+
+    if game_exists {
+        library::update_game_properties_in_db(db_pool, &installed)
+            .await
+            .with_context(|| "monarch_game_downloader::add_installed_game_to_library() -> ")?;
+    } else {
+        library::add_game(state_handle, &installed)
+            .await
+            .with_context(|| "monarch_game_downloader::add_installed_game_to_library() -> ")?;
+    }
+
+    Ok(())
 }
 
 /// Downloads Epic Games titles using `monarch_egs` directly, no external CLI
@@ -599,7 +625,11 @@ impl EgsDownloadHandler {
 }
 
 impl DownloadHandler for EgsDownloadHandler {
-    fn download(&self, job: &DownloadJob) -> Result<(), String> {
+    fn download(
+        &self,
+        job: &DownloadJob,
+        state_handle: Arc<RwLock<MonarchState>>,
+    ) -> Result<(), String> {
         let manifest: monarch_egs::Manifest = job
             .manifest
             .downcast_ref::<monarch_egs::Manifest>()
@@ -735,15 +765,18 @@ impl DownloadHandler for EgsDownloadHandler {
                         // Register the game in the library *before* publishing
                         // completion, so the UI's completion handling can rely
                         // on the game already being present (and installed).
-                        add_installed_game_to_library(
+                        if let Err(e) = add_installed_game_to_library(
                             original_game,
                             install_dir,
                             launch_exe,
                             launch_command,
                             build_version,
                             report.install_bytes,
+                            state_handle,
                         )
-                        .await;
+                        .await {
+                            error!("EgsDownloadHandler::download() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                        }
 
                         publish_current_status(
                             &status,
@@ -800,13 +833,10 @@ impl DownloadHandler for EgsDownloadHandler {
             }
         });
 
-        self.runs.lock().unwrap().insert(
-            job_id,
-            RunSlot {
-                generation,
-                handle,
-            },
-        );
+        self.runs
+            .lock()
+            .unwrap()
+            .insert(job_id, RunSlot { generation, handle });
 
         Ok(())
     }

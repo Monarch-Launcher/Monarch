@@ -283,16 +283,17 @@ impl SettingsPage {
 
     fn view_steam(&self, settings: &Settings) -> Element<'_, Message, Theme> {
         let steamcmd_bin: String;
-        let steamcmd_installed: &str = if monarch_games::commands::steamcmd_is_installed() {
-            steamcmd_bin = format!(
-                "Using steamcmd located at: {}",
-                settings.monarch.steamcmd_bin
-            );
-            "Installed"
-        } else {
-            steamcmd_bin = "".to_string();
-            "Not installed"
-        };
+        let steamcmd_installed: &str =
+            if monarch_games::commands::steamcmd_is_installed(self.shared_settings.clone()) {
+                steamcmd_bin = format!(
+                    "Using steamcmd located at: {}",
+                    settings.monarch.steamcmd_bin
+                );
+                "Installed"
+            } else {
+                steamcmd_bin = "".to_string();
+                "Not installed"
+            };
         let steam_login: &str = if settings.steam.username.is_empty() {
             ""
         } else {

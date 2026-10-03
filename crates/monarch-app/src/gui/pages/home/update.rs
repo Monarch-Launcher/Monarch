@@ -1,6 +1,13 @@
+use std::sync::{Arc, RwLock};
+
+use iced::Task;
+use tracing::error;
+
 use super::{HomePage, Message};
 use crate::gui::components::gamecard::gamecard::GameCard;
 use crate::gui::components::gamecard::GameCardMessage;
+use crate::gui::show_error;
+
 use monarch_core::monarch_games;
 use monarch_core::monarch_games::monarchgame::MonarchGame;
 use monarch_core::monarch_library;
@@ -15,11 +22,14 @@ impl HomePage {
                 self.recommended_games = games.iter().cloned().map(GameCard::new).collect();
 
                 // Spoof deals from the same library (shift one slot so the cards feel different)
-                let mut deals = games.clone();
-                if deals.len() > 1 {
-                    deals.rotate_left(1);
-                }
-                self.deals = deals;
+                /*
+                               let mut deals = games.clone();
+                               if deals.len() > 1 {
+                                   deals.rotate_left(1);
+                               }
+                               self.deals = deals;
+                */
+                self.deals = vec![];
 
                 // One background pass to enrich cards that are still missing
                 // properties. Runs after paint; bounded concurrency.
@@ -28,7 +38,11 @@ impl HomePage {
 
             Message::GameCard(gc_msg) => {
                 if let GameCardMessage::GamePressed(id) = &gc_msg {
-                    if let Some(card) = self.recommended_games.iter().find(|c| c.game.id == *id) {
+                    if let Some(card) = self
+                        .recommended_games
+                        .iter()
+                        .find(|c| c.game.read().unwrap().id == *id)
+                    {
                         return iced::Task::done(Message::OpenGameDetails(card.game.clone()));
                     }
                 }
@@ -47,7 +61,7 @@ impl HomePage {
                 if let Some(card) = self
                     .recommended_games
                     .iter_mut()
-                    .find(|c| c.game.id == game.id)
+                    .find(|c| c.game.read().unwrap().id == game.read().unwrap().id)
                 {
                     card.game = game;
                 }
@@ -56,12 +70,27 @@ impl HomePage {
 
             Message::OpenGameDetails(_) => iced::Task::none(),
 
-            Message::LaunchGame(game) => iced::Task::perform(
-                async move {
-                    let _ = monarch_core::monarch_games::commands::launch_game(&game).await;
-                },
-                |_| Message::Tick, // dummy message; we just want the side-effect
-            ),
+            Message::LaunchGame(game) => {
+                let settings_handle_clone = match self.app_state.read() {
+                    Ok(state) => state.get_settings_ptr(),
+                    Err(e) => {
+                        error!("HomePage::update() Failed to acquire read lock on state_handle! | Err: {e}");
+                        show_error("Failed to launch game!");
+                        return Task::none();
+                    }
+                };
+
+                iced::Task::perform(
+                    async move {
+                        let _ = monarch_core::monarch_games::commands::launch_game(
+                            settings_handle_clone,
+                            game,
+                        )
+                        .await;
+                    },
+                    |_| Message::Tick, // dummy message; we just want the side-effect
+                )
+            }
 
             Message::NextDeal => {
                 if !self.deals.is_empty() {
@@ -91,9 +120,11 @@ impl HomePage {
 
     /// Kick off a background load of recommendations. Call this once after Default::default().
     pub fn init(&self) -> iced::Task<Message> {
+        // Clone outside the future so no borrow of `self` can escape the method.
+        let state_handle = self.app_state.clone();
         iced::Task::perform(
-            async {
-                match monarch_library::commands::get_home_recomendations().await {
+            async move {
+                match monarch_library::commands::get_home_recomendations(state_handle).await {
                     Ok(games) => games,
                     Err(_) => Vec::new(),
                 }
@@ -110,10 +141,10 @@ impl HomePage {
 
         const MAX_CONCURRENT_FETCHES: usize = 8;
 
-        let missing: Vec<MonarchGame> = self
+        let missing: Vec<Arc<RwLock<MonarchGame>>> = self
             .recommended_games
             .iter()
-            .filter(|card| !card.game.has_properties())
+            .filter(|card| !card.game.read().unwrap().has_properties())
             .map(|card| card.game.clone())
             .collect();
 
@@ -121,10 +152,20 @@ impl HomePage {
             return iced::Task::none();
         }
 
+        let state_handle = self.app_state.clone();
         iced::Task::stream(
-            futures::stream::iter(missing.into_iter().map(|mut game| async move {
-                monarch_games::commands::get_game_properties(&mut game).await;
-                Message::GameUpdated(game)
+            futures::stream::iter(missing.into_iter().map(move |game| {
+                // The mapping closure is FnMut (called once per game), so it can't
+                // move `state_handle` itself; clone a fresh Arc per future instead.
+                let state_handle = state_handle.clone();
+                async move {
+                    monarch_games::commands::get_game_properties(
+                        state_handle,
+                        game.clone(),
+                    )
+                    .await;
+                    Message::GameUpdated(game)
+                }
             }))
             .buffer_unordered(MAX_CONCURRENT_FETCHES),
         )

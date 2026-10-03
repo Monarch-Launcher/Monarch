@@ -8,11 +8,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties};
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[derive(Debug, Serialize, Deserialize)]
 
@@ -191,8 +190,8 @@ impl AppState {
     }
 }
 
-/// Sets the installation directory of a given Steam game
-pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Result<()> {
+/// Gets the installation directory of a given Steam game
+pub fn get_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Result<PathBuf> {
     let library_folders: LibraryFolders = LibraryFolders::read(libraryfolders_vdf)
         .with_context(|| "monarch_vdf::AppState::read() -> ")?;
 
@@ -209,33 +208,11 @@ pub fn set_install_dir(game: &mut MonarchGame, libraryfolders_vdf: &Path) -> Res
 
             let app_state: AppState =
                 AppState::read(&path).with_context(|| "monarch_vdf::AppState::read() -> ")?;
-            game.properties.install_dir = PathBuf::from(path.parent().unwrap())
+            let install_dir = PathBuf::from(path.parent().unwrap())
                 .join("common")
-                .join(app_state.installdir)
-                .to_str()
-                .unwrap()
-                .to_string();
+                .join(app_state.installdir);
 
-            match MONARCH_STATE.write() {
-                Ok(mut state) => {
-                    if let Err(e) = state.update_game(game.clone()) {
-                        error!(
-                            "monarch_vdf::set_install_dir() -> {}",
-                            e.chain().map(|e| e.to_string()).collect::<String>()
-                        );
-                        warn!("Failed to update game in state: {}", game.name);
-                    }
-                }
-                Err(e) => {
-                    error!("monarch_vdf::set_install_dir() Failed to get lock on MONARCH_STATE | Err: {}", e);
-                    bail!(
-                        "monarch_vdf::set_install_dir() Failed to lock on MONARCH_STATE | Err: {}",
-                        e
-                    )
-                }
-            }
-
-            return Ok(());
+            return Ok(install_dir);
         }
     }
 

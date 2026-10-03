@@ -1,16 +1,18 @@
 mod update;
 mod view;
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use iced::widget::{container, stack, text};
 use iced::{alignment, Element, Length};
+use monarch_core::monarch_utils::monarch_game_downloader::MonarchDownloader;
 
 use crate::gui::components::gamecard::actions::{self, ActionsModal};
 use crate::gui::components::gamecard::properties::{self, PropertiesModal};
 use crate::gui::components::modal::download_modal;
 use crate::gui::styles;
 use monarch_core::monarch_games::monarchgame::MonarchGame;
+use monarch_core::monarch_utils::monarch_state::MonarchState;
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -29,23 +31,30 @@ pub enum Message {
 }
 
 pub struct GameDetailsPage {
-    game: Option<Arc<Mutex<MonarchGame>>>,
+    game: Option<Arc<RwLock<MonarchGame>>>,
     properties_modal: Option<PropertiesModal>,
     actions_modal: Option<ActionsModal>,
     download_modal: Option<download_modal::DownloadModal>,
+    app_state: Arc<RwLock<MonarchState>>,
+    downloader: Arc<RwLock<MonarchDownloader>>,
 }
 
 impl GameDetailsPage {
-    pub fn new() -> Self {
+    pub fn new(
+        state_handle: Arc<RwLock<MonarchState>>,
+        downloader_handle: Arc<RwLock<MonarchDownloader>>,
+    ) -> Self {
         Self {
             game: None,
             properties_modal: None,
             actions_modal: None,
             download_modal: None,
+            app_state: state_handle,
+            downloader: downloader_handle,
         }
     }
 
-    pub fn set_game(&mut self, game: Arc<Mutex<MonarchGame>>) {
+    pub fn set_game(&mut self, game: Arc<RwLock<MonarchGame>>) {
         self.game = Some(game);
     }
 
@@ -106,11 +115,5 @@ impl GameDetailsPage {
             .align_y(alignment::Vertical::Center)
             .into()
         }
-    }
-}
-
-impl Default for GameDetailsPage {
-    fn default() -> Self {
-        Self::new()
     }
 }

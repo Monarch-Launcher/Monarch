@@ -7,6 +7,7 @@
 
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::sleep;
 use std::time::SystemTime;
@@ -14,10 +15,13 @@ use std::{fs, time::Duration};
 use sysinfo::{System, SystemExt};
 use tracing::{error, info};
 
+use crate::monarch_utils::monarch_fs;
+use crate::monarch_utils::monarch_settings::Settings;
+
 use super::monarch_fs::get_resources_cache;
 
 /// Runs HouseKeeper loop on seperate thread
-pub fn start() {
+pub fn start(settings_lock: Arc<RwLock<Settings>>) {
     thread::spawn(move || {
         let mut sys: System = System::new();
 
@@ -25,7 +29,7 @@ pub fn start() {
             sys.refresh_cpu();
 
             if low_system_usage(&sys) {
-                clear_cached_thumbnails();
+                clear_cached_covers(settings_lock);
 
                 break; // For now assume that program will be restarted at some point within next few days.
                        // Can therefor stop the housekeeping service
@@ -36,6 +40,16 @@ pub fn start() {
             sleep(Duration::new(3600, 0));
         }
     });
+}
+
+pub fn on_exit(settings_lock: Arc<RwLock<Settings>>) {
+    let temp_dir = monarch_fs::get_temp_dir(settings_lock);
+    if let Err(e) = monarch_fs::remove_dir(&temp_dir) {
+        error!(
+            "housekeeping::on_exit() Failed to remove temporary directory: {} | Err: {e}",
+            temp_dir.display()
+        )
+    }
 }
 
 /// Checks if system usage is sufficiently low to clear resources.
@@ -49,20 +63,20 @@ fn low_system_usage(system: &System) -> bool {
     Clearing images
 */
 
-/// Clears out old cached thumbnails (Don't like the indentaion level, will come back to rework later)
-pub fn clear_cached_thumbnails() {
-    let path: PathBuf = get_resources_cache();
+/// Clears out old cached covers (Don't like the indentaion level, will come back to rework later)
+pub fn clear_cached_covers(settings_lock: Arc<RwLock<Settings>>) {
+    let path: PathBuf = get_resources_cache(settings_lock);
     match fs::read_dir(path) {
         Ok(files) => {
             clear_dir(files);
         }
         Err(e) => {
-            error!("housekeeping::clear_cached_thumbnails() Encountered error while running fs::read_dir() | Err: {e}");
+            error!("housekeeping::clear_cached_covers() Encountered error while running fs::read_dir() | Err: {e}");
         }
     }
 }
 
-/// Helper function to remove some indentation levels from clear_cached_thumbnails().
+/// Helper function to remove some indentation levels from clear_cached_covers().
 fn clear_dir(files: ReadDir) {
     let mut logged_event: bool = false;
 
@@ -75,22 +89,22 @@ fn clear_dir(files: ReadDir) {
                 info!("Monarch Housekeeper: Clearing cached images...");
                 logged_event = true;
             }
-            remove_thumbnail(&file_path);
+            remove_cover(&file_path);
         }
     }
 }
 
 /// Removes old cache file if old enough
-fn remove_thumbnail(file: &Path) {
+fn remove_cover(file: &Path) {
     if let Err(e) = fs::remove_file(file) {
         error!(
-            "housekeeping::remove_thumbnail() Error while removing: {path} | Err: {e}",
+            "housekeeping::remove_cover() Error while removing: {path} | Err: {e}",
             path = file.display()
         );
     }
 }
 
-/// Checks if it's time to remove cached thumbnail
+/// Checks if it's time to remove cached cover
 fn time_to_remove(file: &Path) -> bool {
     if let Ok(metadata) = fs::metadata(file) {
         if let Ok(time) = metadata.modified() {
@@ -104,16 +118,16 @@ fn time_to_remove(file: &Path) -> bool {
 }
 
 /// Removes all files in /resources/cache, meant for UI so that user can clear folder if wanted
-pub fn clear_all_cache() {
+pub fn clear_all_cache(settings_lock: Arc<RwLock<Settings>>) {
     info!("Manually clearing all cached images...");
-    let path: PathBuf = get_resources_cache();
+    let path: PathBuf = get_resources_cache(settings_lock);
 
     match fs::read_dir(&path) {
         Ok(files) => {
             for file in files {
                 match file {
                     Ok(f) => {
-                        remove_thumbnail(&f.path());
+                        remove_cover(&f.path());
                     }
                     Err(e) => {
                         error!("housekeeping::clear_all_cache() Could not read file! | Err: {e}");

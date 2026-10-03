@@ -23,7 +23,7 @@ pub struct EgsLaunchCommand {
 
 /// Build the complete launch command for an Epic Games Store game on Linux.
 pub async fn build_egs_launch_command(
-    user: &User,
+    user: &mut User,
     app_name: &str,
     namespace: &str,
     exe_path: &Path,
@@ -119,12 +119,12 @@ fn resolve_prefix(wine_prefix: Option<&Path>, app_name: &str) -> String {
 
 /// Build the Epic authentication command-line arguments.
 async fn build_egs_auth_args(
-    user: &User,
+    user: &mut User,
     app_name: &str,
     namespace: &str,
     ot_path: Option<String>,
 ) -> Result<Vec<String>, MonarchEgsError> {
-    let mut session: Session = user.session();
+    let session: &mut Session = user.session();
 
     let token: GameToken = session.get_game_token().await?;
     let account_id: String = session.get_account_id();
