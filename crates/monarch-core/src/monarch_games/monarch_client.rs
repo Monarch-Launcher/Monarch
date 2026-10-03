@@ -9,7 +9,7 @@ use crate::monarch_utils::monarch_fs::{self, generate_cache_image_path, get_unix
 use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
-use crate::monarch_utils::{monarch_http, monarch_sql, monarch_vdf};
+use crate::monarch_utils::{monarch_http, monarch_vdf};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use sqlx::SqlitePool;
@@ -414,6 +414,10 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                 }
                 "epicgames" => {
                     for epic_game in epic_games.iter() {
+                        if game.is_installed {
+                            return true
+                        }
+
                         if game.id == epic_game.id {
                             return true;
                         }
@@ -460,7 +464,9 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                     epic_game.imported = game.imported.clone();
                     epic_game.properties = game.properties.clone();
                     epic_game.launch_args = game.launch_args.clone();
+                    epic_game.is_installed = game.is_installed.clone();
                     epic_game.compatibility = game.compatibility.clone();
+                    epic_game.managed_by_monarch = game.managed_by_monarch.clone();
                     if epic_game.executable_path.is_none() {
                         epic_game.executable_path = game.executable_path.clone();
                     }
@@ -498,7 +504,7 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                 continue;
             }
         }
-        if let Err(e) = monarch_sql::update_game(&db_pool, &game_clone).await {
+        if let Err(e) = library::update_game_properties_in_db(db_pool.clone(), &game_clone).await {
             error!(
                 "monarch_client::refresh_library() -> {}",
                 e.chain().map(|e| e.to_string()).collect::<String>()
