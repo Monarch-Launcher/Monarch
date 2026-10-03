@@ -12,7 +12,7 @@ use crate::gui::{
     pages::game_details::{GameDetailsPage, Message},
     show_error,
 };
-use monarch_core::monarch_games;
+use monarch_core::monarch_games::{self, games::GameType};
 
 impl GameDetailsPage {
     pub fn launch_game(&self) -> iced::Task<Message> {
@@ -95,7 +95,7 @@ impl GameDetailsPage {
 
     pub fn download_game(&mut self) -> iced::Task<Message> {
         let game_handle_clone = self.game.as_ref().unwrap().clone();
-        let settings_handle_clone = match self.app_state.read() {
+        let settings_handle = match self.app_state.read() {
             Ok(state) => state.get_settings_ptr(),
             Err(e) => {
                 error!("GameDetailsPage::download_game() Failed to acquire read lock on state_handle! | Err: {e}");
@@ -104,8 +104,22 @@ impl GameDetailsPage {
             }
         };
 
+        match game_handle_clone.read() {
+            Ok(game) => {
+                if !game.get_store().store_enabled(settings_handle.clone()) {
+                    show_error("Monarch is not allowed to download from this source. Please check your enabled stores in the settings.");
+                    return Task::none()
+                }
+            }
+            Err(e) => {
+                error!("GameDetailsPage::download_game() Failed to acquire read lock on game_handle! | Err: {e}");
+                show_error("Failed to check if Monarch is allowed to manage games from current source!");
+                return Task::none()
+            }
+        }
+
         let modal_result =
-            download_modal::DownloadModal::new(settings_handle_clone, game_handle_clone);
+            download_modal::DownloadModal::new(settings_handle, game_handle_clone);
 
         match modal_result {
             Ok((modal, task)) => {
