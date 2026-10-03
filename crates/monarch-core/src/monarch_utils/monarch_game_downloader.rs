@@ -9,7 +9,8 @@
  * more platforms needs ands quirks.
  */
 
-use anyhow::{bail, Result};
+use anyhow::{Context, Result, bail};
+use sqlx::SqlitePool;
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -18,6 +19,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tracing::{debug, error, info};
 
 use crate::monarch_games::{monarchgame::MonarchGame, stores::DownloadOptions};
+use crate::monarch_library::library;
 use crate::monarch_utils::monarch_state::MonarchState;
 
 use monarch_egs::{DownloadEvent, DownloadManager, DownloadProgress};
@@ -521,7 +523,7 @@ async fn add_installed_game_to_library(
     build_version: String,
     install_bytes: u64,
     state_handle: Arc<RwLock<MonarchState>>,
-) {
+) -> Result<()> {
     let mut installed = game;
     installed.is_installed = true;
     installed.managed_by_monarch = true;
@@ -539,31 +541,40 @@ async fn add_installed_game_to_library(
         installed.launch_args = Some(launch_command);
     }
 
-    // Compute the library check and clone the DB pool out of the guard, then
-    // drop it before awaiting: a std RwLock guard held across `.await` makes
-    // this future `!Send`, which breaks the `tokio::spawn` wrapping it.
-    let (already_installed, pool) = match state_handle.read() {
+    let mut game_exists: bool = false;
+    let db_pool: Arc<SqlitePool>;
+    match state_handle.read() {
         Ok(state) => {
-            let already = state.get_game(&installed.id).is_some();
-            let pool = state.get_db_pool_arc();
-            (already, Some(pool))
+            db_pool = state.get_db_pool_arc();
+
+            if let Some(game_handle) = state.get_game(&installed.id) {
+                game_exists = true;
+                match game_handle.write() {
+                    Ok(mut g) => {
+                        *g = installed.clone();
+                    }
+                    Err(e) => {
+                        bail!("monarch_game_downloader::add_installed_game_to_library() Failed to acquire read lock on state_handle! | Err: {e}");
+                    }
+                }
+            }
         }
-        Err(_) => (false, None),
-    };
-
-    let result = if already_installed {
-        crate::monarch_library::library::update_game_properties_in_db(pool.unwrap(), &installed)
-            .await
-    } else {
-        crate::monarch_library::library::add_game(state_handle, &installed).await
-    };
-
-    if let Err(e) = result {
-        error!(
-            "egs_download::Failed to add {} to library | Err: {e}",
-            installed.name
-        );
+        Err(e) => {
+            bail!("monarch_game_downloader::add_installed_game_to_library() Failed to acquire read lock on state_handle! | Err: {e}");
+        }
     }
+
+    if game_exists {
+        library::update_game_properties_in_db(db_pool, &installed)
+            .await
+            .with_context(|| "monarch_game_downloader::add_installed_game_to_library() -> ")?;
+    } else {
+        library::add_game(state_handle, &installed)
+            .await
+            .with_context(|| "monarch_game_downloader::add_installed_game_to_library() -> ")?;
+    }
+
+    Ok(())
 }
 
 /// Downloads Epic Games titles using `monarch_egs` directly, no external CLI
@@ -754,7 +765,7 @@ impl DownloadHandler for EgsDownloadHandler {
                         // Register the game in the library *before* publishing
                         // completion, so the UI's completion handling can rely
                         // on the game already being present (and installed).
-                        add_installed_game_to_library(
+                        if let Err(e) = add_installed_game_to_library(
                             original_game,
                             install_dir,
                             launch_exe,
@@ -763,7 +774,9 @@ impl DownloadHandler for EgsDownloadHandler {
                             report.install_bytes,
                             state_handle,
                         )
-                        .await;
+                        .await {
+                            error!("EgsDownloadHandler::download() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                        }
 
                         publish_current_status(
                             &status,
