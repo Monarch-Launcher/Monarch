@@ -1,5 +1,6 @@
 use iced::widget::{container, text};
 use iced::{alignment, Element, Length, Task};
+use monarch_core::monarch_games::games::GameType as _;
 use monarch_core::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use std::sync::{Arc, RwLock};
 use tracing::error;
@@ -82,7 +83,7 @@ impl StoreDetailsPage {
                 // Handled in parent
                 iced::Task::none()
             }
-            Message::DownloadGame(game) => {
+            Message::DownloadGame(game_handle) => {
                 let settings_handle = match self.app_state.read() {
                     Ok(state) => state.get_settings_ptr(),
                     Err(e) => {
@@ -91,7 +92,22 @@ impl StoreDetailsPage {
                         return Task::none();
                     }
                 };
-                match download_modal::DownloadModal::new(settings_handle, game) {
+
+                match game_handle.read() {
+                    Ok(game) => {
+                        if !game.get_store().store_enabled(settings_handle.clone()) {
+                            show_error("Monarch is not allowed to download from this source. Please check your enabled stores in the settings.");
+                            return Task::none()
+                        }
+                    }
+                    Err(e) => {
+                        error!("GameDetailsPage::download_game() Failed to acquire read lock on game_handle! | Err: {e}");
+                        show_error("Failed to check if Monarch is allowed to manage games from current source!");
+                        return Task::none()
+                    }
+                }
+
+                match download_modal::DownloadModal::new(settings_handle, game_handle) {
                     Ok((modal, task)) => {
                         self.download_modal = Some(modal);
                         task.map(Message::DownloadModalMessage)
