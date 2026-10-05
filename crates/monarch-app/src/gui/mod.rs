@@ -240,6 +240,10 @@ impl App {
             App::view,
         )
         .title("Monarch")
+        // Load the bundled Oxanium font when the compositor is created, so
+        // every window renders with it from the first frame.
+        .font(styles::fonts::BYTES)
+        .default_font(styles::fonts::REGULAR)
         .theme(App::theme)
         .subscription(App::subscription)
         .run()
