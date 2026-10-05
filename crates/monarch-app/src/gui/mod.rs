@@ -212,7 +212,7 @@ impl App {
     }
 
     pub fn run() {
-        iced::daemon(
+        let mut daemon = iced::daemon(
             || {
                 let (sender, receiver) = futures::channel::mpsc::unbounded();
                 *GUI_SENDER.lock().unwrap() = Some(sender.clone());
@@ -240,14 +240,17 @@ impl App {
             App::view,
         )
         .title("Monarch")
-        // Load the bundled Oxanium font when the compositor is created, so
-        // every window renders with it from the first frame.
-        .font(styles::fonts::BYTES)
+        // Load the bundled Oxanium fonts when the compositor is created, so
+        // every window renders with them from the first frame.
         .default_font(styles::fonts::REGULAR)
         .theme(App::theme)
-        .subscription(App::subscription)
-        .run()
-        .unwrap();
+        .subscription(App::subscription);
+
+        for bytes in styles::fonts::BYTES {
+            daemon = daemon.font(*bytes);
+        }
+
+        daemon.run().unwrap();
     }
 
     fn theme(&self, _window_id: Id) -> iced::Theme {
