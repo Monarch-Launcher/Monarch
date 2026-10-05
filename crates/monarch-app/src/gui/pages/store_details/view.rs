@@ -1,3 +1,4 @@
+use iced::widget::mouse_area;
 use iced::{
     alignment,
     widget::{column, container, image, row, scrollable, stack, text},
@@ -6,8 +7,9 @@ use iced::{
 use tracing::error;
 
 use crate::gui::{
-    components::common::{secondary_button, store_button},
+    components::common::{icon_button, secondary_button, store_button},
     pages::store_details::{Message, StoreDetailsPage},
+    resources::ARROW_BACK,
     show_error,
 };
 
@@ -67,8 +69,17 @@ impl StoreDetailsPage {
                     });
 
                 // Back button in top left
-                let back_btn =
-                    container(secondary_button("← Back", Some(Message::BackPressed))).padding(40);
+                let back_btn = container(
+                    mouse_area(icon_button(
+                        Some(Message::BackPressed),
+                        self.is_back_hovered,
+                        ARROW_BACK.clone(),
+                        0.0,
+                    ))
+                    .on_enter(Message::BackHovered(true))
+                    .on_exit(Message::BackHovered(false)),
+                )
+                .padding(40);
 
                 // Game cover/cover
                 let game_cover = if !game.cover_path.is_empty() {

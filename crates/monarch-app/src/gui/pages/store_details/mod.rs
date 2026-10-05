@@ -17,6 +17,7 @@ mod view;
 #[derive(Clone, Debug)]
 pub enum Message {
     BackPressed,
+    BackHovered(bool),
     DownloadGame(Arc<RwLock<MonarchGame>>),
     DownloadModalMessage(download_modal::Message),
     OpenStorePage(String),
@@ -28,6 +29,7 @@ pub struct StoreDetailsPage {
     game: Option<Arc<RwLock<MonarchGame>>>,
     pub artwork_loaded: bool,
     pub download_modal: Option<download_modal::DownloadModal>,
+    is_back_hovered: bool,
 
     app_state: Arc<RwLock<MonarchState>>,
     downloader: Arc<RwLock<MonarchDownloader>>,
@@ -42,6 +44,7 @@ impl StoreDetailsPage {
             game: None,
             artwork_loaded: false,
             download_modal: None,
+            is_back_hovered: false,
 
             app_state: state_handle,
             downloader: downloader_handle,
@@ -81,6 +84,10 @@ impl StoreDetailsPage {
         match msg {
             Message::BackPressed => {
                 // Handled in parent
+                iced::Task::none()
+            }
+            Message::BackHovered(hovered) => {
+                self.is_back_hovered = hovered;
                 iced::Task::none()
             }
             Message::DownloadGame(game_handle) => {

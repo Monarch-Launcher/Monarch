@@ -1,14 +1,16 @@
 use chrono::{TimeZone, Utc};
+use iced::widget::mouse_area;
 use iced::{
     alignment,
-    widget::{column, container, image, row, scrollable, stack, text, Space},
+    widget::{column, container, image, row, scrollable, stack, text},
     Color, Element, Length, Theme,
 };
 use tracing::error;
 
 use crate::gui::{
-    components::common::{download_button, launch_button, secondary_button},
+    components::common::{download_button, icon_button, launch_button},
     pages::game_details::{GameDetailsPage, Message},
+    resources::{ARROW_BACK, EDIT},
     show_error,
 };
 use monarch_core::monarch_games::games::GameType;
@@ -65,8 +67,17 @@ impl GameDetailsPage {
                     });
 
                 // Back button in top left
-                let back_btn =
-                    container(secondary_button("← Back", Some(Message::BackPressed))).padding(40);
+                let back_btn = container(
+                    mouse_area(icon_button(
+                        Some(Message::BackPressed),
+                        self.is_back_hovered,
+                        ARROW_BACK.clone(),
+                        0.0,
+                    ))
+                    .on_enter(Message::BackHovered(true))
+                    .on_exit(Message::BackHovered(false)),
+                )
+                .padding(40);
 
                 // Game cover/cover
                 let game_cover = if !game.cover_path.is_empty() {
@@ -123,7 +134,7 @@ impl GameDetailsPage {
                 let description_title = text("About")
                     .size(20)
                     .color(Color::from_rgb8(200, 200, 200))
-                    .font(crate::gui::styles::fonts::REGULAR);
+                    .font(crate::gui::styles::fonts::SEMIBOLD);
 
                 let description_text = text(if game.summary.is_empty() {
                     "No description available.".to_string()
@@ -218,8 +229,14 @@ impl GameDetailsPage {
                 } else {
                     download_button("Download", Some(Message::DownloadGame))
                 };
-                let edit_btn = secondary_button("Edit", Some(Message::OpenProperties));
-                let actions_button = secondary_button("More Actions", Some(Message::OpenActions));
+                let edit_btn = mouse_area(icon_button(
+                    Some(Message::OpenProperties),
+                    self.is_edit_hovered,
+                    EDIT.clone(),
+                    0.0,
+                ))
+                .on_enter(Message::EditHovered(true))
+                .on_exit(Message::EditHovered(false));
 
                 // Properties section
                 let properties_title = text("Properties")
@@ -244,27 +261,31 @@ impl GameDetailsPage {
 
                 let properties_panel = container(
                     column![
-                        row![properties_title, Space::new().width(Length::Fill), edit_btn]
-                            .align_y(alignment::Vertical::Center),
+                        properties_title,
                         container(
-                            column![
-                                property_item(
-                                    "Executable".to_string(),
-                                    game.executable_path
-                                        .as_ref()
-                                        .unwrap_or(&format!(""))
-                                        .clone()
-                                ),
-                                property_item(
-                                    "Compatibility".to_string(),
-                                    game.compatibility.as_ref().unwrap_or(&format!("")).clone()
-                                ),
-                                property_item(
-                                    "Launch Arguments".to_string(),
-                                    game.launch_args.as_ref().unwrap_or(&format!("")).clone()
-                                ),
+                            row![
+                                column![
+                                    property_item(
+                                        "Executable".to_string(),
+                                        game.executable_path
+                                            .as_ref()
+                                            .unwrap_or(&format!(""))
+                                            .clone()
+                                    ),
+                                    property_item(
+                                        "Compatibility".to_string(),
+                                        game.compatibility.as_ref().unwrap_or(&format!("")).clone()
+                                    ),
+                                    property_item(
+                                        "Launch Arguments".to_string(),
+                                        game.launch_args.as_ref().unwrap_or(&format!("")).clone()
+                                    ),
+                                ]
+                                .spacing(16)
+                                .width(Length::Fill),
+                                edit_btn,
                             ]
-                            .spacing(16)
+                            .spacing(10)
                         )
                         .padding(20)
                         .style(|_theme: &Theme| container::Style {
@@ -301,7 +322,6 @@ impl GameDetailsPage {
                     row![launch_btn]
                         .spacing(10)
                         .align_y(alignment::Vertical::Center),
-                    actions_button,
                     row![info_panel, properties_panel].spacing(40),
                 ]
                 .spacing(40);
@@ -324,13 +344,9 @@ impl GameDetailsPage {
                 .height(Length::Fill);
 
                 // Stack everything: background -> overlay -> content
-                let mut layers = stack![background_image, overlay, content]
+                let layers = stack![background_image, overlay, content]
                     .width(Length::Fill)
                     .height(Length::Fill);
-
-                if let Some(modal) = &self.properties_modal {
-                    layers = layers.push(modal.view().map(Message::Properties));
-                }
 
                 layers.into()
             }

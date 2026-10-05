@@ -449,10 +449,6 @@ impl App {
                             .game_details_page
                             .update(pages::game_details::Message::OpenProperties)
                             .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
-                        pages::game_details::Message::OpenActions => self
-                            .game_details_page
-                            .update(pages::game_details::Message::OpenActions)
-                            .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
                         pages::game_details::Message::Properties(p_msg) => self
                             .game_details_page
                             .update(pages::game_details::Message::Properties(p_msg))
@@ -460,6 +456,18 @@ impl App {
                         pages::game_details::Message::Actions(a_msg) => self
                             .game_details_page
                             .update(pages::game_details::Message::Actions(a_msg))
+                            .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
+                        pages::game_details::Message::BackHovered(hovered) => self
+                            .game_details_page
+                            .update(pages::game_details::Message::BackHovered(hovered))
+                            .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
+                        pages::game_details::Message::EditHovered(hovered) => self
+                            .game_details_page
+                            .update(pages::game_details::Message::EditHovered(hovered))
+                            .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
+                        pages::game_details::Message::EditModalMessage(msg) => self
+                            .game_details_page
+                            .update(pages::game_details::Message::EditModalMessage(msg))
                             .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
                         pages::game_details::Message::Nop(_) => iced::Task::none(),
                         pages::game_details::Message::DownloadModalMessage(dm_msg) => self

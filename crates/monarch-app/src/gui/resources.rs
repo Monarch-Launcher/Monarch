@@ -108,6 +108,16 @@ pub static FILTER: LazyLock<svg::Handle> = LazyLock::new(|| {
     svg::Handle::from_memory(bytes.to_vec())
 });
 
+pub static ARROW_BACK: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/arrow-back-long-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
+pub static EDIT: LazyLock<svg::Handle> = LazyLock::new(|| {
+    let bytes = include_bytes!("../../icons/Actions/edit-pencil-svgrepo-com.svg");
+    svg::Handle::from_memory(bytes.to_vec())
+});
+
 pub static WINDOW_MINIMIZE: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/window-minimize.svg");
     svg::Handle::from_memory(bytes.to_vec())

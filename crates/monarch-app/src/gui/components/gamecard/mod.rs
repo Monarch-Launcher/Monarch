@@ -4,6 +4,7 @@ use monarch_core::monarch_games::monarchgame::MonarchGame;
 
 pub mod actions;
 pub mod container;
+pub mod edit_modal;
 pub mod game_browser;
 pub mod gamecard;
 pub mod properties;

@@ -217,7 +217,9 @@ impl PropertiesModal {
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
+    /// The editable property fields (without footer or modal wrapper); used
+    /// both by `view` and by the combined edit modal on the details page.
+    pub fn fields(&self) -> Element<'_, Message> {
         let executables_combo = combo_box(
             &self.executables,
             "Select Executable",
@@ -260,7 +262,7 @@ impl PropertiesModal {
             .on_input(Message::LaunchArgsChanged)
             .padding(10);
 
-        let content = column![
+        column![
             text("Executables").size(18),
             hovered_path,
             executables_combo,
@@ -270,19 +272,29 @@ impl PropertiesModal {
             Space::new().height(Length::Fixed(10.0)),
             text("Launch Arguments").size(18),
             launch_args_input,
+        ]
+        .spacing(10)
+        .into()
+    }
+
+    pub fn view(&self) -> Element<'_, Message> {
+        let footer = row![
+            button(text("Save"))
+                .on_press(Message::Save)
+                .padding(10)
+                .style(styles::button::primary),
+            Space::new().width(Length::Fixed(10.0)),
+            button(text("Cancel"))
+                .on_press(Message::Cancel)
+                .padding(10)
+                .style(styles::button::secondary),
+        ]
+        .align_y(alignment::Vertical::Center);
+
+        let content = column![
+            self.fields(),
             Space::new().height(Length::Fixed(20.0)),
-            row![
-                button(text("Save"))
-                    .on_press(Message::Save)
-                    .padding(10)
-                    .style(styles::button::primary),
-                Space::new().width(Length::Fixed(10.0)),
-                button(text("Cancel"))
-                    .on_press(Message::Cancel)
-                    .padding(10)
-                    .style(styles::button::secondary),
-            ]
-            .align_y(alignment::Vertical::Center)
+            footer,
         ]
         .spacing(10);
 
