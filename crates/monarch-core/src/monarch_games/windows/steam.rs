@@ -5,12 +5,14 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::{Arc, RwLock};
 use tracing::{error, info};
 use zip::ZipArchive;
 
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_games::steam_client::parse_steam_ids;
 use crate::monarch_utils::monarch_fs::{create_dir, get_monarch_home, path_exists};
+use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_vdf;
 use crate::monarch_utils::monarch_winreg::is_installed;
 
@@ -21,8 +23,8 @@ use crate::monarch_utils::monarch_winreg::is_installed;
 */
 
 /// Installs SteamCMD for user in \%appdata%\monarch\
-pub async fn install_steamcmd() -> Result<()> {
-    let steamcmd_path: PathBuf = get_steamcmd_dir();
+pub async fn install_steamcmd(settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
+    let steamcmd_path: PathBuf = get_steamcmd_dir(settings_handle);
 
     // Verify that steamcmd path has to be created
     if !path_exists(&steamcmd_path) {
@@ -96,24 +98,24 @@ pub async fn install_steamcmd() -> Result<()> {
 }
 
 /// Windows specific function for creating path to \%appdata%\Monarch\SteamCMD\
-fn get_steamcmd_dir() -> PathBuf {
-    get_monarch_home().join("SteamCMD")
+fn get_steamcmd_dir(settings_handle: Arc<RwLock<Settings>>) -> PathBuf {
+    get_monarch_home(settings_handle).join("SteamCMD")
 }
 
 /// Returns path to the SteamCMD binary used in SteamCMD commands
-pub fn get_steamcmd_exe() -> PathBuf {
-    get_steamcmd_dir().join("steamcmd").join("steamcmd.exe")
+pub fn get_steamcmd_exe(settings_handle: Arc<RwLock<Settings>>) -> PathBuf {
+    get_steamcmd_dir(settings_handle).join("steamcmd").join("steamcmd.exe")
 }
 
 /// Returns whether or not SteamCMD is installed
-pub fn steamcmd_is_installed() -> bool {
-    get_steamcmd_exe().exists()
+pub fn steamcmd_is_installed(settings_handle: Arc<RwLock<Settings>>) -> bool {
+    get_steamcmd_exe(settings_handle).exists()
 }
 
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
-pub async fn steamcmd_command(args: Vec<&str>) -> Result<()> {
-    let mut path: PathBuf = get_steamcmd_dir();
+pub async fn steamcmd_command(settings_handle: Arc<RwLock<Settings>>, args: Vec<&str>) -> Result<()> {
+    let mut path: PathBuf = get_steamcmd_dir(settings_handle);
     path.push("steamcmd");
     path.push("steamcmd.exe");
     let _args_string: String = args.iter().map(|arg| format!("{arg} ")).collect::<String>();
@@ -144,7 +146,7 @@ pub fn steam_is_installed() -> bool {
 }
 
 /// Finds local steam library installed on current system
-pub async fn get_library() -> Vec<MonarchGame> {
+pub async fn get_library(settings_handle: Arc<RwLock<Settings>>) -> Vec<MonarchGame> {
     if !steam_is_installed() {
         info!("Steam not installed! Skipping...");
         return Vec::new();
@@ -152,7 +154,7 @@ pub async fn get_library() -> Vec<MonarchGame> {
 
     let path = get_default_libraryfolders_location().unwrap();
     match monarch_vdf::parse_library_file(&path) {
-        Ok(found_games) => return parse_steam_ids(&found_games, false, true).await,
+        Ok(found_games) => return parse_steam_ids(settings_handle, &found_games, false, true).await,
         Err(e) => {
             error!("{:#}", e);
             vec![]

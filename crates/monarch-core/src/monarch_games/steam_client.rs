@@ -6,6 +6,8 @@ use serde::Deserialize;
 use serde_json::Value;
 use simple_steam_totp::generate;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::RwLock;
 use tokio::task;
 use tracing::{debug, error, info, warn};
 
@@ -19,8 +21,11 @@ use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::library;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
+use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_http;
-use crate::monarch_utils::monarch_settings::{get_settings, LauncherSettings};
+use crate::monarch_utils::monarch_settings::LauncherSettings;
+use crate::monarch_utils::monarch_settings::Settings;
+use crate::monarch_utils::monarch_state::MonarchState;
 
 #[cfg(target_os = "windows")]
 use super::windows::steam;
@@ -47,28 +52,73 @@ impl SteamClient {
 
 #[async_trait]
 impl StoreType for SteamClient {
-    async fn search_games(&self, name: &str, _filter: &SearchFilter) -> Vec<Box<dyn SearchResult>> {
-        find_game(name)
+    async fn search_games(
+        &self,
+        settings_handle: Arc<RwLock<Settings>>,
+        name: &str,
+        _filter: &SearchFilter,
+    ) -> Vec<Box<dyn SearchResult>> {
+        find_game(settings_handle, name)
             .await
             .into_iter()
             .map(|g| Box::new(MonarchWebApiGame::from_monarchgame(g)) as Box<dyn SearchResult>)
             .collect::<Vec<Box<dyn SearchResult>>>()
     }
 
-    async fn install_game(&self, game: &mut MonarchGame, _opts: &DownloadOptions) -> Result<()> {
-        let game: MonarchGame = download_game(&game.name, &game.get_store_id())
+    async fn install_game(
+        &mut self,
+        downloader_handle: Arc<RwLock<MonarchDownloader>>,
+        game: &mut MonarchGame,
+        _opts: &DownloadOptions,
+    ) -> Result<()> {
+        let state_handle: Arc<RwLock<MonarchState>>;
+        let settings_handle: Arc<RwLock<Settings>>;
+
+        match downloader_handle.read() {
+            Ok(downloader) => state_handle = downloader.state_handle.clone(),
+            Err(e) => {
+                bail!("steam_client::install_game() Failed to acquire read lock on state_handle! | Err: {e}");
+            }
+        };
+
+        match state_handle.read() {
+            Ok(state) => {
+                settings_handle = state.get_settings_ptr();
+            }
+            Err(e) => {
+                bail!("steam_client::install_game() Failed to acquire read lock on state_handle! | Err: {e}");
+            }
+        };
+
+        let game: MonarchGame = download_game(settings_handle, &game.name, &game.get_store_id())
             .await
             .with_context(|| "steam_client::install_game() -> ")?;
-        library::add_game(&game)
+
+        // First write to permanent store
+        library::add_game(state_handle.clone(), &game)
             .await
-            .with_context(|| "steam_client::install_game() -> ")
+            .with_context(|| "steam_client::install_game() -> ")?;
+
+        // Then add to the application state list of games
+        match state_handle.write() {
+            Ok(mut state) => state.push_game(game),
+            Err(e) => {
+                bail!("steam_client::install_game() Failed to acquire write lock on state_handle! | Err: {e}");
+            }
+        }
+
+        Ok(())
     }
 
-    async fn uninstall_game(&self, game: &MonarchGame) -> Result<()> {
+    async fn uninstall_game(
+        &self,
+        settings_handle: Arc<RwLock<Settings>>,
+        game: &MonarchGame,
+    ) -> Result<()> {
         match game.get_store_name().as_str() {
             "steam" => uninstall_client_game(&game.get_store_id())
                 .with_context(|| "steam_client::uninstall_game() -> "),
-            "steamcmd" => uninstall_game(&game.get_store_id())
+            "steamcmd" => uninstall_game(settings_handle, &game.get_store_id())
                 .await
                 .with_context(|| "steam_client::uninstall_game() -> "),
             _ => {
@@ -80,8 +130,12 @@ impl StoreType for SteamClient {
         }
     }
 
-    async fn update_game(&self, game: &MonarchGame) -> Result<()> {
-        update_game(&game.get_store_id())
+    async fn update_game(
+        &mut self,
+        settings_handle: Arc<RwLock<Settings>>,
+        game: &MonarchGame,
+    ) -> Result<()> {
+        update_game(settings_handle, &game.get_store_id())
             .await
             .with_context(|| "steam_client::update_game() -> ")
     }
@@ -90,17 +144,32 @@ impl StoreType for SteamClient {
         unimplemented!()
     }
 
-    fn store_enabled(&self) -> bool {
-        unimplemented!()
+    fn store_enabled(&self, settings_handle: Arc<RwLock<Settings>>) -> bool {
+        let settings = match settings_handle.read() {
+            Ok(settings) => settings,
+            Err(e) => {
+                error!(
+                    "steam_client::store_enabled() Failed to acquire read lock on settings_handle! | Err: {}",
+                    e
+                );
+                return false;
+            }
+        };
+        settings.steam.manage
     }
 
-    async fn launch_game(&mut self, game: &MonarchGame) -> Result<()> {
+    async fn launch_game(
+        &mut self,
+        settings_handle: Arc<RwLock<Settings>>,
+        game: &MonarchGame,
+    ) -> Result<()> {
         match game.get_store_name().as_str() {
             "steam" => launch_client_game(game),
             "steamcmd" => {
                 let game_clone: MonarchGame = game.clone();
-                tokio::spawn(async move {
-                    if let Err(e) = launch_cmd_game(&game_clone).await {
+                let settings_handle_clone = settings_handle.clone();
+                task::spawn(async move {
+                    if let Err(e) = launch_cmd_game(settings_handle_clone, &game_clone).await {
                         error!(
                             "steam_client::SteamClient::launch_game() -> {}",
                             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -115,18 +184,18 @@ impl StoreType for SteamClient {
 }
 
 /// Returns if SteamCMD is installed on system or not.
-pub fn steamcmd_is_installed() -> bool {
-    steam::steamcmd_is_installed()
+pub fn steamcmd_is_installed(settings_handle: Arc<RwLock<Settings>>) -> bool {
+    steam::steamcmd_is_installed(settings_handle)
 }
 
 /// Downloads and installs SteamCMD on users computer.
-pub async fn install_steamcmd() -> Result<()> {
-    steam::install_steamcmd()
+pub async fn install_steamcmd(settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
+    steam::install_steamcmd(settings_handle.clone())
         .await
         .with_context(|| "steam_client::install_steamcmd() -> ")?;
 
     // Perform initial run of SteamCMD to create necessary files
-    steam::steamcmd_command(vec!["+quit"])
+    steam::steamcmd_command(settings_handle.clone(), vec!["+quit"])
         .await
         .with_context(|| "steam_client::install_steamcmd() -> ")?;
 
@@ -149,7 +218,9 @@ pub async fn install_steamcmd() -> Result<()> {
             .join("linux32");
         */
 
-        let dest_path: PathBuf = get_monarch_home().join("steamcmd").join("linux32");
+        let dest_path: PathBuf = get_monarch_home(settings_handle.clone())
+            .join("steamcmd")
+            .join("linux32");
 
         let reaper_src: PathBuf = src_path.join("ubuntu12_32").join("reaper");
         let wrapper_src: PathBuf = src_path.join("ubuntu12_32").join("steam-launch-wrapper");
@@ -183,15 +254,11 @@ pub async fn install_steamcmd() -> Result<()> {
     }
 
     // Initial login to cache user credentials
-    let login_arg = {
-        let settings_lock = match get_settings() {
-            Ok(lock) => lock,
-            Err(e) => bail!(
-                "steam_client::install_steamcmd() Failed to get settings | Err: {}",
-                e
-            ),
-        };
-        let settings = match settings_lock.read() {
+    // Scope the read lock so the guard is dropped before any `.await`
+    // (std::sync::RwLockReadGuard is !Send and must not be held across await points,
+    // otherwise the future is not Send and iced::Task::perform rejects it).
+    let login_arg: String = {
+        let settings = match settings_handle.read() {
             Ok(settings) => settings,
             Err(e) => bail!(
                 "steam_client::install_steamcmd() Failed to get settings read lock | Err: {}",
@@ -203,15 +270,18 @@ pub async fn install_steamcmd() -> Result<()> {
             .with_context(|| "steam_client::install_steamcmd() -> ")?
     };
 
-    steam::steamcmd_command(vec!["-globaluser", &login_arg, "+quit"])
-        .await
-        .with_context(|| "steam_client::install_steamcmd() -> ")?;
+    steam::steamcmd_command(
+        settings_handle.clone(),
+        vec!["-globaluser", &login_arg, "+quit"],
+    )
+    .await
+    .with_context(|| "steam_client::install_steamcmd() -> ")?;
 
     Ok(())
 }
 
-pub fn remove_steamcmd() -> Result<()> {
-    if !steamcmd_is_installed() {
+pub fn remove_steamcmd(settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
+    if !steamcmd_is_installed(settings_handle) {
         warn!("SteamCMD not found!");
         bail!("SteamCMD not found!")
     }
@@ -221,8 +291,8 @@ pub fn remove_steamcmd() -> Result<()> {
 }
 
 /// Returns games installed by Steam Client.
-pub async fn get_library() -> Vec<MonarchGame> {
-    let mut games = steam::get_library().await;
+pub async fn get_library(settings_handle: Arc<RwLock<Settings>>) -> Vec<MonarchGame> {
+    let mut games = steam::get_library(settings_handle).await;
     for game in &mut games {
         game.is_installed = true;
     }
@@ -243,16 +313,16 @@ pub fn uninstall_client_game(id: &str) -> Result<()> {
 }
 
 /// Attemps to launch SteamCMD game.
-pub async fn launch_cmd_game(game: &MonarchGame) -> Result<()> {
-    let login_arg = {
-        let settings_lock = match get_settings() {
-            Ok(lock) => lock,
-            Err(e) => bail!(
-                "steam_client::launch_cmd_game() Failed to get settings | Err: {}",
-                e
-            ),
-        };
-        let settings = match settings_lock.read() {
+pub async fn launch_cmd_game(
+    settings_handle: Arc<RwLock<Settings>>,
+    game: &MonarchGame,
+) -> Result<()> {
+    // The read guard must live inside its own scope so it is dropped before
+    // the `.await` below: `std::sync::RwLockReadGuard` is not `Send`, so
+    // holding it across an await makes futures built on this one
+    // non-sendable when spawned onto background tasks.
+    let login_arg: String = {
+        let settings = match settings_handle.read() {
             Ok(settings) => settings,
             Err(e) => bail!(
                 "steam_client::launch_cmd_game() Failed to get settings read lock | Err: {}",
@@ -274,22 +344,19 @@ pub async fn launch_cmd_game(game: &MonarchGame) -> Result<()> {
         game.launch_args.as_deref().unwrap_or_default(),
     ];
 
-    steam::steamcmd_command(args)
+    steam::steamcmd_command(settings_handle, args)
         .await
         .with_context(|| "steam_client::launch_cmd_game() -> ")
 }
 
 /// Download a Steam game via Monarch and SteamCMD.
-pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
+pub async fn download_game(
+    settings_handle: Arc<RwLock<Settings>>,
+    name: &str,
+    id: &str,
+) -> Result<MonarchGame> {
     let login_arg = {
-        let settings_lock = match get_settings() {
-            Ok(lock) => lock,
-            Err(e) => bail!(
-                "steam_client::download_game() Failed to get settings | Err: {}",
-                e
-            ),
-        };
-        let settings = match settings_lock.read() {
+        let settings = match settings_handle.read() {
             Ok(settings) => settings,
             Err(e) => bail!(
                 "steam_client::download_game() Failed to get settings read lock | Err: {}",
@@ -332,12 +399,12 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
 
     // TODO: Wait for Steamcmd to return
     // TODO: steam::steamcmd_command() should wait for SteamCMD to finish
-    steam::steamcmd_command(command)
+    steam::steamcmd_command(settings_handle.clone(), command)
         .await
         .with_context(|| "steam_client::download_game() -> ")?;
 
     let mut monarchgame: MonarchGame =
-        parse_steam_ids(&[String::from(id)], false, true).await[0].clone();
+        parse_steam_ids(settings_handle, &[String::from(id)], false, true).await[0].clone();
 
     monarchgame.stores.push(StoreInfo {
         name: "steamcmd".to_string(),
@@ -351,16 +418,13 @@ pub async fn download_game(name: &str, id: &str) -> Result<MonarchGame> {
 }
 
 /// Uninstall a Steam game via SteamCMD
-pub async fn uninstall_game(id: &str) -> Result<()> {
-    let login_arg = {
-        let settings_lock = match get_settings() {
-            Ok(lock) => lock,
-            Err(e) => bail!(
-                "steam_client::uninstall_game() Failed to get settings | Err: {}",
-                e
-            ),
-        };
-        let settings = match settings_lock.read() {
+pub async fn uninstall_game(settings_handle: Arc<RwLock<Settings>>, id: &str) -> Result<()> {
+    // The read guard must live inside its own scope so it is dropped before
+    // the `.await` below: `std::sync::RwLockReadGuard` is not `Send`, so
+    // holding it across an await makes futures built on this one
+    // non-sendable when spawned onto background tasks.
+    let login_arg: String = {
+        let settings = match settings_handle.read() {
             Ok(settings) => settings,
             Err(e) => bail!(
                 "steam_client::uninstall_game() Failed to get settings read lock | Err: {}",
@@ -384,22 +448,19 @@ pub async fn uninstall_game(id: &str) -> Result<()> {
         "+quit",
     ];
 
-    steam::steamcmd_command(command)
+    steam::steamcmd_command(settings_handle, command)
         .await
         .with_context(|| "steam_client::uninstall_game() -> ")
 }
 
 /// Uninstall a Steam game via SteamCMD
-pub async fn update_game(id: &str) -> Result<()> {
-    let login_arg = {
-        let settings_lock = match get_settings() {
-            Ok(lock) => lock,
-            Err(e) => bail!(
-                "steam_client::update_game() Failed to get settings | Err: {}",
-                e
-            ),
-        };
-        let settings = match settings_lock.read() {
+pub async fn update_game(settings_handle: Arc<RwLock<Settings>>, id: &str) -> Result<()> {
+    // The read guard must live inside its own scope so it is dropped before
+    // the `.await` below: `std::sync::RwLockReadGuard` is not `Send`, so
+    // holding it across an await makes futures built on this one
+    // non-sendable when spawned onto background tasks.
+    let login_arg: String = {
+        let settings = match settings_handle.read() {
             Ok(settings) => settings,
             Err(e) => bail!(
                 "steam_client::update_game() Failed to get settings read lock | Err: {}",
@@ -423,17 +484,18 @@ pub async fn update_game(id: &str) -> Result<()> {
         "+quit",
     ];
 
-    steam::steamcmd_command(command)
+    steam::steamcmd_command(settings_handle, command)
         .await
         .with_context(|| "steam_client::update_game() -> ")
 }
 
-pub fn get_steamcmd_exe() -> PathBuf {
-    steam::get_steamcmd_exe()
+pub fn get_steamcmd_exe(settings_handle: Arc<RwLock<Settings>>) -> PathBuf {
+    steam::get_steamcmd_exe(settings_handle)
 }
 
 /// Converts SteamApp ids into MonarchGames.
 pub async fn parse_steam_ids(
+    settings_handle: Arc<RwLock<Settings>>,
     ids: &[String],
     is_cache: bool,
     using_monarch: bool,
@@ -443,9 +505,17 @@ pub async fn parse_steam_ids(
 
     for id in ids {
         let new_task = if using_monarch {
-            task::spawn(parse_id_monarch_com(id.clone(), is_cache))
+            task::spawn(parse_id_monarch_com(
+                settings_handle.clone(),
+                id.clone(),
+                is_cache,
+            ))
         } else {
-            task::spawn(parse_id_steampowered_com(id.clone(), is_cache))
+            task::spawn(parse_id_steampowered_com(
+                settings_handle.clone(),
+                id.clone(),
+                is_cache,
+            ))
         };
         tasks.push(new_task);
     }
@@ -505,7 +575,11 @@ fn get_steamcmd_login(steam_settings: &LauncherSettings) -> Result<String> {
 }
 
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.
-async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame> {
+async fn parse_id_monarch_com(
+    settings_handle: Arc<RwLock<Settings>>,
+    id: String,
+    is_cache: bool,
+) -> Result<MonarchGame> {
     let monarch_url: &'static str = std::env!("MONARCH_URL");
 
     info!("Parsing {id} via {monarch_url}.");
@@ -541,24 +615,36 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
 
         if is_cache {
             let path: String = String::from(
-                generate_cache_image_path(&game_info.name, GameImageType::Cover)
-                    .to_str()
-                    .unwrap(),
+                generate_cache_image_path(
+                    settings_handle.clone(),
+                    &game_info.name,
+                    GameImageType::Cover,
+                )
+                .to_str()
+                .unwrap(),
             );
-            monarch_game.thumbnail_path = path;
+            monarch_game.cover_path = path;
         } else {
             let cover_path: String = String::from(
-                generate_library_image_path(&game_info.name, GameImageType::Cover)
-                    .to_str()
-                    .unwrap(),
+                generate_library_image_path(
+                    settings_handle.clone(),
+                    &game_info.name,
+                    GameImageType::Cover,
+                )
+                .to_str()
+                .unwrap(),
             );
             let artwork_path: String = String::from(
-                generate_library_image_path(&game_info.name, GameImageType::Artwork)
-                    .to_str()
-                    .unwrap(),
+                generate_library_image_path(
+                    settings_handle,
+                    &game_info.name,
+                    GameImageType::Artwork,
+                )
+                .to_str()
+                .unwrap(),
             );
 
-            monarch_game.thumbnail_path = cover_path;
+            monarch_game.cover_path = cover_path;
             monarch_game.artwork_path = artwork_path;
         };
 
@@ -570,7 +656,7 @@ async fn parse_id_monarch_com(id: String, is_cache: bool) -> Result<MonarchGame>
 }
 
 /// Function to search steam store directly from Monarch client, skipping monarch-launcher.com
-pub async fn find_game(name: &str) -> Vec<MonarchGame> {
+pub async fn find_game(settings_handle: Arc<RwLock<Settings>>, name: &str) -> Vec<MonarchGame> {
     let mut target: String = String::from("https://store.steampowered.com/search/?term=");
     target.push_str(name);
 
@@ -578,14 +664,14 @@ pub async fn find_game(name: &str) -> Vec<MonarchGame> {
 
     if let Ok(response) = monarch_http::client().get(&target).send().await {
         if let Ok(body) = response.text().await {
-            games = parse_steam_page(&body).await;
+            games = parse_steam_page(settings_handle, &body).await;
         }
     }
     games
 }
 
 /// Gets AppIDs and Links from Steam store search
-async fn parse_steam_page(body: &str) -> Vec<MonarchGame> {
+async fn parse_steam_page(settings_handle: Arc<RwLock<Settings>>, body: &str) -> Vec<MonarchGame> {
     let mut ids: Vec<String> = Vec::new();
     let mut links: Vec<String> = Vec::new();
 
@@ -606,11 +692,15 @@ async fn parse_steam_page(body: &str) -> Vec<MonarchGame> {
         }
     }
 
-    parse_steam_ids(&ids, true, false).await
+    parse_steam_ids(settings_handle, &ids, true, false).await
 }
 
 /// Helper function to parse individual steam ids. Allows for concurrent parsing.
-async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<MonarchGame> {
+async fn parse_id_steampowered_com(
+    settings_handle: Arc<RwLock<Settings>>,
+    id: String,
+    is_cache: bool,
+) -> Result<MonarchGame> {
     info!("Parsing {id} via Steam.");
     let target: String = format!("https://store.steampowered.com/api/appdetails?appids={id}");
 
@@ -643,22 +733,21 @@ async fn parse_id_steampowered_com(id: String, is_cache: bool) -> Result<Monarch
         format!("https://steamcdn-a.akamaihd.net/steam/apps/{id}/library_600x900_2x.jpg");
 
     // Parse content into MonarchGame
-    let thumbnail_path = if is_cache {
+    let cover_path = if is_cache {
         String::from(
-            generate_cache_image_path(&name, GameImageType::Cover)
+            generate_cache_image_path(settings_handle.clone(), &name, GameImageType::Cover)
                 .to_str()
                 .unwrap(),
         )
     } else {
         String::from(
-            generate_library_image_path(&name, GameImageType::Cover)
+            generate_library_image_path(settings_handle, &name, GameImageType::Cover)
                 .to_str()
                 .unwrap(),
         )
     };
-    let mut monarch_game =
-        MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &thumbnail_path);
-    monarch_game.thumbnail_url = cover_url;
+    let mut monarch_game = MonarchGame::new(&name, -1, "steam", &id, &store_url, "", &cover_path);
+    monarch_game.cover_url = cover_url;
     Ok(monarch_game)
 }
 

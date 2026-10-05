@@ -1,11 +1,14 @@
 mod view;
 
-use std::time::Instant;
-
-use monarch_core::monarch_utils::monarch_game_downloader::{
-    DownloadJobInfo, DownloadSnapshot, JobState, MonarchDownloader,
+use std::{
+    sync::{Arc, RwLock},
+    time::Instant,
 };
-use monarch_core::monarch_utils::monarch_state::MONARCH_STATE;
+
+use monarch_core::monarch_utils::{
+    monarch_game_downloader::{DownloadJobInfo, DownloadSnapshot, JobState, MonarchDownloader},
+    monarch_state::MonarchState,
+};
 use monarch_egs::{DownloadPhase, DownloadProgress};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -102,6 +105,9 @@ pub struct DownloadPage {
     /// When the displayed ETA was last published and its value; the estimate
     /// only advances every [`ETA_UPDATE_INTERVAL_SECS`].
     last_eta: Option<(Instant, u64)>,
+
+    app_state: Arc<RwLock<MonarchState>>,
+    downloader_handle: Arc<RwLock<MonarchDownloader>>,
 }
 
 pub const HISTORY_LEN: usize = 128;
@@ -125,7 +131,10 @@ pub const QUEUE_ITEM_HEIGHT: f32 = 84.0;
 pub const QUEUE_ITEM_SPACING: f32 = 10.0;
 
 impl DownloadPage {
-    pub fn new() -> Self {
+    pub fn new(
+        state_handle: Arc<RwLock<MonarchState>>,
+        downloader_handle: Arc<RwLock<MonarchDownloader>>,
+    ) -> Self {
         Self {
             queue: Vec::new(),
             active: None,
@@ -140,11 +149,13 @@ impl DownloadPage {
             last_write_sample: None,
             eta_speed_bps: 0.0,
             last_eta: None,
+            app_state: state_handle,
+            downloader_handle,
         }
     }
 
     pub fn is_downloading(&self) -> bool {
-        poll_downloader(|downloader| {
+        poll_downloader(self.downloader_handle.clone(), |downloader| {
             downloader
                 .status_snapshot()
                 .map_or(false, |snap| snap.state == JobState::Downloading)
@@ -169,19 +180,23 @@ impl DownloadPage {
                 // may immediately start the next download and overwrite the
                 // Completed snapshot, which would hide the finish event.
                 let finished_game_id = if self.was_downloading {
-                    poll_snapshot().and_then(|snap| match snap.state {
-                        JobState::Completed => Some(snap.job.game_id),
-                        _ => None,
+                    poll_snapshot(self.downloader_handle.clone()).and_then(|snap| {
+                        match snap.state {
+                            JobState::Completed => Some(snap.job.game_id),
+                            _ => None,
+                        }
                     })
                 } else {
                     None
                 };
 
                 // Advance the backend queue if the active download finished.
-                let _ = mutate_downloader(|d| d.poll());
+                let _ = mutate_downloader(self.downloader_handle.clone(), |d| d.poll());
 
-                let snapshot = poll_snapshot();
-                let queue_jobs = poll_downloader(|d| d.queue_job_infos()).unwrap_or_default();
+                let snapshot = poll_snapshot(self.downloader_handle.clone());
+                let queue_jobs =
+                    poll_downloader(self.downloader_handle.clone(), |d| d.queue_job_infos())
+                        .unwrap_or_default();
 
                 self.rebuild_queue(&queue_jobs, snapshot.as_ref());
 
@@ -203,7 +218,8 @@ impl DownloadPage {
                         }
                         let write_speed = self.sample_write_speed(snap);
                         let eta_secs = self.next_eta(snap);
-                        let active = build_active(snap, write_speed, eta_secs);
+                        let active =
+                            build_active(self.app_state.clone(), snap, write_speed, eta_secs);
                         push_smoothed(
                             &mut self.download_history,
                             active.download_speed_mbps as f32,
@@ -268,22 +284,24 @@ impl DownloadPage {
                 iced::Task::none()
             }
             Message::PauseJob(id) => {
-                let _ = mutate_downloader(|d| d.pause_download(id));
+                let _ = mutate_downloader(self.downloader_handle.clone(), |d| d.pause_download(id));
                 self.refresh();
                 iced::Task::none()
             }
             Message::ResumeJob(id) => {
-                let _ = mutate_downloader(|d| d.resume_download(id));
+                let _ =
+                    mutate_downloader(self.downloader_handle.clone(), |d| d.resume_download(id));
                 self.refresh();
                 iced::Task::none()
             }
             Message::RemoveJob(id) => {
-                let _ = mutate_downloader(|d| d.remove_download(id));
+                let _ =
+                    mutate_downloader(self.downloader_handle.clone(), |d| d.remove_download(id));
                 self.refresh();
                 iced::Task::none()
             }
             Message::DownloadNow(id) => {
-                let _ = mutate_downloader(|d| d.download_now(id));
+                let _ = mutate_downloader(self.downloader_handle.clone(), |d| d.download_now(id));
                 self.refresh();
                 iced::Task::none()
             }
@@ -317,7 +335,9 @@ impl DownloadPage {
                             // indices are one ahead of backend indices while a
                             // download is active.
                             let backend_index = target.saturating_sub(usize::from(has_active));
-                            let _ = mutate_downloader(|d| d.reorder_download(id, backend_index));
+                            let _ = mutate_downloader(self.downloader_handle.clone(), |d| {
+                                d.reorder_download(id, backend_index)
+                            });
                         }
                     }
                 }
@@ -338,8 +358,9 @@ impl DownloadPage {
     /// Re-read the snapshot + queue from the backend so the list reflects an
     /// action immediately instead of waiting for the next [`Message::Tick`].
     fn refresh(&mut self) {
-        let snapshot = poll_snapshot();
-        let queue_jobs = poll_downloader(|d| d.queue_job_infos()).unwrap_or_default();
+        let snapshot = poll_snapshot(self.downloader_handle.clone());
+        let queue_jobs = poll_downloader(self.downloader_handle.clone(), |d| d.queue_job_infos())
+            .unwrap_or_default();
         self.rebuild_queue(&queue_jobs, snapshot.as_ref());
 
         match &snapshot {
@@ -351,7 +372,7 @@ impl DownloadPage {
                 let eta_secs = self
                     .last_eta
                     .map_or_else(|| raw_eta_secs(&snap.progress), |(_, secs)| secs);
-                self.active = Some(build_active(snap, 0.0, eta_secs));
+                self.active = Some(build_active(self.app_state.clone(), snap, 0.0, eta_secs));
             }
             _ => {
                 self.selected_id = 0;
@@ -386,7 +407,7 @@ impl DownloadPage {
                         format_bytes(snap.progress.total_download_bytes)
                     },
                     location: install_dir(job),
-                    artwork_path: artwork_path_for(&job.game_id),
+                    artwork_path: artwork_path_for(self.app_state.clone(), &job.game_id),
                 });
             }
         }
@@ -406,7 +427,7 @@ impl DownloadPage {
                 verifying: false,
                 size_label: "—".into(),
                 location: install_dir(job),
-                artwork_path: artwork_path_for(&job.game_id),
+                artwork_path: artwork_path_for(self.app_state.clone(), &job.game_id),
             });
         }
 
@@ -477,26 +498,22 @@ impl DownloadPage {
     }
 }
 
-impl Default for DownloadPage {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Read some state out of the global downloader, locking both shared guards in
 /// a consistent order (MONARCH_STATE, then the downloader).
-fn poll_downloader<T>(f: impl FnOnce(&MonarchDownloader) -> T) -> Option<T> {
-    let state = MONARCH_STATE.read().ok()?;
-    let downloader = state.get_downloader_ptr();
-    let downloader = downloader.read().ok()?;
+fn poll_downloader<T>(
+    downloader_handle: Arc<RwLock<MonarchDownloader>>,
+    f: impl FnOnce(&MonarchDownloader) -> T,
+) -> Option<T> {
+    let downloader = downloader_handle.read().ok()?;
     Some(f(&downloader))
 }
 
 /// Mutate the global downloader, locking in the same consistent order.
-fn mutate_downloader<T>(f: impl FnOnce(&mut MonarchDownloader) -> T) -> Option<T> {
-    let state = MONARCH_STATE.read().ok()?;
-    let downloader = state.get_downloader_ptr();
-    let mut downloader = downloader.write().ok()?;
+fn mutate_downloader<T>(
+    downloader_handle: Arc<RwLock<MonarchDownloader>>,
+    f: impl FnOnce(&mut MonarchDownloader) -> T,
+) -> Option<T> {
+    let mut downloader = downloader_handle.write().ok()?;
     Some(f(&mut downloader))
 }
 
@@ -506,20 +523,20 @@ fn move_item<T: Clone>(items: &mut Vec<T>, from: usize, to: usize) {
     items.insert(to.min(items.len()), item);
 }
 
-fn poll_snapshot() -> Option<DownloadSnapshot> {
-    poll_downloader(|d| d.status_snapshot()).flatten()
+fn poll_snapshot(downloader_handle: Arc<RwLock<MonarchDownloader>>) -> Option<DownloadSnapshot> {
+    poll_downloader(downloader_handle, |d| d.status_snapshot()).flatten()
 }
 
 fn install_dir(job: &DownloadJobInfo) -> String {
     job.path.join(&job.name).to_string_lossy().to_string()
 }
 
-fn artwork_path_for(game_id: &str) -> String {
-    MONARCH_STATE
+fn artwork_path_for(state_handle: Arc<RwLock<MonarchState>>, game_id: &str) -> String {
+    state_handle
         .read()
         .ok()
         .and_then(|s| s.get_game(game_id))
-        .map(|g| g.artwork_path)
+        .map(|g| g.read().unwrap().artwork_path.clone())
         .unwrap_or_default()
 }
 
@@ -531,7 +548,12 @@ fn progress_fraction(progress: &DownloadProgress) -> f32 {
     }
 }
 
-fn build_active(snap: &DownloadSnapshot, write_speed_mbps: f64, eta_secs: u64) -> ActiveDownload {
+fn build_active(
+    state_handle: Arc<RwLock<MonarchState>>,
+    snap: &DownloadSnapshot,
+    write_speed_mbps: f64,
+    eta_secs: u64,
+) -> ActiveDownload {
     let progress = &snap.progress;
     let verifying = progress.phase == DownloadPhase::VerifyingExisting;
     let download_speed_mbps = if verifying {
@@ -562,7 +584,7 @@ fn build_active(snap: &DownloadSnapshot, write_speed_mbps: f64, eta_secs: u64) -
         store: snap.job.store.clone(),
         platform: snap.job.os.clone(),
         location: install_dir(&snap.job),
-        artwork_path: artwork_path_for(&snap.job.game_id),
+        artwork_path: artwork_path_for(state_handle, &snap.job.game_id),
         download_speed_mbps,
         write_speed_mbps: if verifying { 0.0 } else { write_speed_mbps },
         eta_secs: if verifying { 0 } else { eta_secs },

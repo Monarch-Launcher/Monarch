@@ -28,8 +28,11 @@ pub struct GameAsset {
 }
 
 /// Returns owned downloadable assets for a platform (default Legendary path).
-pub async fn owned_assets(user: &User, platform: &str) -> Result<Vec<GameAsset>, MonarchEgsError> {
-    let mut session = user.session();
+pub async fn owned_assets(
+    user: &mut User,
+    platform: &str,
+) -> Result<Vec<GameAsset>, MonarchEgsError> {
+    let session = user.session();
     let client = Client::new();
     let url = format!("https://{LAUNCHER_URL}/launcher/api/public/assets/{platform}");
 
@@ -88,7 +91,7 @@ impl SupportedPlatforms {
 /// This queries the EGS assets API for each platform and checks if the game
 /// has assets available for that platform.
 pub async fn check_platform_support(
-    user: &User,
+    user: &mut User,
     namespace: &str,
 ) -> Result<SupportedPlatforms, MonarchEgsError> {
     let platforms = ["Windows", "Linux", "Mac"];
@@ -97,12 +100,16 @@ pub async fn check_platform_support(
     for platform in &platforms {
         let assets = owned_assets(user, platform).await.unwrap_or_default();
         let has_assets = assets.iter().any(|a| a.namespace == namespace);
-        
+
         debug!(
             "check_platform_support() Platform {} for namespace {}: {}",
             platform,
             namespace,
-            if has_assets { "supported" } else { "not supported" }
+            if has_assets {
+                "supported"
+            } else {
+                "not supported"
+            }
         );
 
         match *platform {

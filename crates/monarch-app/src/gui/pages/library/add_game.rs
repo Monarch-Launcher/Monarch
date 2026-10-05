@@ -1,16 +1,19 @@
+use std::sync::{Arc, RwLock};
+
 use crate::gui::components::common::{
     input_field, open_file_dialog, primary_button, secondary_button,
 };
 use crate::gui::components::gamecard::game_browser::GameBrowser;
 use crate::gui::components::gamecard::{self, GameCardMessage};
 use crate::gui::components::modal::Modal;
-use crate::gui::styles;
+use crate::gui::{show_error, styles};
 use iced::widget::{button, column, container, row, text, Space};
-use iced::{alignment, Element, Length};
+use iced::{alignment, Element, Length, Task};
 use monarch_core::monarch_games;
 use monarch_core::monarch_games::games::SearchResult;
-use monarch_core::monarch_games::monarchgame::MonarchWebApiGame;
+use monarch_core::monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame};
 use monarch_core::monarch_games::stores::SearchFilter;
+use monarch_core::monarch_utils::monarch_state::MonarchState;
 use tracing::error;
 
 #[derive(Clone, Debug)]
@@ -25,7 +28,7 @@ pub enum Message {
     SearchQueryChanged(String),
     PerformSearch,
     UpdateSearchResults(Vec<MonarchWebApiGame>),
-    GameImgLoaded(MonarchWebApiGame),
+    GameImgLoaded,
     GameCard(GameCardMessage),
     AddGame,
     Cancel,
@@ -43,10 +46,12 @@ pub struct AddGameModal {
     pub is_searching: bool,
     pub dot_count: u8,
     pub tick_counter: u8,
+
+    app_state: Arc<RwLock<MonarchState>>,
 }
 
-impl Default for AddGameModal {
-    fn default() -> Self {
+impl AddGameModal {
+    pub fn new(state_handle: Arc<RwLock<MonarchState>>) -> Self {
         Self {
             name: String::new(),
             exec_path: String::new(),
@@ -57,11 +62,10 @@ impl Default for AddGameModal {
             is_searching: false,
             dot_count: 3,
             tick_counter: 0,
+            app_state: state_handle,
         }
     }
-}
 
-impl AddGameModal {
     pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
         match msg {
             Message::NameChanged(name) => {
@@ -120,9 +124,20 @@ impl AddGameModal {
                 }
                 self.is_searching = true;
                 let query = self.search_query.clone();
-                iced::Task::perform(
+
+                let settings_handle = match self.app_state.read() {
+                    Ok(state) => state.get_settings_ptr(),
+                    Err(e) => {
+                        error!("AddGameModal::update() Failed to acquire read lock on state_handle! | Err: {e}");
+                        show_error("Failed to search for games!");
+                        return Task::none();
+                    }
+                };
+
+                Task::perform(
                     async move {
                         monarch_core::monarch_games::commands::search_games(
+                            settings_handle,
                             query,
                             SearchFilter::default(),
                         )
@@ -132,13 +147,21 @@ impl AddGameModal {
                 )
             }
             Message::UpdateSearchResults(games) => self.update_games(games),
-            Message::GameImgLoaded(game) => self.game_img_loaded(game),
+            Message::GameImgLoaded => iced::Task::none(),
             Message::GameCard(msg) => {
                 if let GameCardMessage::GamePressed(id) = &msg {
-                    if let Some(card) = self.browser.games.games.iter().find(|g| g.game.id == *id) {
-                        self.name = card.game.name.clone();
-                        self.thumb_path = card.game.thumbnail_path.clone();
-                        self.artwork_path = card.game.artwork_path.clone();
+                    if let Some(card) = self
+                        .browser
+                        .games
+                        .games
+                        .iter()
+                        .find(|g| g.game.read().unwrap().id == *id)
+                    {
+                        if let Ok(game) = card.game.read() {
+                            self.name = game.name.clone();
+                            self.thumb_path = game.cover_path.clone();
+                            self.artwork_path = game.artwork_path.clone();
+                        }
                         // We don't have exec path from search results obviously
                     }
                 }
@@ -166,49 +189,47 @@ impl AddGameModal {
             .iter()
             .cloned()
             .map(|mut game| {
-                game.thumbnail_path = "".to_string();
+                game.cover_path = "".to_string();
                 game
             })
             .collect();
 
+        let processed_game_handles: Vec<Arc<RwLock<MonarchGame>>> = processed_games
+            .iter()
+            .map(|g| Arc::new(RwLock::new(g.into_monarchgame())))
+            .collect();
+
         // Trigger download tasks
-        let download_tasks = iced::Task::batch(games.iter().cloned().map(|game| {
+        let download_tasks = iced::Task::batch(processed_game_handles.iter().cloned().map(|game| {
+            let settings_handle = match self.app_state.read() {
+                Ok(state) => state.get_settings_ptr(),
+                Err(e) => {
+                    error!("SearchPage::update_games() Failed to acquire read lock on state_handle! | Err: {e}");
+                    show_error("Failed to search for games!");
+                    return Task::none();
+                }
+            };
             iced::Task::perform(
                 async move {
-                    if let Err(e) =
-                        monarch_games::commands::download_thumbnail(&game.into_monarchgame()).await
+                    if let Err(e) = monarch_games::commands::download_cover(settings_handle, game.clone()).await
                     {
-                        error!("Failed to download thumbnail for game {}: {}", game.id, e);
+                        error!(
+                            "Failed to download cover for game {}: {}",
+                            game.read().unwrap().id,
+                            e
+                        );
                     }
-
-                    game
                 },
-                Message::GameImgLoaded,
+                |_| Message::GameImgLoaded,
             )
         }));
 
         // Update browser games
         let _ = self.browser.update(gamecard::GameCardMessage::UpdateGames(
-            processed_games
-                .iter()
-                .map(|g| g.into_monarchgame())
-                .collect(),
+            processed_game_handles,
         ));
 
         download_tasks
-    }
-
-    pub fn game_img_loaded(&mut self, game: MonarchWebApiGame) -> iced::Task<Message> {
-        if let Some(card) = self
-            .browser
-            .games
-            .games
-            .iter_mut()
-            .find(|c| c.game.id == game.id)
-        {
-            card.game = game.into_monarchgame();
-        }
-        iced::Task::none()
     }
 
     pub fn view(&self) -> Element<'_, Message> {
@@ -230,10 +251,10 @@ impl AddGameModal {
                     secondary_button("Browse", Some(Message::ExecPathDialog))
                 ]
                 .spacing(10),
-                text("Thumbnail Path / URL").size(16),
+                text("Cover Path / URL").size(16),
                 row![
                     input_field(
-                        "Path or URL to game thumbnail",
+                        "Path or URL to game cover",
                         &self.thumb_path,
                         Message::ThumbPathChanged
                     ),
@@ -243,7 +264,7 @@ impl AddGameModal {
                 text("Artwork Path / URL").size(16),
                 row![
                     input_field(
-                        "Path or URL to game thumbnail",
+                        "Path or URL to game cover",
                         &self.artwork_path,
                         Message::ArtworkPathChanged
                     ),

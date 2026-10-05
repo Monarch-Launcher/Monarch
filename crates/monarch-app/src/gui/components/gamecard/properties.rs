@@ -1,8 +1,9 @@
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use iced::widget::{button, column, combo_box, container, row, text, text_input, Space};
 use iced::{alignment, border, Element, Length, Task};
+use monarch_core::monarch_utils::monarch_state::MonarchState;
 use tracing::error;
 
 use crate::gui::{show_error, styles};
@@ -26,7 +27,7 @@ pub enum Message {
 
 #[derive(Debug, Clone)]
 pub struct PropertiesModal {
-    game: Arc<Mutex<MonarchGame>>,
+    game: Arc<RwLock<MonarchGame>>,
     executables: combo_box::State<String>,
     executable_list: Vec<String>,
     selected_executable: Option<String>,
@@ -37,12 +38,17 @@ pub struct PropertiesModal {
     selected_compatibility: Option<ProtonVersion>,
 
     launch_args: String,
+
+    app_state: Arc<RwLock<MonarchState>>,
 }
 
 impl PropertiesModal {
-    pub fn new(game: Arc<Mutex<MonarchGame>>) -> (Self, Task<Message>) {
+    pub fn new(
+        state_handle: Arc<RwLock<MonarchState>>,
+        game: Arc<RwLock<MonarchGame>>,
+    ) -> (Self, Task<Message>) {
         let (launch_args, current_executable, _) = {
-            let game_lock = game.lock().unwrap();
+            let game_lock = game.read().unwrap();
             let launch_args = game_lock.launch_args.clone();
             let current_executable = game_lock.executable_path.clone();
             (
@@ -51,6 +57,9 @@ impl PropertiesModal {
                 game_lock.compatibility.clone(),
             )
         };
+
+        let state_handle_clone = state_handle.clone();
+        let game_handle_clone = game.clone();
 
         let modal = Self {
             game: game.clone(),
@@ -67,6 +76,8 @@ impl PropertiesModal {
             selected_compatibility: None,
 
             launch_args: launch_args.unwrap_or_default(),
+
+            app_state: state_handle,
         };
 
         (
@@ -74,10 +85,9 @@ impl PropertiesModal {
             Task::batch(vec![
                 Task::perform(
                     async move {
-                        let mut game_inner = game.lock().unwrap().clone();
-                        tokio::task::spawn_blocking(move || get_executables(&mut game_inner))
-                            .await
-                            .unwrap()
+                        // get_executables is async (DB access) and holds no blocking work,
+                        // so don't wrap it in spawn_blocking — just await it directly.
+                        get_executables(state_handle_clone, game_handle_clone).await
                     },
                     |res| match res {
                         Ok(exes) => Message::ExecutablesLoaded(exes),
@@ -125,7 +135,7 @@ impl PropertiesModal {
                 self.compatibility_list.append(&mut versions);
                 self.compatibility_layers = combo_box::State::new(self.compatibility_list.clone());
 
-                if let Some(game_compat) = self.game.lock().unwrap().compatibility.clone() {
+                if let Some(game_compat) = self.game.read().unwrap().compatibility.clone() {
                     self.selected_compatibility = self
                         .compatibility_list
                         .iter()
@@ -169,23 +179,32 @@ impl PropertiesModal {
                 Task::none()
             }
             Message::Save => {
-                let mut game = self.game.lock().unwrap();
-                game.executable_path = self.selected_executable.clone();
+                match self.game.write() {
+                    Ok(mut game) => {
+                        game.executable_path = self.selected_executable.clone();
 
-                match &self.selected_compatibility {
-                    Some(compat) => game.compatibility = Some(compat.path.clone()),
-                    None => game.compatibility = None,
+                        match &self.selected_compatibility {
+                            Some(compat) => game.compatibility = Some(compat.path.clone()),
+                            None => game.compatibility = None,
+                        }
+
+                        game.launch_args = if self.launch_args.is_empty() {
+                            None
+                        } else {
+                            Some(self.launch_args.clone())
+                        };
+                    }
+                    Err(e) => {
+                        error!("Failed to acquire read lock on PropertiesModal::game! | Err: {e}");
+                        show_error("Failed to update game properties!");
+                        return Task::none();
+                    }
                 }
 
-                game.launch_args = if self.launch_args.is_empty() {
-                    None
-                } else {
-                    Some(self.launch_args.clone())
-                };
-
-                let game_clone = game.clone();
+                let state_handle_clone = self.app_state.clone();
+                let game_handle_clone = self.game.clone();
                 Task::perform(
-                    async move { update_game_properties(&game_clone).await },
+                    async move { update_game_properties(state_handle_clone, game_handle_clone).await },
                     |res| {
                         if let Err(e) = res {
                             show_error(e);

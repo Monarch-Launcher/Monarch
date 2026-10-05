@@ -1,5 +1,7 @@
 use iced::widget::{column, row, text, Space};
 use iced::{alignment, Element};
+use std::cmp::Ordering;
+use std::sync::{Arc, RwLock};
 
 use super::gamecard::GameCard;
 use crate::gui::components::gamecard::GameCardMessage;
@@ -27,9 +29,8 @@ impl LibraryFilter {
     pub fn matches(&self, game: &MonarchGame) -> bool {
         if self.steam || self.epic {
             let store = game.get_store_name();
-            let store_ok =
-                (self.steam && (store == "steam" || store == "steamcmd"))
-                    || (self.epic && store == "epicgames");
+            let store_ok = (self.steam && (store == "steam" || store == "steamcmd"))
+                || (self.epic && store == "epicgames");
             if !store_ok {
                 return false;
             }
@@ -60,18 +61,31 @@ impl GameCardContainer {
 
     /// Insert `game` or replace an existing card with the same id, then keep
     /// the list sorted by name.
-    pub fn upsert_game(&mut self, game: MonarchGame) {
-        if let Some(card) = self.games.iter_mut().find(|c| c.game.id == game.id) {
+    pub fn upsert_game(&mut self, game: Arc<RwLock<MonarchGame>>) {
+        if let Some(card) = self.games.iter_mut().find(|c| {
+            if let Ok(g) = c.game.read() {
+                g.id == game.read().unwrap().id
+            } else {
+                false
+            }
+        }) {
             card.update_game(game);
         } else {
             self.games.push(GameCard::new(game));
         }
-        self.games.sort_by(|a, b| a.game.name.cmp(&b.game.name));
+        self.games
+            .sort_by(|a, b| game_cmp(a.game.clone(), b.game.clone()));
     }
 
     /// Drop a card by game id, if present.
     pub fn remove_game(&mut self, game_id: &str) {
-        self.games.retain(|card| card.game.id != game_id);
+        self.games.retain(|card| {
+            if let Ok(g) = card.game.read() {
+                g.id == game_id
+            } else {
+                false
+            }
+        });
     }
 
     pub fn update(&mut self, msg: GameCardMessage) -> iced::Task<GameCardMessage> {
@@ -79,7 +93,8 @@ impl GameCardContainer {
             GameCardMessage::UpdateGames(games) => {
                 self.games = games.iter().map(|g| GameCard::new(g.clone())).collect();
 
-                self.games.sort_by(|a, b| a.game.name.cmp(&b.game.name));
+                self.games
+                    .sort_by(|a, b| game_cmp(a.game.clone(), b.game.clone()));
 
                 iced::Task::none()
             }
@@ -106,19 +121,17 @@ impl GameCardContainer {
             let visible: Vec<&GameCard> = self
                 .games
                 .iter()
-                .filter(|card| self.filter.matches(&card.game))
+                .filter(|card| self.filter.matches(&card.game.read().unwrap()))
                 .collect();
 
             if visible.is_empty() {
                 return games_column
                     .push(
-                        text(
-                            if self.filter.is_active() {
-                                "No games match the current filters"
-                            } else {
-                                "No games found"
-                            },
-                        )
+                        text(if self.filter.is_active() {
+                            "No games match the current filters"
+                        } else {
+                            "No games found"
+                        })
                         .size(24)
                         .font(crate::gui::styles::fonts::REGULAR),
                     )
@@ -126,7 +139,13 @@ impl GameCardContainer {
             }
 
             let (installed_games, uninstalled_games): (Vec<&GameCard>, Vec<&GameCard>) =
-                visible.iter().copied().partition(|card| card.game.is_installed);
+                visible.iter().copied().partition(|card| {
+                    if let Ok(game) = card.game.read() {
+                        game.is_installed
+                    } else {
+                        false
+                    }
+                });
 
             if !installed_games.is_empty() {
                 games_column = games_column.push(
@@ -173,11 +192,24 @@ impl GameCardContainer {
 
 impl FromIterator<MonarchGame> for GameCardContainer {
     fn from_iter<I: IntoIterator<Item = MonarchGame>>(iter: I) -> Self {
-        let mut games: Vec<GameCard> = iter.into_iter().map(|g| GameCard::new(g.clone())).collect();
-        games.sort_by(|a, b| a.game.name.cmp(&b.game.name));
+        let mut games: Vec<GameCard> = iter
+            .into_iter()
+            .map(|g| GameCard::new(Arc::new(RwLock::new(g))))
+            .collect();
+        games.sort_by(|a, b| game_cmp(a.game.clone(), b.game.clone()));
         Self {
             games,
             filter: LibraryFilter::default(),
         }
+    }
+}
+
+fn game_cmp(a: Arc<RwLock<MonarchGame>>, b: Arc<RwLock<MonarchGame>>) -> Ordering {
+    match a.read() {
+        Ok(a_game) => match b.read() {
+            Ok(b_game) => a_game.name.cmp(&b_game.name),
+            Err(_) => Ordering::Greater,
+        },
+        Err(_) => Ordering::Greater,
     }
 }

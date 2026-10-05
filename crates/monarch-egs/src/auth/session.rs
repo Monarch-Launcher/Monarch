@@ -7,6 +7,7 @@ use std::{
     collections::HashMap,
     time::{Duration, SystemTime},
 };
+use tracing::error;
 
 static OAUTH_HOST: &str = "account-public-service-prod03.ol.epicgames.com";
 static ECOMMERCE_HOST: &str = "ecommerceintegration-public-service-ecomprod02.ol.epicgames.com";
@@ -175,12 +176,27 @@ impl Session {
 
         if response.status().is_server_error() {
             // TODO: Do something
+            error!(
+                "Got HTTP: {} | Response: {:?}",
+                response.status().as_str(),
+                response
+            );
             panic!("http 5XX")
         } else if response.status().is_client_error() {
             // TODO: Do something
+            error!(
+                "Got HTTP: {} | Response: {:?}",
+                response.status().as_str(),
+                response
+            );
             panic!("http 4XX")
         } else if !response.status().is_success() {
             // TODO: Do something
+            error!(
+                "Got HTTP: {} | Response: {:?}",
+                response.status().as_str(),
+                response
+            );
             panic!("not 2XX")
         }
 

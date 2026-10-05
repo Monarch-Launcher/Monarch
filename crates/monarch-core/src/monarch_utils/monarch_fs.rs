@@ -3,26 +3,24 @@ use regex::Regex;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
 use std::{fs, process::exit};
 use tracing::{error, info, warn};
 
 use crate::monarch_games::monarchgame::GameImageType;
-use crate::monarch_utils::monarch_settings;
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
-
-use super::monarch_settings::Settings;
+use crate::monarch_utils::monarch_settings::{self, Settings};
 
 /*
 ---------- General functions for filesystem tasks ----------
 */
 
-/// Folder to store image resources for game thumbnails etc...
-pub fn verify_monarch_folders() {
+/// Folder to store image resources for game covers etc...
+pub fn verify_monarch_folders(settings_lock: Arc<RwLock<Settings>>) {
     let paths: [PathBuf; 5] = [
-        get_monarch_home(),
-        get_resources_path(),
-        get_resources_cache(),
-        get_resources_library(),
+        get_monarch_home(settings_lock.clone()),
+        get_resources_path(settings_lock.clone()),
+        get_resources_cache(settings_lock.clone()),
+        get_resources_library(settings_lock),
         get_settings_path().expect("Panic while getting settings.toml path!"),
     ];
 
@@ -49,19 +47,18 @@ pub fn get_unix_home() -> Result<PathBuf> {
     Ok(PathBuf::from(home_path))
 }
 
+/// Returns a directory in the systems temporary directory
+/// for Monarch to do temporary work in.
+pub fn get_temp_dir(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
+    get_monarch_home(settings_lock).join("temp")
+}
+
 /// Returns the monarch data folder from settings.toml
-pub fn get_monarch_home() -> PathBuf {
-    match MONARCH_STATE.try_read() {
-        Ok(state) => {
-            match state.get_settings_ptr().try_read() {
-                Ok(settings) => return PathBuf::from(settings.monarch.monarch_home.clone()),
-                Err(e) => {
-                    error!("monarch_fs::get_monarch_home() Failed to get read lock on Settings | Err: {e}");
-                }
-            }
-        }
+pub fn get_monarch_home(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
+    match settings_lock.try_read() {
+        Ok(settings) => return PathBuf::from(settings.monarch.monarch_home.clone()),
         Err(e) => {
-            error!("monarch_fs::get_monarch_home() Failed to get read lock on MONARCH_STATE | Err: {e}");
+            error!("monarch_fs::get_monarch_home() Failed to get read lock on Settings | Err: {e}");
         }
     }
 
@@ -169,8 +166,8 @@ pub fn get_settings_path() -> Result<PathBuf> {
 }
 
 /// Returns path to library.json
-pub fn get_library_db_path() -> PathBuf {
-    let path: PathBuf = get_monarch_home();
+pub fn get_library_db_path(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
+    let path: PathBuf = get_monarch_home(settings_lock);
     path.join("library.db3")
 }
 
@@ -197,8 +194,22 @@ pub fn remove_dir(path: &Path) -> Result<()> {
             "monarch_fs::remove_dir() Something went wrong trying to remove directory: {dir} | Err: ",
             dir = path.display()
         )
-    })?;
-    Ok(())
+    })
+}
+
+/// Attempts to recursively remove a directory and all its contents.
+/// Returns Ok if the path does not exist.
+pub fn remove_file(path: &Path) -> Result<()> {
+    if !path_exists(path) {
+        return Ok(());
+    }
+
+    fs::remove_file(path).with_context(|| {
+        format!(
+            "monarch_fs::remove_file() Something went wrong trying to remove directory: {dir} | Err: ",
+            dir = path.display()
+        )
+    })
 }
 
 /// Returns all found executables in a given directory
@@ -289,41 +300,49 @@ pub fn find_linux_binary(binary_name: &str) -> Option<PathBuf> {
 /// Returns path to resources folder.
 /// Should never fail during runtime because of init_monarch_fs,
 /// but if it does it returns an empty string.
-pub fn get_resources_path() -> PathBuf {
-    let path: PathBuf = get_monarch_home();
+pub fn get_resources_path(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
+    let path: PathBuf = get_monarch_home(settings_lock);
     path.join("resources")
 }
 
 /// Returns path to store temporary images
-pub fn get_resources_cache() -> PathBuf {
-    let path: PathBuf = get_resources_path();
+pub fn get_resources_cache(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
+    let path: PathBuf = get_resources_path(settings_lock);
     path.join("cache")
 }
 
-/// Returns path to store thumbnails for games in library
-pub fn get_resources_library() -> PathBuf {
-    let path: PathBuf = get_resources_path();
+/// Returns path to store covers for games in library
+pub fn get_resources_library(settings_lock: Arc<RwLock<Settings>>) -> PathBuf {
+    let path: PathBuf = get_resources_path(settings_lock);
     path.join("library")
 }
 
 /// Create a name for image file in cache directory
 /// Can be used to download image and check if an image already exists
-pub fn generate_cache_image_path(name: &str, t: GameImageType) -> PathBuf {
+pub fn generate_cache_image_path(
+    settings_lock: Arc<RwLock<Settings>>,
+    name: &str,
+    t: GameImageType,
+) -> PathBuf {
     let filename = match t {
         GameImageType::Cover => generate_image_filename(&format!("{name}_cover")),
         GameImageType::Artwork => generate_image_filename(&format!("{name}_artwork")),
     };
-    let path: PathBuf = get_resources_cache();
+    let path: PathBuf = get_resources_cache(settings_lock);
     path.join(filename)
 }
 
 /// Create a name for image file in cache directory
-pub fn generate_library_image_path(name: &str, t: GameImageType) -> PathBuf {
+pub fn generate_library_image_path(
+    settings_lock: Arc<RwLock<Settings>>,
+    name: &str,
+    t: GameImageType,
+) -> PathBuf {
     let filename = match t {
         GameImageType::Cover => generate_image_filename(&format!("{name}_cover")),
         GameImageType::Artwork => generate_image_filename(&format!("{name}_artwork")),
     };
-    let path: PathBuf = get_resources_library();
+    let path: PathBuf = get_resources_library(settings_lock);
     path.join(filename)
 }
 
@@ -339,26 +358,29 @@ fn generate_image_filename(name: &str) -> String {
     filename
 }
 
-/// Given a thumbnail path, returns the corresponding greyscale image path
+/// Given a cover path, returns the corresponding greyscale image path
 /// by inserting `_grey` before the `.png` extension.
-pub fn generate_greyscale_path(thumbnail_path: &Path) -> PathBuf {
-    let stem = thumbnail_path
+pub fn generate_greyscale_path(cover_path: &Path) -> PathBuf {
+    let stem = cover_path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("image");
-    let parent = thumbnail_path.parent().unwrap_or_else(|| Path::new("."));
+    let parent = cover_path.parent().unwrap_or_else(|| Path::new("."));
     parent.join(format!("{stem}_grey.png"))
 }
 
-pub fn is_in_cache_dir(path: &Path) -> bool {
-    let cache_path: PathBuf = get_resources_cache();
+pub fn is_in_cache_dir(settings_lock: Arc<RwLock<Settings>>, path: &Path) -> bool {
+    let cache_path: PathBuf = get_resources_cache(settings_lock);
     path.starts_with(cache_path)
 }
 
 /// Copies image from cache to resources
 /// Returns path to new image in resources directory
-pub fn copy_cache_to_library(cache_path: &Path) -> Result<PathBuf> {
-    let resources_path: PathBuf = get_resources_library();
+pub fn copy_cache_to_library(
+    settings_lock: Arc<RwLock<Settings>>,
+    cache_path: &Path,
+) -> Result<PathBuf> {
+    let resources_path: PathBuf = get_resources_library(settings_lock);
     let filename = cache_path.file_name().with_context(|| {
         format!(
             "monarch_fs::copy_cache_to_resources() Failed to get filename of path: {} | Err: ",
@@ -487,8 +509,10 @@ pub fn ensure_wine_safe_install_dir(install_dir: &Path) -> Result<Option<PathBuf
 }
 
 /// Per-game Wine prefix directory under Monarch's home.
-pub fn wine_prefix_dir(game_id: &str) -> PathBuf {
-    get_monarch_home().join("wine_prefixes").join(game_id)
+pub fn wine_prefix_dir(settings_lock: Arc<RwLock<Settings>>, game_id: &str) -> PathBuf {
+    get_monarch_home(settings_lock)
+        .join("wine_prefixes")
+        .join(game_id)
 }
 
 /// Format an executable for shell launch relative to `install_dir` when possible.

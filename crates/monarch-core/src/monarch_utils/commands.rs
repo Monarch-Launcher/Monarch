@@ -7,8 +7,9 @@ use super::housekeeping::clear_all_cache;
 use super::monarch_credentials::{delete_credentials, set_credentials};
 use super::monarch_logger::get_log_dir;
 use super::monarch_settings::{LauncherSettings, Settings};
+use super::monarch_state::MonarchState;
 use crate::monarch_utils::monarch_credentials::get_password;
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
+use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::{monarch_fs, monarch_settings};
 
 /*
@@ -57,8 +58,22 @@ pub fn open_external_link(url: &str) {
 }
 
 /// Returns settings read from settings.toml
-pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
-    monarch_settings::get_settings()
+/// Returns the shared settings pointer held by MonarchState.
+///
+/// This must never re-read settings.toml from disk: it is exactly one Arc
+/// clone. The previous implementation re-read the file on every call, which
+/// meant every frame in the GUI render loop hit disk and spawned a divergent
+/// copy of Settings that never reflected (or propagated) in-memory changes.
+pub fn get_settings(state_handle: &Arc<RwLock<MonarchState>>) -> Result<Arc<RwLock<Settings>>> {
+    match state_handle.read() {
+        Ok(state) => Ok(state.get_settings_ptr()),
+        Err(e) => {
+            error!(
+                "monarch_utils::commands::get_settings() Failed to lock MonarchState! | Err: {e}"
+            );
+            bail!("monarch_utils::commands::get_settings() Failed to lock MonarchState! | Err: {e}")
+        }
+    }
 }
 
 /// Write setting to settings.toml
@@ -70,12 +85,20 @@ pub fn write_settings(settings: &Settings) -> Result<()> {
 
 /// Applies the maximum download speed (bytes/s, 0 = unlimited) to the global
 /// downloader so running and queued downloads pick it up immediately.
-pub fn set_max_download_speed_bps(bps: u64) -> Result<(), String> {
-    let state = MONARCH_STATE.read().map_err(|e| e.to_string())?;
-    let downloader = state.get_downloader_ptr();
-    let mut downloader = downloader.write().map_err(|e| e.to_string())?;
-    downloader.set_max_download_speed_bps(bps);
-    Ok(())
+pub fn set_max_download_speed_bps(
+    downloader_lock: Arc<RwLock<MonarchDownloader>>,
+    bps: u64,
+) -> Result<(), String> {
+    match downloader_lock.write() {
+        Ok(mut downloader) => {
+            downloader.set_max_download_speed_bps(bps);
+            Ok(())
+        }
+        Err(e) => {
+            error!("monarch_utils::commands::set_max_download_speed_bps() Failed to acquire lock on MonarchDownloader! | Err: {e}");
+            return Err(String::from("Failed to set new download speed!"));
+        }
+    }
 }
 
 /*
@@ -169,12 +192,12 @@ pub fn delete_secret(
 /// Manually clear all images in the resources/cache directory
 /// Don't return custom error message as they instead return the state of settings according to
 /// backend.
-pub fn clear_cached_images() {
-    clear_all_cache();
+pub fn clear_cached_images(settings_lock: Arc<RwLock<Settings>>) {
+    clear_all_cache(settings_lock);
 }
 
-pub fn get_cache_size() -> Result<u64, String> {
-    let cache_dir = monarch_fs::get_resources_cache();
+pub fn get_cache_size(settings_lock: Arc<RwLock<Settings>>) -> Result<u64, String> {
+    let cache_dir = monarch_fs::get_resources_cache(settings_lock);
     match fs_extra::dir::get_size(&cache_dir) {
         Ok(size) => Ok(size as u64),
         Err(e) => {

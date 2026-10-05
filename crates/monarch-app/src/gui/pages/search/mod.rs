@@ -1,7 +1,12 @@
-use iced::Element;
+use std::sync::{Arc, RwLock};
+
+use iced::{Element, Task};
 
 use crate::gui::components::gamecard;
-use monarch_core::monarch_games::monarchgame::MonarchWebApiGame;
+use monarch_core::{
+    monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame},
+    monarch_utils::monarch_state::MonarchState,
+};
 
 mod update;
 mod view;
@@ -12,25 +17,33 @@ pub enum Message {
     FiltersPressed,
     PerformSearch,
     UpdateGames(Vec<MonarchWebApiGame>),
-    GameImgLoaded(MonarchWebApiGame),
+    GameImgLoaded,
     GameCard(gamecard::GameCardMessage),
-    OpenStoreDetails(monarch_core::monarch_games::monarchgame::MonarchGame),
+    OpenStoreDetails(Arc<RwLock<MonarchGame>>),
     Tick,
 }
 
 use crate::gui::components::gamecard::game_browser::GameBrowser;
 use monarch_core::monarch_games::stores::SearchFilter;
 
-#[derive(Default)]
 pub struct SearchPage {
     search_value: String,
     browser: GameBrowser,
     is_searching: bool,
     dot_count: u8,
     tick_counter: u8,
+
+    app_state: Arc<RwLock<MonarchState>>,
 }
 
 impl SearchPage {
+    pub fn new(state: Arc<RwLock<MonarchState>>) -> Self {
+        Self {
+            app_state: state,
+            ..Default::default()
+        }
+    }
+
     pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
         match msg {
             Message::SearchChanged(value) => {
@@ -43,11 +56,15 @@ impl SearchPage {
             }
             Message::PerformSearch => self.perform_search(SearchFilter::default()),
             Message::UpdateGames(games) => self.update_games(games),
-            Message::GameImgLoaded(game) => self.game_img_loaded(game),
+            Message::GameImgLoaded => Task::none(),
             Message::GameCard(game_card_message) => {
                 if let gamecard::GameCardMessage::GamePressed(id) = &game_card_message {
-                    if let Some(game_card) =
-                        self.browser.games.games.iter().find(|g| g.game.id == *id)
+                    if let Some(game_card) = self
+                        .browser
+                        .games
+                        .games
+                        .iter()
+                        .find(|g| g.game.read().unwrap().id == *id)
                     {
                         return iced::Task::done(Message::OpenStoreDetails(game_card.game.clone()));
                     }
@@ -63,5 +80,18 @@ impl SearchPage {
 
     pub fn view(&self) -> Element<'_, Message> {
         self.content_view()
+    }
+}
+
+impl Default for SearchPage {
+    fn default() -> Self {
+        Self {
+            search_value: String::new(),
+            browser: GameBrowser::default(),
+            is_searching: false,
+            dot_count: 0,
+            tick_counter: 0,
+            app_state: Arc::new(RwLock::new(MonarchState::new())),
+        }
     }
 }

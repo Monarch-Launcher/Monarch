@@ -77,7 +77,9 @@ impl SettingsPage {
     /// and queued downloads pick it up immediately.
     fn apply_max_download_speed(&self, settings: &Settings) {
         let bps = settings.monarch.max_download_speed_bps();
-        if let Err(e) = monarch_utils::commands::set_max_download_speed_bps(bps) {
+        if let Err(e) =
+            monarch_utils::commands::set_max_download_speed_bps(self.downloader.clone(), bps)
+        {
             error!("Failed to apply max download speed | Err: {e}");
             show_error("Failed to apply the download speed limit!");
         }
@@ -158,7 +160,7 @@ impl SettingsPage {
 
     pub fn login_epic(&self) {
         let client: EgsClient = monarch_games::egs_client::EgsClient::new();
-        if client.credentials_exist() {
+        if client.credentials_exist(self.shared_settings.clone()) {
             show_error("Epic Games credentials detected on system! Please delete them before attempting to log in.");
             return;
         }
@@ -168,7 +170,9 @@ impl SettingsPage {
     pub fn login_epic_auth_code(&mut self, settings: &mut Settings) {
         let mut client: EgsClient = monarch_games::egs_client::EgsClient::new();
         let trimmed_code: &str = self.epic_auth_code_tmp.trim().trim_matches('"');
-        if let Err(e) = futures::executor::block_on(client.save_epic_auth_code(trimmed_code)) {
+        if let Err(e) = futures::executor::block_on(
+            client.save_epic_auth_code(self.shared_settings.clone(), trimmed_code),
+        ) {
             error!("Failed to login to epic games using auth code! -> {:?}", e);
             show_error("Failed to login to Epic Games using authorization code!");
             return;
@@ -179,12 +183,14 @@ impl SettingsPage {
     }
 
     pub fn delete_epic_credentials(&mut self, settings: &mut Settings) {
-        settings.epic.username = "".to_string();
-        if let Err(e) = monarch_utils::commands::delete_password("epic", &mut settings.epic) {
-            error!("Failed to delete Epic credentials: {}", e);
-            show_error("Failed to delete Epic credentials!");
-            return;
+        let egs_client = EgsClient::new();
+        if let Err(e) = egs_client.delete_credentials_file(self.shared_settings.clone()) {
+            error!("SettingsPage::delete_epic_credentials() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+            show_error("Failed to delete monarch_egs.json file!");
+            return
         }
+        
+        settings.epic.username = "".to_string();
         self.write_settings(settings);
     }
 
@@ -192,7 +198,7 @@ impl SettingsPage {
         // Get updated paths and shit
         settings.fix_settings();
 
-        match monarch_utils::commands::get_cache_size() {
+        match monarch_utils::commands::get_cache_size(self.shared_settings.clone()) {
             Ok(size) => self.cache_size = size,
             Err(e) => {
                 self.cache_size = 0;
@@ -231,13 +237,13 @@ impl SettingsPage {
             return;
         }
 
-        if let Err(e) = monarch_games::commands::install_umu() {
+        if let Err(e) = monarch_games::commands::install_umu(self.shared_settings.clone()) {
             show_error(&e);
         }
     }
 
     pub fn install_steamcmd_task(&self, settings: &Settings) -> iced::Task<Message> {
-        if monarch_games::commands::steamcmd_is_installed() {
+        if monarch_games::commands::steamcmd_is_installed(self.shared_settings.clone()) {
             show_error("steamcmd already detected on system! Cannot install another version.");
             return iced::Task::none();
         }
@@ -247,9 +253,11 @@ impl SettingsPage {
             return iced::Task::none();
         }
 
+        let shared_settings_clone = self.shared_settings.clone();
+
         iced::Task::perform(
             async move {
-                let _ = monarch_games::commands::install_steamcmd().await;
+                let _ = monarch_games::commands::install_steamcmd(shared_settings_clone).await;
             },
             Message::Refresh,
         )
@@ -263,7 +271,7 @@ impl SettingsPage {
     }
 
     pub fn remove_steamcmd(&self) {
-        if let Err(e) = monarch_games::commands::remove_steamcmd() {
+        if let Err(e) = monarch_games::commands::remove_steamcmd(self.shared_settings.clone()) {
             show_error(e);
         }
     }

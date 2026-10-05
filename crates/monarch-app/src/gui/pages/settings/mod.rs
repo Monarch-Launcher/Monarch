@@ -1,4 +1,5 @@
 use iced::{Element, Theme};
+use monarch_core::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
 use tracing::error;
 
@@ -90,7 +91,6 @@ impl Message {
 
 pub struct SettingsPage {
     current_tab: SettingsTab,
-    shared_settings: Arc<RwLock<Settings>>,
     cache_size: u64,
     /// Text currently typed into the max download speed input.
     max_speed_tmp: String,
@@ -103,11 +103,19 @@ pub struct SettingsPage {
     steam_secret_tmp: String,
     epic_auth_code_tmp: String,
     view_epic_token: bool,
+
+    shared_settings: Arc<RwLock<Settings>>,
+    downloader: Arc<RwLock<MonarchDownloader>>,
 }
 
-impl Default for SettingsPage {
-    fn default() -> Self {
-        let shared_settings = monarch_utils::commands::get_settings().unwrap_or_default();
+impl SettingsPage {
+    pub fn new(
+        settings_handle: Arc<RwLock<Settings>>,
+        downloader_handle: Arc<RwLock<MonarchDownloader>>,
+    ) -> Self {
+        // Use the shared Settings pointer that App provides so this page edits
+        // the same settings as the rest of the app, not a divergent copy.
+        let shared_settings = settings_handle;
         let (steam_user, _epic_user, max_speed_tmp, max_speed_prefix) = match shared_settings.read()
         {
             Ok(s) => (
@@ -126,8 +134,8 @@ impl Default for SettingsPage {
 
         Self {
             current_tab: SettingsTab::Monarch,
-            shared_settings,
-            cache_size: monarch_utils::commands::get_cache_size().unwrap_or(0),
+            shared_settings: shared_settings.clone(),
+            cache_size: monarch_utils::commands::get_cache_size(shared_settings).unwrap_or(0),
             max_speed_tmp,
             max_speed_prefix,
             steam_username_tmp: steam_user,
@@ -137,11 +145,10 @@ impl Default for SettingsPage {
             steam_secret_tmp: String::new(),
             epic_auth_code_tmp: String::new(),
             view_epic_token: false,
+            downloader: downloader_handle,
         }
     }
-}
 
-impl SettingsPage {
     pub fn update(&mut self, msg: Message) -> iced::Task<Message> {
         let settings_ptr = self.shared_settings.clone();
         let mut write_guard: Option<RwLockWriteGuard<'_, Settings>> = None;
@@ -202,7 +209,7 @@ impl SettingsPage {
             Message::RequestResetDefaults => self.ask_reset_settings(),
             Message::ResetDefaults => self.reset_settings(&mut write_guard.unwrap()),
             Message::ClearCache => {
-                monarch_utils::commands::clear_cached_images();
+                monarch_utils::commands::clear_cached_images(self.shared_settings.clone());
                 self.refresh(&mut write_guard.unwrap());
             }
             Message::Refresh(_) => self.refresh(&mut write_guard.unwrap()),
@@ -230,7 +237,7 @@ impl SettingsPage {
             }
             Message::TestEpicFunctionality => {
                 let mut client = monarch_games::egs_client::EgsClient::new();
-                futures::executor::block_on(client.load_existing_user()).unwrap();
+                futures::executor::block_on(client.load_existing_user(self.shared_settings.clone())).unwrap();
                 futures::executor::block_on(client.get_user_games());
             }
         }

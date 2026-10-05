@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use crate::gui::components::gamecard::GameCardMessage;
 use iced::widget::{button, container, image, mouse_area};
 use iced::{alignment, Color, Element, Length};
@@ -5,13 +7,13 @@ use monarch_core::monarch_games::monarchgame::MonarchGame;
 
 #[derive(Debug, Clone)]
 pub struct GameCard {
-    pub game: MonarchGame,
+    pub game: Arc<RwLock<MonarchGame>>,
     hover: bool,
     hover_factor: f32,
 }
 
 impl GameCard {
-    pub fn new(game: MonarchGame) -> Self {
+    pub fn new(game: Arc<RwLock<MonarchGame>>) -> Self {
         Self {
             game,
             hover: false,
@@ -19,7 +21,7 @@ impl GameCard {
         }
     }
 
-    pub fn update_game(&mut self, game: MonarchGame) {
+    pub fn update_game(&mut self, game: Arc<RwLock<MonarchGame>>) {
         self.game = game;
     }
 }
@@ -28,14 +30,18 @@ impl GameCard {
     pub fn update(&mut self, msg: GameCardMessage) -> iced::Task<GameCardMessage> {
         match msg {
             GameCardMessage::GameHovered(id) => {
-                if self.game.id == id {
-                    self.hover = true;
+                if let Ok(game) = self.game.read() {
+                    if game.id == id {
+                        self.hover = true;
+                    }
                 }
                 iced::Task::none()
             }
             GameCardMessage::GameUnhovered(id) => {
-                if self.game.id == id {
-                    self.hover = false;
+                if let Ok(game) = self.game.read() {
+                    if game.id == id {
+                        self.hover = false;
+                    }
                 }
                 iced::Task::none()
             }
@@ -66,69 +72,27 @@ impl GameCard {
         let scale = 1.0 + (self.hover_factor * 0.05);
         let (width, height) = (base_width * scale, base_height * scale);
 
-        let thumbnail_exists = !self.game.thumbnail_path.is_empty()
-            && std::path::Path::new(&self.game.thumbnail_path).exists();
+        let mut cover_exists: bool = true;
+        if let Ok(game) = self.game.read() {
+            cover_exists =
+                !game.cover_path.is_empty() && std::path::Path::new(&game.cover_path).exists();
+        }
 
-        let image_widget: Element<'_, GameCardMessage> = if !thumbnail_exists {
-            container(
-                image(crate::gui::resources::LOGO_LARGE.clone())
-                    .width(Length::Fixed(width))
-                    .height(Length::Fixed(height))
-                    .content_fit(iced::ContentFit::Cover),
-            )
-            .clip(true)
-            .style(move |_theme: &iced::Theme| container::Style {
-                border: iced::Border {
-                    color: Color::TRANSPARENT,
-                    width: if self.hover { 2.0 } else { 0.0 },
-                    radius: 0.0.into(),
-                },
-                shadow: iced::Shadow {
-                    color: Color::from_rgba8(0, 0, 0, 0.6 * self.hover_factor),
-                    offset: iced::Vector::new(0.0, 10.0 * self.hover_factor),
-                    blur_radius: 20.0 * self.hover_factor,
-                },
-                ..Default::default()
-            })
-            .into()
+        let image_widget: Element<'_, GameCardMessage> = if !cover_exists {
+            self.draw_fallback_cover(width, height)
         } else {
-            let handle = if !self.game.is_installed {
-                let grey = self.game.greyscale_path();
-                if !grey.is_empty() && std::path::Path::new(&grey).exists() {
-                    iced::widget::image::Handle::from_path(grey)
-                } else {
-                    iced::widget::image::Handle::from_path(self.game.thumbnail_path.clone())
-                }
-            } else {
-                iced::widget::image::Handle::from_path(self.game.thumbnail_path.clone())
-            };
-
-            container(
-                image(handle)
-                    .width(Length::Fixed(width))
-                    .height(Length::Fixed(height))
-                    .content_fit(iced::ContentFit::Cover),
-            )
-            .clip(true)
-            .style(move |_theme: &iced::Theme| container::Style {
-                border: iced::Border {
-                    color: Color::TRANSPARENT,
-                    width: if self.hover { 2.0 } else { 0.0 },
-                    radius: 0.0.into(),
-                },
-                shadow: iced::Shadow {
-                    color: Color::from_rgba8(0, 0, 0, 0.6 * self.hover_factor),
-                    offset: iced::Vector::new(0.0, 10.0 * self.hover_factor),
-                    blur_radius: 20.0 * self.hover_factor,
-                },
-                ..Default::default()
-            })
-            .into()
+            match self.game.read() {
+                Ok(game) => self.draw_game_cover(&game, width, height),
+                Err(_) => self.draw_fallback_cover(width, height),
+            }
         };
 
         let card_button = button(image_widget)
             .on_press_maybe(if interactive {
-                Some(GameCardMessage::GamePressed(self.game.id.clone()))
+                match self.game.read() {
+                    Ok(game) => Some(GameCardMessage::GamePressed(game.id.clone())),
+                    Err(_) => None,
+                }
             } else {
                 None
             })
@@ -153,11 +117,72 @@ impl GameCard {
         );
 
         if interactive {
-            area = area
-                .on_enter(GameCardMessage::GameHovered(self.game.id.clone()))
-                .on_exit(GameCardMessage::GameUnhovered(self.game.id.clone()));
+            if let Ok(game) = self.game.read() {
+                area = area
+                    .on_enter(GameCardMessage::GameHovered(game.id.clone()))
+                    .on_exit(GameCardMessage::GameUnhovered(game.id.clone()));
+            }
         }
 
         area.into()
+    }
+
+    fn draw_fallback_cover(&self, w: f32, h: f32) -> Element<'_, GameCardMessage> {
+        container(
+            image(crate::gui::resources::LOGO_LARGE.clone())
+                .width(Length::Fixed(w))
+                .height(Length::Fixed(h))
+                .content_fit(iced::ContentFit::Cover),
+        )
+        .clip(true)
+        .style(move |_theme: &iced::Theme| container::Style {
+            border: iced::Border {
+                color: Color::TRANSPARENT,
+                width: if self.hover { 2.0 } else { 0.0 },
+                radius: 0.0.into(),
+            },
+            shadow: iced::Shadow {
+                color: Color::from_rgba8(0, 0, 0, 0.6 * self.hover_factor),
+                offset: iced::Vector::new(0.0, 10.0 * self.hover_factor),
+                blur_radius: 20.0 * self.hover_factor,
+            },
+            ..Default::default()
+        })
+        .into()
+    }
+
+    fn draw_game_cover(&self, game: &MonarchGame, w: f32, h: f32) -> Element<'_, GameCardMessage> {
+        let handle = if !game.is_installed {
+            let grey = game.greyscale_path();
+            if !grey.is_empty() && std::path::Path::new(&grey).exists() {
+                iced::widget::image::Handle::from_path(grey)
+            } else {
+                iced::widget::image::Handle::from_path(game.cover_path.clone())
+            }
+        } else {
+            iced::widget::image::Handle::from_path(game.cover_path.clone())
+        };
+
+        container(
+            image(handle)
+                .width(Length::Fixed(w))
+                .height(Length::Fixed(h))
+                .content_fit(iced::ContentFit::Cover),
+        )
+        .clip(true)
+        .style(move |_theme: &iced::Theme| container::Style {
+            border: iced::Border {
+                color: Color::TRANSPARENT,
+                width: if self.hover { 2.0 } else { 0.0 },
+                radius: 0.0.into(),
+            },
+            shadow: iced::Shadow {
+                color: Color::from_rgba8(0, 0, 0, 0.6 * self.hover_factor),
+                offset: iced::Vector::new(0.0, 10.0 * self.hover_factor),
+                blur_radius: 20.0 * self.hover_factor,
+            },
+            ..Default::default()
+        })
+        .into()
     }
 }

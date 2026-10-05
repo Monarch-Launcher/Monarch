@@ -1,12 +1,19 @@
+use anyhow::{bail, Result};
 use iced::widget::{button, column, combo_box, radio, row, text, text_input, Space};
 use iced::{alignment, Element, Length, Task};
+use std::sync::{Arc, RwLock};
+use tracing::error;
+
+use monarch_core::monarch_games::commands::proton_versions;
+use monarch_core::monarch_games::games::GameType;
+use monarch_core::monarch_games::monarchgame::MonarchGame;
+use monarch_core::monarch_games::stores::DownloadOptions;
+use monarch_core::monarch_utils::monarch_settings::Settings;
+use monarch_core::monarch_utils::monarch_vdf::ProtonVersion;
+use monarch_egs::SupportedPlatforms;
 
 use crate::gui::components::common::{open_folder_dialog, secondary_button};
 use crate::gui::styles;
-use monarch_core::monarch_games::commands::proton_versions;
-use monarch_core::monarch_games::stores::DownloadOptions;
-use monarch_core::monarch_utils::monarch_vdf::ProtonVersion;
-use monarch_egs::SupportedPlatforms;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OsTarget {
@@ -39,19 +46,38 @@ pub struct DownloadModal {
 }
 
 impl DownloadModal {
-    pub fn new(name: String, store: String, store_id: String) -> (Self, Task<Message>) {
+    pub fn new(
+        settings_handle: Arc<RwLock<Settings>>,
+        game_handle: Arc<RwLock<MonarchGame>>,
+    ) -> Result<(Self, Task<Message>)> {
+        let game_name: String;
+        let store_name: String;
+        let store_id: String;
+        match game_handle.read() {
+            Ok(game) => {
+                game_name = game.name.clone();
+                store_id = game.get_store_id();
+                store_name = game.get_store_name();
+            }
+            Err(e) => {
+                error!(
+                    "DownloadModal::new() Failed to acquire read lock on game_handle! | Err:{e}"
+                );
+                bail!("Failed to open download modal!")
+            }
+        };
+
         let options = DownloadOptions {
             folder: "".to_string(),
-            store: store.clone(),
-            game_name: name.clone(),
-            game_store: store.clone(),
-            game_store_id: store_id.clone(),
+            store: store_name.clone(),
+            game_name: game_name,
+            game_store_id: store_id,
             os: std::env::consts::OS.to_string(),
             compatibility: None,
         };
 
         let is_linux = std::env::consts::OS == "linux";
-        let needs_platform_check = store == "epicgames";
+        let needs_platform_check = store_name == "epicgames";
 
         let modal = Self {
             options,
@@ -91,10 +117,11 @@ impl DownloadModal {
         if needs_platform_check {
             let task = Task::perform(
                 async move {
-                    let game = monarch_core::monarch_games::monarchgame::MonarchGame::new(
-                        &name, -1, "epicgames", &store_id, "", "", "",
-                    );
-                    monarch_core::monarch_games::commands::check_egs_platform_support(&game).await
+                    monarch_core::monarch_games::commands::check_egs_platform_support(
+                        settings_handle,
+                        game_handle,
+                    )
+                    .await
                 },
                 Message::PlatformSupportLoaded,
             );
@@ -102,9 +129,9 @@ impl DownloadModal {
         }
 
         if tasks.is_empty() {
-            (modal, Task::none())
+            Ok((modal, Task::none()))
         } else {
-            (modal, Task::batch(tasks))
+            Ok((modal, Task::batch(tasks)))
         }
     }
 
@@ -122,12 +149,14 @@ impl DownloadModal {
                 self.options.folder = f;
                 Task::none()
             }
-            Message::BrowseFolder => Task::future(open_folder_dialog()).then(|handle| match handle {
-                Some(file_handle) => Task::done(Message::FolderChanged(
-                    file_handle.path().to_string_lossy().to_string(),
-                )),
-                None => Task::none(),
-            }),
+            Message::BrowseFolder => {
+                Task::future(open_folder_dialog()).then(|handle| match handle {
+                    Some(file_handle) => Task::done(Message::FolderChanged(
+                        file_handle.path().to_string_lossy().to_string(),
+                    )),
+                    None => Task::none(),
+                })
+            }
             Message::OsSelected(os) => {
                 // Don't allow selecting while loading or if not supported
                 if self.loading_platform_support {
@@ -166,7 +195,7 @@ impl DownloadModal {
                     }
                     Err(e) => {
                         // On error, assume all platforms are supported
-                        tracing::error!("Failed to check platform support: {}", e);
+                        error!("Failed to check platform support: {}", e);
                         self.platform_support = Some(SupportedPlatforms {
                             windows: true,
                             linux: true,
@@ -185,59 +214,47 @@ impl DownloadModal {
 
         let os_selector = if cfg!(target_os = "linux") {
             let native_option = if self.loading_platform_support {
-                column![
-                    text("Native").style(|theme: &iced::Theme| {
-                        iced::widget::text::Style {
-                            color: Some(theme.palette().text.scale_alpha(0.3)),
-                        }
-                    }),
-                ]
+                column![text("Native").style(|theme: &iced::Theme| {
+                    iced::widget::text::Style {
+                        color: Some(theme.palette().text.scale_alpha(0.3)),
+                    }
+                }),]
             } else if linux_supported {
-                column![
-                    radio(
-                        "Native",
-                        OsTarget::Linux,
-                        Some(self.os_target),
-                        Message::OsSelected
-                    ),
-                ]
+                column![radio(
+                    "Native",
+                    OsTarget::Linux,
+                    Some(self.os_target),
+                    Message::OsSelected
+                ),]
             } else {
-                column![
-                    text("Native (Not available)").style(|theme: &iced::Theme| {
-                        iced::widget::text::Style {
-                            color: Some(theme.palette().text.scale_alpha(0.3)),
-                        }
-                    }),
-                ]
+                column![text("Native (Not available)").style(|theme: &iced::Theme| {
+                    iced::widget::text::Style {
+                        color: Some(theme.palette().text.scale_alpha(0.3)),
+                    }
+                }),]
             };
 
             let windows_option = if self.loading_platform_support {
-                column![
-                    text("Windows").style(|theme: &iced::Theme| {
-                        iced::widget::text::Style {
-                            color: Some(theme.palette().text.scale_alpha(0.3)),
-                        }
-                    }),
-                ]
+                column![text("Windows").style(|theme: &iced::Theme| {
+                    iced::widget::text::Style {
+                        color: Some(theme.palette().text.scale_alpha(0.3)),
+                    }
+                }),]
             } else {
-                column![
-                    radio(
-                        "Windows",
-                        OsTarget::Windows,
-                        Some(self.os_target),
-                        Message::OsSelected
-                    ),
-                ]
+                column![radio(
+                    "Windows",
+                    OsTarget::Windows,
+                    Some(self.os_target),
+                    Message::OsSelected
+                ),]
             };
 
             let loading_text = if self.loading_platform_support {
-                column![
-                    text("Getting OS versions...").style(|theme: &iced::Theme| {
-                        iced::widget::text::Style {
-                            color: Some(theme.palette().text.scale_alpha(0.5)),
-                        }
-                    }),
-                ]
+                column![text("Getting OS versions...").style(|theme: &iced::Theme| {
+                    iced::widget::text::Style {
+                        color: Some(theme.palette().text.scale_alpha(0.5)),
+                    }
+                }),]
             } else {
                 column![]
             };

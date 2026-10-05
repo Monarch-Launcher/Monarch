@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use monarch_core::monarch_games::monarchgame::MonarchGame;
 
 pub mod actions;
@@ -12,7 +14,7 @@ pub enum GameCardMessage {
     GameUnhovered(String),
     GamePressed(String),
     Tick,
-    UpdateGames(Vec<MonarchGame>),
+    UpdateGames(Vec<Arc<RwLock<MonarchGame>>>),
 
     // Properties related
     Properties(properties::Message),

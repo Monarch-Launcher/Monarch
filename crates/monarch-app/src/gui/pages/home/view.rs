@@ -148,8 +148,8 @@ impl HomePage {
                 .into();
 
                 // Cover image
-                let cover: Element<'_, Message> = if !game.thumbnail_path.is_empty() {
-                    image(game.thumbnail_path.clone())
+                let cover: Element<'_, Message> = if !game.cover_path.is_empty() {
+                    image(game.cover_path.clone())
                         .width(Length::Fixed(200.0))
                         .height(Length::Fixed(280.0))
                         .content_fit(iced::ContentFit::Cover)

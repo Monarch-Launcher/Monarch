@@ -10,7 +10,6 @@ use tracing::{error, info};
 use super::monarch_fs::{create_dir, generate_monarch_home, get_settings_path, path_exists};
 use crate::monarch_games::monarch_client::generate_default_folder;
 use crate::monarch_games::steam_client;
-use crate::monarch_utils::monarch_state::MONARCH_STATE;
 
 #[cfg(target_os = "linux")]
 use crate::monarch_games::linux::umu;
@@ -183,9 +182,10 @@ impl Settings {
         {
             self.monarch.umu_bin = umu::get_umu_exe().to_string_lossy().to_string();
         }
-        self.monarch.steamcmd_bin = steam_client::get_steamcmd_exe()
-            .to_string_lossy()
-            .to_string();
+        self.monarch.steamcmd_bin =
+            steam_client::get_steamcmd_exe(Arc::new(RwLock::new(self.clone())))
+                .to_string_lossy()
+                .to_string();
 
         if let Err(e) = write_settings(&self) {
             error!("monarch_settings::fix_settings() Failed to write settings! | Err: {e}")
@@ -215,9 +215,7 @@ impl Default for Settings {
         #[cfg(not(target_os = "linux"))]
         let umu_bin: String = String::new();
 
-        let steamcmd_bin: String = steam_client::get_steamcmd_exe()
-            .to_string_lossy()
-            .to_string();
+        let steamcmd_bin: String = String::new();
 
         let monarch: MonarchSettings = MonarchSettings {
             monarch_home: home_path_str,
@@ -267,16 +265,6 @@ impl Default for Settings {
             quicklaunch,
             steam,
             epic,
-        }
-    }
-}
-
-/// Function to do unsafe read of SETTINGS_STATE
-pub fn get_settings() -> Result<Arc<RwLock<Settings>>> {
-    match MONARCH_STATE.read() {
-        Ok(state) => Ok(state.get_settings_ptr()),
-        Err(e) => {
-            bail!("monarch_settings::get_settings() Failed to aqcuire read lock on MONARCH_STATE | Err: {e}")
         }
     }
 }

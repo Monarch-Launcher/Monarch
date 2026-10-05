@@ -1,9 +1,11 @@
 use anyhow::{bail, Context, Result};
 use reqwest;
 use serde::Deserialize;
+use sqlx::SqlitePool;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    sync::{Arc, RwLock},
 };
 use tar::Archive;
 use tracing::{error, info, warn};
@@ -13,6 +15,8 @@ use crate::{
     monarch_library::library,
     monarch_utils::{
         monarch_fs::{self, get_monarch_bins_path, get_monarch_home},
+        monarch_settings::Settings,
+        monarch_state::MonarchState,
         monarch_terminal,
     },
 };
@@ -68,7 +72,7 @@ pub fn remove_umu() -> Result<()> {
 }
 
 /// Installs the umu-launcher by downloading the binary to $MONARCH_HOME/umu/umu-run
-pub fn install_umu() -> Result<()> {
+pub fn install_umu(settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
     if umu_is_installed() {
         bail!("linux::umu::install_umu() Failed to install umu-launcher! | Err: Umu path already exists.")
     }
@@ -108,7 +112,7 @@ pub fn install_umu() -> Result<()> {
                 &asset.browser_download_url
             )
         })?;
-    let dest_path: PathBuf = get_monarch_home().join(asset.name);
+    let dest_path: PathBuf = get_monarch_home(settings_handle.clone()).join(asset.name);
     let mut dest = std::fs::File::create(&dest_path).with_context(|| {
         format!(
             "linux::umu::install_umu() Failed to create: {} | Err: ",
@@ -127,12 +131,14 @@ pub fn install_umu() -> Result<()> {
             dest_path.display()
         )
     })?);
-    archive.unpack(get_monarch_home()).with_context(|| {
-        format!(
-            "linux::umu::install_umu() Failed to unpack {}! | Err: ",
-            dest_path.display()
-        )
-    })?;
+    archive
+        .unpack(get_monarch_home(settings_handle))
+        .with_context(|| {
+            format!(
+                "linux::umu::install_umu() Failed to unpack {}! | Err: ",
+                dest_path.display()
+            )
+        })?;
 
     info!("Finished downloading umu-launcher.");
 
@@ -156,9 +162,7 @@ fn resolve_install_dir(game: &MonarchGame, exe: &Path) -> PathBuf {
             return path;
         }
     }
-    exe.parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_default()
+    exe.parent().map(Path::to_path_buf).unwrap_or_default()
 }
 
 /// Rename the install folder when needed for Wine, then update the game record.
@@ -166,6 +170,7 @@ async fn ensure_wine_safe_game_paths(
     game: &mut MonarchGame,
     install_dir: PathBuf,
     exe: PathBuf,
+    db_pool: Arc<SqlitePool>,
 ) -> Result<(PathBuf, PathBuf)> {
     let Some(safe_dir) = monarch_fs::ensure_wine_safe_install_dir(&install_dir)? else {
         return Ok((install_dir, exe));
@@ -179,34 +184,51 @@ async fn ensure_wine_safe_game_paths(
     game.properties.install_dir = safe_dir.to_string_lossy().to_string();
     game.executable_path = Some(safe_exe.to_string_lossy().to_string());
 
-    if let Err(e) = library::update_game_properties(game).await {
-        error!("linux::umu:: Failed to persist renamed install paths | Err: {e}");
+    if let Err(e) = library::update_game_properties_in_db(db_pool, game).await {
+        error!("linux::umu::ensure_wine_safe_game_paths() Failed to persist renamed install paths | Err: {e}");
     }
 
     Ok((safe_dir, safe_exe))
 }
 
 /// Executes the game using umu-launcher to run in proton.
-pub async fn umu_run(game: &MonarchGame) -> Result<()> {
+pub async fn umu_run(game: &MonarchGame, state_handle: Arc<RwLock<MonarchState>>) -> Result<()> {
     let mut game = game.clone();
 
-    let compatibility = game
-        .compatibility
-        .clone()
-        .ok_or_else(|| anyhow::anyhow!("linux::umu::umu_run() No compatibility layer set for {}", game.name))?;
+    let compatibility = game.compatibility.clone().ok_or_else(|| {
+        anyhow::anyhow!(
+            "linux::umu::umu_run() No compatibility layer set for {}",
+            game.name
+        )
+    })?;
     info!("Compatibility layer set: {compatibility}");
 
-    let exe = PathBuf::from(
-        game.executable_path
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("linux::umu::umu_run() No executable path set for {}", game.name))?,
-    );
+    let exe = PathBuf::from(game.executable_path.as_ref().ok_or_else(|| {
+        anyhow::anyhow!(
+            "linux::umu::umu_run() No executable path set for {}",
+            game.name
+        )
+    })?);
     if !exe.is_file() {
         bail!("Executable not found: {}", exe.display());
     }
 
+    let settings_handle: Arc<RwLock<Settings>>;
+    let db_pool: Arc<SqlitePool>;
+
+    match state_handle.read() {
+        Ok(state) => {
+            settings_handle = state.get_settings_ptr();
+            db_pool = state.get_db_pool_arc();
+        }
+        Err(e) => {
+            bail!("linux::umu::umu_run() Failed to acquire lock on state_handle! | Err: {e}");
+        }
+    }
+
     let install_dir = resolve_install_dir(&game, &exe);
-    let (install_dir, exe) = ensure_wine_safe_game_paths(&mut game, install_dir, exe).await?;
+    let (install_dir, exe) =
+        ensure_wine_safe_game_paths(&mut game, install_dir, exe, db_pool).await?;
 
     let store_arg = match game.get_store_name().as_str() {
         "epic" | "epicgames" => "egs".to_string(),
@@ -214,7 +236,7 @@ pub async fn umu_run(game: &MonarchGame) -> Result<()> {
     };
 
     let gameid_arg = format!("umu-{}", game.get_store_id());
-    let prefix = monarch_fs::wine_prefix_dir(&gameid_arg);
+    let prefix = monarch_fs::wine_prefix_dir(settings_handle, &gameid_arg);
     std::fs::create_dir_all(&prefix).with_context(|| {
         format!(
             "linux::umu::umu_run() Failed to create wine prefix {} | Err: ",
@@ -227,7 +249,10 @@ pub async fn umu_run(game: &MonarchGame) -> Result<()> {
         ("PROTONPATH".to_string(), compatibility),
         ("GAMEID".to_string(), gameid_arg.clone()),
         ("STORE".to_string(), store_arg),
-        ("WINEPREFIX".to_string(), prefix.to_string_lossy().to_string()),
+        (
+            "WINEPREFIX".to_string(),
+            prefix.to_string_lossy().to_string(),
+        ),
         (
             "STEAM_COMPAT_DATA_PATH".to_string(),
             prefix.to_string_lossy().to_string(),

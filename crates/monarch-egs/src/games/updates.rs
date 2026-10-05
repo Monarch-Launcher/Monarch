@@ -43,7 +43,7 @@ impl GameUpdate {
 /// `installed` against its matching asset (by namespace + app_name). Games with
 /// no matching asset are skipped — there is nothing to compare against.
 pub async fn check_updates(
-    user: &User,
+    user: &mut User,
     platform: &str,
     installed: &[InstalledBuild],
 ) -> Result<Vec<GameUpdate>, MonarchEgsError> {
@@ -80,13 +80,13 @@ fn check_updates_against_assets(
 /// Returns the latest Live build version for a single game without downloading
 /// its manifest. Hits the same label endpoint as the manifest CDN URL lookup.
 pub async fn latest_build_version(
-    user: &User,
+    user: &mut User,
     platform: &str,
     namespace: &str,
     catalog_item_id: &str,
     app_name: &str,
 ) -> Result<String, MonarchEgsError> {
-    let mut session = user.session();
+    let session = user.session();
 
     let url: String = format!(
         "https://{LAUNCHER_URL}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/Live",
