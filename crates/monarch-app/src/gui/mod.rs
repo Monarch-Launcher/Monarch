@@ -457,14 +457,6 @@ impl App {
                             .game_details_page
                             .update(pages::game_details::Message::Actions(a_msg))
                             .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
-                        pages::game_details::Message::BackHovered(hovered) => self
-                            .game_details_page
-                            .update(pages::game_details::Message::BackHovered(hovered))
-                            .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
-                        pages::game_details::Message::EditHovered(hovered) => self
-                            .game_details_page
-                            .update(pages::game_details::Message::EditHovered(hovered))
-                            .map(|m| AppMessage::Page(pages::Message::GameDetails(m))),
                         pages::game_details::Message::EditModalMessage(msg) => self
                             .game_details_page
                             .update(pages::game_details::Message::EditModalMessage(msg))

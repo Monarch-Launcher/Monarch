@@ -98,7 +98,7 @@ impl EditModal {
                     section_header("Launch options"),
                     action_item(
                         resources::EDIT.clone(),
-                        "Launch Properties",
+                        "Launch Options",
                         Some(Message::ShowLaunchProperties),
                     ),
                     Space::new().height(Length::Fixed(8.0)),

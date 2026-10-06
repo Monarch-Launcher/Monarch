@@ -1,4 +1,3 @@
-use iced::widget::mouse_area;
 use iced::{
     alignment,
     widget::{column, container, image, row, scrollable, stack, text},
@@ -70,14 +69,11 @@ impl StoreDetailsPage {
 
                 // Back button in top left
                 let back_btn = container(
-                    mouse_area(icon_button(
+                    icon_button(
                         Some(Message::BackPressed),
-                        self.is_back_hovered,
                         ARROW_BACK.clone(),
                         0.0,
-                    ))
-                    .on_enter(Message::BackHovered(true))
-                    .on_exit(Message::BackHovered(false)),
+                    ),
                 )
                 .padding(40);
 

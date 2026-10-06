@@ -18,8 +18,6 @@ use monarch_core::monarch_utils::monarch_state::MonarchState;
 #[derive(Clone, Debug)]
 pub enum Message {
     BackPressed,
-    BackHovered(bool),
-    EditHovered(bool),
     /// Uninstall finished successfully; parent should drop the library card
     /// and navigate back to the library page.
     GameUninstalled(String),
@@ -41,8 +39,6 @@ pub struct GameDetailsPage {
     download_modal: Option<download_modal::DownloadModal>,
     app_state: Arc<RwLock<MonarchState>>,
     downloader: Arc<RwLock<MonarchDownloader>>,
-    is_back_hovered: bool,
-    is_edit_hovered: bool,
 }
 
 /// Map a combined edit-modal message onto the page's message enum.
@@ -65,8 +61,6 @@ impl GameDetailsPage {
             download_modal: None,
             app_state: state_handle,
             downloader: downloader_handle,
-            is_back_hovered: false,
-            is_edit_hovered: false,
         }
     }
 
@@ -78,14 +72,6 @@ impl GameDetailsPage {
         match msg {
             Message::BackPressed => {
                 // This will be handled by the parent to navigate back
-                iced::Task::none()
-            }
-            Message::BackHovered(hovered) => {
-                self.is_back_hovered = hovered;
-                iced::Task::none()
-            }
-            Message::EditHovered(hovered) => {
-                self.is_edit_hovered = hovered;
                 iced::Task::none()
             }
             Message::GameUninstalled(_) => {

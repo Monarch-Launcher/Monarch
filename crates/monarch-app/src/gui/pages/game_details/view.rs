@@ -1,5 +1,4 @@
 use chrono::{TimeZone, Utc};
-use iced::widget::mouse_area;
 use iced::{
     alignment,
     widget::{column, container, image, row, scrollable, stack, text},
@@ -67,16 +66,11 @@ impl GameDetailsPage {
                     });
 
                 // Back button in top left
-                let back_btn = container(
-                    mouse_area(icon_button(
-                        Some(Message::BackPressed),
-                        self.is_back_hovered,
-                        ARROW_BACK.clone(),
-                        0.0,
-                    ))
-                    .on_enter(Message::BackHovered(true))
-                    .on_exit(Message::BackHovered(false)),
-                )
+                let back_btn = container(icon_button(
+                    Some(Message::BackPressed),
+                    ARROW_BACK.clone(),
+                    0.0,
+                ))
                 .padding(40);
 
                 // Game cover/cover
@@ -229,14 +223,7 @@ impl GameDetailsPage {
                 } else {
                     download_button("Download", Some(Message::DownloadGame))
                 };
-                let edit_btn = mouse_area(icon_button(
-                    Some(Message::OpenProperties),
-                    self.is_edit_hovered,
-                    EDIT.clone(),
-                    0.0,
-                ))
-                .on_enter(Message::EditHovered(true))
-                .on_exit(Message::EditHovered(false));
+                let edit_btn = icon_button(Some(Message::OpenProperties), EDIT.clone(), 0.0);
 
                 // Properties section
                 let properties_title = text("Properties")
