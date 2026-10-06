@@ -253,7 +253,9 @@ impl ActionsModal {
         iced::Task::none()
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
+    /// The action sections (without footer or modal wrapper); used both by
+    /// `view` and by the combined edit modal on the details page.
+    pub fn sections(&self) -> Element<'_, Message> {
         match self.game.read() {
             Ok(game) => {
                 let store_name = game.get_store_name();
@@ -295,7 +297,7 @@ impl ActionsModal {
                     );
                 }
 
-                let content = content
+                content
                     .push(Space::new().height(Length::Fixed(8.0)))
                     .push(section_header("Files"))
                     .push(action_item(
@@ -327,28 +329,31 @@ impl ActionsModal {
                         remove_label,
                         Some(Message::Uninstall),
                     ))
-                    .push(Space::new().height(Length::Fixed(20.0)))
-                    .push(
-                        row![secondary_button("Done", Some(Message::Close))]
-                            .align_y(alignment::Vertical::Center),
-                    )
-                    .spacing(10);
-
-                crate::gui::components::modal::Modal::new("Actions", content)
-                    .width(Length::Fixed(800.0))
-                    .on_close(Message::Close)
-                    .view()
+                    .spacing(10)
+                    .into()
             }
             Err(e) => {
-                error!("actions_modal::view() Failed to lock on self.game! | Err: {e}");
+                error!("actions_modal::sections() Failed to lock on self.game! | Err: {e}");
                 show_error("Failed to open actions for selected game!");
 
-                let content = column![];
-                crate::gui::components::modal::Modal::new("Actions", content)
-                    .width(Length::Fixed(800.0))
-                    .view()
+                column![].into()
             }
         }
+    }
+
+    pub fn view(&self) -> Element<'_, Message> {
+        let content = column![
+            self.sections(),
+            Space::new().height(Length::Fixed(20.0)),
+            row![secondary_button("Done", Some(Message::Close))]
+                .align_y(alignment::Vertical::Center),
+        ]
+        .spacing(10);
+
+        crate::gui::components::modal::Modal::new("Actions", content)
+            .width(Length::Fixed(800.0))
+            .on_close(Message::Close)
+            .view()
     }
 }
 
@@ -369,7 +374,11 @@ fn section_header(label: &str) -> Element<'_, Message> {
         .into()
 }
 
-fn action_item(icon: svg::Handle, label: &str, on_press: Option<Message>) -> Element<'_, Message> {
+pub(crate) fn action_item<'a, Message: Clone + 'a>(
+    icon: svg::Handle,
+    label: &'a str,
+    on_press: Option<Message>,
+) -> Element<'a, Message> {
     let enabled = on_press.is_some();
     let icon_color = if enabled {
         Color::from_rgb8(220, 220, 220)

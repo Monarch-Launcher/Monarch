@@ -7,8 +7,9 @@ use iced::widget::{container, stack, text};
 use iced::{alignment, Element, Length};
 use monarch_core::monarch_utils::monarch_game_downloader::MonarchDownloader;
 
-use crate::gui::components::gamecard::actions::{self, ActionsModal};
-use crate::gui::components::gamecard::properties::{self, PropertiesModal};
+use crate::gui::components::gamecard::actions;
+use crate::gui::components::gamecard::edit_modal::{self, EditModal};
+use crate::gui::components::gamecard::properties;
 use crate::gui::components::modal::download_modal;
 use crate::gui::styles;
 use monarch_core::monarch_games::monarchgame::MonarchGame;
@@ -24,19 +25,29 @@ pub enum Message {
     DownloadGame,
     DownloadModalMessage(download_modal::Message),
     OpenProperties,
-    OpenActions,
     Properties(properties::Message),
     Actions(actions::Message),
+    /// Internal edit-modal view toggles (open/close the launch properties
+    /// editor).
+    EditModalMessage(edit_modal::Message),
     Nop(()),
 }
 
 pub struct GameDetailsPage {
     game: Option<Arc<RwLock<MonarchGame>>>,
-    properties_modal: Option<PropertiesModal>,
-    actions_modal: Option<ActionsModal>,
+    edit_modal: Option<EditModal>,
     download_modal: Option<download_modal::DownloadModal>,
     app_state: Arc<RwLock<MonarchState>>,
     downloader: Arc<RwLock<MonarchDownloader>>,
+}
+
+/// Map a combined edit-modal message onto the page's message enum.
+fn map_edit_message(message: edit_modal::Message) -> Message {
+    match message {
+        edit_modal::Message::Properties(p) => Message::Properties(p),
+        edit_modal::Message::Actions(a) => Message::Actions(a),
+        other => Message::EditModalMessage(other),
+    }
 }
 
 impl GameDetailsPage {
@@ -46,8 +57,7 @@ impl GameDetailsPage {
     ) -> Self {
         Self {
             game: None,
-            properties_modal: None,
-            actions_modal: None,
+            edit_modal: None,
             download_modal: None,
             app_state: state_handle,
             downloader: downloader_handle,
@@ -72,8 +82,13 @@ impl GameDetailsPage {
             Message::DownloadGame => self.download_game(),
             Message::DownloadModalMessage(m) => self.handle_download_modal_message(m),
             Message::OpenProperties => self.open_properties(),
-            Message::OpenActions => self.open_actions(),
             Message::Actions(actions_msg) => self.update_actions_msg(actions_msg),
+            Message::EditModalMessage(msg) => {
+                if let Some(modal) = &mut self.edit_modal {
+                    return modal.update(msg).map(map_edit_message);
+                }
+                iced::Task::none()
+            }
             Message::Properties(prop_msg) => self.update_properties_msg(prop_msg),
             _ => iced::Task::none(),
         }
@@ -83,15 +98,10 @@ impl GameDetailsPage {
         if self.game.is_some() {
             let mut content = self.view_game_details();
 
-            if let Some(modal) = &self.properties_modal {
+            if let Some(modal) = &self.edit_modal {
                 let mut layers = stack![content].width(Length::Fill).height(Length::Fill);
 
-                layers = layers.push(modal.view().map(Message::Properties));
-                content = layers.into();
-            } else if let Some(modal) = &self.actions_modal {
-                let mut layers = stack![content].width(Length::Fill).height(Length::Fill);
-
-                layers = layers.push(modal.view().map(Message::Actions));
+                layers = layers.push(modal.view().map(map_edit_message));
                 content = layers.into();
             }
 

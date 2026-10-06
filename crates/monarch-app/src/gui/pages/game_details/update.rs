@@ -4,8 +4,9 @@ use tracing::error;
 use crate::gui::{
     components::{
         gamecard::{
-            actions::{self, ActionsModal},
-            properties::{self, PropertiesModal},
+            actions,
+            edit_modal::{self, EditModal},
+            properties,
         },
         modal::download_modal,
     },
@@ -49,46 +50,48 @@ impl GameDetailsPage {
 
     pub fn open_properties(&mut self) -> iced::Task<Message> {
         if let Some(game) = &self.game {
-            let (modal, task) = PropertiesModal::new(self.app_state.clone(), game.clone());
-            self.properties_modal = Some(modal);
-            return task.map(Message::Properties);
-        }
-        iced::Task::none()
-    }
-
-    pub fn open_actions(&mut self) -> iced::Task<Message> {
-        if let Some(game) = &self.game {
-            let (modal, _task) = ActionsModal::new(game.clone(), self.downloader.clone());
-            self.actions_modal = Some(modal);
+            let (modal, task) = EditModal::new(
+                self.app_state.clone(),
+                game.clone(),
+                self.downloader.clone(),
+            );
+            self.edit_modal = Some(modal);
+            return task.map(super::map_edit_message);
         }
         iced::Task::none()
     }
 
     pub fn update_properties_msg(&mut self, prop_msg: properties::Message) -> iced::Task<Message> {
+        // Cancel is also produced by the ✕ button and by a completed save,
+        // and closes the whole edit modal.
         if let properties::Message::Cancel = prop_msg {
-            self.properties_modal = None;
+            self.edit_modal = None;
             return iced::Task::none();
         }
 
-        if let Some(modal) = &mut self.properties_modal {
-            return modal.update(prop_msg).map(Message::Properties);
+        if let Some(modal) = &mut self.edit_modal {
+            return modal
+                .update(edit_modal::Message::Properties(prop_msg))
+                .map(super::map_edit_message);
         }
         iced::Task::none()
     }
 
     pub fn update_actions_msg(&mut self, actions_msg: actions::Message) -> iced::Task<Message> {
         if let actions::Message::Close = actions_msg {
-            self.actions_modal = None;
+            self.edit_modal = None;
             return iced::Task::none();
         }
 
         if let actions::Message::Uninstalled(Ok(game_id)) = &actions_msg {
-            self.actions_modal = None;
+            self.edit_modal = None;
             return iced::Task::done(Message::GameUninstalled(game_id.clone()));
         }
 
-        if let Some(modal) = &mut self.actions_modal {
-            return modal.update(actions_msg).map(Message::Actions);
+        if let Some(modal) = &mut self.edit_modal {
+            return modal
+                .update(edit_modal::Message::Actions(actions_msg))
+                .map(super::map_edit_message);
         }
         iced::Task::none()
     }

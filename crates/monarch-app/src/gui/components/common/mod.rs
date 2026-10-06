@@ -24,7 +24,6 @@ where
 pub fn other_primary_button<'a, Message>(
     label: &str,
     on_press: Option<Message>,
-    is_hovered: bool,
     icon: svg::Handle,
     rotation: f32, // Radians
 ) -> Element<'a, Message, Theme>
@@ -37,14 +36,12 @@ where
                 .width(20)
                 .height(20)
                 .rotation(iced::Rotation::Floating(iced::Radians(rotation)))
-                .style(move |_theme: &Theme, _status| {
-                    iced::widget::svg::Style {
-                        color: Some(if is_hovered {
-                            Color::BLACK
-                        } else {
-                            Color::from_rgb8(255, 127, 0)
-                        }),
-                    }
+                .style(|_theme: &Theme, status| iced::widget::svg::Style {
+                    color: Some(if status == iced::widget::svg::Status::Hovered {
+                        Color::BLACK
+                    } else {
+                        Color::from_rgb8(255, 127, 0)
+                    }),
                 }),
             Text::new(label.to_owned())
                 .align_x(alignment::Horizontal::Center)
@@ -61,33 +58,33 @@ where
 
 pub fn icon_button<'a, Message>(
     on_press: Option<Message>,
-    is_hovered: bool,
     icon: svg::Handle,
     rotation: f32, // Radians
 ) -> Element<'a, Message, Theme>
 where
     Message: Clone + 'a,
 {
+    // The SVG widget spans the entire button (glyph + the former padding), so
+    // its `svg::Status::Hovered` hitbox matches the button's visual bounds.
+    // `ContentFit::ScaleDown` keeps the ink at the handle's declared 20px
+    // intrinsic size, centered in the larger widget.
     button(
-        row![svg(icon)
-            .width(20)
-            .height(20)
+        svg(icon)
+            .width(44)
+            .height(44)
             .rotation(iced::Rotation::Floating(iced::Radians(rotation)))
-            .style(move |_theme: &Theme, _status| {
-                iced::widget::svg::Style {
-                    color: Some(if is_hovered {
-                        Color::BLACK
-                    } else {
-                        Color::from_rgb8(255, 127, 0)
-                    }),
-                }
-            }),]
-        .spacing(10)
-        .align_y(alignment::Vertical::Center),
+            .content_fit(iced::ContentFit::ScaleDown)
+            .style(|_theme: &Theme, status| iced::widget::svg::Style {
+                color: Some(if status == iced::widget::svg::Status::Hovered {
+                    Color::BLACK
+                } else {
+                    Color::from_rgb8(255, 127, 0)
+                }),
+            }),
     )
     .on_press_maybe(on_press)
     .style(styles::button::transparent)
-    .padding(12)
+    .padding(0)
     .into()
 }
 

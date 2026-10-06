@@ -1,6 +1,61 @@
 use iced::widget::{image, svg};
 use std::sync::LazyLock;
 
+/// An SVG handle whose root element declares `size`px as its intrinsic size.
+///
+/// The declared size only sets the SVG's *intrinsic* size. Everywhere the icon
+/// is drawn with the default `ContentFit::Contain` (action items, store
+/// badges, ...) the ink still scales to the widget's bounds, so this is
+/// visually a no-op there. It matters for `icon_button`, which draws the SVG
+/// with `ContentFit::ScaleDown` inside a larger widget: `ScaleDown` never
+/// scales up, so a small declared size keeps the ink at 20px while the
+/// widget's bounds — and therefore its `svg::Status::Hovered` hitbox — span
+/// the whole button.
+fn svg_with_intrinsic_size(bytes: &[u8], size: u32) -> svg::Handle {
+    match std::str::from_utf8(bytes) {
+        Ok(src) => svg::Handle::from_memory(
+            svg_source_with_intrinsic_size(src, size).into_bytes(),
+        ),
+        Err(_) => svg::Handle::from_memory(bytes.to_vec()),
+    }
+}
+
+/// Rewrite the root `<svg ...>` tag of an SVG document so its declared
+/// `width`/`height` are `size`px. Falls back to the original source when the
+/// document has no recognizable root tag.
+fn svg_source_with_intrinsic_size(src: &str, size: u32) -> String {
+    let Some(tag_start) = src.find("<svg") else {
+        return src.to_string();
+    };
+    let Some(tag_len) = src[tag_start..].find('>') else {
+        return src.to_string();
+    };
+
+    let value = format!("{size}px");
+    let mut tag = src[tag_start..tag_start + tag_len].to_string();
+
+    for name in ["width", "height"] {
+        let pattern = format!("{name}=\"");
+        if let Some(idx) = tag.find(&pattern) {
+            // Rewrite the root attribute; nested element attributes (e.g. a
+            // child's `width="2"`) live outside the root tag and are untouched.
+            let rest = &tag[idx + pattern.len()..];
+            if let Some(end) = rest.find('"') {
+                tag = format!(
+                    "{}{name}=\"{value}\"{}",
+                    &tag[..idx],
+                    &rest[end + 1..]
+                );
+            }
+        } else {
+            // No declared size: append one at the end of the root tag.
+            tag.insert_str(tag.len(), &format!(" {name}=\"{value}\""));
+        }
+    }
+
+    format!("{}{tag}{}", &src[..tag_start], &src[tag_start + tag_len..])
+}
+
 pub static LOGO: LazyLock<image::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Logo/Square71x71Logo.png");
     image::Handle::from_bytes(bytes.to_vec())
@@ -42,13 +97,14 @@ pub static PLAY: LazyLock<svg::Handle> = LazyLock::new(|| {
 });
 
 pub static REFRESH: LazyLock<svg::Handle> = LazyLock::new(|| {
-    let bytes = include_bytes!("../../icons/Actions/refresh.svg");
-    svg::Handle::from_memory(bytes.to_vec())
+    svg_with_intrinsic_size(include_bytes!("../../icons/Actions/refresh.svg"), 20)
 });
 
 pub static ADD_FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
-    let bytes = include_bytes!("../../icons/Actions/folder-plus-svgrepo-com.svg");
-    svg::Handle::from_memory(bytes.to_vec())
+    svg_with_intrinsic_size(
+        include_bytes!("../../icons/Actions/folder-plus-svgrepo-com.svg"),
+        20,
+    )
 });
 
 pub static _SEARCH_FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
@@ -62,13 +118,11 @@ pub static FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
 });
 
 pub static VIEW: LazyLock<svg::Handle> = LazyLock::new(|| {
-    let bytes = include_bytes!("../../icons/Actions/view.svg");
-    svg::Handle::from_memory(bytes.to_vec())
+    svg_with_intrinsic_size(include_bytes!("../../icons/Actions/view.svg"), 20)
 });
 
 pub static HIDE: LazyLock<svg::Handle> = LazyLock::new(|| {
-    let bytes = include_bytes!("../../icons/Actions/hide.svg");
-    svg::Handle::from_memory(bytes.to_vec())
+    svg_with_intrinsic_size(include_bytes!("../../icons/Actions/hide.svg"), 20)
 });
 
 pub static DOWNLOAD: LazyLock<svg::Handle> = LazyLock::new(|| {
@@ -104,8 +158,21 @@ pub static UPDATE: LazyLock<svg::Handle> = LazyLock::new(|| {
 });
 
 pub static FILTER: LazyLock<svg::Handle> = LazyLock::new(|| {
-    let bytes = include_bytes!("../../icons/Actions/filter-svgrepo-com.svg");
-    svg::Handle::from_memory(bytes.to_vec())
+    svg_with_intrinsic_size(include_bytes!("../../icons/Actions/filter-svgrepo-com.svg"), 20)
+});
+
+pub static ARROW_BACK: LazyLock<svg::Handle> = LazyLock::new(|| {
+    svg_with_intrinsic_size(
+        include_bytes!("../../icons/Actions/arrow-back-long-svgrepo-com.svg"),
+        20,
+    )
+});
+
+pub static EDIT: LazyLock<svg::Handle> = LazyLock::new(|| {
+    svg_with_intrinsic_size(
+        include_bytes!("../../icons/Actions/edit-pencil-svgrepo-com.svg"),
+        20,
+    )
 });
 
 pub static WINDOW_MINIMIZE: LazyLock<svg::Handle> = LazyLock::new(|| {

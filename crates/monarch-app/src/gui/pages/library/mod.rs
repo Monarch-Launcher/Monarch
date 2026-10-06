@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use iced::widget::{column, container, mouse_area, row, text};
+use iced::widget::{column, container, row, text};
 use iced::Length::{self, Fill};
 use iced::{alignment, Element, Task};
 use monarch_core::monarch_utils::monarch_state::MonarchState;
@@ -35,9 +35,6 @@ pub enum Message {
     GameCard(gamecard::GameCardMessage),
     OpenGameDetails(Arc<RwLock<MonarchGame>>),
     Tick,
-    ScannerHovered(bool),
-    AddGameHovered(bool),
-    FilterHovered(bool),
     FilterPressed,
     FilterModal(filter::Message),
     OpenAddModal,
@@ -51,9 +48,6 @@ pub struct LibraryPage {
     is_refreshing: bool,
     dot_count: u8,
     tick_counter: u8,
-    is_scanner_hovered: bool,
-    is_add_hovered: bool,
-    is_filter_hovered: bool,
     add_game_modal: Option<AddGameModal>,
     filter_modal: Option<FilterModal>,
 
@@ -74,9 +68,6 @@ impl LibraryPage {
             is_refreshing: false,
             dot_count: 3,
             tick_counter: 0,
-            is_scanner_hovered: false,
-            is_add_hovered: false,
-            is_filter_hovered: false,
             add_game_modal: None,
             filter_modal: None,
 
@@ -358,18 +349,6 @@ impl LibraryPage {
 
                 iced::Task::batch(tasks)
             }
-            Message::ScannerHovered(hovered) => {
-                self.is_scanner_hovered = hovered;
-                iced::Task::none()
-            }
-            Message::AddGameHovered(hovered) => {
-                self.is_add_hovered = hovered;
-                iced::Task::none()
-            }
-            Message::FilterHovered(hovered) => {
-                self.is_filter_hovered = hovered;
-                iced::Task::none()
-            }
             Message::FilterPressed => {
                 let filter = self.browser.games.filter.clone();
                 self.filter_modal = Some(FilterModal::new(filter));
@@ -493,45 +472,25 @@ impl LibraryPage {
         };
 
         let refresh_btn = if modal_active {
-            icon_button(None, false, REFRESH.clone(), 0.0)
+            icon_button(None, REFRESH.clone(), 0.0)
         } else {
-            mouse_area(icon_button(
+            icon_button(
                 Some(Message::RefreshLibrary),
-                self.is_scanner_hovered,
                 REFRESH.clone(),
                 refresh_rotation,
-            ))
-            .on_enter(Message::ScannerHovered(true))
-            .on_exit(Message::ScannerHovered(false))
-            .into()
+            )
         };
 
         let add_btn = if modal_active {
-            icon_button(None, false, ADD_FOLDER.clone(), 0.0)
+            icon_button(None, ADD_FOLDER.clone(), 0.0)
         } else {
-            mouse_area(icon_button(
-                Some(Message::OpenAddModal),
-                self.is_add_hovered,
-                ADD_FOLDER.clone(),
-                0.0,
-            ))
-            .on_enter(Message::AddGameHovered(true))
-            .on_exit(Message::AddGameHovered(false))
-            .into()
+            icon_button(Some(Message::OpenAddModal), ADD_FOLDER.clone(), 0.0)
         };
 
         let filter_btn = if modal_active {
-            icon_button(None, false, FILTER.clone(), 0.0)
+            icon_button(None, FILTER.clone(), 0.0)
         } else {
-            mouse_area(icon_button(
-                Some(Message::FilterPressed),
-                self.is_filter_hovered,
-                FILTER.clone(),
-                0.0,
-            ))
-            .on_enter(Message::FilterHovered(true))
-            .on_exit(Message::FilterHovered(false))
-            .into()
+            icon_button(Some(Message::FilterPressed), FILTER.clone(), 0.0)
         };
 
         let games_content: Element<'_, Message> =

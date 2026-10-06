@@ -358,7 +358,7 @@ impl SettingsPage {
                 row![
                     input_field("Steam Password", &self.steam_password_tmp, Message::SteamPasswordChanged),
                     Space::new().width(10),
-                    icon_button(Some(Message::ToggleSteamHiddenPassword), false, VIEW.clone(), 0.0),
+                    icon_button(Some(Message::ToggleSteamHiddenPassword), VIEW.clone(), 0.0),
                 ]
             } else {
                 row![
@@ -368,7 +368,7 @@ impl SettingsPage {
                         Message::SteamPasswordChanged
                     ),
                     Space::new().width(10),
-                    icon_button(Some(Message::ToggleSteamHiddenPassword), false, HIDE.clone(), 0.0),
+                    icon_button(Some(Message::ToggleSteamHiddenPassword), HIDE.clone(), 0.0),
                 ]
             },
             Space::new().height(10),
@@ -403,7 +403,7 @@ impl SettingsPage {
                 row![
                     input_field("Steam Secret", &self.steam_secret_tmp, Message::SteamGuardSecretChanged),
                     Space::new().width(10),
-                    icon_button(Some(Message::ToggleHiddenSteamSecret), false, VIEW.clone(), 0.0),
+                    icon_button(Some(Message::ToggleHiddenSteamSecret), VIEW.clone(), 0.0),
                 ]
             } else {
                 row![
@@ -413,7 +413,7 @@ impl SettingsPage {
                         Message::SteamGuardSecretChanged
                     ),
                     Space::new().width(10),
-                    icon_button(Some(Message::ToggleHiddenSteamSecret), false, HIDE.clone(), 0.0),
+                    icon_button(Some(Message::ToggleHiddenSteamSecret), HIDE.clone(), 0.0),
                 ]
             },
             Space::new().height(10),
@@ -468,7 +468,6 @@ impl SettingsPage {
                         Space::new().width(10),
                         icon_button(
                             Some(Message::ToggleHiddenEpicToken),
-                            false,
                             VIEW.clone(),
                             0.0
                         ),
@@ -483,7 +482,6 @@ impl SettingsPage {
                         Space::new().width(10),
                         icon_button(
                             Some(Message::ToggleHiddenEpicToken),
-                            false,
                             HIDE.clone(),
                             0.0
                         ),
