@@ -44,6 +44,7 @@ jobs:
       - name: build
         env:
           MONARCH_URL: https://api.monarch-launcher.com
+          EPICLOGIN_URL: ${{ secrets.EPICLOGIN_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo build --release ${{ matrix.args }}
 

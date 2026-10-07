@@ -1,0 +1,149 @@
+/*
+    This file is for routines that just keep Monarch fast and clean, such as
+    clearing old cached images, temporary downloads, etc...
+
+    Also meant to help maintain a smaller footprint on users OS.
+*/
+
+use std::fs::ReadDir;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
+use std::thread;
+use std::thread::sleep;
+use std::time::SystemTime;
+use std::{fs, time::Duration};
+use sysinfo::{System, SystemExt};
+use tracing::{error, info};
+
+use crate::monarch_utils::monarch_fs;
+use crate::monarch_utils::monarch_settings::Settings;
+
+use super::monarch_fs::get_resources_cache;
+
+/// Runs HouseKeeper loop on seperate thread
+pub fn start(settings_lock: Arc<RwLock<Settings>>) {
+    thread::spawn(move || {
+        let mut sys: System = System::new();
+
+        loop {
+            sys.refresh_cpu();
+
+            if low_system_usage(&sys) {
+                clear_cached_covers(settings_lock);
+
+                break; // For now assume that program will be restarted at some point within next few days.
+                       // Can therefor stop the housekeeping service
+                       // Housekeeping also doesn't do anything rn except clear images. Can implement more logic later
+                       // as it's needed.
+            }
+
+            sleep(Duration::new(3600, 0));
+        }
+    });
+}
+
+pub fn on_exit(settings_lock: Arc<RwLock<Settings>>) {
+    let temp_dir = monarch_fs::get_temp_dir(settings_lock);
+    if let Err(e) = monarch_fs::remove_dir(&temp_dir) {
+        error!(
+            "housekeeping::on_exit() Failed to remove temporary directory: {} | Err: {e}",
+            temp_dir.display()
+        )
+    }
+}
+
+/// Checks if system usage is sufficiently low to clear resources.
+/// Currently only checks a certain level of CPU usage, will possibly update later
+/// to check more metrics such as disk usage, memory, etc...
+fn low_system_usage(system: &System) -> bool {
+    system.load_average().one < 15.0 // Check that system CPU usage 1 min ago is below 15%
+}
+
+/*
+    Clearing images
+*/
+
+/// Clears out old cached covers (Don't like the indentaion level, will come back to rework later)
+pub fn clear_cached_covers(settings_lock: Arc<RwLock<Settings>>) {
+    let path: PathBuf = get_resources_cache(settings_lock);
+    match fs::read_dir(path) {
+        Ok(files) => {
+            clear_dir(files);
+        }
+        Err(e) => {
+            error!("housekeeping::clear_cached_covers() Encountered error while running fs::read_dir() | Err: {e}");
+        }
+    }
+}
+
+/// Helper function to remove some indentation levels from clear_cached_covers().
+fn clear_dir(files: ReadDir) {
+    let mut logged_event: bool = false;
+
+    // Only iterate over Ok()
+    for file_ in files.into_iter().flatten() {
+        let file_path: PathBuf = file_.path();
+
+        if time_to_remove(&file_path) {
+            if !logged_event {
+                info!("Monarch Housekeeper: Clearing cached images...");
+                logged_event = true;
+            }
+            remove_cover(&file_path);
+        }
+    }
+}
+
+/// Removes old cache file if old enough
+fn remove_cover(file: &Path) {
+    if let Err(e) = fs::remove_file(file) {
+        error!(
+            "housekeeping::remove_cover() Error while removing: {path} | Err: {e}",
+            path = file.display()
+        );
+    }
+}
+
+/// Checks if it's time to remove cached cover
+fn time_to_remove(file: &Path) -> bool {
+    if let Ok(metadata) = fs::metadata(file) {
+        if let Ok(time) = metadata.modified() {
+            if let Ok(age) = SystemTime::now().duration_since(time) {
+                return age.as_secs() >= 1209600; // Return if file is older than 14 days
+                                                 // TODO: REPLACE WITH CUSTOM SETTING USER CAN CAHNGE FOR HOW LONG TO STORE IMAGES
+            }
+        }
+    }
+    false
+}
+
+/// Removes all files in /resources/cache, meant for UI so that user can clear folder if wanted
+pub fn clear_all_cache(settings_lock: Arc<RwLock<Settings>>) {
+    info!("Manually clearing all cached images...");
+    let path: PathBuf = get_resources_cache(settings_lock);
+
+    match fs::read_dir(&path) {
+        Ok(files) => {
+            for file in files {
+                match file {
+                    Ok(f) => {
+                        remove_cover(&f.path());
+                    }
+                    Err(e) => {
+                        error!("housekeeping::clear_all_cache() Could not read file! | Err: {e}");
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            error!(
+                "housekeeping::clear_all_cache() Error while reading files from: {dir} | Err: {e}",
+                dir = path.display()
+            );
+        }
+    }
+}
+
+/*
+    Clearing temporary files
+*/

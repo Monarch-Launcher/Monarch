@@ -18,11 +18,11 @@ These are some of the features we want to include in Monarch and their developme
 
 | Feature                  | Status        |
 | ------------------------ | ------------- |
-| Find games automatically | 🟡 Steam only |
+| Find games automatically | 🟢 Done       |
 | View store pages         | 🟢 Done       |
-| Launch games             | 🟡 Steam only |
+| Launch games             | 🟢 Done       |
 | Manage Steam games       | 🟡 Limited    |
-| Manage Epic games        | 🟡 Limited    |
+| Manage Epic games        | 🟢 Basic      |
 | Game collections/folders | 🟢 Done       |
 | Quicklaunch              | 🟡 Reworking  |
 | Find/buy new games       | 🟡 Limited    |
