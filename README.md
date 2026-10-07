@@ -1,6 +1,6 @@
 # Monarch Launcher
 
-![alt text](icons/Logo/Square310x310Logo.png)
+![alt text](crates/monarch-app/icons/Logo/Square310x310Logo.png)
 
 ## What is it?
 
@@ -16,21 +16,21 @@ I (an0nymoos3) feel the need to preface that Monarch is currently being develope
 
 These are some of the features we want to include in Monarch and their development status. Not all are going to be developed in the order below, and not all will be in the first official release of Monarch, but the core features planned for the first release are **game aggregation**, **intall/uninstall**, **game stats**, **quicklaunch** and some **quality of life** features.
 
-| Feature                  | Status        |
-| ------------------------ | ------------- |
-| Find games automatically | 🟢 Done       |
-| View store pages         | 🟢 Done       |
-| Launch games             | 🟢 Done       |
-| Manage Steam games       | 🟡 Limited    |
-| Manage Epic games        | 🟢 Basic      |
-| Game collections/folders | 🟢 Done       |
-| Quicklaunch              | 🟡 Reworking  |
-| Find/buy new games       | 🟡 Limited    |
-| Launch arguments         | 🟡 Limited    |
-| Download scripting       | 🔴 Planned    |
-| User stats               | 🔴 Planned    |
-| Friends                  | 🔴 Planned    |
-| Plugin system            | 🔴 Planned    |
+| Feature                  | Status       |
+| ------------------------ | ------------ |
+| Find games automatically | 🟢 Done      |
+| View store pages         | 🟢 Done      |
+| Launch games             | 🟢 Done      |
+| Manage Steam games       | 🟡 Limited   |
+| Manage Epic games        | 🟢 Basic     |
+| Game collections/folders | 🟢 Done      |
+| Quicklaunch              | 🟡 Reworking |
+| Find/buy new games       | 🟡 Limited   |
+| Launch arguments         | 🟡 Limited   |
+| Download scripting       | 🔴 Planned   |
+| User stats               | 🔴 Planned   |
+| Friends                  | 🔴 Planned   |
+| Plugin system            | 🔴 Planned   |
 
 ## Other benefits
 
