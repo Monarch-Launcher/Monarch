@@ -22,10 +22,6 @@ use monarch_core::monarch_utils::monarch_vdf::ProtonVersion;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EnvVarKey {
     // Proton
-    ProtonLog,
-    ProtonLogDir,
-    ProtonCrashReportDir,
-    ProtonWaitAttach,
     ProtonUseWined3d,
     ProtonNoD3D11,
     ProtonNoD3D10,
@@ -33,11 +29,13 @@ pub enum EnvVarKey {
     ProtonNoFsync,
     ProtonNoNtsync,
     ProtonDisableNvapi,
-    ProtonForceLargeAddressAware,
-    ProtonHeapDelayFree,
+    ProtonEnableNvapi,
+    ProtonUseSeccomp,
+    ProtonUseSdl,
+    ProtonPreferSdl,
+    ProtonUseWayland,
+    ProtonEnableWayland,
     ProtonUseXalia,
-    HostLcAll,
-    Fna3dForceDriver,
 
     // Wine
     WinePrefix,
@@ -57,21 +55,23 @@ pub enum EnvVarKey {
     // DXVK
     DxvkHud,
     DxvkHudCustom,
-    DxvkLogLevel,
-    DxvkLogPath,
-    DxvkConfigFile,
     DxvkConfig,
-    DxvkFilterDeviceName,
-    DxvkFilterDeviceUuid,
-    DxvkDebug,
     DxvkShaderCacheDisabled,
     DxvkShaderCachePath,
 
-    // Gamemode / Gamescope
+    // Gamemode / Gamescope / Misc
     GamemodeAuto,
+    MangoHud,
+    GamescopeEnable,
+    GamescopeWidth,
+    GamescopeHeight,
+    GamescopeRefresh,
+    GamescopeHdr,
+    GamescopeExposeWayland,
+    GamescopeVrr,
+    GamescopeForceGrabCursor,
     GamescopeWsi,
     GamescopeFsrStrength,
-    MangoHud,
 }
 
 /// The widget used to edit one variable on the Proton/Wine variables page:
@@ -82,7 +82,8 @@ pub enum EnvRowKind {
     Flag,
     /// Text input with a placeholder shown while the field is empty.
     Text(&'static str),
-}#[derive(Clone, Debug)]
+}
+#[derive(Clone, Debug)]
 pub enum Message {
     ExecutablesLoaded(Vec<PathBuf>),
     CompatibilityLoaded(Vec<ProtonVersion>),
@@ -437,25 +438,22 @@ impl PropertiesModal {
     /// The Proton/Wine environment variables editor, shown as its own page
     /// in place of the regular launch-option fields.
     fn env_vars_fields(&self) -> Element<'_, Message> {
-        let intro = concat!(
-            "These environment variables are passed to the compatibility layer when launching ",
-            "the game. Checked options are set to 1; every other field is passed as entered. ",
-            "Leave a field empty to leave the variable unset."
-        );
-
         let content = column![
             text("Proton/Wine Variables")
-                .size(18)
+                .size(20)
                 .font(styles::fonts::BOLD),
-            text(intro).size(12).color(Color::from_rgb8(140, 140, 140)),
             env_section_header("Proton"),
             self.env_rows_section(&PROTON_ROWS),
             env_section_header("Wine"),
             self.env_rows_section(&WINE_ROWS),
             env_section_header("DXVK"),
             self.env_rows_section(&DXVK_ROWS),
-            env_section_header("Gamemode/Gamescope"),
-            self.env_rows_section(&GAMEMODE_GAMESCOPE_ROWS),
+            env_section_header("Gamemode"),
+            self.env_rows_section(&GAMEMODE_ROWS),
+            env_section_header("Gamescope"),
+            self.env_gamescope_section(),
+            env_section_header("Misc"),
+            self.env_rows_section(&MISC_ROWS),
         ]
         .spacing(10);
 
@@ -496,70 +494,188 @@ impl PropertiesModal {
             let name = *name;
             let description = *description;
             match kind {
-                EnvRowKind::Flag => section = section.push(
-                    column![
-                        checkbox(self.env_flag(*key))
-                            .label(name)
-                            .on_toggle(|checked| Message::EnvVarToggled(*key, checked))
-                            .text_size(14),
-                        text(description).size(12).color(Color::from_rgb8(140, 140, 140)),
-                    ]
-                    .spacing(2),
-                ),
-                EnvRowKind::Text(placeholder) => section = section.push(
-                    column![
-                        text(name).size(14),
-                        text(description).size(12).color(Color::from_rgb8(140, 140, 140)),
-                        text_input(placeholder, self.env_text(*key))
-                            .on_input(|value| Message::EnvVarChanged(*key, value))
-                            .size(14)
-                            .padding(8),
-                    ]
-                    .spacing(4),
-                ),
+                EnvRowKind::Flag => {
+                    section =
+                        section.push(env_flag_row(self.env_flag(*key), name, description, *key))
+                }
+                EnvRowKind::Text(placeholder) => {
+                    section = section.push(env_input_row(
+                        name,
+                        description,
+                        placeholder,
+                        self.env_text(*key),
+                        *key,
+                    ))
+                }
             }
         }
 
         section.into()
     }
+
+    /// The Gamescope section, separate from the generic row tables because of
+    /// the grouped resolution row (w / h / r).
+    fn env_gamescope_section(&self) -> Element<'_, Message> {
+        let mut section = column![
+            env_flag_row(
+                self.env_flag(EnvVarKey::GamescopeEnable),
+                "Enable",
+                "Run the game inside a Gamescope session.",
+                EnvVarKey::GamescopeEnable
+            ),
+            self.env_resolution_row(),
+            env_flag_row(
+                self.env_flag(EnvVarKey::GamescopeHdr),
+                "Enable HDR",
+                "Enable HDR output (requires a Wayland compositor, game and monitor with HDR support).",
+                EnvVarKey::GamescopeHdr
+            ),
+            env_flag_row(
+                self.env_flag(EnvVarKey::GamescopeExposeWayland),
+                "Expose Wayland",
+                "Pass the Wayland compositor through to the game.",
+                EnvVarKey::GamescopeExposeWayland
+            ),
+            env_flag_row(
+                self.env_flag(EnvVarKey::GamescopeVrr),
+                "VRR support",
+                "Enable adaptive synchronization for displays with variable refresh rate support.",
+                EnvVarKey::GamescopeVrr
+            ),
+            env_flag_row(
+                self.env_flag(EnvVarKey::GamescopeForceGrabCursor),
+                "Force grab cursor",
+                "Keep the mouse cursor inside the Gamescope window.",
+                EnvVarKey::GamescopeForceGrabCursor
+            ),
+            env_flag_row(
+                self.env_flag(EnvVarKey::GamescopeWsi),
+                "ENABLE_GAMESCOPE_WSI",
+                "Enable the Gamescope Vulkan WSI layer (for Gamescope sessions).",
+                EnvVarKey::GamescopeWsi
+            ),
+            env_input_row(
+                "GAMESCOPE_FSR_STRENGTH",
+                "FSR sharpening strength used by Gamescope.",
+                "0-5",
+                self.env_text(EnvVarKey::GamescopeFsrStrength),
+                EnvVarKey::GamescopeFsrStrength
+            ),
+        ]
+        .spacing(12);
+
+        section.into()
+    }
+
+    /// The gamescope resolution row: three inputs side by side (w / h / r).
+    fn env_resolution_row(&self) -> Element<'_, Message> {
+        let part = |label: &'static str, placeholder: &'static str, key: EnvVarKey, value: &str| {
+            column![
+                text(label).size(12).color(Color::from_rgb8(140, 140, 140)),
+                text_input(placeholder, value)
+                    .on_input(move |val| Message::EnvVarChanged(key, val))
+                    .size(14)
+                    .padding(8),
+            ]
+            .spacing(2)
+            .width(Length::Fill)
+        };
+
+        column![
+            text("Resolution").size(14),
+            text("Gamescope window resolution and refresh rate.")
+                .size(12)
+                .color(Color::from_rgb8(140, 140, 140)),
+            row![
+                part(
+                    "w",
+                    "WIDTH",
+                    EnvVarKey::GamescopeWidth,
+                    self.env_text(EnvVarKey::GamescopeWidth)
+                ),
+                part(
+                    "h",
+                    "HEIGHT",
+                    EnvVarKey::GamescopeHeight,
+                    self.env_text(EnvVarKey::GamescopeHeight)
+                ),
+                part(
+                    "r",
+                    "REFRESH (Hz)",
+                    EnvVarKey::GamescopeRefresh,
+                    self.env_text(EnvVarKey::GamescopeRefresh)
+                ),
+            ]
+            .spacing(8)
+        ]
+        .spacing(4)
+        .into()
+    }
 }
 
-/// Section label for the environment variables page, matching the gray
-/// headers used across the modals.
+/// A checkbox row for the environment variables page.
+fn env_flag_row(
+    checked: bool,
+    name: &'static str,
+    description: &'static str,
+    key: EnvVarKey,
+) -> Element<'static, Message> {
+    column![
+        checkbox(checked)
+            .label(name)
+            .on_toggle(move |toggle| Message::EnvVarToggled(key, toggle))
+            .text_size(14),
+        text(description)
+            .size(12)
+            .color(Color::from_rgb8(140, 140, 140)),
+    ]
+    .spacing(2)
+    .into()
+}
+
+/// A free-form text row for the environment variables page.
+fn env_input_row<'a>(
+    name: &'static str,
+    description: &'static str,
+    placeholder: &'static str,
+    value: &'a str,
+    key: EnvVarKey,
+) -> Element<'a, Message> {
+    column![
+        text(name).size(14),
+        text(description)
+            .size(12)
+            .color(Color::from_rgb8(140, 140, 140)),
+        text_input(placeholder, value)
+            .on_input(move |input| Message::EnvVarChanged(key, input))
+            .size(14)
+            .padding(8),
+    ]
+    .spacing(4)
+    .into()
+}
+
+/// Section label for the environment variables page, preceded by a divider
+/// line that separates the sections.
 fn env_section_header(label: &str) -> Element<'_, Message> {
-    text(label)
-        .size(13)
-        .color(Color::from_rgb8(140, 140, 140))
-        .into()
+    iced::widget::column![
+        Space::new().height(14),
+        iced::widget::rule::horizontal(1).style(|_theme: &iced::Theme| iced::widget::rule::Style {
+            color: Color::from_rgba8(255, 255, 255, 0.15),
+            radius: 0.0.into(),
+            fill_mode: iced::widget::rule::FillMode::Padded(8),
+            snap: true,
+        }),
+        Space::new().height(14),
+        text(label).size(20),
+        Space::new().height(14),
+    ]
+    .into()
 }
 
 /// Rows of the Proton section of the Proton/Wine variables page. Each row is
 /// (variable key, widget, displayed name, description).
 const PROTON_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[
-    (
-        EnvVarKey::ProtonLog,
-        EnvRowKind::Flag,
-        "PROTON_LOG",
-        "Create a Proton/Wine diagnostic log.",
-    ),
-    (
-        EnvVarKey::ProtonLogDir,
-        EnvRowKind::Text("/path/to/log/dir"),
-        "PROTON_LOG_DIR",
-        "Change where Proton writes its log.",
-    ),
-    (
-        EnvVarKey::ProtonCrashReportDir,
-        EnvRowKind::Text("/path/to/crash/reports"),
-        "PROTON_CRASH_REPORT_DIR",
-        "Write Proton crash reports to this directory.",
-    ),
-    (
-        EnvVarKey::ProtonWaitAttach,
-        EnvRowKind::Flag,
-        "PROTON_WAIT_ATTACH",
-        "Wait for a debugger to attach before launching (debugging).",
-    ),
     (
         EnvVarKey::ProtonUseWined3d,
         EnvRowKind::Flag,
@@ -603,34 +719,46 @@ const PROTON_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[
         "Disable NVIDIA NVAPI support.",
     ),
     (
-        EnvVarKey::ProtonForceLargeAddressAware,
+        EnvVarKey::ProtonEnableNvapi,
         EnvRowKind::Flag,
-        "PROTON_FORCE_LARGE_ADDRESS_AWARE",
-        "Force LARGE_ADDRESS_AWARE (enabled by default).",
+        "PROTON_ENABLE_NVAPI",
+        "Enable NVIDIA's NVAPI GPU support library.",
     ),
     (
-        EnvVarKey::ProtonHeapDelayFree,
+        EnvVarKey::ProtonUseSeccomp,
         EnvRowKind::Flag,
-        "PROTON_HEAP_DELAY_FREE",
-        "Delay freeing heap memory to work around certain memory/use-after-free bugs.",
+        "PROTON_USE_SECCOMP",
+        "Enable a seccomp-bpf filter to emulate native syscalls, required for some DRM protections to work.",
+    ),
+    (
+        EnvVarKey::ProtonUseSdl,
+        EnvRowKind::Flag,
+        "PROTON_USE_SDL",
+        "Use SDL input instead of HIDRAW/Steam Input.",
+    ),
+    (
+        EnvVarKey::ProtonPreferSdl,
+        EnvRowKind::Flag,
+        "PROTON_PREFER_SDL",
+        "Prefer SDL input over HIDRAW/Steam Input (alias of PROTON_USE_SDL).",
+    ),
+    (
+        EnvVarKey::ProtonUseWayland,
+        EnvRowKind::Flag,
+        "PROTON_USE_WAYLAND",
+        "Enable the Wine Wayland driver.",
+    ),
+    (
+        EnvVarKey::ProtonEnableWayland,
+        EnvRowKind::Flag,
+        "PROTON_ENABLE_WAYLAND",
+        "Enable the Wine Wayland driver (alias of PROTON_USE_WAYLAND).",
     ),
     (
         EnvVarKey::ProtonUseXalia,
         EnvRowKind::Flag,
         "PROTON_USE_XALIA",
         "Enable the Xalia gamepad UI.",
-    ),
-    (
-        EnvVarKey::HostLcAll,
-        EnvRowKind::Text("e.g. en_US.UTF-8"),
-        "HOST_LC_ALL",
-        "Override the locale used for the game.",
-    ),
-    (
-        EnvVarKey::Fna3dForceDriver,
-        EnvRowKind::Text("D3D11 or OpenGL"),
-        "FNA3D_FORCE_DRIVER",
-        "Force the FNA3D renderer (game-specific).",
     ),
 ];
 
@@ -731,46 +859,10 @@ const DXVK_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[
         "Custom HUD contents; overrides the simple checkbox when set.",
     ),
     (
-        EnvVarKey::DxvkLogLevel,
-        EnvRowKind::Text("none, error, warn or info"),
-        "DXVK_LOG_LEVEL",
-        "DXVK logging level.",
-    ),
-    (
-        EnvVarKey::DxvkLogPath,
-        EnvRowKind::Text("/path/to/logs"),
-        "DXVK_LOG_PATH",
-        "Directory DXVK log files are written to.",
-    ),
-    (
-        EnvVarKey::DxvkConfigFile,
-        EnvRowKind::Text("/path/to/dxvk.conf"),
-        "DXVK_CONFIG_FILE",
-        "Configuration file for DXVK.",
-    ),
-    (
         EnvVarKey::DxvkConfig,
         EnvRowKind::Text("e.g. dxgi.syncInterval = 0"),
         "DXVK_CONFIG",
         "Configure DXVK directly through the environment.",
-    ),
-    (
-        EnvVarKey::DxvkFilterDeviceName,
-        EnvRowKind::Text("e.g. NVIDIA GeForce RTX 3080"),
-        "DXVK_FILTER_DEVICE_NAME",
-        "Select a graphics card by name.",
-    ),
-    (
-        EnvVarKey::DxvkFilterDeviceUuid,
-        EnvRowKind::Text("Device UUID"),
-        "DXVK_FILTER_DEVICE_UUID",
-        "Select a graphics card by UUID.",
-    ),
-    (
-        EnvVarKey::DxvkDebug,
-        EnvRowKind::Text("e.g. marker"),
-        "DXVK_DEBUG",
-        "DXVK debug switches (development).",
     ),
     (
         EnvVarKey::DxvkShaderCacheDisabled,
@@ -786,30 +878,18 @@ const DXVK_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[
     ),
 ];
 
-/// Rows of the Gamemode/Gamescope section of the Proton/Wine variables page.
-const GAMEMODE_GAMESCOPE_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[
-    (
-        EnvVarKey::GamemodeAuto,
-        EnvRowKind::Flag,
-        "GAMEMODEAUTO",
-        "Enable Feral GameMode while the game runs.",
-    ),
-    (
-        EnvVarKey::GamescopeWsi,
-        EnvRowKind::Flag,
-        "ENABLE_GAMESCOPE_WSI",
-        "Enable the Gamescope Vulkan WSI layer (for Gamescope sessions).",
-    ),
-    (
-        EnvVarKey::GamescopeFsrStrength,
-        EnvRowKind::Text("0-5"),
-        "GAMESCOPE_FSR_STRENGTH",
-        "FSR sharpening strength used by Gamescope.",
-    ),
-    (
-        EnvVarKey::MangoHud,
-        EnvRowKind::Flag,
-        "MANGOHUD",
-        "Show the MangoHud performance overlay.",
-    ),
-];
+/// Rows of the Gamemode section of the Proton/Wine variables page.
+const GAMEMODE_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[(
+    EnvVarKey::GamemodeAuto,
+    EnvRowKind::Flag,
+    "gamemoderun",
+    "Run the game through gamemoderun (Feral GameMode).",
+)];
+
+/// Rows of the Misc section of the Proton/Wine variables page.
+const MISC_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[(
+    EnvVarKey::MangoHud,
+    EnvRowKind::Flag,
+    "MANGOHUD",
+    "Show the MangoHud performance overlay.",
+)];
