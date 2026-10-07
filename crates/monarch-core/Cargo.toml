@@ -1,6 +1,6 @@
 [package]
 name = "monarch_core"
-version = "0.2.1"
+version = "0.2.2"
 description = "Core library for the Monarch game launcher."
 authors = ["an0nymoos3", "sermuns"]
 license = "GPL-3.0-or-later"
