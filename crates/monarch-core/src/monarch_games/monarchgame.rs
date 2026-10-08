@@ -9,7 +9,7 @@ use tracing::error;
 use super::games::GameType;
 use super::stores::StoreType;
 use crate::monarch_games::egs_client::EgsClient;
-use crate::monarch_games::games::SearchResult;
+use crate::monarch_games::games::{CompatOptions, SearchResult};
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::{download_image, download_image_greyscale};
@@ -27,6 +27,7 @@ pub struct MonarchGame {
     pub cover_url: String,
     pub launch_args: Option<String>,
     pub compatibility: Option<String>,
+    pub compatibility_opts: Option<CompatOptions>,
 
     #[serde(default)]
     pub summary: String,
@@ -79,6 +80,7 @@ impl MonarchGame {
             cover_url: String::new(),
             launch_args: None,
             compatibility: None,
+            compatibility_opts: None,
             summary: String::new(),
             artwork_url: String::new(),
             artwork_path: String::new(),
@@ -187,6 +189,7 @@ impl MonarchGame {
             cover_url: other.cover_url.to_string(),
             launch_args: None,
             compatibility: None,
+            compatibility_opts: None,
             summary: other.summary.clone(),
             artwork_url: other.artwork_url.clone(),
             artwork_path: String::new(),

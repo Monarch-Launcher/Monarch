@@ -516,7 +516,7 @@ impl PropertiesModal {
     /// The Gamescope section, separate from the generic row tables because of
     /// the grouped resolution row (w / h / r).
     fn env_gamescope_section(&self) -> Element<'_, Message> {
-        let mut section = column![
+        let section = column![
             env_flag_row(
                 self.env_flag(EnvVarKey::GamescopeEnable),
                 "Enable",
@@ -882,8 +882,8 @@ const DXVK_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[
 const GAMEMODE_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[(
     EnvVarKey::GamemodeAuto,
     EnvRowKind::Flag,
-    "gamemoderun",
-    "Run the game through gamemoderun (Feral GameMode).",
+    "Enable",
+    "Run the game through gamemoderun.",
 )];
 
 /// Rows of the Misc section of the Proton/Wine variables page.

@@ -79,6 +79,7 @@ impl MonarchGame {
             cover_url: game_record.cover_url,
             launch_args: game_record.launch_args,
             compatibility: game_record.compatibility,
+            compatibility_opts: None,
             summary: game_record.summary,
             artwork_path: game_record.artwork_path,
             artwork_url: game_record.artwork_url,

@@ -7,6 +7,7 @@ use crate::{
 };
 use anyhow::Result;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait GameType: Send + Sync {
@@ -26,58 +27,61 @@ pub trait SearchResult: Send + Sync {
     fn into_monarchgame(&self) -> MonarchGame;
 }
 
-pub struct LaunchArgs {
-    // Proton related options
-    ProtonLog: bool,
-    ProtonLogDir: String,
-    ProtonCrashReportDir: String,
-    ProtonWaitAttach: bool,
-    ProtonUseWined3d: bool,
-    ProtonNoD3D11: bool,
-    ProtonNoD3D10: bool,
-    ProtonDxvkD3D8: bool,
-    ProtonNoFsync: bool,
-    ProtonNoNtsync: bool,
-    ProtonDisableNvapi: bool,
-    ProtonForceLargeAddressAware: bool,
-    ProtonHeapDelayFree: bool,
-    ProtonUseXalia: bool,
-    HostLcAll: String,
-    Fna3dForceDriver: String,
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CompatOptions {
+    // Proton
+    proton_use_wined3d: bool,
+    proton_no_d3d11: bool,
+    proton_no_d3d10: bool,
+    proton_dxvk_d3d8: bool,
+    proton_no_fsync: bool,
+    proton_no_ntsync: bool,
+    proton_disable_nvapi: bool,
+    proton_enable_nvapi: bool,
+    proton_use_seccomp: bool,
+    proton_use_sdl: bool,
+    proton_prefer_sdl: bool,
+    proton_use_wayland: bool,
+    proton_enable_wayland: bool,
+    proton_use_xalia: bool,
 
-    // Wine related options
-    WinePrefix: String,
-    WineArch: String,
-    WineDebug: String,
-    WineDllOverrides: String,
-    WineServer: String,
-    WineLoader: String,
-    WineDllPath: String,
-    WineEsync: bool,
-    WineFsync: bool,
-    WineFullscreenFsr: bool,
-    WineFullscreenFsrStrength: u8,
-    WineFullscreenIntegerScaling: bool,
-    WineUseKwinHacks: bool,
+    // Wine
+    wine_prefix: String,
+    wine_arch: String,
+    wine_debug: String,
+    wine_dll_overrides: String,
+    wine_server: String,
+    wine_loader: String,
+    wine_dll_path: String,
+    wine_esync: bool,
+    wine_fsync: bool,
+    wine_fullscreen_fsr: bool,
+    wine_fullscreen_fsr_strength: String,
+    wine_fullscreen_integer_scaling: bool,
+    wine_use_kwin_hacks: bool,
 
     // DXVK
-    DxvkHud: bool,
-    DxvkHudCustom: String,
-    DxvkLogLevel: String,
-    DxvkLogPath: String,
-    DxvkConfigFile: String,
-    DxvkConfig: String,
-    DxvkFilterDeviceName: String,
-    DxvkFilterDeviceUuid: String,
-    DxvkDebug: String,
-    DxvkShaderCacheDisabled: bool,
-    DxvkShaderCachePath: bool,
+    dxvk_hud: bool,
+    dxvk_hud_custom: String,
+    dxvk_config: String,
+    dxvk_shader_cache_disabled: bool,
+    dxvk_shader_cache_path: String,
 
-    // Gamescope/Gamemode
-    GamemodeAuto: bool,
-    GamescopeWsi: bool,
-    GamescopeFsrStrength: String,
+    // Gamemode
+    gamemode_auto: bool,
 
-    //Misc
-    MangoHud: bool,
+    // Gamescope
+    gamescope_enable: bool,
+    gamescope_width: String,
+    gamescope_height: String,
+    gamescope_refresh: String,
+    gamescope_hdr: bool,
+    gamescope_expose_wayland: bool,
+    gamescope_vrr: bool,
+    gamescope_force_grab_cursor: bool,
+    gamescope_wsi: bool,
+    gamescope_fsr_strength: String,
+
+    // Misc
+    mango_hud: bool,
 }
