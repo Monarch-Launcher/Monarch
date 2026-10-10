@@ -965,3 +965,42 @@ pub fn remove_steamcmd(settings_handle: Arc<RwLock<Settings>>) -> Result<(), Str
     }
     Ok(())
 }
+
+pub fn view_launch_command(
+    game_handle: Arc<RwLock<MonarchGame>>,
+    executable_path: &str,
+) -> Result<String, String> {
+    let game = match game_handle.read() {
+        Ok(g) => g,
+        Err(e) => {
+            error!("monarch_games::commands::view_launch_command() Failed to acquire read lock on game_handle! | Err: {e}");
+            return Err(format!("Failed to read game properties!"));
+        }
+    };
+
+    let exe_name: String = PathBuf::from(executable_path)
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
+
+    // Dirty solution for displaying launch arg on windows
+    // TODO: Fix it properly later
+    #[cfg(target_os = "windows")]
+    {
+        Ok(format!(
+            "{} {}",
+            game.launch_args.as_ref().unwrap_or(&"".to_string()),
+            exe_name,
+        ))
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        Ok(format!(
+            "{} umu-run {}",
+            game.launch_args.as_ref().unwrap_or(&"".to_string()),
+            exe_name,
+        ))
+    }
+}

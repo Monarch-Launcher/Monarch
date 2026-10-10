@@ -12,7 +12,7 @@ use tracing::error;
 
 use crate::gui::{show_error, styles};
 use monarch_core::monarch_games::commands::{
-    get_executables, proton_versions, update_game_properties,
+    get_executables, proton_versions, update_game_properties, view_launch_command,
 };
 use monarch_core::monarch_games::monarchgame::MonarchGame;
 use monarch_core::monarch_utils::monarch_vdf::ProtonVersion;
@@ -304,9 +304,16 @@ impl PropertiesModal {
         )
         .width(Length::Fill);
 
-        let launch_args_input = text_input("Custom Launch Arguments", &self.launch_args)
-            .on_input(Message::LaunchArgsChanged)
-            .padding(10);
+        let launch_args_input = text_input(
+            "Custom Launch Arguments",
+            &view_launch_command(
+                self.game.clone(),
+                &self.selected_executable.as_ref().unwrap_or(&"".to_string()),
+            )
+            .unwrap_or_default(),
+        )
+        .on_input(Message::LaunchArgsChanged)
+        .padding(10);
 
         // Only display the compatibility options to Linux users
         #[cfg(target_os = "linux")]

@@ -302,3 +302,15 @@ pub async fn umu_run(game: &MonarchGame, state_handle: Arc<RwLock<MonarchState>>
     }
     Ok(())
 }
+
+/// Reads the game.compatibility_options field and applies all of the
+/// options to the correct places before launch.
+fn apply_compat_options_to_launch(
+    game: &MonarchGame,
+    env_vars: &mut HashMap<String, String>,
+    launch_command: &mut String,
+) {
+    if game.compatibility.is_none() || game.compatibility_opts.is_none() {
+        return;
+    }
+}
