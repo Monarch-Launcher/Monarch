@@ -454,13 +454,22 @@ impl PropertiesModal {
                 .style(styles::button::primary)
         };
 
-        let footer = row![
-            save_button,
-            Space::new().width(Length::Fixed(10.0)),
+        let back_button = if self.show_compat_opts {
+            button(text("Back"))
+                .on_press(Message::CompatOptsBack)
+                .padding(10)
+                .style(styles::button::secondary)
+        } else {
             button(text("Cancel"))
                 .on_press(Message::Cancel)
                 .padding(10)
-                .style(styles::button::secondary),
+                .style(styles::button::secondary)
+        };
+
+        let footer = row![
+            save_button,
+            Space::new().width(Length::Fixed(10.0)),
+            back_button,
         ]
         .align_y(alignment::Vertical::Center);
 
@@ -524,6 +533,15 @@ impl PropertiesModal {
                 }
             ),
             compat_flag_row(
+                "PROTON_NO_D3D12",
+                "Disable D3D12.",
+                o.proton_no_d3d12,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_no_d3d12 = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
                 "PROTON_NO_D3D11",
                 "Disable D3D11.",
                 o.proton_no_d3d11,
@@ -542,11 +560,38 @@ impl PropertiesModal {
                 }
             ),
             compat_flag_row(
-                "PROTON_DXVK_D3D8",
-                "Use DXVK's D3D8 implementation.",
-                o.proton_dxvk_d3d8,
+                "PROTON_USE_ESYNC",
+                "Disable futex-based synchronization (ESync).",
+                o.proton_use_esync,
                 |on| {
-                    self.compat_opts.borrow_mut().proton_dxvk_d3d8 = on;
+                    self.compat_opts.borrow_mut().proton_no_esync = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_USE_FSYNC",
+                "Disable futex-based synchronization (FSync).",
+                o.proton_use_fsync,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_no_fsync = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_USE_NTSYNC",
+                "Disable NTSync.",
+                o.proton_use_ntsync,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_no_ntsync = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_NO_ESYNC",
+                "Disable futex-based synchronization (ESync).",
+                o.proton_no_esync,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_no_esync = on;
                     Message::CompatOptsChanged
                 }
             ),
@@ -565,15 +610,6 @@ impl PropertiesModal {
                 o.proton_no_ntsync,
                 |on| {
                     self.compat_opts.borrow_mut().proton_no_ntsync = on;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_flag_row(
-                "PROTON_DISABLE_NVAPI",
-                "Disable NVIDIA NVAPI support.",
-                o.proton_disable_nvapi,
-                |on| {
-                    self.compat_opts.borrow_mut().proton_disable_nvapi = on;
                     Message::CompatOptsChanged
                 }
             ),
@@ -605,11 +641,11 @@ impl PropertiesModal {
                 }
             ),
             compat_flag_row(
-                "PROTON_PREFER_SDL",
-                "Prefer SDL input over HIDRAW/Steam Input (alias of PROTON_USE_SDL).",
-                o.proton_prefer_sdl,
+                "PROTON_ENABLE_WAYLAND",
+                "Enable the Wine Wayland driver (alias of PROTON_USE_WAYLAND).",
+                o.proton_enable_wayland,
                 |on| {
-                    self.compat_opts.borrow_mut().proton_prefer_sdl = on;
+                    self.compat_opts.borrow_mut().proton_enable_wayland = on;
                     Message::CompatOptsChanged
                 }
             ),
@@ -619,15 +655,6 @@ impl PropertiesModal {
                 o.proton_use_wayland,
                 |on| {
                     self.compat_opts.borrow_mut().proton_use_wayland = on;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_flag_row(
-                "PROTON_ENABLE_WAYLAND",
-                "Enable the Wine Wayland driver (alias of PROTON_USE_WAYLAND).",
-                o.proton_enable_wayland,
-                |on| {
-                    self.compat_opts.borrow_mut().proton_enable_wayland = on;
                     Message::CompatOptsChanged
                 }
             ),
@@ -661,62 +688,12 @@ impl PropertiesModal {
                 }
             ),
             compat_input_row(
-                "WINEARCH",
-                "Prefix architecture, used when a prefix is created.",
-                "win32 or win64",
-                &o.wine_arch,
-                |v| {
-                    self.compat_opts.borrow_mut().wine_arch = v;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_input_row(
-                "WINEDEBUG",
-                "Control Wine debugging output.",
-                "e.g. +all or -all",
-                &o.wine_debug,
-                |v| {
-                    self.compat_opts.borrow_mut().wine_debug = v;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_input_row(
                 "WINEDLLOVERRIDES",
                 "Control builtin vs native DLL selection.",
                 "e.g. msvcp140=n,nvapi=b",
                 &o.wine_dll_overrides,
                 |v| {
                     self.compat_opts.borrow_mut().wine_dll_overrides = v;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_input_row(
-                "WINESERVER",
-                "Wineserver executable to use.",
-                "/path/to/wineserver",
-                &o.wine_server,
-                |v| {
-                    self.compat_opts.borrow_mut().wine_server = v;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_input_row(
-                "WINELOADER",
-                "Wine loader executable to use.",
-                "/path/to/wine",
-                &o.wine_loader,
-                |v| {
-                    self.compat_opts.borrow_mut().wine_loader = v;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_input_row(
-                "WINEDLLPATH",
-                "Extra DLL search paths.",
-                "/path/to/dlls",
-                &o.wine_dll_path,
-                |v| {
-                    self.compat_opts.borrow_mut().wine_dll_path = v;
                     Message::CompatOptsChanged
                 }
             ),
@@ -747,33 +724,12 @@ impl PropertiesModal {
                     Message::CompatOptsChanged
                 }
             ),
-            compat_input_row(
-                "WINE_FULLSCREEN_FSR_STRENGTH",
-                "FSR sharpening strength.",
-                "0-5",
-                &o.wine_fullscreen_fsr_strength,
-                |v| {
-                    self.compat_opts.borrow_mut().wine_fullscreen_fsr_strength = v;
-                    Message::CompatOptsChanged
-                }
-            ),
             compat_flag_row(
-                "WINE_FULLSCREEN_INTEGER_SCALING",
-                "Integer scaling for fullscreen games.",
-                o.wine_fullscreen_integer_scaling,
+                "WINE_LARGE_ADDRESS_AWARE",
+                "This environment variable can prevent 32bit games running through dxvk from crashing after reaching 4gb of RAM.",
+                o.wine_large_address_aware,
                 |on| {
-                    self.compat_opts
-                        .borrow_mut()
-                        .wine_fullscreen_integer_scaling = on;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_flag_row(
-                "WINE_USE_KWIN_HACKS",
-                "KDE-specific window-management workarounds.",
-                o.wine_use_kwin_hacks,
-                |on| {
-                    self.compat_opts.borrow_mut().wine_use_kwin_hacks = on;
+                    self.compat_opts.borrow_mut().wine_large_address_aware = on;
                     Message::CompatOptsChanged
                 }
             ),
@@ -786,56 +742,15 @@ impl PropertiesModal {
     fn dxvk_rows_section(&self) -> Element<'_, Message> {
         let o = self.compat_opts.borrow();
 
-        column![
-            compat_flag_row(
-                "DXVK_HUD",
-                "Show a HUD with FPS and GPU information.",
-                o.dxvk_hud,
-                |on| {
-                    self.compat_opts.borrow_mut().dxvk_hud = on;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_input_row(
-                "DXVK_HUD value",
-                "Custom HUD contents; overrides the simple checkbox when set.",
-                "full or devinfo,fps,frametimes",
-                &o.dxvk_hud_custom,
-                |v| {
-                    self.compat_opts.borrow_mut().dxvk_hud_custom = v;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_input_row(
-                "DXVK_CONFIG",
-                "Configure DXVK directly through the environment.",
-                "e.g. dxgi.syncInterval = 0",
-                &o.dxvk_config,
-                |v| {
-                    self.compat_opts.borrow_mut().dxvk_config = v;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_flag_row(
-                "DXVK_SHADER_CACHE off",
-                "Disable DXVK's internal shader cache (sets the variable to 0).",
-                o.dxvk_shader_cache_disabled,
-                |on| {
-                    self.compat_opts.borrow_mut().dxvk_shader_cache_disabled = on;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_input_row(
-                "DXVK_SHADER_CACHE_PATH",
-                "Directory for the DXVK shader cache.",
-                "/path/to/cache",
-                &o.dxvk_shader_cache_path,
-                |v| {
-                    self.compat_opts.borrow_mut().dxvk_shader_cache_path = v;
-                    Message::CompatOptsChanged
-                }
-            ),
-        ]
+        column![compat_flag_row(
+            "DXVK_HUD",
+            "Show a HUD with FPS and GPU information.",
+            o.dxvk_hud,
+            |on| {
+                self.compat_opts.borrow_mut().dxvk_hud = on;
+                Message::CompatOptsChanged
+            }
+        )]
         .spacing(12)
         .into()
     }
@@ -906,25 +821,6 @@ impl PropertiesModal {
                 o.gamescope_force_grab_cursor,
                 |on| {
                     self.compat_opts.borrow_mut().gamescope_force_grab_cursor = on;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_flag_row(
-                "ENABLE_GAMESCOPE_WSI",
-                "Enable the Gamescope Vulkan WSI layer (for Gamescope sessions).",
-                o.gamescope_wsi,
-                |on| {
-                    self.compat_opts.borrow_mut().gamescope_wsi = on;
-                    Message::CompatOptsChanged
-                }
-            ),
-            compat_input_row(
-                "GAMESCOPE_FSR_STRENGTH",
-                "FSR sharpening strength used by Gamescope.",
-                "0-5",
-                &o.gamescope_fsr_strength,
-                |v| {
-                    self.compat_opts.borrow_mut().gamescope_fsr_strength = v;
                     Message::CompatOptsChanged
                 }
             ),

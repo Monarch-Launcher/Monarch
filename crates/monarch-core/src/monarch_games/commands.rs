@@ -1018,7 +1018,7 @@ pub async fn view_launch_command(
             };
 
         Ok(format!(
-            "{} {}",
+            "{}{}",
             launch_command
                 .env
                 .iter()

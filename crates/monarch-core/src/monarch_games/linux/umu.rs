@@ -342,11 +342,219 @@ async fn ensure_wine_safe_game_paths(
 
 /// Reads the game.compatibility_options field and applies all of the
 /// options to the correct places before launch.
+///
 /// NOTE: She ain't pretty, but she gets the job done
+///
+/// It might look stupid at first, but doing the command this way enables
+/// Monarch to simply perform quick and easy bool/string checks and appends
+/// instead of having to do more complex string manipulations to add and remove
+/// snippets when needed.
 fn apply_compat_options_to_launch(game: &MonarchGame, launch_command: &mut LaunchCommand) {
     let compat_options: &CompatOptions = game.compatibility_opts.as_ref().unwrap();
 
+    /*
+     * --------------------- Gamemode options ---------------------
+     */
     if compat_options.gamemoderun {
         launch_command.command = format!("gamemoderun {}", launch_command.command)
+    }
+
+    /*
+     * --------------------- Gamescope options ---------------------
+     */
+    if compat_options.gamescope_enable {
+        let mut gamescope_args: String = String::new();
+
+        if !compat_options.gamescope_width.is_empty() {
+            gamescope_args.push_str(&format!("-W {} ", compat_options.gamescope_width));
+        }
+
+        if !compat_options.gamescope_height.is_empty() {
+            gamescope_args.push_str(&format!("-H {} ", compat_options.gamescope_height));
+        }
+
+        if !compat_options.gamescope_refresh.is_empty() {
+            gamescope_args.push_str(&format!("-r {} ", compat_options.gamescope_refresh));
+        }
+
+        if compat_options.gamescope_hdr {
+            gamescope_args.push_str("--hdr-enabled ");
+        }
+
+        if compat_options.gamescope_expose_wayland {
+            gamescope_args.push_str("--expose-wayland ");
+        }
+
+        if compat_options.gamescope_vrr {
+            gamescope_args.push_str("--adaptive-sync ");
+        }
+
+        if compat_options.gamescope_force_grab_cursor {
+            gamescope_args.push_str("--force-grab-cursor ");
+        }
+
+        if compat_options.mango_hud {
+            gamescope_args.push_str("--mangoapp ");
+        }
+
+        launch_command.command =
+            format!("gamescope {}-- {}", gamescope_args, launch_command.command)
+    }
+
+    /*
+     * --------------------- Misc options ---------------------
+     */
+    // Mangohud can only be started this way if not running under gamescope
+    // according to: https://wiki.archlinux.org/title/Gamescope
+    if compat_options.mango_hud && !compat_options.gamescope_enable {
+        launch_command.command = format!("mangohud {}", launch_command.command);
+    }
+
+    /*
+     * --------------------- Proton options ---------------------
+     */
+    if compat_options.proton_use_wined3d {
+        launch_command
+            .env
+            .insert("PROTON_USE_WINED3D".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_no_d3d12 {
+        launch_command
+            .env
+            .insert("PROTON_NO_D3D12".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_no_d3d11 {
+        launch_command
+            .env
+            .insert("PROTON_NO_D3D11".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_no_d3d10 {
+        launch_command
+            .env
+            .insert("PROTON_NO_D3D10".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_use_esync {
+        launch_command
+            .env
+            .insert("PROTON_USE_ESYNC".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_use_fsync {
+        launch_command
+            .env
+            .insert("PROTON_USE_FSYNC".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_use_ntsync {
+        launch_command
+            .env
+            .insert("PROTON_USE_NTSYNC".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_no_esync {
+        launch_command
+            .env
+            .insert("PROTON_NO_ESYNC".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_no_fsync {
+        launch_command
+            .env
+            .insert("PROTON_NO_FSYNC".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_no_ntsync {
+        launch_command
+            .env
+            .insert("PROTON_NO_NTSYNC".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_enable_nvapi {
+        launch_command
+            .env
+            .insert("PROTON_ENABLE_NVAPI".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_use_seccomp {
+        launch_command
+            .env
+            .insert("PROTON_USE_SECCOMP".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_use_sdl {
+        launch_command
+            .env
+            .insert("PROTON_USE_SDL".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_enable_wayland {
+        launch_command
+            .env
+            .insert("PROTON_ENABLE_WAYLAND".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_use_wayland {
+        launch_command
+            .env
+            .insert("PROTON_USE_WAYLAND".to_string(), "1".to_string());
+    }
+
+    if compat_options.proton_use_xalia {
+        launch_command
+            .env
+            .insert("PROTON_USE_XALIA".to_string(), "1".to_string());
+    }
+
+    /*
+     * --------------------- Wine options ---------------------
+     */
+    if !compat_options.wine_prefix.is_empty() {
+        launch_command
+            .env
+            .insert("WINEPREFIX".to_string(), compat_options.wine_prefix.clone());
+    }
+
+    if !compat_options.wine_dll_overrides.is_empty() {
+        launch_command.env.insert(
+            "WINEDLLOVERRIDES".to_string(),
+            compat_options.wine_dll_overrides.clone(),
+        );
+    }
+
+    if compat_options.wine_esync {
+        launch_command
+            .env
+            .insert("WINEESYNC".to_string(), "1".to_string());
+    }
+
+    if compat_options.wine_fsync {
+        launch_command
+            .env
+            .insert("WINEFSYNC".to_string(), "1".to_string());
+    }
+
+    if compat_options.wine_fullscreen_fsr {
+        launch_command
+            .env
+            .insert("WINE_FULLSCREEN_FSR".to_string(), "1".to_string());
+    }
+
+    if compat_options.wine_large_address_aware {
+        launch_command
+            .env
+            .insert("WINE_LARGE_ADDRESS_AWARE".to_string(), "1".to_string());
+    }
+
+    /*
+     * --------------------- DXVK options ---------------------
+     */
+    if compat_options.dxvk_hud {
+        launch_command
+            .env
+            .insert("DXVK_HUD".to_string(), "1".to_string());
     }
 }
