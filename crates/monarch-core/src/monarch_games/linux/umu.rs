@@ -8,7 +8,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 use tar::Archive;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     monarch_games::{
@@ -212,6 +212,10 @@ pub async fn umu_run(game: &MonarchGame, state_handle: Arc<RwLock<MonarchState>>
     ];
 
     for (k, v) in extra_env {
+        // Don't override user overriden vars
+        if launch_command.env.contains_key(&k) {
+            continue;
+        }
         launch_command.env.insert(k, v);
     }
 
@@ -220,9 +224,9 @@ pub async fn umu_run(game: &MonarchGame, state_handle: Arc<RwLock<MonarchState>>
         .entry("LD_PRELOAD".to_string())
         .or_default();
 
-    info!("Working dir: {}", &launch_command.work_dir);
-    info!("Env vars: {:?}", launch_command.env);
-    info!("Launch command: {}", &launch_command.command);
+    debug!("Working dir: {}", &launch_command.work_dir);
+    debug!("Env vars: {:?}", launch_command.env);
+    debug!("Launch command: {}", &launch_command.command);
 
     let rx = monarch_terminal::spawn_terminal(
         launch_command.command,
