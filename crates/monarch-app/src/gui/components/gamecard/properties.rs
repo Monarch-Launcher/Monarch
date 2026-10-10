@@ -23,7 +23,6 @@ use monarch_core::monarch_utils::monarch_vdf::ProtonVersion;
 #[derive(Clone, Debug)]
 pub enum Message {
     ExecutablesLoaded(Vec<PathBuf>),
-    CompatibilityLoaded(Vec<ProtonVersion>),
     ExecutableSelected(String),
     ExecutableHovered(String),
     CompatibilitySelected(ProtonVersion),
@@ -35,6 +34,9 @@ pub enum Message {
     /// An option was mutated in place from its row's callback; this message
     /// only makes the runtime redraw with the fresh values.
     CompatOptsChanged,
+
+    LaunchCommandGenerated(String),
+
     Save,
     Cancel,
 }
@@ -51,6 +53,7 @@ pub struct PropertiesModal {
     compatibility_list: Vec<ProtonVersion>,
     selected_compatibility: Option<ProtonVersion>,
 
+    launch_command_representation: String, // String represntation to the user of the launch command, not what Monarch actually does under the hood
     launch_args: String,
 
     /// Whether the Proton/Wine options page is shown instead of the regular
@@ -78,24 +81,32 @@ impl PropertiesModal {
             )
         };
 
-        let compat_opts = compat_opts_opt.unwrap_or_default();
-
         let state_handle_clone = state_handle.clone();
         let game_handle_clone = game.clone();
+        let state_handle_clone2 = state_handle.clone();
+        let game_handle_clone2 = game.clone();
+
+        let compat_opts = compat_opts_opt.unwrap_or_default();
+
+        let mut compat_list: Vec<ProtonVersion> = vec![ProtonVersion {
+            name: "Native".to_string(),
+            path: "".to_string(),
+        }];
+        if let Ok(mut more_protons) = proton_versions() {
+            compat_list.append(&mut more_protons);
+        }
 
         let modal = Self {
             game: game.clone(),
             executables: combo_box::State::new(Vec::new()),
             executable_list: vec!["None".to_string()],
-            selected_executable: current_executable,
+            selected_executable: current_executable.clone(),
             hovered_executable: None,
 
             compatibility_layers: combo_box::State::new(Vec::new()),
-            compatibility_list: vec![ProtonVersion {
-                name: "Native".to_string(),
-                path: "".to_string(),
-            }],
+            compatibility_list: compat_list,
             selected_compatibility: None,
+            launch_command_representation: String::new(),
 
             launch_args: launch_args.unwrap_or_default(),
 
@@ -112,7 +123,7 @@ impl PropertiesModal {
                     async move {
                         // get_executables is async (DB access) and holds no blocking work,
                         // so don't wrap it in spawn_blocking — just await it directly.
-                        get_executables(state_handle_clone, game_handle_clone).await
+                        get_executables(state_handle_clone.clone(), game_handle_clone.clone()).await
                     },
                     |res| match res {
                         Ok(exes) => Message::ExecutablesLoaded(exes),
@@ -124,15 +135,18 @@ impl PropertiesModal {
                 ),
                 Task::perform(
                     async move {
-                        tokio::task::spawn_blocking(move || proton_versions())
-                            .await
-                            .unwrap()
+                        view_launch_command(
+                            game_handle_clone2.clone(),
+                            state_handle_clone2.clone(),
+                            &current_executable.unwrap_or("".to_string()),
+                        )
+                        .await
                     },
                     |res| match res {
-                        Ok(versions) => Message::CompatibilityLoaded(versions),
+                        Ok(command) => Message::LaunchCommandGenerated(command),
                         Err(e) => {
-                            error!("PropertiesModal: Failed to load proton versions: {}", e);
-                            Message::CompatibilityLoaded(vec![])
+                            show_error(e);
+                            Message::Cancel
                         }
                     },
                 ),
@@ -156,6 +170,7 @@ impl PropertiesModal {
                 }
                 Task::none()
             }
+            /*
             Message::CompatibilityLoaded(mut versions) => {
                 self.compatibility_list.append(&mut versions);
                 self.compatibility_layers = combo_box::State::new(self.compatibility_list.clone());
@@ -186,10 +201,32 @@ impl PropertiesModal {
 
                 Task::none()
             }
+            */
             Message::ExecutableSelected(exe) => {
                 self.selected_executable = if exe == "None" { None } else { Some(exe) };
                 self.hovered_executable = None;
-                Task::none()
+
+                let game_handle_clone = self.game.clone();
+                let state_handle_clone = self.app_state.clone();
+                let exe: String = self.selected_executable.clone().unwrap_or("".to_string());
+
+                Task::perform(
+                    async move {
+                        view_launch_command(
+                            game_handle_clone.clone(),
+                            state_handle_clone.clone(),
+                            exe.as_str(),
+                        )
+                        .await
+                    },
+                    |res| match res {
+                        Ok(command) => Message::LaunchCommandGenerated(command),
+                        Err(e) => {
+                            show_error(e);
+                            Message::Cancel
+                        }
+                    },
+                )
             }
             Message::ExecutableHovered(exe) => {
                 self.hovered_executable = Some(exe);
@@ -212,6 +249,10 @@ impl PropertiesModal {
                 Task::none()
             }
             Message::CompatOptsChanged => Task::none(),
+            Message::LaunchCommandGenerated(command) => {
+                self.launch_command_representation = command;
+                Task::none()
+            }
             Message::Save => {
                 match self.game.write() {
                     Ok(mut game) => {
@@ -306,11 +347,7 @@ impl PropertiesModal {
 
         let launch_args_input = text_input(
             "Custom Launch Arguments",
-            &view_launch_command(
-                self.game.clone(),
-                &self.selected_executable.as_ref().unwrap_or(&"".to_string()),
-            )
-            .unwrap_or_default(),
+            &self.launch_command_representation,
         )
         .on_input(Message::LaunchArgsChanged)
         .padding(10);

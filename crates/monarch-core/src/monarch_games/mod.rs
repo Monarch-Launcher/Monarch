@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 pub mod commands;
 pub mod egs_client;
 pub mod games;
@@ -16,3 +18,9 @@ pub mod macos;
 
 #[cfg(target_os = "linux")]
 pub mod linux;
+
+pub struct LaunchCommand {
+    command: String,
+    work_dir: String,
+    env: HashMap<String, String>,
+}

@@ -966,12 +966,15 @@ pub fn remove_steamcmd(settings_handle: Arc<RwLock<Settings>>) -> Result<(), Str
     Ok(())
 }
 
-pub fn view_launch_command(
+/// Generate a String representation to the user of what Monarch does
+/// when launching a game.
+pub async fn view_launch_command(
     game_handle: Arc<RwLock<MonarchGame>>,
+    state_handle: Arc<RwLock<MonarchState>>,
     executable_path: &str,
 ) -> Result<String, String> {
     let game = match game_handle.read() {
-        Ok(g) => g,
+        Ok(g) => g.clone(),
         Err(e) => {
             error!("monarch_games::commands::view_launch_command() Failed to acquire read lock on game_handle! | Err: {e}");
             return Err(format!("Failed to read game properties!"));
@@ -997,10 +1000,31 @@ pub fn view_launch_command(
 
     #[cfg(target_os = "linux")]
     {
+        use crate::monarch_games::LaunchCommand;
+
+        let launch_command: LaunchCommand =
+            match umu::generate_launch_command(&game, state_handle, Some(&exe_name)).await {
+                Ok(command) => command,
+                Err(e) => {
+                    error!(
+                        "monarch_games::commands::view_launch_command() -> {}",
+                        e.chain().map(|e| e.to_string()).collect::<String>()
+                    );
+                    return Err(format!(
+                        "Failed to generate launch command for: {}",
+                        game.name
+                    ));
+                }
+            };
+
         Ok(format!(
-            "{} umu-run {}",
-            game.launch_args.as_ref().unwrap_or(&"".to_string()),
-            exe_name,
+            "{} {}",
+            launch_command
+                .env
+                .iter()
+                .map(|(k, v)| format!(r#"{}="{}" "#, k, v))
+                .collect::<String>(),
+            launch_command.command,
         ))
     }
 }

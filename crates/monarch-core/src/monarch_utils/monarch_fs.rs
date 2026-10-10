@@ -533,6 +533,13 @@ pub fn relative_launch_exe_arg(exe: &Path, install_dir: &Path) -> String {
     }
 }
 
+/// Simple helper function to verify if an executable requires
+/// compatibility layer, without user explicitly setting one.
+pub fn is_windows_exe(path: &Path) -> bool {
+    let windows_files: [&str; 1] = ["exe"];
+    windows_files.contains(&path.extension().unwrap().to_str().unwrap())
+}
+
 /*
 ---------- EGS Helper functions ----------
 */
