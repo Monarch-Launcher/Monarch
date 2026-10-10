@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use super::stores::StoreType;
 use crate::{
     monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame},
-    monarch_utils::monarch_settings::Settings,
+    monarch_utils::monarch_state::MonarchState,
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -17,7 +17,7 @@ pub trait GameType: Send + Sync {
     fn get_store_id(&self) -> String;
     fn get_description(&self) -> String;
     fn get_price(&self) -> f64;
-    async fn launch(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()>;
+    async fn launch(&self, state_handle: Arc<RwLock<MonarchState>>) -> Result<()>;
     fn into_monarchgame(&self) -> MonarchGame;
 }
 

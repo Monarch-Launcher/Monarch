@@ -245,9 +245,9 @@ impl GameType for MonarchGame {
         0.0
     }
 
-    async fn launch(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
+    async fn launch(&self, state_handle: Arc<RwLock<MonarchState>>) -> Result<()> {
         self.get_store()
-            .launch_game(settings_handle, &self)
+            .launch_game(state_handle, &self)
             .await
             .with_context(|| "monarchgame::launch() -> ")
     }

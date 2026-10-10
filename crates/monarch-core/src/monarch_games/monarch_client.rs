@@ -127,10 +127,10 @@ impl StoreType for MonarchClient {
 
     async fn launch_game(
         &mut self,
-        settings_handle: Arc<RwLock<Settings>>,
+        state_handle: Arc<RwLock<MonarchState>>,
         game: &MonarchGame,
     ) -> Result<()> {
-        game.launch(settings_handle).await
+        game.launch(state_handle).await
     }
 }
 
@@ -415,7 +415,7 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                 "epicgames" => {
                     for epic_game in epic_games.iter() {
                         if game.is_installed {
-                            return true
+                            return true;
                         }
 
                         if game.id == epic_game.id {

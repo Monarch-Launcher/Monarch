@@ -197,7 +197,7 @@ pub async fn download_greyscale(
 
 /// Launch a game
 pub async fn launch_game(
-    settings_handle: Arc<RwLock<Settings>>,
+    state_handle: Arc<RwLock<MonarchState>>,
     game_handle: Arc<RwLock<MonarchGame>>,
 ) -> Result<(), String> {
     // Clone the game to hold across .awaits
@@ -211,7 +211,7 @@ pub async fn launch_game(
 
     info!("Launching game: {}", game_clone.name);
 
-    if let Err(e) = game_clone.launch(settings_handle).await {
+    if let Err(e) = game_clone.launch(state_handle).await {
         error!(
             "monarch_games::commands::launch_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
