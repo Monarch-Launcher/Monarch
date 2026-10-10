@@ -11,7 +11,11 @@ use tar::Archive;
 use tracing::{error, info, warn};
 
 use crate::{
-    monarch_games::{games::GameType, monarchgame::MonarchGame, LaunchCommand},
+    monarch_games::{
+        games::{CompatOptions, GameType},
+        monarchgame::MonarchGame,
+        LaunchCommand,
+    },
     monarch_library::library,
     monarch_utils::{
         monarch_fs::{self, get_monarch_bins_path, get_monarch_home},
@@ -298,10 +302,6 @@ pub async fn generate_launch_command(
     Ok(launch_command)
 }
 
-/// Reads the game.compatibility_options field and applies all of the
-/// options to the correct places before launch.
-fn apply_compat_options_to_launch(game: &MonarchGame, launch_command: &mut LaunchCommand) {}
-
 /// Resolve the on-disk install directory for a game.
 fn resolve_install_dir(game: &MonarchGame, exe: &Path) -> PathBuf {
     let recorded = game.properties.install_dir.trim();
@@ -338,4 +338,15 @@ async fn ensure_wine_safe_game_paths(
     }
 
     Ok((safe_dir, safe_exe))
+}
+
+/// Reads the game.compatibility_options field and applies all of the
+/// options to the correct places before launch.
+/// NOTE: She ain't pretty, but she gets the job done
+fn apply_compat_options_to_launch(game: &MonarchGame, launch_command: &mut LaunchCommand) {
+    let compat_options: &CompatOptions = game.compatibility_opts.as_ref().unwrap();
+
+    if compat_options.gamemoderun {
+        launch_command.command = format!("gamemoderun {}", launch_command.command)
+    }
 }

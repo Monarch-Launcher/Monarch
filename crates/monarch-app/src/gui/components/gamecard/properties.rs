@@ -37,6 +37,7 @@ pub enum Message {
 
     LaunchCommandGenerated(String),
 
+    SaveCompatOpts,
     Save,
     Cancel,
 }
@@ -50,7 +51,6 @@ pub struct PropertiesModal {
     hovered_executable: Option<String>,
 
     compatibility_layers: combo_box::State<ProtonVersion>,
-    compatibility_list: Vec<ProtonVersion>,
     selected_compatibility: Option<ProtonVersion>,
 
     launch_command_representation: String, // String represntation to the user of the launch command, not what Monarch actually does under the hood
@@ -72,11 +72,12 @@ impl PropertiesModal {
         state_handle: Arc<RwLock<MonarchState>>,
         game: Arc<RwLock<MonarchGame>>,
     ) -> (Self, Task<Message>) {
-        let (launch_args, current_executable, compat_opts_opt) = {
+        let (launch_args, current_executable, current_compat, compat_opts_opt) = {
             let game_lock = game.read().unwrap();
             (
                 game_lock.launch_args.clone(),
                 game_lock.executable_path.clone(),
+                game_lock.compatibility.clone(),
                 game_lock.compatibility_opts.clone(),
             )
         };
@@ -96,6 +97,11 @@ impl PropertiesModal {
             compat_list.append(&mut more_protons);
         }
 
+        let selected_compat: Option<ProtonVersion> = match current_compat {
+            Some(compat) => compat_list.iter().find(|&c| c.path == compat).cloned(),
+            None => None,
+        };
+
         let modal = Self {
             game: game.clone(),
             executables: combo_box::State::new(Vec::new()),
@@ -103,9 +109,8 @@ impl PropertiesModal {
             selected_executable: current_executable.clone(),
             hovered_executable: None,
 
-            compatibility_layers: combo_box::State::new(Vec::new()),
-            compatibility_list: compat_list,
-            selected_compatibility: None,
+            compatibility_layers: combo_box::State::new(compat_list),
+            selected_compatibility: selected_compat,
             launch_command_representation: String::new(),
 
             launch_args: launch_args.unwrap_or_default(),
@@ -170,38 +175,6 @@ impl PropertiesModal {
                 }
                 Task::none()
             }
-            /*
-            Message::CompatibilityLoaded(mut versions) => {
-                self.compatibility_list.append(&mut versions);
-                self.compatibility_layers = combo_box::State::new(self.compatibility_list.clone());
-
-                if let Some(game_compat) = self.game.read().unwrap().compatibility.clone() {
-                    self.selected_compatibility = self
-                        .compatibility_list
-                        .iter()
-                        .find(|v| v.path == game_compat || v.name == game_compat)
-                        .cloned();
-
-                    if self.selected_compatibility.is_none() {
-                        let compat_dir = std::path::Path::new(&game_compat)
-                            .parent()
-                            .and_then(|p| p.file_name())
-                            .and_then(|n| n.to_str())
-                            .map(|n| n.to_string());
-
-                        if let Some(dir) = compat_dir {
-                            self.selected_compatibility = self
-                                .compatibility_list
-                                .iter()
-                                .find(|v| v.name == dir)
-                                .cloned();
-                        }
-                    }
-                }
-
-                Task::none()
-            }
-            */
             Message::ExecutableSelected(exe) => {
                 self.selected_executable = if exe == "None" { None } else { Some(exe) };
                 self.hovered_executable = None;
@@ -253,6 +226,62 @@ impl PropertiesModal {
                 self.launch_command_representation = command;
                 Task::none()
             }
+            Message::SaveCompatOpts => {
+                let mut game_exe: String = String::new();
+                match self.game.write() {
+                    Ok(mut game) => {
+                        game.compatibility_opts = Some(self.compat_opts.borrow().clone());
+                        if let Some(path) = &game.executable_path {
+                            game_exe = path.clone();
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to acquire read lock on PropertiesModal::game! | Err: {e}");
+                        show_error("Failed to update game properties!");
+                        return Task::none();
+                    }
+                }
+
+                let state_handle_clone = self.app_state.clone();
+                let game_handle_clone = self.game.clone();
+                let state_handle_clone2 = self.app_state.clone();
+                let game_handle_clone2 = self.game.clone();
+
+                Task::batch(vec![
+                    Task::perform(
+                        async move {
+                            view_launch_command(
+                                game_handle_clone.clone(),
+                                state_handle_clone.clone(),
+                                game_exe.as_str(),
+                            )
+                            .await
+                        },
+                        |res| match res {
+                            Ok(command) => Message::LaunchCommandGenerated(command),
+                            Err(e) => {
+                                show_error(e);
+                                Message::Cancel
+                            }
+                        },
+                    ),
+                    Task::perform(
+                        async move {
+                            update_game_properties(
+                                state_handle_clone2.clone(),
+                                game_handle_clone2.clone(),
+                            )
+                            .await
+                        },
+                        |res| {
+                            if let Err(e) = res {
+                                show_error(e);
+                            }
+                            Message::CompatOptsBack
+                        },
+                    ),
+                ])
+            }
             Message::Save => {
                 match self.game.write() {
                     Ok(mut game) => {
@@ -268,8 +297,6 @@ impl PropertiesModal {
                         } else {
                             Some(self.launch_args.clone())
                         };
-
-                        game.compatibility_opts = Some(self.compat_opts.borrow().clone());
                     }
                     Err(e) => {
                         error!("Failed to acquire read lock on PropertiesModal::game! | Err: {e}");
@@ -402,12 +429,33 @@ impl PropertiesModal {
         }
     }
 
+    /// The whole properties modal (fields + footer wrapped in a `Modal`),
+    /// used when `PropertiesModal` stands on its own (`game_browser`).
     pub fn view(&self) -> Element<'_, Message> {
-        let footer = row![
+        crate::gui::components::modal::Modal::new("Game Properties", self.content())
+            .width(Length::Fixed(800.0))
+            .on_close(Message::Cancel)
+            .view()
+    }
+
+    /// The fields plus the Save/Cancel footer, without the modal wrapper.
+    /// Used by callers that provide their own modal chrome (e.g. the
+    /// combined edit modal on the details page).
+    pub fn content(&self) -> Element<'_, Message> {
+        let save_button = if self.show_compat_opts {
+            button(text("Save"))
+                .on_press(Message::SaveCompatOpts)
+                .padding(10)
+                .style(styles::button::primary)
+        } else {
             button(text("Save"))
                 .on_press(Message::Save)
                 .padding(10)
-                .style(styles::button::primary),
+                .style(styles::button::primary)
+        };
+
+        let footer = row![
+            save_button,
             Space::new().width(Length::Fixed(10.0)),
             button(text("Cancel"))
                 .on_press(Message::Cancel)
@@ -416,17 +464,13 @@ impl PropertiesModal {
         ]
         .align_y(alignment::Vertical::Center);
 
-        let content = column![
+        column![
             self.fields(),
             Space::new().height(Length::Fixed(20.0)),
             footer,
         ]
-        .spacing(10);
-
-        crate::gui::components::modal::Modal::new("Game Properties", content)
-            .width(Length::Fixed(800.0))
-            .on_close(Message::Cancel)
-            .view()
+        .spacing(10)
+        .into()
     }
 
     /// The Proton/Wine options editor, shown as its own page in place of the
@@ -803,9 +847,9 @@ impl PropertiesModal {
         column![compat_flag_row(
             "Enable",
             "Run the game through gamemoderun.",
-            o.gamemode_auto,
+            o.gamemoderun,
             |on| {
-                self.compat_opts.borrow_mut().gamemode_auto = on;
+                self.compat_opts.borrow_mut().gamemoderun = on;
                 Message::CompatOptsChanged
             }
         ),]

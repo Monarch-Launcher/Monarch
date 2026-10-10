@@ -68,7 +68,7 @@ pub struct CompatOptions {
     pub dxvk_shader_cache_path: String,
 
     // Gamemode
-    pub gamemode_auto: bool,
+    pub gamemoderun: bool,
 
     // Gamescope
     pub gamescope_enable: bool,
