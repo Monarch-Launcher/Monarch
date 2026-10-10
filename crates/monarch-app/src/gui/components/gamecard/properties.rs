@@ -308,32 +308,54 @@ impl PropertiesModal {
             .on_input(Message::LaunchArgsChanged)
             .padding(10);
 
-        let open_compat_opts_button = button(
-            row![
-                text("Set Proton/Wine Options").size(15),
-                Space::new().width(Length::Fill),
-            ]
-            .align_y(alignment::Vertical::Center),
-        )
-        .on_press(Message::OpenCompatOpts)
-        .style(styles::button::secondary)
-        .width(Length::Fill)
-        .padding(12);
+        // Only display the compatibility options to Linux users
+        #[cfg(target_os = "linux")]
+        {
+            let open_compat_opts_button = button(
+                row![
+                    text("Set Proton/Wine Options").size(15),
+                    Space::new().width(Length::Fill),
+                ]
+                .align_y(alignment::Vertical::Center),
+            )
+            .on_press(Message::OpenCompatOpts)
+            .style(styles::button::secondary)
+            .width(Length::Fill)
+            .padding(12);
 
-        column![
-            text("Executables").size(18),
-            hovered_path,
-            executables_combo,
-            Space::new().height(Length::Fixed(10.0)),
-            text("Compatibility Layer").size(18),
-            compatibility_combo,
-            open_compat_opts_button,
-            Space::new().height(Length::Fixed(10.0)),
-            text("Launch Arguments").size(18),
-            launch_args_input,
-        ]
-        .spacing(10)
-        .into()
+            column![
+                text("Executables").size(18),
+                hovered_path,
+                executables_combo,
+                Space::new().height(Length::Fixed(10.0)),
+                text("Compatibility Layer").size(18),
+                compatibility_combo,
+                open_compat_opts_button,
+                Space::new().height(Length::Fixed(10.0)),
+                text("Launch Arguments").size(18),
+                launch_args_input,
+            ]
+            .spacing(10)
+            .into()
+        }
+
+        // Only display the compatibility options to Linux users
+        #[cfg(not(target_os = "linux"))]
+        {
+            column![
+                text("Executables").size(18),
+                hovered_path,
+                executables_combo,
+                Space::new().height(Length::Fixed(10.0)),
+                text("Compatibility Layer").size(18),
+                compatibility_combo,
+                Space::new().height(Length::Fixed(10.0)),
+                text("Launch Arguments").size(18),
+                launch_args_input,
+            ]
+            .spacing(10)
+            .into()
+        }
     }
 
     pub fn view(&self) -> Element<'_, Message> {
