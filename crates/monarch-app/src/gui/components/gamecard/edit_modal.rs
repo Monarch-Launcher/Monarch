@@ -84,10 +84,10 @@ impl EditModal {
                             .style(styles::button::primary),
                         Space::new().width(Length::Fixed(10.0)),
                         button(text("Back"))
-                            .on_press(if self.properties.showing_env_vars() {
-                                // On the Proton/Wine variables page, Back
+                            .on_press(if self.properties.showing_compat_opts() {
+                                // On the Proton/Wine options page, Back
                                 // returns to the launch options fields.
-                                Message::Properties(properties::Message::EnvVarsBack)
+                                Message::Properties(properties::Message::CompatOptsBack)
                             } else {
                                 Message::Back
                             })

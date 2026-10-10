@@ -1,11 +1,14 @@
 use anyhow::{Context, Result};
 use sqlx::{Decode, Encode, FromRow, Row, SqlitePool};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
-use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo};
+use crate::monarch_games::{
+    games::CompatOptions,
+    monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo},
+};
 
-const MONARCH_GAME_FIELDS: &str = "(name, id, executable_path, cover_path, cover_url, launch_args, compatibility, summary, artwork_path, artwork_url, imported, is_installed, managed_by_monarch)";
-const TYPED_MONARCH_GAME_FIELDS: &str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, cover_path TEXT, cover_url TEXT, launch_args TEXT, compatibility TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN, is_installed BOOLEAN, managed_by_monarch BOOLEAN)";
+const MONARCH_GAME_FIELDS: &str = "(name, id, executable_path, cover_path, cover_url, launch_args, compatibility, compatibility_options, summary, artwork_path, artwork_url, imported, is_installed, managed_by_monarch)";
+const TYPED_MONARCH_GAME_FIELDS: &str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, cover_path TEXT, cover_url TEXT, launch_args TEXT, compatibility TEXT, compatibility_options TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN, is_installed BOOLEAN, managed_by_monarch BOOLEAN)";
 
 const STORE_INFO_FIELDS: &str = "(monarch_game_id, name, store_id, store_url)";
 const TYPED_STORE_INFO_FIELDS: &str =
@@ -23,6 +26,7 @@ struct MonarchGameRecord {
     pub cover_url: String,
     pub launch_args: Option<String>,
     pub compatibility: Option<String>,
+    pub compatibility_options: Option<String>,
     pub summary: String,
     pub artwork_path: String,
     pub artwork_url: String,
@@ -70,6 +74,19 @@ impl MonarchGame {
 
         let properties: MonarchGameProperties = properties_record.into();
 
+        let compat_options: Option<CompatOptions> = match game_record.compatibility_options {
+            Some(opts) => {
+                match serde_json::from_str(&opts) {
+                    Ok(opts_struct) => opts_struct,
+                    Err(e) => {
+                        error!("monarch_sql::from_sql() Failed to parse compatibility options! | Err: {e}");
+                        None
+                    }
+                }
+            }
+            None => None,
+        };
+
         Self {
             name: game_record.name,
             id: game_record.id,
@@ -79,7 +96,7 @@ impl MonarchGame {
             cover_url: game_record.cover_url,
             launch_args: game_record.launch_args,
             compatibility: game_record.compatibility,
-            compatibility_opts: None,
+            compatibility_opts: compat_options,
             summary: game_record.summary,
             artwork_path: game_record.artwork_path,
             artwork_url: game_record.artwork_url,
@@ -119,10 +136,23 @@ impl From<MonarchGamePropertiesRecord> for MonarchGameProperties {
 
 /// Fetch all games stores in db, including their properties and storefronts
 pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
-    // TODO: Use macros for compile-time checks of types/queries?
+    // NOTE: Select columns explicitly instead of `SELECT *`:
+    // 1. FromRow maps by column name, so decoding can never break when
+    //    physical columns are added by `repair_or_migrate_db()`.
+    // 2. sqlx caches compiled statements per connection; if the schema changes
+    //    (ALTER TABLE) between executions, SQLite silently re-prepares the
+    //    cached `SELECT *` handle with a different column count while sqlx
+    //    still uses the old column metadata, which panics in
+    //    `SqliteRow::current()` ("index out of bounds").
+    let game_select = format!(
+        "SELECT {} FROM library",
+        MONARCH_GAME_FIELDS
+            .trim_start_matches('(')
+            .trim_end_matches(')')
+    );
 
     let game_records: Vec<MonarchGameRecord> =
-        sqlx::query_as::<_, MonarchGameRecord>("SELECT * FROM library")
+        sqlx::query_as::<_, MonarchGameRecord>(&game_select)
             .fetch_all(pool)
             .await
             .with_context(|| {
@@ -131,29 +161,37 @@ pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
 
     let mut games: Vec<MonarchGame> = Vec::new();
     for game in game_records {
-        let stores: Vec<StoreInfoRecord> =
-            sqlx::query_as("SELECT * FROM stores WHERE monarch_game_id = ?")
-                .bind(&game.id)
-                .fetch_all(pool)
-                .await
-                .with_context(|| {
-                    format!(
-                        "monarch_sql::get_library() Failed to query StoreInfo for {} | Err: ",
-                        &game.name
-                    )
-                })?;
+        let stores: Vec<StoreInfoRecord> = sqlx::query_as(&format!(
+            "SELECT {} FROM stores WHERE monarch_game_id = ?",
+            STORE_INFO_FIELDS
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+        ))
+        .bind(&game.id)
+        .fetch_all(pool)
+        .await
+        .with_context(|| {
+            format!(
+                "monarch_sql::get_library() Failed to query StoreInfo for {} | Err: ",
+                &game.name
+            )
+        })?;
 
-        let properties: MonarchGamePropertiesRecord =
-            sqlx::query_as("SELECT * FROM properties WHERE monarch_game_id = ?")
-                .bind(&game.id)
-                .fetch_one(pool)
-                .await
-                .with_context(|| {
-                    format!(
+        let properties: MonarchGamePropertiesRecord = sqlx::query_as(&format!(
+            "SELECT {} FROM properties WHERE monarch_game_id = ?",
+            MONARCH_GAME_PROPERTIES_FIELDS
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+        ))
+        .bind(&game.id)
+        .fetch_one(pool)
+        .await
+        .with_context(|| {
+            format!(
                 "monarch_sql::get_library() Failed to query MonarchGameProperties for {} | Err: ",
                 &game.name
             )
-                })?;
+        })?;
 
         games.push(MonarchGame::from_sql(game, stores, properties));
     }
@@ -169,7 +207,7 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .with_context(|| "monarch_sql::insert_game() Failed to start new transaction! | Err: ")?;
 
     sqlx::query(&format!(
-        "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         MONARCH_GAME_FIELDS
     ))
     .bind(&game.name)
@@ -179,6 +217,10 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     .bind(&game.cover_url)
     .bind(&game.launch_args)
     .bind(&game.compatibility)
+    .bind(
+        &serde_json::to_string(&game.compatibility_opts)
+            .expect("failed to parse CompatOptions as String!"),
+    )
     .bind(&game.summary)
     .bind(&game.artwork_path)
     .bind(&game.artwork_url)
@@ -293,7 +335,7 @@ pub async fn remove_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
 pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     let sql_library_query: String = format!(
         r#"INSERT INTO library{} 
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET
         name = ?,
         executable_path = ?,
@@ -301,6 +343,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         cover_url = ?,
         launch_args = ?,
         compatibility = ?,
+        compatibility_options = ?,
         summary = ?,
         artwork_path = ?,
         artwork_url = ?,
@@ -350,6 +393,10 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.cover_url)
         .bind(&game.launch_args)
         .bind(&game.compatibility)
+        .bind(
+            &serde_json::to_string(&game.compatibility_opts)
+                .expect("failed to parse CompatOptions as String!"),
+        )
         .bind(&game.summary)
         .bind(&game.artwork_path)
         .bind(&game.artwork_url)
@@ -362,6 +409,10 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.cover_url)
         .bind(&game.launch_args)
         .bind(&game.compatibility)
+        .bind(
+            &serde_json::to_string(&game.compatibility_opts)
+                .expect("failed to parse CompatOptions as String!"),
+        )
         .bind(&game.summary)
         .bind(&game.artwork_path)
         .bind(&game.artwork_url)
@@ -456,7 +507,7 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
 
     for game in games {
         sqlx::query(&format!(
-            "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             MONARCH_GAME_FIELDS
         ))
         .bind(&game.name)
@@ -466,6 +517,10 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
         .bind(&game.cover_url)
         .bind(&game.launch_args)
         .bind(&game.compatibility)
+        .bind(
+            &serde_json::to_string(&game.compatibility_opts)
+                .expect("failed to parse CompatOptions as String!"),
+        )
         .bind(&game.summary)
         .bind(&game.artwork_path)
         .bind(&game.artwork_url)

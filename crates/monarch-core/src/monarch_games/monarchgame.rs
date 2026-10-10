@@ -27,6 +27,10 @@ pub struct MonarchGame {
     pub cover_url: String,
     pub launch_args: Option<String>,
     pub compatibility: Option<String>,
+
+    /// Proton/Wine options chosen for this game. Defaults to `None` so
+    /// older saved games without options still load.
+    #[serde(default)]
     pub compatibility_opts: Option<CompatOptions>,
 
     #[serde(default)]

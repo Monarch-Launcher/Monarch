@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
@@ -6,6 +6,7 @@ use iced::widget::{
     button, checkbox, column, combo_box, container, row, scrollable, text, text_input, Space,
 };
 use iced::{alignment, border, Color, Element, Length, Task};
+use monarch_core::monarch_games::games::CompatOptions;
 use monarch_core::monarch_utils::monarch_state::MonarchState;
 use tracing::error;
 
@@ -16,73 +17,9 @@ use monarch_core::monarch_games::commands::{
 use monarch_core::monarch_games::monarchgame::MonarchGame;
 use monarch_core::monarch_utils::monarch_vdf::ProtonVersion;
 
-/// Identifies one of the environment variables editable on the Proton/Wine
-/// variables page. The page only collects the values; applying them to the
-/// launched game is not wired up yet.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum EnvVarKey {
-    // Proton
-    ProtonUseWined3d,
-    ProtonNoD3D11,
-    ProtonNoD3D10,
-    ProtonDxvkD3D8,
-    ProtonNoFsync,
-    ProtonNoNtsync,
-    ProtonDisableNvapi,
-    ProtonEnableNvapi,
-    ProtonUseSeccomp,
-    ProtonUseSdl,
-    ProtonPreferSdl,
-    ProtonUseWayland,
-    ProtonEnableWayland,
-    ProtonUseXalia,
-
-    // Wine
-    WinePrefix,
-    WineArch,
-    WineDebug,
-    WineDllOverrides,
-    WineServer,
-    WineLoader,
-    WineDllPath,
-    WineEsync,
-    WineFsync,
-    WineFullscreenFsr,
-    WineFullscreenFsrStrength,
-    WineFullscreenIntegerScaling,
-    WineUseKwinHacks,
-
-    // DXVK
-    DxvkHud,
-    DxvkHudCustom,
-    DxvkConfig,
-    DxvkShaderCacheDisabled,
-    DxvkShaderCachePath,
-
-    // Gamemode / Gamescope / Misc
-    GamemodeAuto,
-    MangoHud,
-    GamescopeEnable,
-    GamescopeWidth,
-    GamescopeHeight,
-    GamescopeRefresh,
-    GamescopeHdr,
-    GamescopeExposeWayland,
-    GamescopeVrr,
-    GamescopeForceGrabCursor,
-    GamescopeWsi,
-    GamescopeFsrStrength,
-}
-
-/// The widget used to edit one variable on the Proton/Wine variables page:
-/// a checkbox for variables that are either 1 or 0, or a text input for
-/// everything else.
-#[derive(Clone, Copy, Debug)]
-pub enum EnvRowKind {
-    Flag,
-    /// Text input with a placeholder shown while the field is empty.
-    Text(&'static str),
-}
+/// Signals for the properties modal. An option row only needs a signal to
+/// say "something changed": each row mutates its field of `compat_opts`
+/// directly, in place.
 #[derive(Clone, Debug)]
 pub enum Message {
     ExecutablesLoaded(Vec<PathBuf>),
@@ -91,14 +28,13 @@ pub enum Message {
     ExecutableHovered(String),
     CompatibilitySelected(ProtonVersion),
     LaunchArgsChanged(String),
-    /// Open the Proton/Wine environment variables page.
-    OpenEnvVars,
-    /// Leave the environment variables page and return to launch options.
-    EnvVarsBack,
-    /// (Un)set one of the 0/1 variables on the environment variables page.
-    EnvVarToggled(EnvVarKey, bool),
-    /// Change the value of a free-form variable on that page.
-    EnvVarChanged(EnvVarKey, String),
+    /// Open the Proton/Wine options page.
+    OpenCompatOpts,
+    /// Leave the Proton/Wine options page and return to launch options.
+    CompatOptsBack,
+    /// An option was mutated in place from its row's callback; this message
+    /// only makes the runtime redraw with the fresh values.
+    CompatOptsChanged,
     Save,
     Cancel,
 }
@@ -117,12 +53,13 @@ pub struct PropertiesModal {
 
     launch_args: String,
 
-    /// Whether the Proton/Wine environment variables page is shown instead
-    /// of the regular launch options fields.
-    show_env_vars: bool,
-    /// Values collected on the environment variables page: "1" for every
-    /// checked flag, the entered text for free-form variables.
-    env_vars: HashMap<EnvVarKey, String>,
+    /// Whether the Proton/Wine options page is shown instead of the regular
+    /// launch options fields.
+    show_compat_opts: bool,
+
+    /// The Proton/Wine options being edited. Read and mutated in place by the
+    /// option rows; Save writes it into the game.
+    compat_opts: RefCell<CompatOptions>,
 
     app_state: Arc<RwLock<MonarchState>>,
 }
@@ -132,16 +69,16 @@ impl PropertiesModal {
         state_handle: Arc<RwLock<MonarchState>>,
         game: Arc<RwLock<MonarchGame>>,
     ) -> (Self, Task<Message>) {
-        let (launch_args, current_executable, _) = {
+        let (launch_args, current_executable, compat_opts_opt) = {
             let game_lock = game.read().unwrap();
-            let launch_args = game_lock.launch_args.clone();
-            let current_executable = game_lock.executable_path.clone();
             (
-                launch_args,
-                current_executable,
-                game_lock.compatibility.clone(),
+                game_lock.launch_args.clone(),
+                game_lock.executable_path.clone(),
+                game_lock.compatibility_opts.clone(),
             )
         };
+
+        let compat_opts = compat_opts_opt.unwrap_or_default();
 
         let state_handle_clone = state_handle.clone();
         let game_handle_clone = game.clone();
@@ -162,8 +99,8 @@ impl PropertiesModal {
 
             launch_args: launch_args.unwrap_or_default(),
 
-            show_env_vars: false,
-            env_vars: HashMap::new(),
+            show_compat_opts: false,
+            compat_opts: RefCell::new(compat_opts),
 
             app_state: state_handle,
         };
@@ -266,26 +203,15 @@ impl PropertiesModal {
                 self.launch_args = args;
                 Task::none()
             }
-            Message::OpenEnvVars => {
-                self.show_env_vars = true;
+            Message::OpenCompatOpts => {
+                self.show_compat_opts = true;
                 Task::none()
             }
-            Message::EnvVarsBack => {
-                self.show_env_vars = false;
+            Message::CompatOptsBack => {
+                self.show_compat_opts = false;
                 Task::none()
             }
-            Message::EnvVarToggled(key, checked) => {
-                if checked {
-                    self.env_vars.insert(key, "1".to_string());
-                } else {
-                    self.env_vars.remove(&key);
-                }
-                Task::none()
-            }
-            Message::EnvVarChanged(key, value) => {
-                self.env_vars.insert(key, value);
-                Task::none()
-            }
+            Message::CompatOptsChanged => Task::none(),
             Message::Save => {
                 match self.game.write() {
                     Ok(mut game) => {
@@ -301,6 +227,8 @@ impl PropertiesModal {
                         } else {
                             Some(self.launch_args.clone())
                         };
+
+                        game.compatibility_opts = Some(self.compat_opts.borrow().clone());
                     }
                     Err(e) => {
                         error!("Failed to acquire read lock on PropertiesModal::game! | Err: {e}");
@@ -325,17 +253,17 @@ impl PropertiesModal {
         }
     }
 
-    /// Whether the Proton/Wine environment variables page is currently
-    /// shown instead of the regular launch-option fields.
-    pub fn showing_env_vars(&self) -> bool {
-        self.show_env_vars
+    /// Whether the Proton/Wine options page is currently shown instead of
+    /// the regular launch-option fields.
+    pub fn showing_compat_opts(&self) -> bool {
+        self.show_compat_opts
     }
 
     /// The editable property fields (without footer or modal wrapper); used
     /// both by `view` and by the combined edit modal on the details page.
     pub fn fields(&self) -> Element<'_, Message> {
-        if self.show_env_vars {
-            return self.env_vars_fields();
+        if self.show_compat_opts {
+            return self.compat_opts_fields();
         }
 
         let executables_combo = combo_box(
@@ -380,14 +308,14 @@ impl PropertiesModal {
             .on_input(Message::LaunchArgsChanged)
             .padding(10);
 
-        let open_env_vars_button = button(
+        let open_compat_opts_button = button(
             row![
-                text("Set Proton/Wine Variables").size(15),
+                text("Set Proton/Wine Options").size(15),
                 Space::new().width(Length::Fill),
             ]
             .align_y(alignment::Vertical::Center),
         )
-        .on_press(Message::OpenEnvVars)
+        .on_press(Message::OpenCompatOpts)
         .style(styles::button::secondary)
         .width(Length::Fill)
         .padding(12);
@@ -399,7 +327,7 @@ impl PropertiesModal {
             Space::new().height(Length::Fixed(10.0)),
             text("Compatibility Layer").size(18),
             compatibility_combo,
-            open_env_vars_button,
+            open_compat_opts_button,
             Space::new().height(Length::Fixed(10.0)),
             text("Launch Arguments").size(18),
             launch_args_input,
@@ -435,25 +363,26 @@ impl PropertiesModal {
             .view()
     }
 
-    /// The Proton/Wine environment variables editor, shown as its own page
-    /// in place of the regular launch-option fields.
-    fn env_vars_fields(&self) -> Element<'_, Message> {
+    /// The Proton/Wine options editor, shown as its own page in place of the
+    /// regular launch-option fields. Every row reads and writes its field of
+    /// `self.compat_opts` directly, mutating it in place.
+    fn compat_opts_fields(&self) -> Element<'_, Message> {
         let content = column![
-            text("Proton/Wine Variables")
+            text("Proton/Wine Options")
                 .size(20)
                 .font(styles::fonts::BOLD),
-            env_section_header("Proton"),
-            self.env_rows_section(&PROTON_ROWS),
-            env_section_header("Wine"),
-            self.env_rows_section(&WINE_ROWS),
-            env_section_header("DXVK"),
-            self.env_rows_section(&DXVK_ROWS),
-            env_section_header("Gamemode"),
-            self.env_rows_section(&GAMEMODE_ROWS),
-            env_section_header("Gamescope"),
-            self.env_gamescope_section(),
-            env_section_header("Misc"),
-            self.env_rows_section(&MISC_ROWS),
+            compat_section_header("Gamemode"),
+            self.gamemode_rows_section(),
+            compat_section_header("Gamescope"),
+            self.gamescope_rows_section(),
+            compat_section_header("Misc"),
+            self.misc_rows_section(),
+            compat_section_header("Proton"),
+            self.proton_rows_section(),
+            compat_section_header("Wine"),
+            self.wine_rows_section(),
+            compat_section_header("DXVK"),
+            self.dxvk_rows_section(),
         ]
         .spacing(10);
 
@@ -470,116 +399,433 @@ impl PropertiesModal {
         scrollable(content).height(Length::Fixed(560.0)).into()
     }
 
-    /// Whether a 0/1 variable is currently checked on the variables page.
-    fn env_flag(&self, key: EnvVarKey) -> bool {
-        self.env_vars.get(&key).map(|v| v == "1").unwrap_or(false)
+    /// The Proton section rows.
+    fn proton_rows_section(&self) -> Element<'_, Message> {
+        let o = self.compat_opts.borrow();
+
+        column![
+            compat_flag_row(
+                "PROTON_USE_WINED3D",
+                "Use WineD3D/OpenGL instead of DXVK for D3D9/10/11.",
+                o.proton_use_wined3d,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_use_wined3d = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_NO_D3D11",
+                "Disable D3D11.",
+                o.proton_no_d3d11,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_no_d3d11 = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_NO_D3D10",
+                "Disable D3D10/DXGI.",
+                o.proton_no_d3d10,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_no_d3d10 = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_DXVK_D3D8",
+                "Use DXVK's D3D8 implementation.",
+                o.proton_dxvk_d3d8,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_dxvk_d3d8 = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_NO_FSYNC",
+                "Disable futex-based synchronization (FSync).",
+                o.proton_no_fsync,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_no_fsync = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_NO_NTSYNC",
+                "Disable NTSync.",
+                o.proton_no_ntsync,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_no_ntsync = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_DISABLE_NVAPI",
+                "Disable NVIDIA NVAPI support.",
+                o.proton_disable_nvapi,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_disable_nvapi = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_ENABLE_NVAPI",
+                "Enable NVIDIA's NVAPI GPU support library.",
+                o.proton_enable_nvapi,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_enable_nvapi = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_USE_SECCOMP",
+                "Enable a seccomp-bpf filter to emulate native syscalls, required for some DRM protections to work.",
+                o.proton_use_seccomp,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_use_seccomp = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_USE_SDL",
+                "Use SDL input instead of HIDRAW/Steam Input.",
+                o.proton_use_sdl,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_use_sdl = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_PREFER_SDL",
+                "Prefer SDL input over HIDRAW/Steam Input (alias of PROTON_USE_SDL).",
+                o.proton_prefer_sdl,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_prefer_sdl = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_USE_WAYLAND",
+                "Enable the Wine Wayland driver.",
+                o.proton_use_wayland,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_use_wayland = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_ENABLE_WAYLAND",
+                "Enable the Wine Wayland driver (alias of PROTON_USE_WAYLAND).",
+                o.proton_enable_wayland,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_enable_wayland = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "PROTON_USE_XALIA",
+                "Enable the Xalia gamepad UI.",
+                o.proton_use_xalia,
+                |on| {
+                    self.compat_opts.borrow_mut().proton_use_xalia = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+        ]
+        .spacing(12)
+        .into()
     }
 
-    /// The text currently stored for a free-form variable.
-    fn env_text(&self, key: EnvVarKey) -> &str {
-        self.env_vars
-            .get(&key)
-            .map(String::as_str)
-            .unwrap_or_default()
+    /// The Wine section rows.
+    fn wine_rows_section(&self) -> Element<'_, Message> {
+        let o = self.compat_opts.borrow();
+
+        column![
+            compat_input_row(
+                "WINEPREFIX",
+                "Wine prefix directory for the game.",
+                "/path/to/prefix",
+                &o.wine_prefix,
+                |v| {
+                    self.compat_opts.borrow_mut().wine_prefix = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "WINEARCH",
+                "Prefix architecture, used when a prefix is created.",
+                "win32 or win64",
+                &o.wine_arch,
+                |v| {
+                    self.compat_opts.borrow_mut().wine_arch = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "WINEDEBUG",
+                "Control Wine debugging output.",
+                "e.g. +all or -all",
+                &o.wine_debug,
+                |v| {
+                    self.compat_opts.borrow_mut().wine_debug = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "WINEDLLOVERRIDES",
+                "Control builtin vs native DLL selection.",
+                "e.g. msvcp140=n,nvapi=b",
+                &o.wine_dll_overrides,
+                |v| {
+                    self.compat_opts.borrow_mut().wine_dll_overrides = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "WINESERVER",
+                "Wineserver executable to use.",
+                "/path/to/wineserver",
+                &o.wine_server,
+                |v| {
+                    self.compat_opts.borrow_mut().wine_server = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "WINELOADER",
+                "Wine loader executable to use.",
+                "/path/to/wine",
+                &o.wine_loader,
+                |v| {
+                    self.compat_opts.borrow_mut().wine_loader = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "WINEDLLPATH",
+                "Extra DLL search paths.",
+                "/path/to/dlls",
+                &o.wine_dll_path,
+                |v| {
+                    self.compat_opts.borrow_mut().wine_dll_path = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "WINEESYNC",
+                "Legacy control of ESync.",
+                o.wine_esync,
+                |on| {
+                    self.compat_opts.borrow_mut().wine_esync = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "WINEFSYNC",
+                "Legacy control of FSync.",
+                o.wine_fsync,
+                |on| {
+                    self.compat_opts.borrow_mut().wine_fsync = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "WINE_FULLSCREEN_FSR",
+                "AMD FSR upscaling for fullscreen games.",
+                o.wine_fullscreen_fsr,
+                |on| {
+                    self.compat_opts.borrow_mut().wine_fullscreen_fsr = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "WINE_FULLSCREEN_FSR_STRENGTH",
+                "FSR sharpening strength.",
+                "0-5",
+                &o.wine_fullscreen_fsr_strength,
+                |v| {
+                    self.compat_opts.borrow_mut().wine_fullscreen_fsr_strength = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "WINE_FULLSCREEN_INTEGER_SCALING",
+                "Integer scaling for fullscreen games.",
+                o.wine_fullscreen_integer_scaling,
+                |on| {
+                    self.compat_opts
+                        .borrow_mut()
+                        .wine_fullscreen_integer_scaling = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "WINE_USE_KWIN_HACKS",
+                "KDE-specific window-management workarounds.",
+                o.wine_use_kwin_hacks,
+                |on| {
+                    self.compat_opts.borrow_mut().wine_use_kwin_hacks = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+        ]
+        .spacing(12)
+        .into()
     }
 
-    /// One section of rows for the environment variables page.
-    fn env_rows_section(
-        &self,
-        rows: &'static [(EnvVarKey, EnvRowKind, &'static str, &'static str)],
-    ) -> Element<'_, Message> {
-        let mut section = column![].spacing(12);
+    /// The DXVK section rows.
+    fn dxvk_rows_section(&self) -> Element<'_, Message> {
+        let o = self.compat_opts.borrow();
 
-        for (key, kind, name, description) in rows {
-            let name = *name;
-            let description = *description;
-            match kind {
-                EnvRowKind::Flag => {
-                    section =
-                        section.push(env_flag_row(self.env_flag(*key), name, description, *key))
+        column![
+            compat_flag_row(
+                "DXVK_HUD",
+                "Show a HUD with FPS and GPU information.",
+                o.dxvk_hud,
+                |on| {
+                    self.compat_opts.borrow_mut().dxvk_hud = on;
+                    Message::CompatOptsChanged
                 }
-                EnvRowKind::Text(placeholder) => {
-                    section = section.push(env_input_row(
-                        name,
-                        description,
-                        placeholder,
-                        self.env_text(*key),
-                        *key,
-                    ))
+            ),
+            compat_input_row(
+                "DXVK_HUD value",
+                "Custom HUD contents; overrides the simple checkbox when set.",
+                "full or devinfo,fps,frametimes",
+                &o.dxvk_hud_custom,
+                |v| {
+                    self.compat_opts.borrow_mut().dxvk_hud_custom = v;
+                    Message::CompatOptsChanged
                 }
+            ),
+            compat_input_row(
+                "DXVK_CONFIG",
+                "Configure DXVK directly through the environment.",
+                "e.g. dxgi.syncInterval = 0",
+                &o.dxvk_config,
+                |v| {
+                    self.compat_opts.borrow_mut().dxvk_config = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_flag_row(
+                "DXVK_SHADER_CACHE off",
+                "Disable DXVK's internal shader cache (sets the variable to 0).",
+                o.dxvk_shader_cache_disabled,
+                |on| {
+                    self.compat_opts.borrow_mut().dxvk_shader_cache_disabled = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "DXVK_SHADER_CACHE_PATH",
+                "Directory for the DXVK shader cache.",
+                "/path/to/cache",
+                &o.dxvk_shader_cache_path,
+                |v| {
+                    self.compat_opts.borrow_mut().dxvk_shader_cache_path = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+        ]
+        .spacing(12)
+        .into()
+    }
+
+    /// The Gamemode section rows.
+    fn gamemode_rows_section(&self) -> Element<'_, Message> {
+        let o = self.compat_opts.borrow();
+
+        column![compat_flag_row(
+            "Enable",
+            "Run the game through gamemoderun.",
+            o.gamemode_auto,
+            |on| {
+                self.compat_opts.borrow_mut().gamemode_auto = on;
+                Message::CompatOptsChanged
             }
-        }
-
-        section.into()
+        ),]
+        .spacing(12)
+        .into()
     }
 
-    /// The Gamescope section, separate from the generic row tables because of
-    /// the grouped resolution row (w / h / r).
-    fn env_gamescope_section(&self) -> Element<'_, Message> {
-        let section = column![
-            env_flag_row(
-                self.env_flag(EnvVarKey::GamescopeEnable),
+    /// The Gamescope section, including the grouped resolution row
+    /// (w / h / r).
+    fn gamescope_rows_section(&self) -> Element<'_, Message> {
+        let o = self.compat_opts.borrow();
+
+        column![
+            compat_flag_row(
                 "Enable",
                 "Run the game inside a Gamescope session.",
-                EnvVarKey::GamescopeEnable
+                o.gamescope_enable,
+                |on| {
+                    self.compat_opts.borrow_mut().gamescope_enable = on;
+                    Message::CompatOptsChanged
+                }
             ),
-            self.env_resolution_row(),
-            env_flag_row(
-                self.env_flag(EnvVarKey::GamescopeHdr),
+            self.compat_resolution_row(),
+            compat_flag_row(
                 "Enable HDR",
                 "Enable HDR output (requires a Wayland compositor, game and monitor with HDR support).",
-                EnvVarKey::GamescopeHdr
+                o.gamescope_hdr,
+                |on| {
+                    self.compat_opts.borrow_mut().gamescope_hdr = on;
+                    Message::CompatOptsChanged
+                }
             ),
-            env_flag_row(
-                self.env_flag(EnvVarKey::GamescopeExposeWayland),
+            compat_flag_row(
                 "Expose Wayland",
                 "Pass the Wayland compositor through to the game.",
-                EnvVarKey::GamescopeExposeWayland
+                o.gamescope_expose_wayland,
+                |on| {
+                    self.compat_opts.borrow_mut().gamescope_expose_wayland = on;
+                    Message::CompatOptsChanged
+                }
             ),
-            env_flag_row(
-                self.env_flag(EnvVarKey::GamescopeVrr),
+            compat_flag_row(
                 "VRR support",
                 "Enable adaptive synchronization for displays with variable refresh rate support.",
-                EnvVarKey::GamescopeVrr
+                o.gamescope_vrr,
+                |on| {
+                    self.compat_opts.borrow_mut().gamescope_vrr = on;
+                    Message::CompatOptsChanged
+                }
             ),
-            env_flag_row(
-                self.env_flag(EnvVarKey::GamescopeForceGrabCursor),
+            compat_flag_row(
                 "Force grab cursor",
                 "Keep the mouse cursor inside the Gamescope window.",
-                EnvVarKey::GamescopeForceGrabCursor
+                o.gamescope_force_grab_cursor,
+                |on| {
+                    self.compat_opts.borrow_mut().gamescope_force_grab_cursor = on;
+                    Message::CompatOptsChanged
+                }
             ),
-            env_flag_row(
-                self.env_flag(EnvVarKey::GamescopeWsi),
+            compat_flag_row(
                 "ENABLE_GAMESCOPE_WSI",
                 "Enable the Gamescope Vulkan WSI layer (for Gamescope sessions).",
-                EnvVarKey::GamescopeWsi
+                o.gamescope_wsi,
+                |on| {
+                    self.compat_opts.borrow_mut().gamescope_wsi = on;
+                    Message::CompatOptsChanged
+                }
             ),
-            env_input_row(
+            compat_input_row(
                 "GAMESCOPE_FSR_STRENGTH",
                 "FSR sharpening strength used by Gamescope.",
                 "0-5",
-                self.env_text(EnvVarKey::GamescopeFsrStrength),
-                EnvVarKey::GamescopeFsrStrength
+                &o.gamescope_fsr_strength,
+                |v| {
+                    self.compat_opts.borrow_mut().gamescope_fsr_strength = v;
+                    Message::CompatOptsChanged
+                }
             ),
         ]
-        .spacing(12);
-
-        section.into()
+        .spacing(12)
+        .into()
     }
 
     /// The gamescope resolution row: three inputs side by side (w / h / r).
-    fn env_resolution_row(&self) -> Element<'_, Message> {
-        let part = |label: &'static str, placeholder: &'static str, key: EnvVarKey, value: &str| {
-            column![
-                text(label).size(12).color(Color::from_rgb8(140, 140, 140)),
-                text_input(placeholder, value)
-                    .on_input(move |val| Message::EnvVarChanged(key, val))
-                    .size(14)
-                    .padding(8),
-            ]
-            .spacing(2)
-            .width(Length::Fill)
-        };
+    fn compat_resolution_row(&self) -> Element<'_, Message> {
+        let o = self.compat_opts.borrow();
 
         column![
             text("Resolution").size(14),
@@ -587,43 +833,54 @@ impl PropertiesModal {
                 .size(12)
                 .color(Color::from_rgb8(140, 140, 140)),
             row![
-                part(
-                    "w",
-                    "WIDTH",
-                    EnvVarKey::GamescopeWidth,
-                    self.env_text(EnvVarKey::GamescopeWidth)
-                ),
-                part(
-                    "h",
-                    "HEIGHT",
-                    EnvVarKey::GamescopeHeight,
-                    self.env_text(EnvVarKey::GamescopeHeight)
-                ),
-                part(
-                    "r",
-                    "REFRESH (Hz)",
-                    EnvVarKey::GamescopeRefresh,
-                    self.env_text(EnvVarKey::GamescopeRefresh)
-                ),
+                compat_resolution_part("w", "WIDTH", &o.gamescope_width, |v| {
+                    self.compat_opts.borrow_mut().gamescope_width = v;
+                    Message::CompatOptsChanged
+                }),
+                compat_resolution_part("h", "HEIGHT", &o.gamescope_height, |v| {
+                    self.compat_opts.borrow_mut().gamescope_height = v;
+                    Message::CompatOptsChanged
+                }),
+                compat_resolution_part("r", "REFRESH (Hz)", &o.gamescope_refresh, |v| {
+                    self.compat_opts.borrow_mut().gamescope_refresh = v;
+                    Message::CompatOptsChanged
+                }),
             ]
             .spacing(8)
         ]
         .spacing(4)
         .into()
     }
+
+    /// The Misc section rows.
+    fn misc_rows_section(&self) -> Element<'_, Message> {
+        let o = self.compat_opts.borrow();
+
+        column![compat_flag_row(
+            "MANGOHUD",
+            "Show the MangoHud performance overlay.",
+            o.mango_hud,
+            |on| {
+                self.compat_opts.borrow_mut().mango_hud = on;
+                Message::CompatOptsChanged
+            }
+        ),]
+        .spacing(12)
+        .into()
+    }
 }
 
-/// A checkbox row for the environment variables page.
-fn env_flag_row(
-    checked: bool,
+/// A checkbox row bound to one bool field of `CompatOptions`.
+fn compat_flag_row<'a>(
     name: &'static str,
     description: &'static str,
-    key: EnvVarKey,
-) -> Element<'static, Message> {
+    checked: bool,
+    on_toggle: impl Fn(bool) -> Message + 'a,
+) -> Element<'a, Message> {
     column![
         checkbox(checked)
             .label(name)
-            .on_toggle(move |toggle| Message::EnvVarToggled(key, toggle))
+            .on_toggle(on_toggle)
             .text_size(14),
         text(description)
             .size(12)
@@ -633,13 +890,13 @@ fn env_flag_row(
     .into()
 }
 
-/// A free-form text row for the environment variables page.
-fn env_input_row<'a>(
+/// A free-form text row bound to one String field of `CompatOptions`.
+fn compat_input_row<'a>(
     name: &'static str,
     description: &'static str,
     placeholder: &'static str,
-    value: &'a str,
-    key: EnvVarKey,
+    value: &str,
+    on_input: impl Fn(String) -> Message + 'a,
 ) -> Element<'a, Message> {
     column![
         text(name).size(14),
@@ -647,7 +904,7 @@ fn env_input_row<'a>(
             .size(12)
             .color(Color::from_rgb8(140, 140, 140)),
         text_input(placeholder, value)
-            .on_input(move |input| Message::EnvVarChanged(key, input))
+            .on_input(on_input)
             .size(14)
             .padding(8),
     ]
@@ -655,9 +912,28 @@ fn env_input_row<'a>(
     .into()
 }
 
-/// Section label for the environment variables page, preceded by a divider
+/// One input of the Gamescope resolution row (w / h / r).
+fn compat_resolution_part<'a>(
+    label: &'static str,
+    placeholder: &'static str,
+    value: &str,
+    on_input: impl Fn(String) -> Message + 'a,
+) -> Element<'a, Message> {
+    column![
+        text(label).size(12).color(Color::from_rgb8(140, 140, 140)),
+        text_input(placeholder, value)
+            .on_input(on_input)
+            .size(14)
+            .padding(8),
+    ]
+    .spacing(2)
+    .width(Length::Fill)
+    .into()
+}
+
+/// Section label for the Proton/Wine options page, preceded by a divider
 /// line that separates the sections.
-fn env_section_header(label: &str) -> Element<'_, Message> {
+fn compat_section_header(label: &str) -> Element<'_, Message> {
     iced::widget::column![
         Space::new().height(14),
         iced::widget::rule::horizontal(1).style(|_theme: &iced::Theme| iced::widget::rule::Style {
@@ -672,224 +948,3 @@ fn env_section_header(label: &str) -> Element<'_, Message> {
     ]
     .into()
 }
-
-/// Rows of the Proton section of the Proton/Wine variables page. Each row is
-/// (variable key, widget, displayed name, description).
-const PROTON_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[
-    (
-        EnvVarKey::ProtonUseWined3d,
-        EnvRowKind::Flag,
-        "PROTON_USE_WINED3D",
-        "Use WineD3D/OpenGL instead of DXVK for D3D9/10/11.",
-    ),
-    (
-        EnvVarKey::ProtonNoD3D11,
-        EnvRowKind::Flag,
-        "PROTON_NO_D3D11",
-        "Disable D3D11.",
-    ),
-    (
-        EnvVarKey::ProtonNoD3D10,
-        EnvRowKind::Flag,
-        "PROTON_NO_D3D10",
-        "Disable D3D10/DXGI.",
-    ),
-    (
-        EnvVarKey::ProtonDxvkD3D8,
-        EnvRowKind::Flag,
-        "PROTON_DXVK_D3D8",
-        "Use DXVK's D3D8 implementation.",
-    ),
-    (
-        EnvVarKey::ProtonNoFsync,
-        EnvRowKind::Flag,
-        "PROTON_NO_FSYNC",
-        "Disable futex-based synchronization (FSync).",
-    ),
-    (
-        EnvVarKey::ProtonNoNtsync,
-        EnvRowKind::Flag,
-        "PROTON_NO_NTSYNC",
-        "Disable NTSync.",
-    ),
-    (
-        EnvVarKey::ProtonDisableNvapi,
-        EnvRowKind::Flag,
-        "PROTON_DISABLE_NVAPI",
-        "Disable NVIDIA NVAPI support.",
-    ),
-    (
-        EnvVarKey::ProtonEnableNvapi,
-        EnvRowKind::Flag,
-        "PROTON_ENABLE_NVAPI",
-        "Enable NVIDIA's NVAPI GPU support library.",
-    ),
-    (
-        EnvVarKey::ProtonUseSeccomp,
-        EnvRowKind::Flag,
-        "PROTON_USE_SECCOMP",
-        "Enable a seccomp-bpf filter to emulate native syscalls, required for some DRM protections to work.",
-    ),
-    (
-        EnvVarKey::ProtonUseSdl,
-        EnvRowKind::Flag,
-        "PROTON_USE_SDL",
-        "Use SDL input instead of HIDRAW/Steam Input.",
-    ),
-    (
-        EnvVarKey::ProtonPreferSdl,
-        EnvRowKind::Flag,
-        "PROTON_PREFER_SDL",
-        "Prefer SDL input over HIDRAW/Steam Input (alias of PROTON_USE_SDL).",
-    ),
-    (
-        EnvVarKey::ProtonUseWayland,
-        EnvRowKind::Flag,
-        "PROTON_USE_WAYLAND",
-        "Enable the Wine Wayland driver.",
-    ),
-    (
-        EnvVarKey::ProtonEnableWayland,
-        EnvRowKind::Flag,
-        "PROTON_ENABLE_WAYLAND",
-        "Enable the Wine Wayland driver (alias of PROTON_USE_WAYLAND).",
-    ),
-    (
-        EnvVarKey::ProtonUseXalia,
-        EnvRowKind::Flag,
-        "PROTON_USE_XALIA",
-        "Enable the Xalia gamepad UI.",
-    ),
-];
-
-/// Rows of the Wine section of the Proton/Wine variables page.
-const WINE_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[
-    (
-        EnvVarKey::WinePrefix,
-        EnvRowKind::Text("/path/to/prefix"),
-        "WINEPREFIX",
-        "Wine prefix directory for the game.",
-    ),
-    (
-        EnvVarKey::WineArch,
-        EnvRowKind::Text("win32 or win64"),
-        "WINEARCH",
-        "Prefix architecture, used when a prefix is created.",
-    ),
-    (
-        EnvVarKey::WineDebug,
-        EnvRowKind::Text("e.g. +all or -all"),
-        "WINEDEBUG",
-        "Control Wine debugging output.",
-    ),
-    (
-        EnvVarKey::WineDllOverrides,
-        EnvRowKind::Text("e.g. msvcp140=n,nvapi=b"),
-        "WINEDLLOVERRIDES",
-        "Control builtin vs native DLL selection.",
-    ),
-    (
-        EnvVarKey::WineServer,
-        EnvRowKind::Text("/path/to/wineserver"),
-        "WINESERVER",
-        "Wineserver executable to use.",
-    ),
-    (
-        EnvVarKey::WineLoader,
-        EnvRowKind::Text("/path/to/wine"),
-        "WINELOADER",
-        "Wine loader executable to use.",
-    ),
-    (
-        EnvVarKey::WineDllPath,
-        EnvRowKind::Text("/path/to/dlls"),
-        "WINEDLLPATH",
-        "Extra DLL search paths.",
-    ),
-    (
-        EnvVarKey::WineEsync,
-        EnvRowKind::Flag,
-        "WINEESYNC",
-        "Legacy control of ESync.",
-    ),
-    (
-        EnvVarKey::WineFsync,
-        EnvRowKind::Flag,
-        "WINEFSYNC",
-        "Legacy control of FSync.",
-    ),
-    (
-        EnvVarKey::WineFullscreenFsr,
-        EnvRowKind::Flag,
-        "WINE_FULLSCREEN_FSR",
-        "AMD FSR upscaling for fullscreen games.",
-    ),
-    (
-        EnvVarKey::WineFullscreenFsrStrength,
-        EnvRowKind::Text("0-5"),
-        "WINE_FULLSCREEN_FSR_STRENGTH",
-        "FSR sharpening strength.",
-    ),
-    (
-        EnvVarKey::WineFullscreenIntegerScaling,
-        EnvRowKind::Flag,
-        "WINE_FULLSCREEN_INTEGER_SCALING",
-        "Integer scaling for fullscreen games.",
-    ),
-    (
-        EnvVarKey::WineUseKwinHacks,
-        EnvRowKind::Flag,
-        "WINE_USE_KWIN_HACKS",
-        "KDE-specific window-management workarounds.",
-    ),
-];
-
-/// Rows of the DXVK section of the Proton/Wine variables page.
-const DXVK_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[
-    (
-        EnvVarKey::DxvkHud,
-        EnvRowKind::Flag,
-        "DXVK_HUD",
-        "Show a HUD with FPS and GPU information.",
-    ),
-    (
-        EnvVarKey::DxvkHudCustom,
-        EnvRowKind::Text("full or devinfo,fps,frametimes"),
-        "DXVK_HUD value",
-        "Custom HUD contents; overrides the simple checkbox when set.",
-    ),
-    (
-        EnvVarKey::DxvkConfig,
-        EnvRowKind::Text("e.g. dxgi.syncInterval = 0"),
-        "DXVK_CONFIG",
-        "Configure DXVK directly through the environment.",
-    ),
-    (
-        EnvVarKey::DxvkShaderCacheDisabled,
-        EnvRowKind::Flag,
-        "DXVK_SHADER_CACHE off",
-        "Disable DXVK's internal shader cache (sets the variable to 0).",
-    ),
-    (
-        EnvVarKey::DxvkShaderCachePath,
-        EnvRowKind::Text("/path/to/cache"),
-        "DXVK_SHADER_CACHE_PATH",
-        "Directory for the DXVK shader cache.",
-    ),
-];
-
-/// Rows of the Gamemode section of the Proton/Wine variables page.
-const GAMEMODE_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[(
-    EnvVarKey::GamemodeAuto,
-    EnvRowKind::Flag,
-    "Enable",
-    "Run the game through gamemoderun.",
-)];
-
-/// Rows of the Misc section of the Proton/Wine variables page.
-const MISC_ROWS: &[(EnvVarKey, EnvRowKind, &str, &str)] = &[(
-    EnvVarKey::MangoHud,
-    EnvRowKind::Flag,
-    "MANGOHUD",
-    "Show the MangoHud performance overlay.",
-)];
