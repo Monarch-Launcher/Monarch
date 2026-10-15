@@ -53,7 +53,6 @@ pub struct PropertiesModal {
     compatibility_layers: combo_box::State<ProtonVersion>,
     selected_compatibility: Option<ProtonVersion>,
 
-    launch_command_representation: String, // String represntation to the user of the launch command, not what Monarch actually does under the hood
     launch_args: String,
 
     /// Whether the Proton/Wine options page is shown instead of the regular
@@ -111,8 +110,6 @@ impl PropertiesModal {
 
             compatibility_layers: combo_box::State::new(compat_list),
             selected_compatibility: selected_compat,
-            launch_command_representation: String::new(),
-
             launch_args: launch_args.unwrap_or_default(),
 
             show_compat_opts: false,
@@ -223,7 +220,7 @@ impl PropertiesModal {
             }
             Message::CompatOptsChanged => Task::none(),
             Message::LaunchCommandGenerated(command) => {
-                self.launch_command_representation = command;
+                self.launch_args = command;
                 Task::none()
             }
             Message::SaveCompatOpts => {
@@ -283,9 +280,13 @@ impl PropertiesModal {
                 ])
             }
             Message::Save => {
+                let mut game_exe: String = String::new();
                 match self.game.write() {
                     Ok(mut game) => {
                         game.executable_path = self.selected_executable.clone();
+                        if let Some(path) = &self.selected_executable {
+                            game_exe = path.clone();
+                        }
 
                         match &self.selected_compatibility {
                             Some(compat) => game.compatibility = Some(compat.path.clone()),
@@ -307,15 +308,43 @@ impl PropertiesModal {
 
                 let state_handle_clone = self.app_state.clone();
                 let game_handle_clone = self.game.clone();
-                Task::perform(
-                    async move { update_game_properties(state_handle_clone, game_handle_clone).await },
-                    |res| {
-                        if let Err(e) = res {
-                            show_error(e);
-                        }
-                        Message::Cancel
-                    },
-                )
+                let state_handle_clone2 = self.app_state.clone();
+                let game_handle_clone2 = self.game.clone();
+
+                Task::batch(vec![
+                    Task::perform(
+                        async move {
+                            view_launch_command(
+                                game_handle_clone.clone(),
+                                state_handle_clone.clone(),
+                                game_exe.as_str(),
+                            )
+                            .await
+                        },
+                        |res| match res {
+                            Ok(command) => Message::LaunchCommandGenerated(command),
+                            Err(e) => {
+                                show_error(e);
+                                Message::Cancel
+                            }
+                        },
+                    ),
+                    Task::perform(
+                        async move {
+                            update_game_properties(
+                                state_handle_clone2.clone(),
+                                game_handle_clone2.clone(),
+                            )
+                            .await
+                        },
+                        |res| {
+                            if let Err(e) = res {
+                                show_error(e);
+                            }
+                            Message::CompatOptsBack
+                        },
+                    ),
+                ])
             }
             Message::Cancel => Task::none(),
         }
@@ -372,12 +401,9 @@ impl PropertiesModal {
         )
         .width(Length::Fill);
 
-        let launch_args_input = text_input(
-            "Custom Launch Arguments",
-            &self.launch_command_representation,
-        )
-        .on_input(Message::LaunchArgsChanged)
-        .padding(10);
+        let launch_args_input = text_input("Custom Launch Arguments", &self.launch_args)
+            .on_input(Message::LaunchArgsChanged)
+            .padding(10);
 
         // Only display the compatibility options to Linux users
         #[cfg(target_os = "linux")]
@@ -403,7 +429,10 @@ impl PropertiesModal {
                 compatibility_combo,
                 open_compat_opts_button,
                 Space::new().height(Length::Fixed(10.0)),
-                text("Launch Arguments").size(18),
+                text("Launch Command").size(18),
+                text("This is a simplified launch command. Monarch performs some more steps under the hood. You can however add your own custom arguments here.")
+                    .size(12)
+                    .color(Color::from_rgb8(140, 140, 140)),
                 launch_args_input,
             ]
             .spacing(10)

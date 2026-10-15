@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use reqwest;
-use serde::Deserialize;
+use serde::{de::IntoDeserializer, Deserialize};
 use sqlx::SqlitePool;
 use std::{
     collections::HashMap,
@@ -12,7 +12,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::{
     monarch_games::{
-        games::{CompatOptions, GameType},
+        games::{CompatOptions, GameType, UserLaunchArgs},
         monarchgame::MonarchGame,
         LaunchCommand,
     },
@@ -561,4 +561,92 @@ fn apply_compat_options_to_launch(game: &MonarchGame, launch_command: &mut Launc
             .env
             .insert("DXVK_HUD".to_string(), "1".to_string());
     }
+}
+
+/// Another ugly function.
+///
+/// The gist is that it iterates over the launch args to check
+/// for any user defined ones and store its value and location.
+pub fn insert_user_launch_args_into_compat_options(game: &mut MonarchGame) {
+    if game.launch_args.is_none() {
+        return;
+    }
+
+    let known_options: [&str; 34] = [
+        // Commands
+        "gamemoderun",
+        "gamescope",
+        "mangohud",
+        // Gamescope flags
+        "-W",
+        "-H",
+        "-r",
+        "--hdr-enabled",
+        "--expose-wayland",
+        "--adaptive-sync",
+        "--force-grab-cursor",
+        "--mangoapp",
+        // Proton env vars
+        "PROTON_USE_WINED3D",
+        "PROTON_NO_D3D12",
+        "PROTON_NO_D3D11",
+        "PROTON_NO_D3D10",
+        "PROTON_USE_ESYNC",
+        "PROTON_USE_FSYNC",
+        "PROTON_USE_NTSYNC",
+        "PROTON_NO_ESYNC",
+        "PROTON_NO_FSYNC",
+        "PROTON_NO_NTSYNC",
+        "PROTON_ENABLE_NVAPI",
+        "PROTON_USE_SECCOMP",
+        "PROTON_USE_SDL",
+        "PROTON_ENABLE_WAYLAND",
+        "PROTON_USE_WAYLAND",
+        "PROTON_USE_XALIA",
+        // Wine env vars
+        "WINEPREFIX",
+        "WINEDLLOVERRIDES",
+        "WINEESYNC",
+        "WINEFSYNC",
+        "WINE_FULLSCREEN_FSR",
+        "WINE_LARGE_ADDRESS_AWARE",
+        // DXVK env vars
+        "DXVK_HUD",
+    ];
+
+    let arg_parts = game
+        .launch_args
+        .clone()
+        .unwrap()
+        .split(" ")
+        .map(|part| part.to_string())
+        .collect::<Vec<String>>();
+
+    let mut user_args: Vec<UserLaunchArgs> = vec![];
+    for (idx, part) in arg_parts.iter().enumerate() {
+        if !known_options.contains(&part.as_str()) {
+            // Check that it's not just resolution values
+            if arg_parts[idx - 1] == "-W" || arg_parts[idx - 1] == "-H" {
+                continue;
+            }
+
+            if looks_like_env_var(part) {
+                part.split("=").collect::<[&str; 2]>();
+                if let Some(opts) = &mut game.compatibility_opts {
+                    opts.user_envs.insert(k, v);
+                }
+            } else {
+            }
+
+            user_args.push(UserLaunchArgs {
+                comes_after: arg_parts[idx - 1].clone(),
+                value: part.clone(),
+            });
+        }
+    }
+}
+
+/// Simple test to reveal is a commandline arg is an env var
+fn looks_like_env_var(s: &str) -> bool {
+    s.chars().all(|c| c.is_uppercase() || c == '_')
 }

@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use super::stores::StoreType;
 use crate::{
@@ -73,4 +76,16 @@ pub struct CompatOptions {
 
     // DXVK
     pub dxvk_hud: bool,
+
+    // User added arguments
+    pub user_envs: HashMap<String, String>,
+    pub user_args: Vec<UserLaunchArgs>,
+}
+
+// This struct allows the user to manipulate the launch command in the text field and
+// for Monarch to still keep it in the correct order.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct UserLaunchArgs {
+    pub comes_after: String,
+    pub value: String,
 }

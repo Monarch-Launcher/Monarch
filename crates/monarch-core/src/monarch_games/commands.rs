@@ -558,6 +558,22 @@ pub async fn update_game_properties(
     state_handle: Arc<RwLock<MonarchState>>,
     game_handle: Arc<RwLock<MonarchGame>>,
 ) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        // First make sure to copy any user specified args to persistent game properties
+        match game_handle.write() {
+            Ok(mut game) => {
+                umu::insert_user_launch_args_into_compat_options(&mut game);
+            }
+            Err(e) => {
+                error!("monarch_games::commands::update_game_properties() Failed to acquire write lock on game_handle! | Err: {e}");
+                return Err(String::from(
+                    "Something went wrong while updating game properties!",
+                ));
+            }
+        }
+    }
+
     // Clone the game to hold across .awaits
     let game_clone: MonarchGame = match game_handle.read() {
         Ok(game) => game.clone(),
