@@ -86,6 +86,6 @@ pub struct CompatOptions {
 // for Monarch to still keep it in the correct order.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UserLaunchArgs {
-    pub comes_after: String,
+    pub index: usize,
     pub value: String,
 }

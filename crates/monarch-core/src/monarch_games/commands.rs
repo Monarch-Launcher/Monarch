@@ -563,7 +563,10 @@ pub async fn update_game_properties(
         // First make sure to copy any user specified args to persistent game properties
         match game_handle.write() {
             Ok(mut game) => {
-                umu::insert_user_launch_args_into_compat_options(&mut game);
+                if let Err(e) = umu::insert_user_launch_args_into_compat_options(&mut game) {
+                    error!("monarch_games::commands::update_game_properties() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                    return Err(String::from("Failed to update launch command!"))
+                }
             }
             Err(e) => {
                 error!("monarch_games::commands::update_game_properties() Failed to acquire write lock on game_handle! | Err: {e}");
@@ -993,9 +996,14 @@ pub async fn view_launch_command(
         Ok(g) => g.clone(),
         Err(e) => {
             error!("monarch_games::commands::view_launch_command() Failed to acquire read lock on game_handle! | Err: {e}");
-            return Err(format!("Failed to read game properties!"));
+            return Err(String::from("Failed to read game properties!"));
         }
     };
+
+    if game.executable_path.is_none() {
+        error!("monarch_games::commands::view_launch_command() executable_path is None!");
+        return Ok(String::from("No executable (launches via external launcher)"))
+    }
 
     let exe_name: String = PathBuf::from(executable_path)
         .file_name()

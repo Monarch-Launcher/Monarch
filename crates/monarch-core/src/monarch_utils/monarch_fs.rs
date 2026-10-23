@@ -217,7 +217,7 @@ pub fn get_executables(path: &Path) -> Result<Vec<PathBuf>> {
     let mut executables: Vec<PathBuf> = Vec::new();
     let executable_extensions: [&'static str; 6] = ["exe", "app", "sh", "bin", "run", "x86_64"];
 
-    visit_dir(&path, &mut executables, &executable_extensions).unwrap();
+    visit_dir(&path, &mut executables, &executable_extensions).with_context(|| "monarch_fs::get_executables() -> ")?;
 
     // Recursively visits all directories and subdirectories to find executables
     fn visit_dir(

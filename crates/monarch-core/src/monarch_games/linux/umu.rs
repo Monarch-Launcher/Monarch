@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use reqwest;
-use serde::{de::IntoDeserializer, Deserialize};
+use serde::Deserialize;
 use sqlx::SqlitePool;
 use std::{
     collections::HashMap,
@@ -561,15 +561,39 @@ fn apply_compat_options_to_launch(game: &MonarchGame, launch_command: &mut Launc
             .env
             .insert("DXVK_HUD".to_string(), "1".to_string());
     }
+
+    /*
+     * --------------------- User options ---------------------
+     */
+    for (k, v) in &compat_options.user_envs {
+        launch_command.env.insert(k.clone(), v.clone());
+    }
+
+    // NOTE: This code snippet relies on the fact that 
+    // general practice is to put ENV_VARS before commandline 
+    // args.
+    let num_envs: usize = launch_command.env.len();
+
+    let mut launch_parts: Vec<&str> = launch_command.command.split(" ").collect::<Vec<&str>>();
+
+    for arg in &compat_options.user_args {
+        let idx: usize = arg.index - num_envs;
+        launch_parts.insert(idx, &arg.value);
+    }
+    launch_command.command = launch_parts.iter()
+        .map(|s| format!("{s} "))
+        .collect::<String>()
+        .trim()
+        .to_string();
 }
 
 /// Another ugly function.
 ///
 /// The gist is that it iterates over the launch args to check
 /// for any user defined ones and store its value and location.
-pub fn insert_user_launch_args_into_compat_options(game: &mut MonarchGame) {
+pub fn insert_user_launch_args_into_compat_options(game: &mut MonarchGame) -> Result<()> {
     if game.launch_args.is_none() {
-        return;
+        return Ok(());
     }
 
     let known_options: [&str; 34] = [
@@ -617,7 +641,7 @@ pub fn insert_user_launch_args_into_compat_options(game: &mut MonarchGame) {
     let arg_parts = game
         .launch_args
         .clone()
-        .unwrap()
+        .with_context(|| "linux::umu::insert_user_launch_args_into_compat_options() Failed to split launch_args string! | Err: ")?
         .split(" ")
         .map(|part| part.to_string())
         .collect::<Vec<String>>();
@@ -626,24 +650,29 @@ pub fn insert_user_launch_args_into_compat_options(game: &mut MonarchGame) {
     for (idx, part) in arg_parts.iter().enumerate() {
         if !known_options.contains(&part.as_str()) {
             // Check that it's not just resolution values
-            if arg_parts[idx - 1] == "-W" || arg_parts[idx - 1] == "-H" {
+            if idx == 0 || arg_parts[idx - 1] == "-W" || arg_parts[idx - 1] == "-H" {
                 continue;
             }
 
             if looks_like_env_var(part) {
-                part.split("=").collect::<[&str; 2]>();
+                let kv = part.split("=").collect::<Vec<&str>>();
                 if let Some(opts) = &mut game.compatibility_opts {
-                    opts.user_envs.insert(k, v);
+                    opts.user_envs.insert(kv[0].to_string(), kv[1].to_string());
                 }
             } else {
+                user_args.push(UserLaunchArgs {
+                    index: idx,
+                    value: part.clone(),
+                });
             }
-
-            user_args.push(UserLaunchArgs {
-                comes_after: arg_parts[idx - 1].clone(),
-                value: part.clone(),
-            });
         }
     }
+
+    if let Some(opts) = &mut game.compatibility_opts {
+        opts.user_args = user_args;
+    }
+
+    Ok(())
 }
 
 /// Simple test to reveal is a commandline arg is an env var
