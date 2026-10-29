@@ -9,7 +9,7 @@
  * more platforms needs ands quirks.
  */
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use sqlx::SqlitePool;
 use std::any::Any;
 use std::fmt::Debug;
@@ -774,8 +774,12 @@ impl DownloadHandler for EgsDownloadHandler {
                             report.install_bytes,
                             state_handle,
                         )
-                        .await {
-                            error!("EgsDownloadHandler::download() -> {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                        .await
+                        {
+                            error!(
+                                "EgsDownloadHandler::download() -> {}",
+                                e.chain().map(|e| e.to_string()).collect::<String>()
+                            );
                         }
 
                         publish_current_status(

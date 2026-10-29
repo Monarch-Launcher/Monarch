@@ -440,7 +440,10 @@ impl DownloadPage {
         let write_or_dash = if active.verifying {
             "—".to_string()
         } else {
-            crate::gui::components::common::format_speed(active.write_speed_mbps, show_speed_in_bits)
+            crate::gui::components::common::format_speed(
+                active.write_speed_mbps,
+                show_speed_in_bits,
+            )
         };
         let eta_or_dash = if active.verifying {
             "—".to_string()

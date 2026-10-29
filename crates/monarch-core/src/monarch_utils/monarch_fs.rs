@@ -217,7 +217,8 @@ pub fn get_executables(path: &Path) -> Result<Vec<PathBuf>> {
     let mut executables: Vec<PathBuf> = Vec::new();
     let executable_extensions: [&'static str; 6] = ["exe", "app", "sh", "bin", "run", "x86_64"];
 
-    visit_dir(&path, &mut executables, &executable_extensions).unwrap();
+    visit_dir(&path, &mut executables, &executable_extensions)
+        .with_context(|| "monarch_fs::get_executables() -> ")?;
 
     // Recursively visits all directories and subdirectories to find executables
     fn visit_dir(
@@ -531,6 +532,13 @@ pub fn relative_launch_exe_arg(exe: &Path, install_dir: &Path) -> String {
         }
         Err(_) => format!("'{}'", exe.display()),
     }
+}
+
+/// Simple helper function to verify if an executable requires
+/// compatibility layer, without user explicitly setting one.
+pub fn is_windows_exe(path: &Path) -> bool {
+    let windows_files: [&str; 1] = ["exe"];
+    windows_files.contains(&path.extension().unwrap().to_str().unwrap())
 }
 
 /*

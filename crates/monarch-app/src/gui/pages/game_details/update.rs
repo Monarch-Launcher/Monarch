@@ -23,19 +23,12 @@ impl GameDetailsPage {
         }
 
         let game_handle_clone = self.game.as_ref().unwrap().clone();
-        let settings_handle_clone = match self.app_state.read() {
-            Ok(state) => state.get_settings_ptr(),
-            Err(e) => {
-                error!("GameDetailsPage::launch_game() Failed to acquire read lock on state_handle! | Err: {e}");
-                show_error("Failed to launch game!");
-                return Task::none();
-            }
-        };
+        let state_handle_clone = self.app_state.clone();
 
         iced::Task::perform(
             async move {
                 if let Err(e) =
-                    monarch_games::commands::launch_game(settings_handle_clone, game_handle_clone)
+                    monarch_games::commands::launch_game(state_handle_clone, game_handle_clone)
                         .await
                 {
                     error!(
@@ -111,18 +104,19 @@ impl GameDetailsPage {
             Ok(game) => {
                 if !game.get_store().store_enabled(settings_handle.clone()) {
                     show_error("Monarch is not allowed to download from this source. Please check your enabled stores in the settings.");
-                    return Task::none()
+                    return Task::none();
                 }
             }
             Err(e) => {
                 error!("GameDetailsPage::download_game() Failed to acquire read lock on game_handle! | Err: {e}");
-                show_error("Failed to check if Monarch is allowed to manage games from current source!");
-                return Task::none()
+                show_error(
+                    "Failed to check if Monarch is allowed to manage games from current source!",
+                );
+                return Task::none();
             }
         }
 
-        let modal_result =
-            download_modal::DownloadModal::new(settings_handle, game_handle_clone);
+        let modal_result = download_modal::DownloadModal::new(settings_handle, game_handle_clone);
 
         match modal_result {
             Ok((modal, task)) => {

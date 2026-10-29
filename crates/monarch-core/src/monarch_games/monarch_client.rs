@@ -127,10 +127,10 @@ impl StoreType for MonarchClient {
 
     async fn launch_game(
         &mut self,
-        settings_handle: Arc<RwLock<Settings>>,
+        state_handle: Arc<RwLock<MonarchState>>,
         game: &MonarchGame,
     ) -> Result<()> {
-        game.launch(settings_handle).await
+        game.launch(state_handle).await
     }
 }
 
@@ -415,7 +415,7 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                 "epicgames" => {
                     for epic_game in epic_games.iter() {
                         if game.is_installed {
-                            return true
+                            return true;
                         }
 
                         if game.id == epic_game.id {
@@ -440,7 +440,9 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                     steam_game.imported = game.imported.clone();
                     steam_game.properties = game.properties.clone();
                     steam_game.launch_args = game.launch_args.clone();
+                    steam_game.env_args = game.env_args.clone();
                     steam_game.compatibility = game.compatibility.clone();
+                    steam_game.compatibility_opts = game.compatibility_opts.clone();
                     if steam_game.executable_path.is_none() {
                         steam_game.executable_path = game.executable_path.clone();
                     }
@@ -464,8 +466,10 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                     epic_game.imported = game.imported.clone();
                     epic_game.properties = game.properties.clone();
                     epic_game.launch_args = game.launch_args.clone();
+                    epic_game.env_args = game.env_args.clone();
                     epic_game.is_installed = game.is_installed.clone();
                     epic_game.compatibility = game.compatibility.clone();
+                    epic_game.compatibility_opts = game.compatibility_opts.clone();
                     epic_game.managed_by_monarch = game.managed_by_monarch.clone();
                     if epic_game.executable_path.is_none() {
                         epic_game.executable_path = game.executable_path.clone();

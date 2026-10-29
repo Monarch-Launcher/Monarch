@@ -9,7 +9,7 @@ use tracing::error;
 use super::games::GameType;
 use super::stores::StoreType;
 use crate::monarch_games::egs_client::EgsClient;
-use crate::monarch_games::games::SearchResult;
+use crate::monarch_games::games::{CompatOptions, SearchResult};
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::{download_image, download_image_greyscale};
@@ -26,7 +26,18 @@ pub struct MonarchGame {
     pub cover_path: String,
     pub cover_url: String,
     pub launch_args: Option<String>,
+
+    /// Environment arguments prepended to the very front of the launch
+    /// command, e.g. "PROTON_ENABLE_WAYLAND=1 MANGOHUD_CONFIG=fps".
+    #[serde(default)]
+    pub env_args: Option<String>,
+
     pub compatibility: Option<String>,
+
+    /// Proton/Wine options chosen for this game. Defaults to `None` so
+    /// older saved games without options still load.
+    #[serde(default)]
+    pub compatibility_opts: Option<CompatOptions>,
 
     #[serde(default)]
     pub summary: String,
@@ -78,7 +89,9 @@ impl MonarchGame {
             cover_path: cover_path.to_string(),
             cover_url: String::new(),
             launch_args: None,
+            env_args: None,
             compatibility: None,
+            compatibility_opts: None,
             summary: String::new(),
             artwork_url: String::new(),
             artwork_path: String::new(),
@@ -186,7 +199,9 @@ impl MonarchGame {
             cover_path: other.cover_path.to_string(),
             cover_url: other.cover_url.to_string(),
             launch_args: None,
+            env_args: None,
             compatibility: None,
+            compatibility_opts: None,
             summary: other.summary.clone(),
             artwork_url: other.artwork_url.clone(),
             artwork_path: String::new(),
@@ -238,9 +253,9 @@ impl GameType for MonarchGame {
         0.0
     }
 
-    async fn launch(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
+    async fn launch(&self, state_handle: Arc<RwLock<MonarchState>>) -> Result<()> {
         self.get_store()
-            .launch_game(settings_handle, &self)
+            .launch_game(state_handle, &self)
             .await
             .with_context(|| "monarchgame::launch() -> ")
     }
