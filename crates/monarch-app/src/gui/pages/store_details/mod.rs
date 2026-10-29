@@ -97,13 +97,13 @@ impl StoreDetailsPage {
                     Ok(game) => {
                         if !game.get_store().store_enabled(settings_handle.clone()) {
                             show_error("Monarch is not allowed to download from this source. Please check your enabled stores in the settings.");
-                            return Task::none()
+                            return Task::none();
                         }
                     }
                     Err(e) => {
                         error!("GameDetailsPage::download_game() Failed to acquire read lock on game_handle! | Err: {e}");
                         show_error("Failed to check if Monarch is allowed to manage games from current source!");
-                        return Task::none()
+                        return Task::none();
                     }
                 }
 

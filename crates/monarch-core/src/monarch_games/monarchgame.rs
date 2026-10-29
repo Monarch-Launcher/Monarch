@@ -26,6 +26,12 @@ pub struct MonarchGame {
     pub cover_path: String,
     pub cover_url: String,
     pub launch_args: Option<String>,
+
+    /// Environment arguments prepended to the very front of the launch
+    /// command, e.g. "PROTON_ENABLE_WAYLAND=1 MANGOHUD_CONFIG=fps".
+    #[serde(default)]
+    pub env_args: Option<String>,
+
     pub compatibility: Option<String>,
 
     /// Proton/Wine options chosen for this game. Defaults to `None` so
@@ -83,6 +89,7 @@ impl MonarchGame {
             cover_path: cover_path.to_string(),
             cover_url: String::new(),
             launch_args: None,
+            env_args: None,
             compatibility: None,
             compatibility_opts: None,
             summary: String::new(),
@@ -192,6 +199,7 @@ impl MonarchGame {
             cover_path: other.cover_path.to_string(),
             cover_url: other.cover_url.to_string(),
             launch_args: None,
+            env_args: None,
             compatibility: None,
             compatibility_opts: None,
             summary: other.summary.clone(),

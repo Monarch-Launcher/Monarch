@@ -254,7 +254,7 @@ impl StoreType for EgsClient {
             None
         };
 
-        let egs_launch_command: EgsLaunchCommand = monarch_egs::build_egs_launch_command(
+        let mut egs_launch_command: EgsLaunchCommand = monarch_egs::build_egs_launch_command(
             self.user(),
             &app_name,
             &namespace,
@@ -285,6 +285,17 @@ impl StoreType for EgsClient {
             "egs_client::launch_game() Working directory: {}",
             egs_launch_command.working_directory.display()
         );
+
+        // Prepend the user-specified env args, e.g. "PROTON_ENABLE_WAYLAND=1".
+        if let Some(env_args) = game.env_args.as_deref() {
+            for token in env_args.split_whitespace() {
+                if let Some((key, value)) = token.split_once('=') {
+                    egs_launch_command
+                        .environment
+                        .insert(key.to_string(), value.to_string());
+                }
+            }
+        }
 
         let rx = monarch_terminal::spawn_terminal(
             launch_command,

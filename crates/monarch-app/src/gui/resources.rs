@@ -13,9 +13,7 @@ use std::sync::LazyLock;
 /// the whole button.
 fn svg_with_intrinsic_size(bytes: &[u8], size: u32) -> svg::Handle {
     match std::str::from_utf8(bytes) {
-        Ok(src) => svg::Handle::from_memory(
-            svg_source_with_intrinsic_size(src, size).into_bytes(),
-        ),
+        Ok(src) => svg::Handle::from_memory(svg_source_with_intrinsic_size(src, size).into_bytes()),
         Err(_) => svg::Handle::from_memory(bytes.to_vec()),
     }
 }
@@ -41,11 +39,7 @@ fn svg_source_with_intrinsic_size(src: &str, size: u32) -> String {
             // child's `width="2"`) live outside the root tag and are untouched.
             let rest = &tag[idx + pattern.len()..];
             if let Some(end) = rest.find('"') {
-                tag = format!(
-                    "{}{name}=\"{value}\"{}",
-                    &tag[..idx],
-                    &rest[end + 1..]
-                );
+                tag = format!("{}{name}=\"{value}\"{}", &tag[..idx], &rest[end + 1..]);
             }
         } else {
             // No declared size: append one at the end of the root tag.
@@ -117,13 +111,11 @@ pub static FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
     svg::Handle::from_memory(bytes.to_vec())
 });
 
-pub static VIEW: LazyLock<svg::Handle> = LazyLock::new(|| {
-    svg_with_intrinsic_size(include_bytes!("../../icons/Actions/view.svg"), 20)
-});
+pub static VIEW: LazyLock<svg::Handle> =
+    LazyLock::new(|| svg_with_intrinsic_size(include_bytes!("../../icons/Actions/view.svg"), 20));
 
-pub static HIDE: LazyLock<svg::Handle> = LazyLock::new(|| {
-    svg_with_intrinsic_size(include_bytes!("../../icons/Actions/hide.svg"), 20)
-});
+pub static HIDE: LazyLock<svg::Handle> =
+    LazyLock::new(|| svg_with_intrinsic_size(include_bytes!("../../icons/Actions/hide.svg"), 20));
 
 pub static DOWNLOAD: LazyLock<svg::Handle> = LazyLock::new(|| {
     let bytes = include_bytes!("../../icons/Actions/download-svgrepo-com.svg");
@@ -158,7 +150,10 @@ pub static UPDATE: LazyLock<svg::Handle> = LazyLock::new(|| {
 });
 
 pub static FILTER: LazyLock<svg::Handle> = LazyLock::new(|| {
-    svg_with_intrinsic_size(include_bytes!("../../icons/Actions/filter-svgrepo-com.svg"), 20)
+    svg_with_intrinsic_size(
+        include_bytes!("../../icons/Actions/filter-svgrepo-com.svg"),
+        20,
+    )
 });
 
 pub static ARROW_BACK: LazyLock<svg::Handle> = LazyLock::new(|| {

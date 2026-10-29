@@ -12,7 +12,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::{
     monarch_games::{
-        games::{CompatOptions, GameType, UserLaunchArgs},
+        games::{CompatOptions, GameType},
         monarchgame::MonarchGame,
         LaunchCommand,
     },
@@ -303,6 +303,24 @@ pub async fn generate_launch_command(
         apply_compat_options_to_launch(&game, &mut launch_command);
     }
 
+    /*
+     * --------------------- Game specific options ---------------------
+     *
+     * These apply regardless of whether compatibility options are set.
+     */
+    // Env args are prepended to the very front of the command, e.g.
+    // "PROTON_ENABLE_WAYLAND=1 ..." (Steam passes them the same way).
+    apply_env_args(&mut launch_command.env, game.env_args.as_deref());
+
+    // Game specific launch args are appended at the very end of the launch
+    // command. For Steam games this matches whatever comes after %command%.
+    if let Some(args) = game.launch_args.as_deref() {
+        let args = args.trim();
+        if !args.is_empty() {
+            launch_command.command = format!("{} {}", launch_command.command, args);
+        }
+    }
+
     Ok(launch_command)
 }
 
@@ -360,7 +378,15 @@ fn apply_compat_options_to_launch(game: &MonarchGame, launch_command: &mut Launc
      * --------------------- Gamemode options ---------------------
      */
     if compat_options.gamemoderun {
-        launch_command.command = format!("gamemoderun {}", launch_command.command)
+        // Arbitrary user-supplied arguments for the gamemoderun wrapper
+        // itself, e.g. "-a <FAST_GAMEMODE_SECONDS>", go right after the
+        // wrapper and before the actual command.
+        let args = compat_options.gamemode_args.trim();
+        if args.is_empty() {
+            launch_command.command = format!("gamemoderun {}", launch_command.command);
+        } else {
+            launch_command.command = format!("gamemoderun {} {}", args, launch_command.command);
+        }
     }
 
     /*
@@ -401,6 +427,14 @@ fn apply_compat_options_to_launch(game: &MonarchGame, launch_command: &mut Launc
             gamescope_args.push_str("--mangoapp ");
         }
 
+        // Arbitrary user-supplied gamescope arguments, appended after the
+        // built-in flags and before the "-- <command>" part.
+        let user_gamescope_args = compat_options.gamescope_args.trim();
+        if !user_gamescope_args.is_empty() {
+            gamescope_args.push_str(user_gamescope_args);
+            gamescope_args.push(' ');
+        }
+
         launch_command.command =
             format!("gamescope {}-- {}", gamescope_args, launch_command.command)
     }
@@ -413,6 +447,9 @@ fn apply_compat_options_to_launch(game: &MonarchGame, launch_command: &mut Launc
     if compat_options.mango_hud && !compat_options.gamescope_enable {
         launch_command.command = format!("mangohud {}", launch_command.command);
     }
+
+    // Arbitrary user-supplied misc arguments, e.g. MANGOHUD_CONFIG=fps,cpu.
+    apply_arbitrary_args(launch_command, &compat_options.misc_args);
 
     /*
      * --------------------- Proton options ---------------------
@@ -563,119 +600,53 @@ fn apply_compat_options_to_launch(game: &MonarchGame, launch_command: &mut Launc
     }
 
     /*
-     * --------------------- User options ---------------------
+     * --------------------- Arbitrary per-category options ---------------------
+     *
+     * Each category has a "Misc Args" field where the user can put any
+     * arbitrary text: KEY=VALUE tokens become environment variables, and
+     * anything else is appended to the command itself.
      */
-    for (k, v) in &compat_options.user_envs {
-        launch_command.env.insert(k.clone(), v.clone());
-    }
-
-    // NOTE: This code snippet relies on the fact that 
-    // general practice is to put ENV_VARS before commandline 
-    // args.
-    let num_envs: usize = launch_command.env.len();
-
-    let mut launch_parts: Vec<&str> = launch_command.command.split(" ").collect::<Vec<&str>>();
-
-    for arg in &compat_options.user_args {
-        let idx: usize = arg.index - num_envs;
-        launch_parts.insert(idx, &arg.value);
-    }
-    launch_command.command = launch_parts.iter()
-        .map(|s| format!("{s} "))
-        .collect::<String>()
-        .trim()
-        .to_string();
+    apply_arbitrary_args(launch_command, &compat_options.proton_args);
+    apply_arbitrary_args(launch_command, &compat_options.wine_args);
+    apply_arbitrary_args(launch_command, &compat_options.dxvk_args);
 }
 
-/// Another ugly function.
-///
-/// The gist is that it iterates over the launch args to check
-/// for any user defined ones and store its value and location.
-pub fn insert_user_launch_args_into_compat_options(game: &mut MonarchGame) -> Result<()> {
-    if game.launch_args.is_none() {
-        return Ok(());
+/// Splits `text` on whitespace and puts every token in its place:
+/// tokens containing '=' become environment variables, everything else is
+/// appended to the command itself.
+fn apply_arbitrary_args(launch_command: &mut LaunchCommand, text: &str) {
+    if text.trim().is_empty() {
+        return;
     }
 
-    let known_options: [&str; 34] = [
-        // Commands
-        "gamemoderun",
-        "gamescope",
-        "mangohud",
-        // Gamescope flags
-        "-W",
-        "-H",
-        "-r",
-        "--hdr-enabled",
-        "--expose-wayland",
-        "--adaptive-sync",
-        "--force-grab-cursor",
-        "--mangoapp",
-        // Proton env vars
-        "PROTON_USE_WINED3D",
-        "PROTON_NO_D3D12",
-        "PROTON_NO_D3D11",
-        "PROTON_NO_D3D10",
-        "PROTON_USE_ESYNC",
-        "PROTON_USE_FSYNC",
-        "PROTON_USE_NTSYNC",
-        "PROTON_NO_ESYNC",
-        "PROTON_NO_FSYNC",
-        "PROTON_NO_NTSYNC",
-        "PROTON_ENABLE_NVAPI",
-        "PROTON_USE_SECCOMP",
-        "PROTON_USE_SDL",
-        "PROTON_ENABLE_WAYLAND",
-        "PROTON_USE_WAYLAND",
-        "PROTON_USE_XALIA",
-        // Wine env vars
-        "WINEPREFIX",
-        "WINEDLLOVERRIDES",
-        "WINEESYNC",
-        "WINEFSYNC",
-        "WINE_FULLSCREEN_FSR",
-        "WINE_LARGE_ADDRESS_AWARE",
-        // DXVK env vars
-        "DXVK_HUD",
-    ];
+    let mut command_args: Vec<String> = Vec::new();
 
-    let arg_parts = game
-        .launch_args
-        .clone()
-        .with_context(|| "linux::umu::insert_user_launch_args_into_compat_options() Failed to split launch_args string! | Err: ")?
-        .split(" ")
-        .map(|part| part.to_string())
-        .collect::<Vec<String>>();
-
-    let mut user_args: Vec<UserLaunchArgs> = vec![];
-    for (idx, part) in arg_parts.iter().enumerate() {
-        if !known_options.contains(&part.as_str()) {
-            // Check that it's not just resolution values
-            if idx == 0 || arg_parts[idx - 1] == "-W" || arg_parts[idx - 1] == "-H" {
-                continue;
-            }
-
-            if looks_like_env_var(part) {
-                let kv = part.split("=").collect::<Vec<&str>>();
-                if let Some(opts) = &mut game.compatibility_opts {
-                    opts.user_envs.insert(kv[0].to_string(), kv[1].to_string());
-                }
-            } else {
-                user_args.push(UserLaunchArgs {
-                    index: idx,
-                    value: part.clone(),
-                });
-            }
+    for token in text.split_whitespace() {
+        if token.contains('=') {
+            let (key, value) = token.split_once('=').unwrap_or((token, ""));
+            launch_command
+                .env
+                .insert(key.to_string(), value.to_string());
+        } else {
+            command_args.push(token.to_string());
         }
     }
 
-    if let Some(opts) = &mut game.compatibility_opts {
-        opts.user_args = user_args;
+    if !command_args.is_empty() {
+        launch_command.command = format!("{} {}", launch_command.command, command_args.join(" "));
     }
-
-    Ok(())
 }
 
-/// Simple test to reveal is a commandline arg is an env var
-fn looks_like_env_var(s: &str) -> bool {
-    s.chars().all(|c| c.is_uppercase() || c == '_')
+/// Parses an env-args string like "PROTON_ENABLE_WAYLAND=1 MANGOHUD_CONFIG=fps"
+/// and inserts every assignment into `env`.
+fn apply_env_args(env: &mut HashMap<String, String>, env_args: Option<&str>) {
+    let Some(env_args) = env_args else {
+        return;
+    };
+
+    for token in env_args.split_whitespace() {
+        if let Some((key, value)) = token.split_once('=') {
+            env.insert(key.to_string(), value.to_string());
+        }
+    }
 }

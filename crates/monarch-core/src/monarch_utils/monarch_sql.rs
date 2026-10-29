@@ -7,8 +7,8 @@ use crate::monarch_games::{
     monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo},
 };
 
-const MONARCH_GAME_FIELDS: &str = "(name, id, executable_path, cover_path, cover_url, launch_args, compatibility, compatibility_options, summary, artwork_path, artwork_url, imported, is_installed, managed_by_monarch)";
-const TYPED_MONARCH_GAME_FIELDS: &str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, cover_path TEXT, cover_url TEXT, launch_args TEXT, compatibility TEXT, compatibility_options TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN, is_installed BOOLEAN, managed_by_monarch BOOLEAN)";
+const MONARCH_GAME_FIELDS: &str = "(name, id, executable_path, cover_path, cover_url, launch_args, env_args, compatibility, compatibility_options, summary, artwork_path, artwork_url, imported, is_installed, managed_by_monarch)";
+const TYPED_MONARCH_GAME_FIELDS: &str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, cover_path TEXT, cover_url TEXT, launch_args TEXT, env_args TEXT, compatibility TEXT, compatibility_options TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN, is_installed BOOLEAN, managed_by_monarch BOOLEAN)";
 
 const STORE_INFO_FIELDS: &str = "(monarch_game_id, name, store_id, store_url)";
 const TYPED_STORE_INFO_FIELDS: &str =
@@ -25,6 +25,7 @@ struct MonarchGameRecord {
     pub cover_path: String,
     pub cover_url: String,
     pub launch_args: Option<String>,
+    pub env_args: Option<String>,
     pub compatibility: Option<String>,
     pub compatibility_options: Option<String>,
     pub summary: String,
@@ -95,6 +96,7 @@ impl MonarchGame {
             cover_path: game_record.cover_path,
             cover_url: game_record.cover_url,
             launch_args: game_record.launch_args,
+            env_args: game_record.env_args,
             compatibility: game_record.compatibility,
             compatibility_opts: compat_options,
             summary: game_record.summary,
@@ -151,13 +153,12 @@ pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
             .trim_end_matches(')')
     );
 
-    let game_records: Vec<MonarchGameRecord> =
-        sqlx::query_as::<_, MonarchGameRecord>(&game_select)
-            .fetch_all(pool)
-            .await
-            .with_context(|| {
-                "monarch_sql::get_library() Failed to fetch_all() MonarchGameRecords! | Err: "
-            })?;
+    let game_records: Vec<MonarchGameRecord> = sqlx::query_as::<_, MonarchGameRecord>(&game_select)
+        .fetch_all(pool)
+        .await
+        .with_context(|| {
+            "monarch_sql::get_library() Failed to fetch_all() MonarchGameRecords! | Err: "
+        })?;
 
     let mut games: Vec<MonarchGame> = Vec::new();
     for game in game_records {
@@ -207,7 +208,7 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .with_context(|| "monarch_sql::insert_game() Failed to start new transaction! | Err: ")?;
 
     sqlx::query(&format!(
-        "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         MONARCH_GAME_FIELDS
     ))
     .bind(&game.name)
@@ -216,6 +217,7 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     .bind(&game.cover_path)
     .bind(&game.cover_url)
     .bind(&game.launch_args)
+    .bind(&game.env_args)
     .bind(&game.compatibility)
     .bind(
         &serde_json::to_string(&game.compatibility_opts)
@@ -335,13 +337,14 @@ pub async fn remove_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
 pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     let sql_library_query: String = format!(
         r#"INSERT INTO library{} 
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET
         name = ?,
         executable_path = ?,
         cover_path = ?,
         cover_url = ?,
         launch_args = ?,
+        env_args = ?,
         compatibility = ?,
         compatibility_options = ?,
         summary = ?,
@@ -392,6 +395,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.cover_path)
         .bind(&game.cover_url)
         .bind(&game.launch_args)
+        .bind(&game.env_args)
         .bind(&game.compatibility)
         .bind(
             &serde_json::to_string(&game.compatibility_opts)
@@ -408,6 +412,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .bind(&game.cover_path)
         .bind(&game.cover_url)
         .bind(&game.launch_args)
+        .bind(&game.env_args)
         .bind(&game.compatibility)
         .bind(
             &serde_json::to_string(&game.compatibility_opts)
@@ -507,7 +512,7 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
 
     for game in games {
         sqlx::query(&format!(
-            "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             MONARCH_GAME_FIELDS
         ))
         .bind(&game.name)
@@ -516,6 +521,7 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
         .bind(&game.cover_path)
         .bind(&game.cover_url)
         .bind(&game.launch_args)
+        .bind(&game.env_args)
         .bind(&game.compatibility)
         .bind(
             &serde_json::to_string(&game.compatibility_opts)

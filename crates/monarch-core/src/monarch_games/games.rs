@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use super::stores::StoreType;
 use crate::{
@@ -30,10 +27,15 @@ pub trait SearchResult: Send + Sync {
     fn into_monarchgame(&self) -> MonarchGame;
 }
 
+// NOTE: The container-level `default` makes every field fall back to its
+// `Default` value when it is missing from older serialized options, so new
+// fields can be added without breaking saved compatibility options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CompatOptions {
     // Gamemode
     pub gamemoderun: bool,
+    pub gamemode_args: String,
 
     // Gamescope
     pub gamescope_enable: bool,
@@ -44,11 +46,14 @@ pub struct CompatOptions {
     pub gamescope_expose_wayland: bool,
     pub gamescope_vrr: bool,
     pub gamescope_force_grab_cursor: bool,
+    pub gamescope_args: String,
 
     // Misc
     pub mango_hud: bool,
+    pub misc_args: String,
 
     // Proton
+    pub proton_args: String,
     pub proton_use_wined3d: bool,
     pub proton_no_d3d12: bool,
     pub proton_no_d3d11: bool,
@@ -69,6 +74,7 @@ pub struct CompatOptions {
     // Wine
     pub wine_prefix: String,
     pub wine_dll_overrides: String,
+    pub wine_args: String,
     pub wine_esync: bool,
     pub wine_fsync: bool,
     pub wine_fullscreen_fsr: bool,
@@ -76,16 +82,5 @@ pub struct CompatOptions {
 
     // DXVK
     pub dxvk_hud: bool,
-
-    // User added arguments
-    pub user_envs: HashMap<String, String>,
-    pub user_args: Vec<UserLaunchArgs>,
-}
-
-// This struct allows the user to manipulate the launch command in the text field and
-// for Monarch to still keep it in the correct order.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UserLaunchArgs {
-    pub index: usize,
-    pub value: String,
+    pub dxvk_args: String,
 }

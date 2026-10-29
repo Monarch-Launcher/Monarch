@@ -26,7 +26,10 @@ pub enum Message {
     ExecutableSelected(String),
     ExecutableHovered(String),
     CompatibilitySelected(ProtonVersion),
-    LaunchArgsChanged(String),
+    /// Game specific launch args appended at the end of the launch command.
+    GameArgsChanged(String),
+    /// Env args prepended at the front of the launch command.
+    EnvArgsChanged(String),
     /// Open the Proton/Wine options page.
     OpenCompatOpts,
     /// Leave the Proton/Wine options page and return to launch options.
@@ -53,7 +56,16 @@ pub struct PropertiesModal {
     compatibility_layers: combo_box::State<ProtonVersion>,
     selected_compatibility: Option<ProtonVersion>,
 
-    launch_args: String,
+    /// Launch args appended at the end of the launch command. For Steam
+    /// games this matches whatever comes after %command%.
+    game_args: String,
+
+    /// Env args prepended at the front of the launch command, e.g.
+    /// "PROTON_ENABLE_WAYLAND=1 ...".
+    env_args: String,
+
+    /// The generated (read-only) launch command shown on the main page.
+    launch_command: String,
 
     /// Whether the Proton/Wine options page is shown instead of the regular
     /// launch options fields.
@@ -71,10 +83,11 @@ impl PropertiesModal {
         state_handle: Arc<RwLock<MonarchState>>,
         game: Arc<RwLock<MonarchGame>>,
     ) -> (Self, Task<Message>) {
-        let (launch_args, current_executable, current_compat, compat_opts_opt) = {
+        let (game_args, env_args, current_executable, current_compat, compat_opts_opt) = {
             let game_lock = game.read().unwrap();
             (
                 game_lock.launch_args.clone(),
+                game_lock.env_args.clone(),
                 game_lock.executable_path.clone(),
                 game_lock.compatibility.clone(),
                 game_lock.compatibility_opts.clone(),
@@ -110,7 +123,9 @@ impl PropertiesModal {
 
             compatibility_layers: combo_box::State::new(compat_list),
             selected_compatibility: selected_compat,
-            launch_args: launch_args.unwrap_or_default(),
+            game_args: game_args.unwrap_or_default(),
+            env_args: env_args.unwrap_or_default(),
+            launch_command: String::new(),
 
             show_compat_opts: false,
             compat_opts: RefCell::new(compat_opts),
@@ -206,8 +221,12 @@ impl PropertiesModal {
                 self.selected_compatibility = Some(version);
                 Task::none()
             }
-            Message::LaunchArgsChanged(args) => {
-                self.launch_args = args;
+            Message::GameArgsChanged(args) => {
+                self.game_args = args;
+                Task::none()
+            }
+            Message::EnvArgsChanged(args) => {
+                self.env_args = args;
                 Task::none()
             }
             Message::OpenCompatOpts => {
@@ -220,7 +239,7 @@ impl PropertiesModal {
             }
             Message::CompatOptsChanged => Task::none(),
             Message::LaunchCommandGenerated(command) => {
-                self.launch_args = command;
+                self.launch_command = command;
                 Task::none()
             }
             Message::SaveCompatOpts => {
@@ -293,10 +312,16 @@ impl PropertiesModal {
                             None => game.compatibility = None,
                         }
 
-                        game.launch_args = if self.launch_args.is_empty() {
+                        game.launch_args = if self.game_args.trim().is_empty() {
                             None
                         } else {
-                            Some(self.launch_args.clone())
+                            Some(self.game_args.trim().to_string())
+                        };
+
+                        game.env_args = if self.env_args.trim().is_empty() {
+                            None
+                        } else {
+                            Some(self.env_args.trim().to_string())
                         };
                     }
                     Err(e) => {
@@ -401,8 +426,16 @@ impl PropertiesModal {
         )
         .width(Length::Fill);
 
-        let launch_args_input = text_input("Custom Launch Arguments", &self.launch_args)
-            .on_input(Message::LaunchArgsChanged)
+        // Read-only display of the launch command Monarch generates (from the
+        // compatibility options, env args and game args).
+        let launch_command_display = text_input("Launch Command", &self.launch_command).padding(10);
+
+        let game_args_input = text_input("Game Specific Launch Args", &self.game_args)
+            .on_input(Message::GameArgsChanged)
+            .padding(10);
+
+        let env_args_input = text_input("Env Args", &self.env_args)
+            .on_input(Message::EnvArgsChanged)
             .padding(10);
 
         // Only display the compatibility options to Linux users
@@ -430,10 +463,22 @@ impl PropertiesModal {
                 open_compat_opts_button,
                 Space::new().height(Length::Fixed(10.0)),
                 text("Launch Command").size(18),
-                text("This is a simplified launch command. Monarch performs some more steps under the hood. You can however add your own custom arguments here.")
+                text("This is a simplified launch command. Monarch performs some more steps under the hood.")
                     .size(12)
                     .color(Color::from_rgb8(140, 140, 140)),
-                launch_args_input,
+                launch_command_display,
+                Space::new().height(Length::Fixed(10.0)),
+                text("Game Specific Launch Args").size(18),
+                text("Launch arguments appended at the end of the launch command. For Steam games this is whatever comes after %command%.")
+                    .size(12)
+                    .color(Color::from_rgb8(140, 140, 140)),
+                game_args_input,
+                Space::new().height(Length::Fixed(10.0)),
+                text("Env Args").size(18),
+                text("Environment arguments prepended to the front of the launch command.")
+                    .size(12)
+                    .color(Color::from_rgb8(140, 140, 140)),
+                env_args_input,
             ]
             .spacing(10)
             .into()
@@ -450,8 +495,17 @@ impl PropertiesModal {
                 text("Compatibility Layer").size(18),
                 compatibility_combo,
                 Space::new().height(Length::Fixed(10.0)),
-                text("Launch Arguments").size(18),
-                launch_args_input,
+                text("Game Specific Launch Args").size(18),
+                text("Launch arguments appended at the end of the launch command.")
+                    .size(12)
+                    .color(Color::from_rgb8(140, 140, 140)),
+                game_args_input,
+                Space::new().height(Length::Fixed(10.0)),
+                text("Env Args").size(18),
+                text("Environment arguments prepended to the front of the launch command.")
+                    .size(12)
+                    .color(Color::from_rgb8(140, 140, 140)),
+                env_args_input,
             ]
             .spacing(10)
             .into()
@@ -696,6 +750,16 @@ impl PropertiesModal {
                     Message::CompatOptsChanged
                 }
             ),
+            compat_input_row(
+                "Misc Args",
+                "Any arbitrary args, e.g. PROTON_LOG=1.",
+                "e.g. PROTON_LOG=1",
+                &o.proton_args,
+                |v| {
+                    self.compat_opts.borrow_mut().proton_args = v;
+                    Message::CompatOptsChanged
+                }
+            ),
         ]
         .spacing(12)
         .into()
@@ -762,6 +826,16 @@ impl PropertiesModal {
                     Message::CompatOptsChanged
                 }
             ),
+            compat_input_row(
+                "Misc Args",
+                "Any arbitrary args, e.g. WINEDEBUG=-all.",
+                "e.g. WINEDEBUG=-all",
+                &o.wine_args,
+                |v| {
+                    self.compat_opts.borrow_mut().wine_args = v;
+                    Message::CompatOptsChanged
+                }
+            ),
         ]
         .spacing(12)
         .into()
@@ -771,15 +845,27 @@ impl PropertiesModal {
     fn dxvk_rows_section(&self) -> Element<'_, Message> {
         let o = self.compat_opts.borrow();
 
-        column![compat_flag_row(
-            "DXVK_HUD",
-            "Show a HUD with FPS and GPU information.",
-            o.dxvk_hud,
-            |on| {
-                self.compat_opts.borrow_mut().dxvk_hud = on;
-                Message::CompatOptsChanged
-            }
-        )]
+        column![
+            compat_flag_row(
+                "DXVK_HUD",
+                "Show a HUD with FPS and GPU information.",
+                o.dxvk_hud,
+                |on| {
+                    self.compat_opts.borrow_mut().dxvk_hud = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "Misc Args",
+                "Any arbitrary args. KEY=VALUE tokens become environment variables, other tokens are appended to the command.",
+                "e.g. DXVK_LOG_LEVEL=info",
+                &o.dxvk_args,
+                |v| {
+                    self.compat_opts.borrow_mut().dxvk_args = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+        ]
         .spacing(12)
         .into()
     }
@@ -788,15 +874,27 @@ impl PropertiesModal {
     fn gamemode_rows_section(&self) -> Element<'_, Message> {
         let o = self.compat_opts.borrow();
 
-        column![compat_flag_row(
-            "Enable",
-            "Run the game through gamemoderun.",
-            o.gamemoderun,
-            |on| {
-                self.compat_opts.borrow_mut().gamemoderun = on;
-                Message::CompatOptsChanged
-            }
-        ),]
+        column![
+            compat_flag_row(
+                "Enable",
+                "Run the game through gamemoderun.",
+                o.gamemoderun,
+                |on| {
+                    self.compat_opts.borrow_mut().gamemoderun = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "Misc Args",
+                "Any arbitrary args passed to the gamemoderun wrapper.",
+                "e.g. -a 300",
+                &o.gamemode_args,
+                |v| {
+                    self.compat_opts.borrow_mut().gamemode_args = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+        ]
         .spacing(12)
         .into()
     }
@@ -853,6 +951,16 @@ impl PropertiesModal {
                     Message::CompatOptsChanged
                 }
             ),
+            compat_input_row(
+                "Misc Args",
+                "Any arbitrary args passed to Gamescope, e.g. -F or -O 0x... .",
+                "e.g. --fullscreen",
+                &o.gamescope_args,
+                |v| {
+                    self.compat_opts.borrow_mut().gamescope_args = v;
+                    Message::CompatOptsChanged
+                }
+            ),
         ]
         .spacing(12)
         .into()
@@ -891,15 +999,27 @@ impl PropertiesModal {
     fn misc_rows_section(&self) -> Element<'_, Message> {
         let o = self.compat_opts.borrow();
 
-        column![compat_flag_row(
-            "MANGOHUD",
-            "Show the MangoHud performance overlay.",
-            o.mango_hud,
-            |on| {
-                self.compat_opts.borrow_mut().mango_hud = on;
-                Message::CompatOptsChanged
-            }
-        ),]
+        column![
+            compat_flag_row(
+                "MANGOHUD",
+                "Show the MangoHud performance overlay.",
+                o.mango_hud,
+                |on| {
+                    self.compat_opts.borrow_mut().mango_hud = on;
+                    Message::CompatOptsChanged
+                }
+            ),
+            compat_input_row(
+                "Misc Args",
+                "Any arbitrary args, e.g. MANGOHUD_CONFIG=fps,cpu,gpu.",
+                "e.g. MANGOHUD_CONFIG=fps,cpu",
+                &o.misc_args,
+                |v| {
+                    self.compat_opts.borrow_mut().misc_args = v;
+                    Message::CompatOptsChanged
+                }
+            ),
+        ]
         .spacing(12)
         .into()
     }
