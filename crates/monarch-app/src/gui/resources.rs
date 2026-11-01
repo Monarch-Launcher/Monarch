@@ -94,6 +94,11 @@ pub static REFRESH: LazyLock<svg::Handle> = LazyLock::new(|| {
     svg_with_intrinsic_size(include_bytes!("../../icons/Actions/refresh.svg"), 20)
 });
 
+/// Spinner shown while a background load is in flight (rotated by code).
+pub static LOADER: LazyLock<svg::Handle> = LazyLock::new(|| {
+    svg_with_intrinsic_size(include_bytes!("../../icons/Other/Loading-Spinner.svg"), 18)
+});
+
 pub static ADD_FOLDER: LazyLock<svg::Handle> = LazyLock::new(|| {
     svg_with_intrinsic_size(
         include_bytes!("../../icons/Actions/folder-plus-svgrepo-com.svg"),

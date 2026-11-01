@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use iced::widget::{
-    button, checkbox, column, combo_box, container, row, scrollable, text, text_input, Space,
+    button, checkbox, column, combo_box, container, row, scrollable, svg, text, text_input, Space,
 };
 use iced::{alignment, border, Color, Element, Length, Task};
 use monarch_core::monarch_games::games::CompatOptions;
@@ -43,6 +43,9 @@ pub enum Message {
     SaveCompatOpts,
     Save,
     Cancel,
+
+    /// Animation frame; advances the loading spinner (no-op while idle).
+    Tick,
 }
 
 #[derive(Debug, Clone)]
@@ -66,6 +69,12 @@ pub struct PropertiesModal {
 
     /// The generated (read-only) launch command shown on the main page.
     launch_command: String,
+
+    /// Whether the executables have finished loading in the background.
+    /// While false, a spinner spins next to the executable combo box.
+    executables_loaded: bool,
+    /// Animation frame counter for the loading spinner.
+    tick: u64,
 
     /// Whether the Proton/Wine options page is shown instead of the regular
     /// launch options fields.
@@ -127,6 +136,9 @@ impl PropertiesModal {
             env_args: env_args.unwrap_or_default(),
             launch_command: String::new(),
 
+            executables_loaded: false,
+            tick: 0,
+
             show_compat_opts: false,
             compat_opts: RefCell::new(compat_opts),
 
@@ -174,6 +186,7 @@ impl PropertiesModal {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ExecutablesLoaded(exes) => {
+                self.executables_loaded = true;
                 self.executable_list.append(
                     &mut exes
                         .into_iter()
@@ -240,6 +253,12 @@ impl PropertiesModal {
             Message::CompatOptsChanged => Task::none(),
             Message::LaunchCommandGenerated(command) => {
                 self.launch_command = command;
+                Task::none()
+            }
+            Message::Tick => {
+                if !self.executables_loaded {
+                    self.tick = self.tick.wrapping_add(1);
+                }
                 Task::none()
             }
             Message::SaveCompatOpts => {
@@ -397,6 +416,17 @@ impl PropertiesModal {
         .on_option_hovered(Message::ExecutableHovered)
         .width(Length::Fill);
 
+        // While the executables are still loading in the background, spin a
+        // small loader next to the combo box.
+        let executables_row: Element<'_, Message> = if self.executables_loaded {
+            executables_combo.into()
+        } else {
+            row![executables_combo, loading_spinner(self.tick)]
+                .spacing(10)
+                .align_y(alignment::Vertical::Center)
+                .into()
+        };
+
         let hovered_path = if let Some(path) = &self.hovered_executable {
             container(text(path).size(12))
                 .padding(5)
@@ -418,6 +448,7 @@ impl PropertiesModal {
             container(Space::new().height(Length::Fixed(28.0)))
         };
 
+        #[cfg(target_os = "linux")]
         let compatibility_combo = combo_box(
             &self.compatibility_layers,
             "Select Compatibility Layer",
@@ -428,7 +459,8 @@ impl PropertiesModal {
 
         // Read-only display of the launch command Monarch generates (from the
         // compatibility options, env args and game args).
-        let launch_command_display = text_input("Launch Command", &self.launch_command).padding(10);
+        let launch_command_display: iced::widget::TextInput<'_, Message> =
+            text_input("Launch Command", &self.launch_command).padding(10);
 
         let game_args_input = text_input("Game Specific Launch Args", &self.game_args)
             .on_input(Message::GameArgsChanged)
@@ -456,7 +488,7 @@ impl PropertiesModal {
             column![
                 text("Executables").size(18),
                 hovered_path,
-                executables_combo,
+                executables_row,
                 Space::new().height(Length::Fixed(10.0)),
                 text("Compatibility Layer").size(18),
                 compatibility_combo,
@@ -490,10 +522,13 @@ impl PropertiesModal {
             column![
                 text("Executables").size(18),
                 hovered_path,
-                executables_combo,
+                executables_row,
                 Space::new().height(Length::Fixed(10.0)),
-                text("Compatibility Layer").size(18),
-                compatibility_combo,
+text("Launch Command").size(18),
+                text("This is a simplified launch command. Monarch performs some more steps under the hood.")
+                    .size(12)
+                    .color(Color::from_rgb8(140, 140, 140)),
+                launch_command_display,
                 Space::new().height(Length::Fixed(10.0)),
                 text("Game Specific Launch Args").size(18),
                 text("Launch arguments appended at the end of the launch command.")
@@ -1084,6 +1119,26 @@ fn compat_resolution_part<'a>(
     .spacing(2)
     .width(Length::Fill)
     .into()
+}
+
+/// A small rotating loader icon, tinted like the other action icons. Decays
+/// gracefully between frames: `tick` is advanced by `Message::Tick`, driven
+/// by the app's animation subscription while the executables load.
+fn loading_spinner(tick: u64) -> Element<'static, Message> {
+    // One full revolution spans `SPIN_FRAMES` animation frames (each ~16ms),
+    // so a revolution takes roughly one second.
+    const SPIN_FRAMES: f32 = 60.0;
+    let angle =
+        (tick as f32 % SPIN_FRAMES) / SPIN_FRAMES * std::f32::consts::TAU;
+
+    svg(crate::gui::resources::LOADER.clone())
+        .width(Length::Fixed(18.0))
+        .height(Length::Fixed(18.0))
+        .rotation(iced::Rotation::Floating(iced::Radians(angle)))
+        .style(|_theme: &iced::Theme, _status| iced::widget::svg::Style {
+            color: Some(iced::Color::from_rgb8(255, 127, 0)),
+        })
+        .into()
 }
 
 /// Section label for the Proton/Wine options page, preceded by a divider

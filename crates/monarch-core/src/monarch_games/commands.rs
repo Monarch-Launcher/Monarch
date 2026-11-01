@@ -759,7 +759,7 @@ pub async fn get_executables(
             Ok(path) => {
                 use crate::monarch_utils::monarch_vdf;
 
-                match monarch_vdf::get_install_dir(&mut game_clone, &path) {
+                match monarch_vdf::get_install_dir(&game_clone, &path) {
                     Ok(path) => {
                         game_clone.properties.install_dir = path.to_string_lossy().to_string();
                     }
