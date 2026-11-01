@@ -1,12 +1,8 @@
 use std::sync::{Arc, RwLock};
 
-use iced::Task;
-use tracing::error;
-
 use super::{HomePage, Message};
 use crate::gui::components::gamecard::gamecard::GameCard;
 use crate::gui::components::gamecard::GameCardMessage;
-use crate::gui::show_error;
 
 use monarch_core::monarch_games;
 use monarch_core::monarch_games::monarchgame::MonarchGame;
@@ -71,19 +67,11 @@ impl HomePage {
             Message::OpenGameDetails(_) => iced::Task::none(),
 
             Message::LaunchGame(game) => {
-                let settings_handle_clone = match self.app_state.read() {
-                    Ok(state) => state.get_settings_ptr(),
-                    Err(e) => {
-                        error!("HomePage::update() Failed to acquire read lock on state_handle! | Err: {e}");
-                        show_error("Failed to launch game!");
-                        return Task::none();
-                    }
-                };
-
+                let state_handle_clone = self.app_state.clone();
                 iced::Task::perform(
                     async move {
                         let _ = monarch_core::monarch_games::commands::launch_game(
-                            settings_handle_clone,
+                            state_handle_clone,
                             game,
                         )
                         .await;
@@ -159,11 +147,7 @@ impl HomePage {
                 // move `state_handle` itself; clone a fresh Arc per future instead.
                 let state_handle = state_handle.clone();
                 async move {
-                    monarch_games::commands::get_game_properties(
-                        state_handle,
-                        game.clone(),
-                    )
-                    .await;
+                    monarch_games::commands::get_game_properties(state_handle, game.clone()).await;
                     Message::GameUpdated(game)
                 }
             }))

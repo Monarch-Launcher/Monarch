@@ -2,7 +2,8 @@ use crate::{
     monarch_games::{
         games::GameType,
         monarchgame::{MonarchGame, MonarchGameProperties},
-    }, monarch_utils::{monarch_state::MonarchState, monarch_vdf},
+    },
+    monarch_utils::{monarch_state::MonarchState, monarch_vdf},
 };
 
 #[cfg(target_os = "windows")]
@@ -15,12 +16,17 @@ use crate::monarch_games::macos::steam;
 use crate::monarch_games::linux::steam;
 
 use core::result::Result;
-use std::{cmp::Ordering, sync::{Arc, RwLock}};
+use std::{
+    cmp::Ordering,
+    sync::{Arc, RwLock},
+};
 use tracing::error;
 
 /// Simple function for generating suggested games on homescreen, based on
 /// recent playtime.
-pub async fn get_home_recomendations(state_handle: Arc<RwLock<MonarchState>>) -> Result<Vec<Arc<RwLock<MonarchGame>>>, String> {
+pub async fn get_home_recomendations(
+    state_handle: Arc<RwLock<MonarchState>>,
+) -> Result<Vec<Arc<RwLock<MonarchGame>>>, String> {
     match state_handle.write() {
         Ok(state) => {
             let games = state.get_library_games();
@@ -42,7 +48,8 @@ pub async fn get_home_recomendations(state_handle: Arc<RwLock<MonarchState>>) ->
                                 // cards show correct size/install dir even when
                                 // the DB row was never fully enriched.
                                 let props: MonarchGameProperties =
-                                    monarch_vdf::get_game_properties_from_manifest(&game, &p).into();
+                                    monarch_vdf::get_game_properties_from_manifest(&game, &p)
+                                        .into();
                                 game.properties.last_played = props.last_played;
                                 if !props.install_dir.is_empty() {
                                     game.properties.install_dir = props.install_dir;
@@ -57,15 +64,26 @@ pub async fn get_home_recomendations(state_handle: Arc<RwLock<MonarchState>>) ->
                         }
                     }
                 }
-                
             }
 
             // Sort by last_played, newest first. Timestamps are stored as unix
             // epoch strings, so compare them numerically.
             let mut cloned_vec: Vec<Arc<RwLock<MonarchGame>>> = games.to_vec();
             cloned_vec.sort_by(|g1, g2| {
-                let t1 = g1.read().unwrap().properties.last_played.parse::<i64>().unwrap_or(0);
-                let t2 = g2.read().unwrap().properties.last_played.parse::<i64>().unwrap_or(0);
+                let t1 = g1
+                    .read()
+                    .unwrap()
+                    .properties
+                    .last_played
+                    .parse::<i64>()
+                    .unwrap_or(0);
+                let t2 = g2
+                    .read()
+                    .unwrap()
+                    .properties
+                    .last_played
+                    .parse::<i64>()
+                    .unwrap_or(0);
                 if t1 > t2 {
                     Ordering::Less
                 } else if t1 < t2 {

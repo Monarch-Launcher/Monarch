@@ -304,6 +304,17 @@ impl App {
                 .map(|_| AppMessage::Page(pages::Message::Library(pages::library::Message::Tick))),
             pages::PageTab::Home => iced::time::every(std::time::Duration::from_millis(16))
                 .map(|_| AppMessage::Page(pages::Message::Home(pages::home::Message::Tick))),
+            // While the properties modal is open, its executable spinner
+            // animates; the tick is a no-op (see properties::Message::Tick)
+            // once the executables have loaded or no modal is open.
+            pages::PageTab::GameDetails => iced::time::every(std::time::Duration::from_millis(16))
+                .map(|_| {
+                    AppMessage::Page(pages::Message::GameDetails(
+                        pages::game_details::Message::Properties(
+                            components::gamecard::properties::Message::Tick,
+                        ),
+                    ))
+                }),
             // The speed graph redraws continuously between samples so it
             // scrolls smoothly instead of jumping once per poll.
             pages::PageTab::Download => iced::time::every(std::time::Duration::from_millis(16))

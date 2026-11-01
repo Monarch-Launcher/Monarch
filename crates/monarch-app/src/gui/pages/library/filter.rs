@@ -57,11 +57,7 @@ impl FilterModal {
         let content = column![
             text("Store").size(18).font(styles::fonts::BOLD),
             Self::checkbox("Steam", self.filter.steam, Message::SteamToggled),
-            Self::checkbox(
-                "Epic Games",
-                self.filter.epic,
-                Message::EpicToggled,
-            ),
+            Self::checkbox("Epic Games", self.filter.epic, Message::EpicToggled,),
             Space::new().height(Length::Fixed(10.0)),
             text("Status").size(18).font(styles::fonts::BOLD),
             Self::checkbox(
@@ -75,7 +71,9 @@ impl FilterModal {
                 Message::UninstalledToggled,
             ),
             Space::new().height(Length::Fixed(10.0)),
-            button(text("Reset")).on_press(Message::Reset).style(text_button),
+            button(text("Reset"))
+                .on_press(Message::Reset)
+                .style(text_button),
             Space::new().height(Length::Fixed(10.0)),
             row![
                 Space::new().width(Length::Fill),

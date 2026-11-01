@@ -1,14 +1,14 @@
 use std::sync::{Arc, RwLock};
 
-use iced::widget::{button, column, row, scrollable, text, Space};
-use iced::{alignment, Color, Element, Length, Task};
+use iced::widget::{column, scrollable, text, Space};
+use iced::{Color, Element, Length, Task};
 use monarch_core::monarch_games::monarchgame::MonarchGame;
 use monarch_core::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use monarch_core::monarch_utils::monarch_state::MonarchState;
 
 use crate::gui::components::gamecard::actions::{self, action_item, ActionsModal};
 use crate::gui::components::gamecard::properties::{self, PropertiesModal};
-use crate::gui::{resources, styles};
+use crate::gui::resources;
 
 /// Combined edit modal shown from the details page: an action list plus a
 /// launch properties editor (executable, compatibility layer, launch
@@ -73,25 +73,11 @@ impl EditModal {
         // The content can get taller than the window, so make the inner area
         // scrollable in both views.
         let content = if self.show_launch_properties {
-            scrollable(
-                column![
-                    self.properties.fields().map(Message::Properties),
-                    Space::new().height(Length::Fixed(20.0)),
-                    row![
-                        button(text("Save"))
-                            .on_press(Message::Properties(properties::Message::Save))
-                            .padding(10)
-                            .style(styles::button::primary),
-                        Space::new().width(Length::Fixed(10.0)),
-                        button(text("Back"))
-                            .on_press(Message::Back)
-                            .padding(10)
-                            .style(styles::button::secondary),
-                    ]
-                    .align_y(alignment::Vertical::Center),
-                ]
-                .spacing(10),
-            )
+            // Reuse the properties modal's own view (fields + footer), so
+            // the Save/Save Compat buttons behave identically here. Saving
+            // compat options navigates back to these fields instead of
+            // closing the modal.
+            scrollable(self.properties.content().map(Message::Properties))
         } else {
             scrollable(
                 column![
