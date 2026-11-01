@@ -176,7 +176,14 @@ impl StoreType for SteamClient {
                 "steam" => launch_client_game(game),
                 "steamcmd" => {
                     let game_clone: MonarchGame = game.clone();
-                    let settings_handle_clone = settings_handle.clone();
+                    let settings_handle_clone = match state_handle.read() {
+                        Ok(state) => {
+                            state.get_settings_ptr()
+                        }
+                        Err(e) => {
+                            bail!("steam_client::SteamClient::launch_game() Failed to acquire read lock on state_handle! | Err: {e}")
+                        }
+                    };
                     task::spawn(async move {
                         if let Err(e) = launch_cmd_game(settings_handle_clone, &game_clone).await {
                             error!(
