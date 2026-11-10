@@ -1,4 +1,4 @@
-use super::games::{GameType, SearchResult};
+use super::games::GameType;
 use super::stores::{DownloadOptions, StoreType};
 use super::{monarchgame::MonarchGame, steam_client};
 use crate::monarch_games::egs_client::EgsClient;
@@ -9,7 +9,7 @@ use crate::monarch_utils::monarch_fs::{self, generate_cache_image_path, get_unix
 use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
-use crate::monarch_utils::{monarch_http, monarch_vdf};
+use crate::monarch_utils::{self, monarch_http, monarch_vdf};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use sqlx::SqlitePool;
@@ -32,44 +32,12 @@ impl StoreType for MonarchClient {
         settings_handle: Arc<RwLock<Settings>>,
         name: &str,
         _filter: &SearchFilter,
-    ) -> Vec<Box<dyn SearchResult>> {
-        let monarch_url: &'static str = std::env!("MONARCH_URL");
-        let search_term: String = format!("{monarch_url}/api/games?search={}", name);
-        let response = match monarch_http::client().get(search_term).send().await {
-            Ok(resp) => resp,
-            Err(e) => {
-                error!(
-                    "monarch_client::search_games() reqwest::get() failed! | Err: {}",
-                    e
-                );
-                return Vec::new();
-            }
-        };
+    ) -> Result<Vec<MonarchGame>> {
+        let mut games = monarch_utils::api::search_games(name, 30)
+            .await
+            .with_context(|| "monarch_client::search_games() -> ")?;
 
-        let resp_content = match response.text().await {
-            Ok(content) => content,
-            Err(e) => {
-                error!(
-                    "monarch_client::search_games() response.text() failed! | Err: {}",
-                    e
-                );
-                return Vec::new();
-            }
-        };
-
-        let mut web_games: Vec<Box<MonarchWebApiGame>> =
-            match serde_json::from_str::<Vec<MonarchWebApiGame>>(&resp_content) {
-                Ok(games) => games.into_iter().map(Box::new).collect(),
-                Err(e) => {
-                    error!(
-                        "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
-                        e
-                    );
-                    return Vec::new();
-                }
-            };
-
-        for game in web_games.iter_mut() {
+        for game in games.iter_mut() {
             let cover_path = String::from(
                 generate_cache_image_path(
                     settings_handle.clone(),
@@ -82,10 +50,7 @@ impl StoreType for MonarchClient {
             game.cover_path = cover_path;
         }
 
-        web_games
-            .into_iter()
-            .map(|g| g as Box<dyn SearchResult>)
-            .collect()
+        Ok(games) 
     }
 
     async fn install_game(

@@ -9,7 +9,6 @@ use tracing::error;
 use super::games::GameType;
 use super::stores::StoreType;
 use crate::monarch_games::egs_client::EgsClient;
-use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::{download_image, download_image_greyscale};
@@ -349,16 +348,6 @@ pub struct MonarchWebApiStore {
 pub enum GameImageType {
     Cover,
     Artwork,
-}
-
-impl SearchResult for MonarchWebApiGame {
-    fn to_search_result(&self) -> MonarchWebApiGame {
-        return self.clone();
-    }
-
-    fn into_monarchgame(&self) -> MonarchGame {
-        MonarchGame::from(self)
-    }
 }
 
 impl MonarchWebApiGame {

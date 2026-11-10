@@ -7,7 +7,7 @@ use tokio::task::{self, JoinHandle};
 use tracing::{debug, error, info, warn};
 
 use super::stores::StoreType;
-use crate::monarch_games::games::{GameType, SearchResult};
+use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
@@ -16,7 +16,7 @@ use crate::monarch_utils::monarch_fs::{
 };
 use crate::monarch_utils::monarch_game_downloader::{DownloadJob, MonarchDownloader};
 use crate::monarch_utils::monarch_settings::Settings;
-use crate::monarch_utils::{monarch_http, monarch_terminal};
+use crate::monarch_utils::{self, monarch_http, monarch_terminal};
 use monarch_egs::{
     check_platform_support, get_game_manifest, AttributeValue, EgsLaunchCommand, Manifest, Session,
     SupportedPlatforms, User,
@@ -38,43 +38,12 @@ impl StoreType for EgsClient {
         settings_handle: Arc<RwLock<Settings>>,
         name: &str,
         _filter: &SearchFilter,
-    ) -> Vec<Box<dyn SearchResult>> {
-        let monarch_url: &'static str = std::env!("MONARCH_URL");
-        let search_term: String =
-            format!("{}/api/games?search={}?store=epicgames", monarch_url, name,);
+    ) -> Result<Vec<MonarchGame>> {
+        let mut games: Vec<MonarchGame> = monarch_utils::api::search_games(name, 30)
+            .await
+            .with_context(|| "egs_client::search_games() -> ")?;
 
-        let response = match monarch_http::client().get(search_term).send().await {
-            Ok(resp) => resp,
-            Err(e) => {
-                error!("egs::search_games() reqwest::get() failed! | Err: {}", e);
-                return Vec::new();
-            }
-        };
-
-        let resp_content = match response.text().await {
-            Ok(content) => content,
-            Err(e) => {
-                error!(
-                    "monarch_client::search_games() response.text() failed! | Err: {}",
-                    e
-                );
-                return Vec::new();
-            }
-        };
-
-        let mut web_games: Vec<Box<MonarchWebApiGame>> =
-            match serde_json::from_str::<Vec<MonarchWebApiGame>>(&resp_content) {
-                Ok(games) => games.into_iter().map(Box::new).collect(),
-                Err(e) => {
-                    error!(
-                        "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
-                        e
-                    );
-                    return Vec::new();
-                }
-            };
-
-        for game in web_games.iter_mut() {
+        for game in games.iter_mut() {
             let cover_path = String::from(
                 generate_cache_image_path(
                     settings_handle.clone(),
@@ -87,10 +56,7 @@ impl StoreType for EgsClient {
             game.cover_path = cover_path;
         }
 
-        web_games
-            .into_iter()
-            .map(|g| g as Box<dyn SearchResult>)
-            .collect()
+        Ok(games)
     }
 
     async fn install_game(

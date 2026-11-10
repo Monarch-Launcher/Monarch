@@ -43,15 +43,21 @@ pub async fn search_games(
     settings_handle: Arc<RwLock<Settings>>,
     name: String,
     filter: SearchFilter,
-) -> Vec<MonarchWebApiGame> {
+) -> Vec<MonarchGame> {
     if filter.monarch {
         let client = MonarchClient::new();
-        return client
+        return match client
             .search_games(settings_handle.clone(), &name, &filter)
-            .await
-            .into_iter()
-            .map(|g| g.to_search_result())
-            .collect();
+            .await {
+                Ok(games) => games,
+                Err(e) => {
+                    error!(
+                        "monarch_games::commands::refresh_library() -> {}",
+                        e.chain().map(|e| e.to_string()).collect::<String>()
+                    );
+                    vec![]
+                }
+            }
     }
 
     let mut games: Vec<MonarchWebApiGame> = Vec::new();

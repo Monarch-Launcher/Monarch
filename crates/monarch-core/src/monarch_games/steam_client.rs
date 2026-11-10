@@ -13,7 +13,6 @@ use tracing::{debug, error, info, warn};
 
 use super::monarchgame::{MonarchGame, MonarchWebApiGame};
 use crate::monarch_games::games::GameType;
-use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarchgame::GameImageType;
 use crate::monarch_games::monarchgame::StoreInfo;
 use crate::monarch_games::stores::DownloadOptions;
@@ -57,12 +56,8 @@ impl StoreType for SteamClient {
         settings_handle: Arc<RwLock<Settings>>,
         name: &str,
         _filter: &SearchFilter,
-    ) -> Vec<Box<dyn SearchResult>> {
-        find_game(settings_handle, name)
-            .await
-            .into_iter()
-            .map(|g| Box::new(MonarchWebApiGame::from_monarchgame(g)) as Box<dyn SearchResult>)
-            .collect::<Vec<Box<dyn SearchResult>>>()
+    ) -> Result<Vec<MonarchGame>> {
+        find_game(settings_handle, name).await
     }
 
     async fn install_game(
@@ -656,18 +651,22 @@ async fn parse_id_monarch_com(
 }
 
 /// Function to search steam store directly from Monarch client, skipping monarch-launcher.com
-pub async fn find_game(settings_handle: Arc<RwLock<Settings>>, name: &str) -> Vec<MonarchGame> {
+pub async fn find_game(settings_handle: Arc<RwLock<Settings>>, name: &str) -> Result<Vec<MonarchGame>> {
     let mut target: String = String::from("https://store.steampowered.com/search/?term=");
     target.push_str(name);
 
-    let mut games: Vec<MonarchGame> = Vec::new();
+    let response = monarch_http::client()
+        .get(&target)
+        .send()
+        .await
+        .with_context(|| "steam_client::find_game() -> ")?;
 
-    if let Ok(response) = monarch_http::client().get(&target).send().await {
-        if let Ok(body) = response.text().await {
-            games = parse_steam_page(settings_handle, &body).await;
-        }
-    }
-    games
+    let body = response.text()
+        .await
+        .with_context(|| "steam_client::find_game() -> ")?;
+
+    let games = parse_steam_page(settings_handle, &body).await;
+    Ok(games)
 }
 
 /// Gets AppIDs and Links from Steam store search
