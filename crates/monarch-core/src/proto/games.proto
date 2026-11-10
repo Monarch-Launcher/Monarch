@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package monarch_game_db.v1;
+
+// A MonarchGame type returned from the API
+message Game {
+  string name = 1;
+  string id = 2;
+  int64 igdb_id = 3;
+  string cover_url = 4;
+  string artwork_url = 5;
+}
+
+// A storefront a MonarchGame is available at
+message Store {
+    string name = 1;
+    string store_id = 2;
+    string store_url = 3;
+}
+
+// A light-weight representation of a Monarch game used for 
+// search suggestion, can then use the id to get full game 
+// content.
+message Suggestion {
+    string name = 1;
+    string id = 2;
+}
+
+// Metadata to be shown on game details page in Monarch 
+// launcher.
+// TODO: Finish implemetning metadata in rust code
+message Metadata {
+    string id = 1;
+    string summary = 2;
+    float rating = 3;
+    repeated string genres = 4;
+    string release_date = 5;
+    repeated string publishers = 6;
+    repeated string developers = 7;
+    repeated string platforms = 8;
+}
+
+
+// Wrapper messages: keep field "1" always the content collection, so new
+// top-level fields (pagination metadata, server version, etc.) can be added
+// later without breaking decoders.
+
+message SearchGamesResponse {
+  repeated Game games = 1;
+}
+
+message SearchSuggestionsResponse {
+  repeated Suggestion suggestions = 1;
+}
+
+message ListGamesResponse {
+  repeated Game games = 1;
+}
+
+message GetStoresResponse {
+  repeated Store stores = 1;
+}
+
+message ErrorResponse {
+  uint32 code = 1;    // application error code (see table below)
+  string message = 2; // human-readable, safe to show in logs
+}

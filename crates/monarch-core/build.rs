@@ -4,6 +4,7 @@ fn main() {
     dotenv().ok();
 
     verify_env_vars();
+    build_protobufs();
 }
 
 fn verify_env_vars() {
@@ -25,4 +26,17 @@ fn verify_env_vars() {
         eprintln!("CARGO_PKG_VERSION not set | Err: {}", e);
         std::process::exit(1);
     }
+}
+
+fn build_protobufs() {
+    // protox: compile .proto -> FileDescriptorSet without needing system protoc
+    let file_descriptor_set =
+        protox::compile(["src/proto/games.proto"], ["src/proto"]).expect("Failed to compile proto files");
+
+    // prost-build: generate Rust structs from the descriptor
+    prost_build::Config::new()
+        .compile_fds(file_descriptor_set).expect("Failed to compile fds");
+
+    // Rebuild only when the proto changes
+    println!("cargo:rerun-if-changed=src/proto/games.proto");
 }

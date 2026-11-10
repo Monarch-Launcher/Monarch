@@ -11,6 +11,8 @@ edition = "2021"
 
 [build-dependencies]
 dotenv.workspace = true
+prost-build = "0.14.4"
+protox = "0.10.0"
 
 [dependencies]
 reqwest = { workspace = true, features = ["blocking"] }
@@ -46,6 +48,7 @@ sqlx = { version = "0.8", features = [
   "derive",
   "runtime-async-std",
 ], default-features = false }
+prost = "0.14"
 
 monarch_egs.workspace = true
 
