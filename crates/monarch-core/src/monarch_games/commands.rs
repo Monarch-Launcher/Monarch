@@ -12,7 +12,6 @@ use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::games::GameType;
-use crate::monarch_games::monarchgame::MonarchWebApiGame;
 use crate::monarch_games::steam_client;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::updates::{GameUpdateCheck, MonarchGameUpdate};
@@ -60,30 +59,24 @@ pub async fn search_games(
             }
     }
 
-    let mut games: Vec<MonarchWebApiGame> = Vec::new();
+    let mut games: Vec<MonarchGame> = Vec::new();
 
     if filter.steam_powered {
         let client = SteamClient::new();
-        games.append(
-            &mut client
-                .search_games(settings_handle.clone(), &name, &filter)
-                .await
-                .into_iter()
-                .map(|g| g.to_search_result())
-                .collect(),
-        );
+        if let Ok(mut steam_games) = client
+            .search_games(settings_handle.clone(), &name, &filter)
+            .await {
+                games.append(&mut steam_games);
+        }
     }
 
     if filter.egs {
         let client = EgsClient::new();
-        games.append(
-            &mut client
-                .search_games(settings_handle, &name, &filter)
-                .await
-                .into_iter()
-                .map(|g| g.to_search_result())
-                .collect(),
-        );
+        if let Ok(mut egs_games) = client
+            .search_games(settings_handle, &name, &filter)
+            .await {
+                games.append(&mut egs_games);
+        }
     }
 
     games
