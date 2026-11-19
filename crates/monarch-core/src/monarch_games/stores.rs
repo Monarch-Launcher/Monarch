@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    monarch_games::{games::SearchResult, monarchgame::MonarchGame},
+    monarch_games::monarchgame::MonarchGame,
     monarch_utils::{monarch_game_downloader::MonarchDownloader, monarch_settings::Settings},
 };
 use anyhow::Result;
@@ -15,7 +15,7 @@ pub trait StoreType: Send + Sync {
         settings_handle: Arc<RwLock<Settings>>,
         name: &str,
         filter: &SearchFilter,
-    ) -> Vec<Box<dyn SearchResult>>;
+    ) -> Result<Vec<MonarchGame>>;
     async fn install_game(
         &mut self,
         downloader_handle: Arc<RwLock<MonarchDownloader>>,

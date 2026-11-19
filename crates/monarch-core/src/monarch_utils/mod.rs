@@ -1,3 +1,4 @@
+pub mod api;
 pub mod commands;
 pub mod housekeeping;
 pub mod monarch_credentials;

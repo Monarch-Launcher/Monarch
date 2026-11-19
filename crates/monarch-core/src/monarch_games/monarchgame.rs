@@ -9,13 +9,13 @@ use tracing::error;
 use super::games::GameType;
 use super::stores::StoreType;
 use crate::monarch_games::egs_client::EgsClient;
-use crate::monarch_games::games::SearchResult;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_utils::monarch_download::{download_image, download_image_greyscale};
 use crate::monarch_utils::monarch_fs::{generate_greyscale_path, path_exists};
 use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
+use crate::proto::generated::Game;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MonarchGame {
@@ -274,6 +274,28 @@ impl PartialEq for MonarchGame {
 
 impl Eq for MonarchGame {}
 
+impl From<Game> for MonarchGame {
+    fn from(value: Game) -> Self {
+        Self {
+            name: value.name,
+            id: value.id,
+            stores: vec![],
+            executable_path: None,
+            cover_path: String::new(),
+            cover_url: value.cover_url,
+            launch_args: None,
+            compatibility: None,
+            summary: String::new(),
+            artwork_path: String::new(),
+            artwork_url: value.artwork_url,
+            properties: MonarchGameProperties::default(),
+            imported: false,
+            is_installed: false,
+            managed_by_monarch: false
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreInfo {
     pub name: String,
@@ -326,16 +348,6 @@ pub struct MonarchWebApiStore {
 pub enum GameImageType {
     Cover,
     Artwork,
-}
-
-impl SearchResult for MonarchWebApiGame {
-    fn to_search_result(&self) -> MonarchWebApiGame {
-        return self.clone();
-    }
-
-    fn into_monarchgame(&self) -> MonarchGame {
-        MonarchGame::from(self)
-    }
 }
 
 impl MonarchWebApiGame {
