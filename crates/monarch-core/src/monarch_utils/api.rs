@@ -12,13 +12,40 @@ pub struct SearchSuggestion {
     pub id: String,
 }
 
+pub struct SearchParams {
+    pub name: Option<String>,
+    pub id: Option<String>,
+    pub store: Option<String>,
+    pub store_id: Option<String>,
+    pub limit: u32,
+}
+
 /// Search for games on monarch-launcher.com
-pub async fn search_games(query: &str, limit: u32) -> Result<Vec<MonarchGame>> {
+pub async fn search_games(params: SearchParams) -> Result<Vec<MonarchGame>> {
     let url = format!("{}/api/games/search", std::env!("MONARCH_URL"));
     let client = reqwest::Client::new();
 
+    let limit = params.limit.to_string();
+    let mut web_params: Vec<(&str, &str)> = vec![("limit", &limit)];
+
+    if params.name.is_some() {
+        web_params.push(("query", &params.name.as_ref().unwrap().as_str()));
+    }
+
+    if params.id.is_some() {
+        web_params.push(("id", &params.id.as_ref().unwrap().as_str()));
+    }
+    
+    if params.store.is_some() {
+        web_params.push(("store", &params.store.as_ref().unwrap().as_str()));
+    }
+
+    if params.store_id.is_some() {
+        web_params.push(("storeId", &params.store_id.as_ref().unwrap().as_str()));
+    }
+
     let bytes = client.get(url)
-        .query(&[("query", query), ("limit", &limit.to_string())])
+        .query(&web_params)
         .send()
         .await?
         .bytes()

@@ -11,13 +11,15 @@ use std::sync::RwLock;
 use tokio::task;
 use tracing::{debug, error, info, warn};
 
-use super::monarchgame::{MonarchGame, MonarchWebApiGame};
+use super::monarchgame::MonarchGame;
 use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::GameImageType;
 use crate::monarch_games::monarchgame::StoreInfo;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::library;
+use crate::monarch_utils;
+use crate::monarch_utils::api::SearchParams;
 use crate::monarch_utils::monarch_credentials::get_password;
 use crate::monarch_utils::monarch_fs::{generate_cache_image_path, generate_library_image_path};
 use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
@@ -575,79 +577,56 @@ async fn parse_id_monarch_com(
     id: String,
     is_cache: bool,
 ) -> Result<MonarchGame> {
-    let monarch_url: &'static str = std::env!("MONARCH_URL");
-
+    let monarch_url: &str = std::env!("MONARCH_URL");
     info!("Parsing {id} via {monarch_url}.");
-    let mut game_info_opt: Option<MonarchWebApiGame> = None;
-    let target: String = format!("{monarch_url}/api/games?store=steam&store_id={id}");
 
-    // GET info from Steam servers
-    match monarch_http::client().get(&target).send().await {
-        Ok(response) => match response.text().await {
-            Ok(body) => {
-                let web_games: Vec<MonarchWebApiGame> = serde_json::from_str(&body).unwrap();
-                if web_games.is_empty() {
-                    bail!("Nothing returned for game with ID: {id}");
-                }
-                game_info_opt = Some(web_games.first().unwrap().clone());
-            }
-            Err(e) => {
-                warn!("steam_client::parse_steam_ids() Failed to parse response body! | Err: {e}");
-            }
-        },
-        Err(e) => {
-            error!(
-                "steam_client::parse_steam_ids() Failed to get response from: {target} | Err: {e}"
-            );
+    let games = monarch_utils::api::search_games(SearchParams{name: None, id: None, store: Some("steam".to_string()), store_id: Some(id), limit: 1})
+        .await
+        .with_context(|| "steam_client::parse_id_monarch_com() -> ")?;
+
+    let mut game: MonarchGame = match games.first() {
+        Some(game) => game.clone(),
+        None => {
+            bail!("")
         }
-    }
+    };
 
-    // Parse content into MonarchGame
-    if let Some(game_info) = game_info_opt {
-        let mut monarch_game = MonarchGame::from(&game_info);
+    if is_cache {
+        let path: String = String::from(
+            generate_cache_image_path(
+                settings_handle.clone(),
+                &game.name,
+                GameImageType::Cover,
+            )
+            .to_str()
+            .unwrap(),
+        );
+        game.cover_path = path;
+    } else {
+        let cover_path: String = String::from(
+            generate_library_image_path(
+                settings_handle.clone(),
+                &game.name,
+                GameImageType::Cover,
+            )
+            .to_str()
+            .unwrap(),
+        );
+        let artwork_path: String = String::from(
+            generate_library_image_path(
+                settings_handle,
+                &game.name,
+                GameImageType::Artwork,
+            )
+            .to_str()
+            .unwrap(),
+        );
 
-        monarch_game.stores = game_info.stores.iter().map(StoreInfo::from).collect();
+        game.cover_path = cover_path;
+        game.artwork_path = artwork_path;
+    };
 
-        if is_cache {
-            let path: String = String::from(
-                generate_cache_image_path(
-                    settings_handle.clone(),
-                    &game_info.name,
-                    GameImageType::Cover,
-                )
-                .to_str()
-                .unwrap(),
-            );
-            monarch_game.cover_path = path;
-        } else {
-            let cover_path: String = String::from(
-                generate_library_image_path(
-                    settings_handle.clone(),
-                    &game_info.name,
-                    GameImageType::Cover,
-                )
-                .to_str()
-                .unwrap(),
-            );
-            let artwork_path: String = String::from(
-                generate_library_image_path(
-                    settings_handle,
-                    &game_info.name,
-                    GameImageType::Artwork,
-                )
-                .to_str()
-                .unwrap(),
-            );
-
-            monarch_game.cover_path = cover_path;
-            monarch_game.artwork_path = artwork_path;
-        };
-
-        return Ok(monarch_game);
-    }
-
-    warn!("Failed to parse Steam game with id: {id}");
-    bail!("Failed to parse Steam game with id: {id}")
+    return Ok(game);
 }
 
 /// Function to search steam store directly from Monarch client, skipping monarch-launcher.com

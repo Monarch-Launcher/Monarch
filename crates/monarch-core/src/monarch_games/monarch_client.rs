@@ -5,6 +5,7 @@ use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGameProperties, MonarchWebApiGame};
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::library;
+use crate::monarch_utils::api::SearchParams;
 use crate::monarch_utils::monarch_fs::{self, generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_settings::Settings;
@@ -33,7 +34,7 @@ impl StoreType for MonarchClient {
         name: &str,
         _filter: &SearchFilter,
     ) -> Result<Vec<MonarchGame>> {
-        let mut games = monarch_utils::api::search_games(name, 30)
+        let mut games = monarch_utils::api::search_games(SearchParams{name: Some(name.to_string()), id: None, store: None, store_id: None, limit: 30})
             .await
             .with_context(|| "monarch_client::search_games() -> ")?;
 
@@ -358,8 +359,8 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
         egs_client
             .load_existing_user(settings_handle.clone())
             .await
-            .with_context(|| "monarch_client -> ")?;
-        egs_client.get_library(settings_handle).await
+            .with_context(|| "monarch_client::refresh_library() -> ")?;
+        egs_client.get_library(settings_handle).await.with_context(|| "monarch_client::refresh_library() -> ")?
     } else {
         vec![]
     };
