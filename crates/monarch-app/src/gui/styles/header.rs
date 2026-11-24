@@ -128,16 +128,16 @@ pub fn window_control_close(theme: &Theme, status: widget_button::Status) -> wid
             ..Default::default()
         },
         widget_button::Status::Pressed => widget_button::Style {
-            background: Some(Color {
-                a: 0.8,
-                ..palette.danger
-            }
-            .into()),
+            background: Some(
+                Color {
+                    a: 0.8,
+                    ..palette.danger
+                }
+                .into(),
+            ),
             text_color: Color::WHITE,
             ..Default::default()
         },
         _ => widget_button::Style::default(),
     }
 }
-
-

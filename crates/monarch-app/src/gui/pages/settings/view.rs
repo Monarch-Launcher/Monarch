@@ -466,11 +466,7 @@ impl SettingsPage {
                             Message::EpicAuthCodeChanged
                         ),
                         Space::new().width(10),
-                        icon_button(
-                            Some(Message::ToggleHiddenEpicToken),
-                            VIEW.clone(),
-                            0.0
-                        ),
+                        icon_button(Some(Message::ToggleHiddenEpicToken), VIEW.clone(), 0.0),
                     ]
                 } else {
                     row![
@@ -480,11 +476,7 @@ impl SettingsPage {
                             Message::EpicAuthCodeChanged
                         ),
                         Space::new().width(10),
-                        icon_button(
-                            Some(Message::ToggleHiddenEpicToken),
-                            HIDE.clone(),
-                            0.0
-                        ),
+                        icon_button(Some(Message::ToggleHiddenEpicToken), HIDE.clone(), 0.0),
                     ]
                 },
                 Space::new().width(10),

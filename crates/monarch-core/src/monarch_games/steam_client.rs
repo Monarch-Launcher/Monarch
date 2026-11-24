@@ -35,6 +35,8 @@ use super::macos::steam;
 
 #[cfg(target_os = "linux")]
 use super::linux::steam;
+#[cfg(target_os = "linux")]
+use super::linux::umu;
 
 /*
 * This file acts like a general interface between commands.rs and Steam.
@@ -160,25 +162,40 @@ impl StoreType for SteamClient {
 
     async fn launch_game(
         &mut self,
-        settings_handle: Arc<RwLock<Settings>>,
+        state_handle: Arc<RwLock<MonarchState>>,
         game: &MonarchGame,
     ) -> Result<()> {
-        match game.get_store_name().as_str() {
-            "steam" => launch_client_game(game),
-            "steamcmd" => {
-                let game_clone: MonarchGame = game.clone();
-                let settings_handle_clone = settings_handle.clone();
-                task::spawn(async move {
-                    if let Err(e) = launch_cmd_game(settings_handle_clone, &game_clone).await {
-                        error!(
-                            "steam_client::SteamClient::launch_game() -> {}",
-                            e.chain().map(|e| e.to_string()).collect::<String>()
-                        );
-                    }
-                });
-                Ok(())
+        #[cfg(target_os = "linux")]
+        {
+            umu::umu_run(game, state_handle).await
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            match game.get_store_name().as_str() {
+                "steam" => launch_client_game(game),
+                "steamcmd" => {
+                    let game_clone: MonarchGame = game.clone();
+                    let settings_handle_clone = match state_handle.read() {
+                        Ok(state) => {
+                            state.get_settings_ptr()
+                        }
+                        Err(e) => {
+                            bail!("steam_client::SteamClient::launch_game() Failed to acquire read lock on state_handle! | Err: {e}")
+                        }
+                    };
+                    task::spawn(async move {
+                        if let Err(e) = launch_cmd_game(settings_handle_clone, &game_clone).await {
+                            error!(
+                                "steam_client::SteamClient::launch_game() -> {}",
+                                e.chain().map(|e| e.to_string()).collect::<String>()
+                            );
+                        }
+                    });
+                    Ok(())
+                }
+                _ => bail!("Neither Steam client nor SteamCMD was detected as game store!"),
             }
-            _ => bail!("Neither Steam client nor SteamCMD was detected as game store!"),
         }
     }
 }
