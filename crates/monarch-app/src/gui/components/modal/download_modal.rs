@@ -8,6 +8,7 @@ use monarch_core::monarch_games::commands::proton_versions;
 use monarch_core::monarch_games::games::GameType;
 use monarch_core::monarch_games::monarchgame::MonarchGame;
 use monarch_core::monarch_games::stores::DownloadOptions;
+use monarch_core::monarch_games::stores::StoreEnum;
 use monarch_core::monarch_utils::monarch_settings::Settings;
 use monarch_core::monarch_utils::monarch_vdf::ProtonVersion;
 use monarch_egs::SupportedPlatforms;
@@ -69,7 +70,7 @@ impl DownloadModal {
 
         let options = DownloadOptions {
             folder: "".to_string(),
-            store: store_name.clone(),
+            store: StoreEnum::from(store_name.clone()),
             game_name: game_name,
             game_store_id: store_id,
             os: std::env::consts::OS.to_string(),

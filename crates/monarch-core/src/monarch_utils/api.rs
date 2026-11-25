@@ -5,7 +5,7 @@
 use anyhow::Result;
 use prost::Message;
 
-use crate::{monarch_games::monarchgame::{MonarchGame, StoreInfo}, proto::generated::{GetStoresResponse, SearchGamesResponse, SearchSuggestionsResponse}};
+use crate::{monarch_games::{monarchgame::{MonarchGame, StoreInfo}, stores::StoreEnum}, proto::generated::{GetStoresResponse, SearchGamesResponse, SearchSuggestionsResponse}};
 
 pub struct SearchSuggestion {
     pub name: String,
@@ -100,7 +100,7 @@ pub async fn get_stores(id: &str) -> Result<Vec<StoreInfo>> {
 
     let stores: Vec<StoreInfo> = response.stores
         .into_iter()
-        .map(|s| StoreInfo { name: s.name, store_id: s.store_id, store_url: s.store_url })
+        .map(|s| StoreInfo { name: StoreEnum::from(s.name), store_id: s.store_id, store_url: s.store_url })
         .collect::<Vec<StoreInfo>>();
 
     Ok(stores)

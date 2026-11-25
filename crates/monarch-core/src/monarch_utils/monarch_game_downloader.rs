@@ -80,7 +80,7 @@ impl DownloadJob {
             name: folder_name,
             game_id: game.id.clone(),
             path: PathBuf::from(options.folder),
-            store: options.store.clone(),
+            store: options.store.to_string(),
             os: options.os.clone(),
             manifest: Arc::new(manifest),
             game,

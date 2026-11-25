@@ -16,6 +16,7 @@ use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::GameImageType;
 use crate::monarch_games::monarchgame::StoreInfo;
 use crate::monarch_games::stores::DownloadOptions;
+use crate::monarch_games::stores::StoreEnum;
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_library::library;
 use crate::monarch_utils;
@@ -404,7 +405,7 @@ pub async fn download_game(
         parse_steam_ids(settings_handle, &[String::from(id)], false, true).await[0].clone();
 
     monarchgame.stores.push(StoreInfo {
-        name: "steamcmd".to_string(),
+        name: StoreEnum::Other("steamcmd".to_string()),
         store_id: id.to_string(),
         store_url: "".to_string(),
     });

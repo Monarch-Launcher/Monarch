@@ -11,6 +11,7 @@ use super::stores::StoreType;
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
+use crate::monarch_games::stores::StoreEnum;
 use crate::monarch_utils::monarch_download::{download_image, download_image_greyscale};
 use crate::monarch_utils::monarch_fs::{generate_greyscale_path, path_exists};
 use crate::monarch_utils::monarch_settings::Settings;
@@ -70,7 +71,7 @@ impl MonarchGame {
             name: name.to_string(),
             id: id.to_string(),
             stores: vec![StoreInfo {
-                name: store.to_string(),
+                name: StoreEnum::from(store),
                 store_id: store_id.to_string(),
                 store_url: store_url.to_string(),
             }],
@@ -220,7 +221,7 @@ impl GameType for MonarchGame {
         if self.stores.is_empty() {
             return "".to_string();
         }
-        self.stores[0].name.clone()
+        self.stores[0].name.to_string()
     }
 
     fn get_store_id(&self) -> String {
@@ -258,13 +259,13 @@ impl PartialEq for MonarchGame {
 
         let store: &str = match self.stores[0].name.as_str() {
             "steamcmd" => "steam",
-            _ => &self.stores[0].name,
+            _ => self.stores[0].name.as_str(),
         };
         let store_id: &str = &self.stores[0].store_id;
 
         let other_store: &str = match other.stores[0].name.as_str() {
             "steamcmd" => "steam",
-            _ => &other.stores[0].name,
+            _ => other.stores[0].name.as_str(),
         };
         let other_store_id: &str = &other.stores[0].store_id;
 
@@ -298,7 +299,7 @@ impl From<Game> for MonarchGame {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreInfo {
-    pub name: String,
+    pub name: StoreEnum,
     pub store_id: String,
     pub store_url: String,
 }
@@ -306,7 +307,7 @@ pub struct StoreInfo {
 impl From<MonarchWebApiStore> for StoreInfo {
     fn from(value: MonarchWebApiStore) -> Self {
         Self {
-            name: value.name,
+            name: StoreEnum::from(value.name),
             store_id: value.store_id,
             store_url: value.store_page,
         }
@@ -316,7 +317,7 @@ impl From<MonarchWebApiStore> for StoreInfo {
 impl From<&MonarchWebApiStore> for StoreInfo {
     fn from(value: &MonarchWebApiStore) -> Self {
         Self {
-            name: value.name.to_string(),
+            name: StoreEnum::from(value.name.as_str()),
             store_id: value.store_id.to_string(),
             store_url: value.store_page.to_string(),
         }
@@ -403,7 +404,7 @@ impl Default for MonarchGameProperties {
 impl From<StoreInfo> for MonarchWebApiStore {
     fn from(value: StoreInfo) -> Self {
         Self {
-            name: value.name,
+            name: value.name.to_string(),
             store_id: value.store_id,
             store_page: value.store_url,
         }

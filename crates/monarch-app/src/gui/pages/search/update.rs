@@ -2,6 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use iced::Task;
 use tracing::error;
+use tracing::debug;
 
 use crate::gui::{
     components::gamecard,
@@ -42,6 +43,11 @@ impl SearchPage {
 
     pub fn update_games(&mut self, games: Vec<MonarchGame>) -> iced::Task<Message> {
         self.is_searching = false;
+
+        debug!("Search returned: ");
+        for game in &games {
+            debug!("Name: {}, ID: {}", game.name, game.id);
+        }
 
         let processed_games: Vec<MonarchGame> = games
             .iter()

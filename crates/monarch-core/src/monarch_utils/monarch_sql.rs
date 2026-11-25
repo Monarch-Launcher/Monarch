@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use sqlx::{Decode, Encode, FromRow, Row, SqlitePool};
 use tracing::{info, warn};
 
-use crate::monarch_games::monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo};
+use crate::monarch_games::{monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo}, stores::StoreEnum};
 
 const MONARCH_GAME_FIELDS: &str = "(name, id, executable_path, cover_path, cover_url, launch_args, compatibility, summary, artwork_path, artwork_url, imported, is_installed, managed_by_monarch)";
 const TYPED_MONARCH_GAME_FIELDS: &str = "(name TEXT, id TEXT PRIMARY KEY, executable_path TEXT, cover_path TEXT, cover_url TEXT, launch_args TEXT, compatibility TEXT, summary TEXT, artwork_path TEXT, artwork_url TEXT, imported BOOLEAN, is_installed BOOLEAN, managed_by_monarch BOOLEAN)";
@@ -35,7 +35,7 @@ struct MonarchGameRecord {
 #[allow(dead_code)]
 struct StoreInfoRecord {
     pub monarch_game_id: String, // Allow dead_code
-    pub name: String,
+    pub name: StoreEnum,
     pub store_id: String,
     pub store_url: String,
 }
