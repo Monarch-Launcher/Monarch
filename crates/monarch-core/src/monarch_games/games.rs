@@ -2,8 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use super::stores::StoreType;
 use crate::{
-    monarch_games::monarchgame::MonarchGame,
-    monarch_utils::monarch_settings::Settings,
+    monarch_games::{monarchgame::MonarchGame, stores::StoreEnum}, monarch_utils::monarch_settings::Settings,
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -12,7 +11,7 @@ use async_trait::async_trait;
 pub trait GameType: Send + Sync {
     fn get_name(&self) -> String;
     fn get_store(&self) -> Box<dyn StoreType>;
-    fn get_store_name(&self) -> String;
+    fn get_store_name(&self) -> StoreEnum;
     fn get_store_id(&self) -> String;
     fn get_description(&self) -> String;
     fn get_price(&self) -> f64;

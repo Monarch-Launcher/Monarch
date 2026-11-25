@@ -109,7 +109,7 @@ impl GameDetailsPage {
 
                 // Store info
                 let store_badge = container(
-                    text(game.get_store_name().to_uppercase())
+                    text(game.get_store_name().to_string().to_uppercase())
                         .size(14)
                         .color(Color::WHITE)
                         .font(crate::gui::styles::fonts::REGULAR),

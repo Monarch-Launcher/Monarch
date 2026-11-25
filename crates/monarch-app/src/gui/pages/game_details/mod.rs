@@ -5,7 +5,6 @@ use std::sync::{Arc, RwLock};
 
 use iced::widget::{container, stack, text};
 use iced::{alignment, Element, Length};
-use monarch_core::monarch_games;
 use monarch_core::monarch_games::stores::StoreEnum;
 use monarch_core::monarch_utils::monarch_game_downloader::MonarchDownloader;
 

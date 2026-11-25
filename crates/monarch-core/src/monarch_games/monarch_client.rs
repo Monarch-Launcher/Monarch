@@ -3,7 +3,7 @@ use super::stores::{DownloadOptions, StoreType};
 use super::{monarchgame::MonarchGame, steam_client};
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGameProperties, MonarchWebApiGame};
-use crate::monarch_games::stores::SearchFilter;
+use crate::monarch_games::stores::{SearchFilter, StoreEnum};
 use crate::monarch_library::library;
 use crate::monarch_utils::api::SearchParams;
 use crate::monarch_utils::monarch_fs::{self, generate_cache_image_path, get_unix_home};
@@ -539,11 +539,6 @@ pub async fn get_game_properties(
         }
     }
 
-    let mut store = game.get_store_name();
-    if store == "steamcmd" {
-        store = "steam".to_string();
-    }
-
     // Start from the existing record so enrichment never wipes known install
     // metadata (install_dir / size / version) for stores without a local
     // property source — e.g. Epic Games installs managed by Monarch.
@@ -570,7 +565,7 @@ pub async fn get_game_properties(
     }
 
     if game.is_installed() {
-        if store == "steam" {
+        if game.get_store_name() == StoreEnum::Steam {
             match steam::get_default_libraryfolders_location() {
                 Ok(p) => {
                     let mut props: MonarchGameProperties =

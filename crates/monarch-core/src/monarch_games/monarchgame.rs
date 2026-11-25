@@ -217,11 +217,11 @@ impl GameType for MonarchGame {
         }
     }
 
-    fn get_store_name(&self) -> String {
+    fn get_store_name(&self) -> StoreEnum {
         if self.stores.is_empty() {
-            return "".to_string();
+            return StoreEnum::Other("".to_string());
         }
-        self.stores[0].name.to_string()
+        self.stores[0].name.clone()
     }
 
     fn get_store_id(&self) -> String {

@@ -9,7 +9,7 @@ use tracing::{debug, error, info, warn};
 use super::stores::StoreType;
 use crate::monarch_games::games::GameType;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGame};
-use crate::monarch_games::stores::DownloadOptions;
+use crate::monarch_games::stores::{DownloadOptions, StoreEnum};
 use crate::monarch_games::stores::SearchFilter;
 use crate::monarch_utils::api::SearchParams;
 use crate::monarch_utils::monarch_fs::{
@@ -476,7 +476,7 @@ impl EgsClient {
                 // Parse general game metadata via monarch-launcher.com
                 info!("Parsing {} via {}.", namespace, monarch_url);
 
-                let games = monarch_utils::api::search_games(SearchParams{name: None, id: None, store: Some("epicgames".to_string()), store_id: Some(namespace.to_string()), limit: 1})
+                let games = monarch_utils::api::search_games(SearchParams{name: None, id: None, store: Some(StoreEnum::EpicGames.to_string()), store_id: Some(namespace.to_string()), limit: 1})
                     .await
                     .with_context(|| "egs_client::get_user_games() -> ")?;
 

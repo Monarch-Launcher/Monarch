@@ -52,7 +52,7 @@ impl DownloadModal {
         game_handle: Arc<RwLock<MonarchGame>>,
     ) -> Result<(Self, Task<Message>)> {
         let game_name: String;
-        let store_name: String;
+        let store_name: StoreEnum;
         let store_id: String;
         match game_handle.read() {
             Ok(game) => {

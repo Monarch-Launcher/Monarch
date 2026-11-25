@@ -586,7 +586,7 @@ async fn parse_id_monarch_com(
     let monarch_url: &str = std::env!("MONARCH_URL");
     info!("Parsing {id} via {monarch_url}.");
 
-    let games = monarch_utils::api::search_games(SearchParams{name: None, id: None, store: Some("steam".to_string()), store_id: Some(id.clone()), limit: 1})
+    let games = monarch_utils::api::search_games(SearchParams{name: None, id: None, store: Some(StoreEnum::Steam.to_string()), store_id: Some(id.clone()), limit: 1})
         .await
         .with_context(|| "steam_client::parse_id_monarch_com() -> ")?;
 
@@ -596,6 +596,17 @@ async fn parse_id_monarch_com(
             bail!("{monarch_url} returned no matches for Steam game with app_id: {id}")
         }
     };
+
+    let stores = monarch_utils::api::get_stores(&game.id)
+        .await
+        .with_context(|| "")?
+        .into_iter()
+        .filter(|s| s.name == StoreEnum::Steam)
+        .collect::<Vec<StoreInfo>>();
+
+    if !stores.is_empty() {
+        game.stores.push(stores[0].clone());
+    }
 
     if is_cache {
         let path: String = String::from(
