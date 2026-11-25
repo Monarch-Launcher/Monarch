@@ -151,7 +151,7 @@ impl StoreDetailsPage {
 
                             container(
                                 row![
-                                    text(store.name.clone())
+                                    text(store.name.to_string())
                                         .size(18)
                                         .color(Color::from_rgb8(220, 220, 220))
                                         .width(Length::Fixed(150.0)),

@@ -1,9 +1,7 @@
 use crate::{
     monarch_games::{
-        games::GameType,
-        monarchgame::{MonarchGame, MonarchGameProperties},
-    },
-    monarch_utils::{monarch_state::MonarchState, monarch_vdf},
+        games::GameType, monarchgame::{MonarchGame, MonarchGameProperties}, stores::StoreEnum,
+    }, monarch_utils::{monarch_state::MonarchState, monarch_vdf},
 };
 
 #[cfg(target_os = "windows")]
@@ -36,12 +34,9 @@ pub async fn get_home_recomendations(
             // reflects actual recent play instead of possibly stale DB values.
             for game_lock in games.iter() {
                 if let Ok(mut game) = game_lock.write() {
-                    let mut store = game.get_store_name();
-                    if store == "steamcmd" {
-                        store = "steam".to_string();
-                    }
+                    let store = game.get_store_name();
 
-                    if game.is_installed() && store == "steam" {
+                    if game.is_installed() && store == StoreEnum::Steam {
                         match steam::get_default_libraryfolders_location() {
                             Ok(p) => {
                                 // Merge the locally available manifest fields so

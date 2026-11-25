@@ -7,20 +7,19 @@ use tokio::task::{self, JoinHandle};
 use tracing::{debug, error, info, warn};
 
 use super::stores::StoreType;
-use crate::monarch_games::games::{GameType, SearchResult};
-use crate::monarch_games::monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame};
-use crate::monarch_games::stores::DownloadOptions;
+use crate::monarch_games::games::GameType;
+use crate::monarch_games::monarchgame::{GameImageType, MonarchGame};
+use crate::monarch_games::stores::{DownloadOptions, StoreEnum};
 use crate::monarch_games::stores::SearchFilter;
+use crate::monarch_utils::api::SearchParams;
 use crate::monarch_utils::monarch_fs::{
     self, generate_cache_image_path, generate_library_image_path, get_monarch_home, wine_prefix_dir,
 };
 use crate::monarch_utils::monarch_game_downloader::{DownloadJob, MonarchDownloader};
 use crate::monarch_utils::monarch_settings::Settings;
-use crate::monarch_utils::monarch_state::MonarchState;
-use crate::monarch_utils::{monarch_http, monarch_terminal};
+use crate::monarch_utils::{self, monarch_terminal, monarch_state::MonarchState};
 use monarch_egs::{
-    check_platform_support, get_game_manifest, AttributeValue, EgsLaunchCommand, Manifest, Session,
-    SupportedPlatforms, User,
+    AttributeValue, EgsLaunchCommand, Manifest, Session, SupportedPlatforms, User, check_platform_support, get_game_manifest,
 };
 
 #[cfg(target_os = "linux")]
@@ -39,43 +38,12 @@ impl StoreType for EgsClient {
         settings_handle: Arc<RwLock<Settings>>,
         name: &str,
         _filter: &SearchFilter,
-    ) -> Vec<Box<dyn SearchResult>> {
-        let monarch_url: &'static str = std::env!("MONARCH_URL");
-        let search_term: String =
-            format!("{}/api/games?search={}?store=epicgames", monarch_url, name,);
+    ) -> Result<Vec<MonarchGame>> {
+        let mut games: Vec<MonarchGame> = monarch_utils::api::search_games(SearchParams { name: Some(name.to_string()), id: None, store: None, store_id: None, limit: 30 })
+            .await
+            .with_context(|| "egs_client::search_games() -> ")?;
 
-        let response = match monarch_http::client().get(search_term).send().await {
-            Ok(resp) => resp,
-            Err(e) => {
-                error!("egs::search_games() reqwest::get() failed! | Err: {}", e);
-                return Vec::new();
-            }
-        };
-
-        let resp_content = match response.text().await {
-            Ok(content) => content,
-            Err(e) => {
-                error!(
-                    "monarch_client::search_games() response.text() failed! | Err: {}",
-                    e
-                );
-                return Vec::new();
-            }
-        };
-
-        let mut web_games: Vec<Box<MonarchWebApiGame>> =
-            match serde_json::from_str::<Vec<MonarchWebApiGame>>(&resp_content) {
-                Ok(games) => games.into_iter().map(Box::new).collect(),
-                Err(e) => {
-                    error!(
-                        "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
-                        e
-                    );
-                    return Vec::new();
-                }
-            };
-
-        for game in web_games.iter_mut() {
+        for game in games.iter_mut() {
             let cover_path = String::from(
                 generate_cache_image_path(
                     settings_handle.clone(),
@@ -88,10 +56,7 @@ impl StoreType for EgsClient {
             game.cover_path = cover_path;
         }
 
-        web_games
-            .into_iter()
-            .map(|g| g as Box<dyn SearchResult>)
-            .collect()
+        Ok(games)
     }
 
     async fn install_game(
@@ -471,8 +436,10 @@ impl EgsClient {
     pub async fn get_library(
         &mut self,
         settings_handle: Arc<RwLock<Settings>>,
-    ) -> Vec<MonarchGame> {
-        let mut games = self.get_user_games().await;
+    ) -> Result<Vec<MonarchGame>> {
+        let mut games = self.get_user_games()
+            .await
+            .with_context(|| "egs_client::get_library() -> ")?;
 
         for game in games.iter_mut() {
             game.cover_path = generate_library_image_path(
@@ -491,19 +458,16 @@ impl EgsClient {
             .to_string();
         }
 
-        games
+        Ok(games)
     }
 
-    pub async fn get_user_games(&mut self) -> Vec<MonarchGame> {
+    pub async fn get_user_games(&mut self) -> Result<Vec<MonarchGame>> {
         // Launcher assets (not entitlements) carry the catalogItemId + appName
         // pair required by the CDN manifest endpoint.
         let assets = match monarch_egs::owned_assets(&mut self.user, "Windows").await {
             Ok(assets) => assets,
             Err(e) => {
-                error!(
-                    "egs::get_user_games() Failed to fetch owned assets from Epic Games! | Err: {e}"
-                );
-                return Vec::new();
+                bail!("egs::get_user_games() Failed to fetch owned assets from Epic Games! | Err: {e}");
             }
         };
         let mut results: Vec<MonarchGame> = Vec::new();
@@ -532,40 +496,24 @@ impl EgsClient {
             let task: JoinHandle<Result<MonarchGame>> = task::spawn(async move {
                 // Parse general game metadata via monarch-launcher.com
                 info!("Parsing {} via {}.", namespace, monarch_url);
-                let url = format!(
-                    "{}/api/games?store_id={}&store=epicgames",
-                    monarch_url, namespace
-                );
-                let response = match monarch_http::client().get(&url).send().await {
-                    Ok(resp) => resp,
-                    Err(e) => {
-                        error!("egs::get_user_games() Failed to request Monarch API for app_id: {} | Err: {}", namespace, e);
-                        bail!("egs::get_user_games() Failed to request Monarch API")
-                    }
-                };
 
-                let response_text: String = response.text().await.unwrap();
+                let games = monarch_utils::api::search_games(SearchParams{name: None, id: None, store: Some(StoreEnum::EpicGames.to_string()), store_id: Some(namespace.to_string()), limit: 1})
+                    .await
+                    .with_context(|| "egs_client::get_user_games() -> ")?;
 
                 let mut game: MonarchGame;
-                match serde_json::from_str::<Vec<MonarchWebApiGame>>(&response_text) {
-                    Ok(games) => {
-                        if !games.is_empty() {
-                            game = games[0].clone().into_monarchgame();
-                            game.properties
-                                .other
-                                .insert("catalog_id".to_string(), catalog_id.clone());
-                            game.properties
-                                .other
-                                .insert("app_name".to_string(), app_name);
-                        } else {
-                            bail!("egs_client::get_user_games() Failed to parse response as MonarchWebApiGame | Err: Vec is empty")
-                        }
-                    }
-                    Err(e) => {
-                        bail!("egs_client::get_user_games() Failed to parse response as MonarchWebApiGame | Err: {e}")
-                    }
-                };
-
+                if let Some(g) = games.first() {
+                    game = g.clone();
+                    game.properties
+                        .other
+                        .insert("catalog_id".to_string(), catalog_id.clone());
+                    game.properties
+                        .other
+                        .insert("app_name".to_string(), app_name);
+                } else {
+                    bail!("egs_client::get_user_games() search_games() returned an empty vec!")
+                }
+                    
                 // Parse EGS specific metadata
                 let meta = match monarch_egs::get_game_metadata(
                     &mut user_clone,
@@ -628,7 +576,7 @@ impl EgsClient {
             }
         }
 
-        results
+        Ok(results)
     }
 
     fn load_session_from_file(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<Session> {

@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use super::stores::StoreType;
 use crate::{
-    monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame},
+    monarch_games::{monarchgame::MonarchGame, stores::StoreEnum}, 
     monarch_utils::monarch_state::MonarchState,
 };
 use anyhow::Result;
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 pub trait GameType: Send + Sync {
     fn get_name(&self) -> String;
     fn get_store(&self) -> Box<dyn StoreType>;
-    fn get_store_name(&self) -> String;
+    fn get_store_name(&self) -> StoreEnum;
     fn get_store_id(&self) -> String;
     fn get_description(&self) -> String;
     fn get_price(&self) -> f64;
@@ -23,7 +23,6 @@ pub trait GameType: Send + Sync {
 
 #[async_trait]
 pub trait SearchResult: Send + Sync {
-    fn to_search_result(&self) -> MonarchWebApiGame;
     fn into_monarchgame(&self) -> MonarchGame;
 }
 

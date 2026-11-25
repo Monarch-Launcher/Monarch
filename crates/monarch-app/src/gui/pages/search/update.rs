@@ -2,6 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use iced::Task;
 use tracing::error;
+use tracing::debug;
 
 use crate::gui::{
     components::gamecard,
@@ -11,8 +12,7 @@ use crate::gui::{
 use monarch_core::{
     monarch_games::{
         self,
-        games::SearchResult,
-        monarchgame::{GameImageType, MonarchGame, MonarchWebApiGame},
+        monarchgame::{GameImageType, MonarchGame},
         stores::SearchFilter,
     },
     monarch_utils::monarch_fs::generate_cache_image_path,
@@ -41,10 +41,15 @@ impl SearchPage {
         )
     }
 
-    pub fn update_games(&mut self, games: Vec<MonarchWebApiGame>) -> iced::Task<Message> {
+    pub fn update_games(&mut self, games: Vec<MonarchGame>) -> iced::Task<Message> {
         self.is_searching = false;
 
-        let processed_games: Vec<MonarchWebApiGame> = games
+        debug!("Search returned: ");
+        for game in &games {
+            debug!("Name: {}, ID: {}", game.name, game.id);
+        }
+
+        let processed_games: Vec<MonarchGame> = games
             .iter()
             .cloned()
             .map(|mut game| {
@@ -62,8 +67,8 @@ impl SearchPage {
             .collect();
 
         let processed_game_handles: Vec<Arc<RwLock<MonarchGame>>> = processed_games
-            .iter()
-            .map(|g| Arc::new(RwLock::new(g.into_monarchgame())))
+            .into_iter()
+            .map(|g| Arc::new(RwLock::new(g)))
             .collect();
 
         // Trigger download tasks

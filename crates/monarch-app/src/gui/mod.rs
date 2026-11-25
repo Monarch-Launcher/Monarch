@@ -10,14 +10,8 @@ use iced::{
 };
 use iced_term;
 use monarch_core::{
-    monarch_games::monarchgame::{GameImageType, MonarchGame},
-    monarch_utils::{
-        housekeeping,
-        monarch_fs::{generate_cache_image_path, verify_monarch_folders},
-        monarch_game_downloader::MonarchDownloader,
-        monarch_settings::Settings,
-        monarch_sql::{init_db, repair_or_migrate_db},
-        monarch_state::MonarchState,
+    monarch_games::monarchgame::{GameImageType, MonarchGame}, monarch_utils::{
+        housekeeping, monarch_fs::{self, generate_cache_image_path, verify_monarch_folders}, monarch_game_downloader::MonarchDownloader, monarch_settings::Settings, monarch_sql::{init_db, repair_or_migrate_db}, monarch_state::MonarchState,
     },
 };
 use std::sync::{Arc, LazyLock, Mutex};
@@ -120,6 +114,7 @@ pub struct App {
     settings: Arc<RwLock<Settings>>, // Shared pointer to the one true Settings held by MonarchState
     _state: Arc<RwLock<MonarchState>>, // Moving monarch state from a singleton to an app state as single source of truth
     downloader: Arc<RwLock<MonarchDownloader>>,
+    new_instance: bool,
 }
 
 impl App {
@@ -127,9 +122,14 @@ impl App {
         let mut state: MonarchState =
             monarch_core::monarch_utils::monarch_state::MonarchState::new();
 
+        let mut new_instance: bool = false;
+
         futures::executor::block_on(async {
             state.init().await;
-            verify_monarch_folders(state.get_settings_ptr()); // Checks that directories are as Monarch expects
+
+            // Check if it is a first instance and automatically find games on system
+            let lib_path= monarch_fs::get_library_db_path(state.get_settings_ptr());
+            new_instance = !monarch_fs::path_exists(&lib_path);
 
             let pool = state.get_db_pool_arc();
             init_db(&pool).await.expect("Failed to run init_db()!"); // Verify database tables exist
@@ -147,6 +147,8 @@ impl App {
 
             state.set_library_games(&games);
         });
+        
+        verify_monarch_folders(state.get_settings_ptr()); // Checks that directories are as Monarch expects
 
         let state_handle: Arc<RwLock<MonarchState>> = Arc::new(RwLock::new(state));
 
@@ -208,6 +210,7 @@ impl App {
             settings: settings_handle,
             _state: state_handle,
             downloader: downloader_handle,
+            new_instance,
         }
     }
 
@@ -231,10 +234,22 @@ impl App {
                     size: iced::Size::new(1600.0, 900.0),
                     ..Default::default()
                 });
-                (
-                    App::new(id),
-                    task.map(|_| AppMessage::HeaderMessage(header::Message::HomePage)),
-                )
+                let mut app = App::new(id);
+                let mut task =
+                    task.map(|_| AppMessage::HeaderMessage(header::Message::HomePage));
+
+                // First launch (the Monarch home folder was just created):
+                // scan the system once for already-installed games.
+                if app.new_instance {
+                    info!("New Monarch instance detected. Performing automatic library refresh...");
+                    let refresh = app
+                        .library_page
+                        .update(pages::library::Message::RefreshLibrary)
+                        .map(|m| AppMessage::Page(pages::Message::Library(m)));
+                    task = iced::Task::batch(vec![task, refresh]);
+                }
+
+                (app, task)
             },
             App::update,
             App::view,
@@ -418,9 +433,22 @@ impl App {
                     if let pages::library::Message::OpenGameDetails(game) = &msg {
                         return iced::Task::done(AppMessage::OpenGameDetails(game.clone()));
                     }
-                    self.library_page
-                        .update(msg)
-                        .map(|m| AppMessage::Page(pages::Message::Library(m)))
+
+                    let lib_task = self.library_page
+                        .update(msg.clone())
+                        .map(|m| AppMessage::Page(pages::Message::Library(m)));
+
+                    // A full library refresh just completed; Home recommendations are
+                    // derived from the library, so re-fetch them too.
+                    if matches!(msg, pages::library::Message::UpdateGames) {
+                        let home_task = self
+                            .home_page
+                            .init()
+                            .map(|m| AppMessage::Page(pages::Message::Home(m)));
+                        return iced::Task::batch(vec![lib_task, home_task]);
+                    }                    
+
+                    lib_task
                 }
                 pages::Message::Search(msg) => {
                     if let pages::search::Message::OpenStoreDetails(game) = &msg {

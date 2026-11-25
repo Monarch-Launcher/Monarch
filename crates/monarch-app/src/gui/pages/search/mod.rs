@@ -4,7 +4,7 @@ use iced::{Element, Task};
 
 use crate::gui::components::gamecard;
 use monarch_core::{
-    monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame},
+    monarch_games::monarchgame::MonarchGame,
     monarch_utils::monarch_state::MonarchState,
 };
 
@@ -16,7 +16,7 @@ pub enum Message {
     SearchChanged(String),
     FiltersPressed,
     PerformSearch,
-    UpdateGames(Vec<MonarchWebApiGame>),
+    UpdateGames(Vec<MonarchGame>),
     GameImgLoaded,
     GameCard(gamecard::GameCardMessage),
     OpenStoreDetails(Arc<RwLock<MonarchGame>>),

@@ -4,6 +4,7 @@ use tracing::{error, info, warn};
 
 use crate::monarch_games::{
     games::CompatOptions,
+    stores::StoreEnum,
     monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo},
 };
 
@@ -40,7 +41,7 @@ struct MonarchGameRecord {
 #[allow(dead_code)]
 struct StoreInfoRecord {
     pub monarch_game_id: String, // Allow dead_code
-    pub name: String,
+    pub name: StoreEnum,
     pub store_id: String,
     pub store_url: String,
 }
