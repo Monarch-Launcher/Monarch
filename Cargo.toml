@@ -17,3 +17,10 @@ tokio = { version = "1", features = ["full"] }
 monarch_egs = { path = "crates/monarch-egs" }
 monarch_core = { path = "crates/monarch-core" }
 monarch_app = { path = "crates/monarch-app" }
+tracing = { version = "0.1.41", features = [
+  "max_level_trace",
+  "release_max_level_info",
+] }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+anyhow = "1.0.86"
+thiserror = "2"
