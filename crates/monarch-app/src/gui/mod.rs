@@ -422,9 +422,22 @@ impl App {
                     if let pages::library::Message::OpenGameDetails(game) = &msg {
                         return iced::Task::done(AppMessage::OpenGameDetails(game.clone()));
                     }
-                    self.library_page
-                        .update(msg)
-                        .map(|m| AppMessage::Page(pages::Message::Library(m)))
+
+                    let lib_task = self.library_page
+                        .update(msg.clone())
+                        .map(|m| AppMessage::Page(pages::Message::Library(m)));
+
+                    // A full library refresh just completed; Home recommendations are
+                    // derived from the library, so re-fetch them too.
+                    if matches!(msg, pages::library::Message::UpdateGames) {
+                        let home_task = self
+                            .home_page
+                            .init()
+                            .map(|m| AppMessage::Page(pages::Message::Home(m)));
+                        return iced::Task::batch(vec![lib_task, home_task]);
+                    }                    
+
+                    lib_task
                 }
                 pages::Message::Search(msg) => {
                     if let pages::search::Message::OpenStoreDetails(game) = &msg {
