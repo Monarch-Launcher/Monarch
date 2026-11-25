@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use super::stores::StoreType;
 use crate::{
-    monarch_games::{monarchgame::MonarchGame, stores::StoreEnum}, monarch_utils::monarch_settings::Settings,
+    monarch_games::{monarchgame::MonarchGame, stores::StoreEnum}, 
     monarch_utils::monarch_state::MonarchState,
 };
 use anyhow::Result;
@@ -23,7 +23,6 @@ pub trait GameType: Send + Sync {
 
 #[async_trait]
 pub trait SearchResult: Send + Sync {
-    fn to_search_result(&self) -> MonarchWebApiGame;
     fn into_monarchgame(&self) -> MonarchGame;
 }
 

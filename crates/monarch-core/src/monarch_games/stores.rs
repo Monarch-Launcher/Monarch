@@ -2,7 +2,7 @@ use std::fmt;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    monarch_games::{games::SearchResult, monarchgame::MonarchGame},
+    monarch_games::monarchgame::MonarchGame,
     monarch_utils::{
         monarch_game_downloader::MonarchDownloader, monarch_settings::Settings,
         monarch_state::MonarchState,

@@ -9,7 +9,7 @@ use tracing::error;
 use super::games::GameType;
 use super::stores::StoreType;
 use crate::monarch_games::egs_client::EgsClient;
-use crate::monarch_games::games::{CompatOptions, SearchResult};
+use crate::monarch_games::games::CompatOptions;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
 use crate::monarch_games::stores::StoreEnum;
@@ -308,7 +308,9 @@ impl From<Game> for MonarchGame {
             properties: MonarchGameProperties::default(),
             imported: false,
             is_installed: false,
-            managed_by_monarch: false
+            managed_by_monarch: false,
+            env_args: None,
+            compatibility_opts: None,
         }
     }
 }

@@ -4,6 +4,7 @@ use tracing::{error, info, warn};
 
 use crate::monarch_games::{
     games::CompatOptions,
+    stores::StoreEnum,
     monarchgame::{MonarchGame, MonarchGameProperties, StoreInfo},
 };
 
