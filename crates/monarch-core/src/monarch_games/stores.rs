@@ -2,8 +2,11 @@ use std::fmt;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    monarch_games::monarchgame::MonarchGame,
-    monarch_utils::{monarch_game_downloader::MonarchDownloader, monarch_settings::Settings},
+    monarch_games::{games::SearchResult, monarchgame::MonarchGame},
+    monarch_utils::{
+        monarch_game_downloader::MonarchDownloader, monarch_settings::Settings,
+        monarch_state::MonarchState,
+    },
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -47,7 +50,7 @@ pub trait StoreType: Send + Sync {
     fn store_enabled(&self, settings_handle: Arc<RwLock<Settings>>) -> bool;
     async fn launch_game(
         &mut self,
-        settings_handle: Arc<RwLock<Settings>>,
+        state_handle: Arc<RwLock<MonarchState>>,
         game: &MonarchGame,
     ) -> Result<()>;
 }
