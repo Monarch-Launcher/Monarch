@@ -2,8 +2,9 @@
  * File for abstracting working with the protobuf API wiht monarch-launcher.com
 */
 
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use prost::Message;
+use bytes::Bytes;
 
 use crate::{monarch_games::{monarchgame::{MonarchGame, StoreInfo}, stores::StoreEnum}, proto::generated::{GetStoresResponse, SearchGamesResponse, SearchSuggestionsResponse}};
 
@@ -22,9 +23,6 @@ pub struct SearchParams {
 
 /// Search for games on monarch-launcher.com
 pub async fn search_games(params: SearchParams) -> Result<Vec<MonarchGame>> {
-    let url = format!("{}/api/games/search", std::env!("MONARCH_URL"));
-    let client = reqwest::Client::new();
-
     let limit = params.limit.to_string();
     let mut web_params: Vec<(&str, &str)> = vec![("limit", &limit)];
 
@@ -44,16 +42,13 @@ pub async fn search_games(params: SearchParams) -> Result<Vec<MonarchGame>> {
         web_params.push(("storeId", &params.store_id.as_ref().unwrap().as_str()));
     }
 
-    let bytes = client.get(url)
-        .query(&web_params)
-        .send()
-        .await?
-        .bytes()
-        .await?;
+    let bytes = perform_search_query("/api/games/search", &web_params)
+        .await
+        .with_context(|| "api::search_games() -> ")?;
 
-    let response: SearchGamesResponse = SearchGamesResponse::decode(bytes)?;
+    let search_games_response: SearchGamesResponse = SearchGamesResponse::decode(bytes)?;
 
-    let games: Vec<MonarchGame> = response.games
+    let games: Vec<MonarchGame> = search_games_response.games
         .into_iter()
         .map(|g| g.into())
         .collect::<Vec<MonarchGame>>();
@@ -63,19 +58,13 @@ pub async fn search_games(params: SearchParams) -> Result<Vec<MonarchGame>> {
 
 /// Query for search suggestions/autocomplete from monarch-launcher.com
 pub async fn search_suggestion(query: &str) -> Result<Vec<SearchSuggestion>> {
-    let url = format!("{}/api/games/suggestions", std::env!("MONARCH_URL"));
-    let client = reqwest::Client::new();
+    let bytes = perform_search_query("/api/games/suggestions", &[("query", query)])
+        .await
+        .with_context(|| "api::search_games() -> ")?;
+    
+    let search_suggestions_response: SearchSuggestionsResponse = SearchSuggestionsResponse::decode(bytes)?;
 
-    let bytes = client.get(url)
-        .query(&[("query", query)])
-        .send()
-        .await?
-        .bytes()
-        .await?;
-
-    let response: SearchSuggestionsResponse = SearchSuggestionsResponse::decode(bytes)?;
-
-    let suggestions: Vec<SearchSuggestion> = response.suggestions
+    let suggestions: Vec<SearchSuggestion> = search_suggestions_response.suggestions
         .into_iter()
         .map(|s| SearchSuggestion { name: s.name, id: s.id })
         .collect::<Vec<SearchSuggestion>>();
@@ -86,19 +75,13 @@ pub async fn search_suggestion(query: &str) -> Result<Vec<SearchSuggestion>> {
 /// Get the available storefronts the game is available at from 
 /// monarch-launcher.com
 pub async fn get_stores(id: &str) -> Result<Vec<StoreInfo>> {
-    let url = format!("{}/api/games/stores", std::env!("MONARCH_URL"));
-    let client = reqwest::Client::new();
+    let bytes = perform_search_query("/api/games/stores", &[("id", id)])
+        .await
+        .with_context(|| "api::get_stores() -> ")?;
 
-    let bytes = client.get(url)
-        .query(&[("id", id)])
-        .send()
-        .await?
-        .bytes()
-        .await?;
+    let get_stores_response: GetStoresResponse = GetStoresResponse::decode(bytes)?;
 
-    let response: GetStoresResponse = GetStoresResponse::decode(bytes)?;
-
-    let stores: Vec<StoreInfo> = response.stores
+    let stores: Vec<StoreInfo> = get_stores_response.stores
         .into_iter()
         .map(|s| StoreInfo { name: StoreEnum::from(s.name), store_id: s.store_id, store_url: s.store_url })
         .collect::<Vec<StoreInfo>>();
@@ -108,17 +91,28 @@ pub async fn get_stores(id: &str) -> Result<Vec<StoreInfo>> {
 
 /// Get the metadata for a game game from monarch-launcher.com
 pub async fn get_metadata(id: &str) -> Result<()> {
-    let url = format!("{}/api/games/metadata", std::env!("MONARCH_URL"));
-    let client = reqwest::Client::new();
-
-    let _bytes = client.get(url)
-        .query(&[("id", id)])
-        .send()
-        .await?
-        .bytes()
-        .await?;
-
-    // TODO: Implement this function when metadata API works.
+    let _bytes = perform_search_query("/api/games/metadata", &[("id", id)])
+        .await
+        .with_context(|| "api::get_metadata -> ")?;
 
     Ok(())
+}
+
+async fn perform_search_query(path: &str, query: &[(&str, &str)]) -> Result<Bytes> {
+    let url = format!("{}{}", std::env!("MONARCH_URL"), path);
+    let client = reqwest::Client::new();
+
+    let response = client.get(&url)
+        .query(query)
+        .send()
+        .await
+        .with_context(|| "api::search_suggestion() -> ")?;
+
+    if !response.status().is_success() {
+        bail!("api::perform_search_query() {url} did not return 2XX! (Real response was HTTP {}: )", response.status().as_str());
+    }
+
+    response.bytes()
+        .await
+        .with_context(|| "api::search_suggestion() -> ")
 }

@@ -520,8 +520,13 @@ pub async fn parse_steam_ids(
 
     for task in tasks {
         if let Ok(finished_task) = task.await {
-            if let Ok(game) = finished_task {
-                games.push(game);
+            match finished_task {
+                Ok(game) => {
+                    games.push(game);
+                }
+                Err(e) => {
+                    error!("steam_client::parse_steam_ids() Failed to parse game! | Err: {}", e.chain().map(|e| e.to_string()).collect::<String>());
+                }
             }
         }
     }
@@ -581,14 +586,14 @@ async fn parse_id_monarch_com(
     let monarch_url: &str = std::env!("MONARCH_URL");
     info!("Parsing {id} via {monarch_url}.");
 
-    let games = monarch_utils::api::search_games(SearchParams{name: None, id: None, store: Some("steam".to_string()), store_id: Some(id), limit: 1})
+    let games = monarch_utils::api::search_games(SearchParams{name: None, id: None, store: Some("steam".to_string()), store_id: Some(id.clone()), limit: 1})
         .await
         .with_context(|| "steam_client::parse_id_monarch_com() -> ")?;
 
     let mut game: MonarchGame = match games.first() {
         Some(game) => game.clone(),
         None => {
-            bail!("")
+            bail!("{monarch_url} returned no matches for Steam game with app_id: {id}")
         }
     };
 

@@ -49,6 +49,7 @@ sqlx = { version = "0.8", features = [
   "runtime-async-std",
 ], default-features = false }
 prost = "0.14"
+bytes = "1"
 
 monarch_egs.workspace = true
 
