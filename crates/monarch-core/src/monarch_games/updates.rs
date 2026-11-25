@@ -18,6 +18,7 @@ use monarch_egs::{GameUpdate, InstalledBuild};
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::monarchgame::MonarchGame;
 use crate::monarch_games::stores::DownloadOptions;
+use crate::monarch_games::stores::StoreEnum;
 use crate::monarch_utils::monarch_game_downloader::{DownloadJob, MonarchDownloader};
 use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
@@ -355,7 +356,7 @@ async fn queue_detected_updates(
         // so reuse the parent of the recorded install directory.
         let opts = DownloadOptions {
             folder: install_parent_folder(&game, &default_folder),
-            store: String::from("epicgames"),
+            store: StoreEnum::EpicGames,
             game_name: game.name.clone(),
             game_store_id: update.update.namespace.clone(),
             os: std::env::consts::OS.to_string(),

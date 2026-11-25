@@ -109,7 +109,7 @@ impl GameDetailsPage {
 
                 // Store info
                 let store_badge = container(
-                    text(game.get_store_name().to_uppercase())
+                    text(game.get_store_name().to_string().to_uppercase())
                         .size(14)
                         .color(Color::WHITE)
                         .font(crate::gui::styles::fonts::REGULAR),
@@ -264,8 +264,12 @@ impl GameDetailsPage {
                                         game.compatibility.as_ref().unwrap_or(&format!("")).clone()
                                     ),
                                     property_item(
-                                        "Launch Arguments".to_string(),
+                                        "Launch Args".to_string(),
                                         game.launch_args.as_ref().unwrap_or(&format!("")).clone()
+                                    ),
+                                    property_item(
+                                        "Env Args".to_string(),
+                                        game.env_args.as_ref().unwrap_or(&format!("")).clone()
                                     ),
                                 ]
                                 .spacing(16)

@@ -10,8 +10,7 @@ use crate::gui::{show_error, styles};
 use iced::widget::{button, column, container, row, text, Space};
 use iced::{alignment, Element, Length, Task};
 use monarch_core::monarch_games;
-use monarch_core::monarch_games::games::SearchResult;
-use monarch_core::monarch_games::monarchgame::{MonarchGame, MonarchWebApiGame};
+use monarch_core::monarch_games::monarchgame::MonarchGame;
 use monarch_core::monarch_games::stores::SearchFilter;
 use monarch_core::monarch_utils::monarch_state::MonarchState;
 use tracing::error;
@@ -27,7 +26,7 @@ pub enum Message {
     ArtworkPathChanged(String),
     SearchQueryChanged(String),
     PerformSearch,
-    UpdateSearchResults(Vec<MonarchWebApiGame>),
+    UpdateSearchResults(Vec<MonarchGame>),
     GameImgLoaded,
     GameCard(GameCardMessage),
     AddGame,
@@ -182,10 +181,10 @@ impl AddGameModal {
         }
     }
 
-    pub fn update_games(&mut self, games: Vec<MonarchWebApiGame>) -> iced::Task<Message> {
+    pub fn update_games(&mut self, games: Vec<MonarchGame>) -> iced::Task<Message> {
         self.is_searching = false;
 
-        let processed_games: Vec<MonarchWebApiGame> = games
+        let processed_games: Vec<MonarchGame> = games
             .iter()
             .cloned()
             .map(|mut game| {
@@ -195,8 +194,8 @@ impl AddGameModal {
             .collect();
 
         let processed_game_handles: Vec<Arc<RwLock<MonarchGame>>> = processed_games
-            .iter()
-            .map(|g| Arc::new(RwLock::new(g.into_monarchgame())))
+            .into_iter()
+            .map(|g| Arc::new(RwLock::new(g)))
             .collect();
 
         // Trigger download tasks

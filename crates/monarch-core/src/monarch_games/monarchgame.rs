@@ -9,13 +9,15 @@ use tracing::error;
 use super::games::GameType;
 use super::stores::StoreType;
 use crate::monarch_games::egs_client::EgsClient;
-use crate::monarch_games::games::SearchResult;
+use crate::monarch_games::games::CompatOptions;
 use crate::monarch_games::monarch_client::MonarchClient;
 use crate::monarch_games::steam_client::SteamClient;
+use crate::monarch_games::stores::StoreEnum;
 use crate::monarch_utils::monarch_download::{download_image, download_image_greyscale};
 use crate::monarch_utils::monarch_fs::{generate_greyscale_path, path_exists};
 use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
+use crate::proto::generated::Game;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MonarchGame {
@@ -26,7 +28,18 @@ pub struct MonarchGame {
     pub cover_path: String,
     pub cover_url: String,
     pub launch_args: Option<String>,
+
+    /// Environment arguments prepended to the very front of the launch
+    /// command, e.g. "PROTON_ENABLE_WAYLAND=1 MANGOHUD_CONFIG=fps".
+    #[serde(default)]
+    pub env_args: Option<String>,
+
     pub compatibility: Option<String>,
+
+    /// Proton/Wine options chosen for this game. Defaults to `None` so
+    /// older saved games without options still load.
+    #[serde(default)]
+    pub compatibility_opts: Option<CompatOptions>,
 
     #[serde(default)]
     pub summary: String,
@@ -70,7 +83,7 @@ impl MonarchGame {
             name: name.to_string(),
             id: id.to_string(),
             stores: vec![StoreInfo {
-                name: store.to_string(),
+                name: StoreEnum::from(store),
                 store_id: store_id.to_string(),
                 store_url: store_url.to_string(),
             }],
@@ -78,7 +91,9 @@ impl MonarchGame {
             cover_path: cover_path.to_string(),
             cover_url: String::new(),
             launch_args: None,
+            env_args: None,
             compatibility: None,
+            compatibility_opts: None,
             summary: String::new(),
             artwork_url: String::new(),
             artwork_path: String::new(),
@@ -186,7 +201,9 @@ impl MonarchGame {
             cover_path: other.cover_path.to_string(),
             cover_url: other.cover_url.to_string(),
             launch_args: None,
+            env_args: None,
             compatibility: None,
+            compatibility_opts: None,
             summary: other.summary.clone(),
             artwork_url: other.artwork_url.clone(),
             artwork_path: String::new(),
@@ -216,9 +233,9 @@ impl GameType for MonarchGame {
         }
     }
 
-    fn get_store_name(&self) -> String {
+    fn get_store_name(&self) -> StoreEnum {
         if self.stores.is_empty() {
-            return "".to_string();
+            return StoreEnum::Other("".to_string());
         }
         self.stores[0].name.clone()
     }
@@ -238,9 +255,9 @@ impl GameType for MonarchGame {
         0.0
     }
 
-    async fn launch(&self, settings_handle: Arc<RwLock<Settings>>) -> Result<()> {
+    async fn launch(&self, state_handle: Arc<RwLock<MonarchState>>) -> Result<()> {
         self.get_store()
-            .launch_game(settings_handle, &self)
+            .launch_game(state_handle, &self)
             .await
             .with_context(|| "monarchgame::launch() -> ")
     }
@@ -258,13 +275,13 @@ impl PartialEq for MonarchGame {
 
         let store: &str = match self.stores[0].name.as_str() {
             "steamcmd" => "steam",
-            _ => &self.stores[0].name,
+            _ => self.stores[0].name.as_str(),
         };
         let store_id: &str = &self.stores[0].store_id;
 
         let other_store: &str = match other.stores[0].name.as_str() {
             "steamcmd" => "steam",
-            _ => &other.stores[0].name,
+            _ => other.stores[0].name.as_str(),
         };
         let other_store_id: &str = &other.stores[0].store_id;
 
@@ -274,9 +291,33 @@ impl PartialEq for MonarchGame {
 
 impl Eq for MonarchGame {}
 
+impl From<Game> for MonarchGame {
+    fn from(value: Game) -> Self {
+        Self {
+            name: value.name,
+            id: value.id,
+            stores: vec![],
+            executable_path: None,
+            cover_path: String::new(),
+            cover_url: value.cover_url,
+            launch_args: None,
+            compatibility: None,
+            summary: String::new(),
+            artwork_path: String::new(),
+            artwork_url: value.artwork_url,
+            properties: MonarchGameProperties::default(),
+            imported: false,
+            is_installed: false,
+            managed_by_monarch: false,
+            env_args: None,
+            compatibility_opts: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreInfo {
-    pub name: String,
+    pub name: StoreEnum,
     pub store_id: String,
     pub store_url: String,
 }
@@ -284,7 +325,7 @@ pub struct StoreInfo {
 impl From<MonarchWebApiStore> for StoreInfo {
     fn from(value: MonarchWebApiStore) -> Self {
         Self {
-            name: value.name,
+            name: StoreEnum::from(value.name),
             store_id: value.store_id,
             store_url: value.store_page,
         }
@@ -294,7 +335,7 @@ impl From<MonarchWebApiStore> for StoreInfo {
 impl From<&MonarchWebApiStore> for StoreInfo {
     fn from(value: &MonarchWebApiStore) -> Self {
         Self {
-            name: value.name.to_string(),
+            name: StoreEnum::from(value.name.as_str()),
             store_id: value.store_id.to_string(),
             store_url: value.store_page.to_string(),
         }
@@ -326,16 +367,6 @@ pub struct MonarchWebApiStore {
 pub enum GameImageType {
     Cover,
     Artwork,
-}
-
-impl SearchResult for MonarchWebApiGame {
-    fn to_search_result(&self) -> MonarchWebApiGame {
-        return self.clone();
-    }
-
-    fn into_monarchgame(&self) -> MonarchGame {
-        MonarchGame::from(self)
-    }
 }
 
 impl MonarchWebApiGame {
@@ -391,7 +422,7 @@ impl Default for MonarchGameProperties {
 impl From<StoreInfo> for MonarchWebApiStore {
     fn from(value: StoreInfo) -> Self {
         Self {
-            name: value.name,
+            name: value.name.to_string(),
             store_id: value.store_id,
             store_page: value.store_url,
         }

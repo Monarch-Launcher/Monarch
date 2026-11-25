@@ -2,6 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use iced::widget::{button, column, row, svg, text, Space};
 use iced::{alignment, Color, Element, Length, Task, Theme};
+use monarch_core::monarch_games::stores::StoreEnum;
 use monarch_core::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use tracing::error;
 
@@ -357,12 +358,13 @@ impl ActionsModal {
     }
 }
 
-fn store_icon(store: &str) -> svg::Handle {
+fn store_icon(store: &StoreEnum) -> svg::Handle {
     match store {
-        "steam" | "steamcmd" => resources::STEAM.clone(),
-        "epicgames" => resources::EPIC.clone(),
-        "gog" => resources::GOG.clone(),
-        "itch" => resources::ITCH.clone(),
+        StoreEnum::Monarch => resources::MONARCH.clone(),
+        StoreEnum::Steam => resources::STEAM.clone(),
+        StoreEnum::EpicGames => resources::EPIC.clone(),
+        StoreEnum::GOG => resources::GOG.clone(),
+        StoreEnum::Itch => resources::ITCH.clone(),
         _ => resources::MONARCH.clone(),
     }
 }

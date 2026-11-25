@@ -68,13 +68,11 @@ impl StoreDetailsPage {
                     });
 
                 // Back button in top left
-                let back_btn = container(
-                    icon_button(
-                        Some(Message::BackPressed),
-                        ARROW_BACK.clone(),
-                        0.0,
-                    ),
-                )
+                let back_btn = container(icon_button(
+                    Some(Message::BackPressed),
+                    ARROW_BACK.clone(),
+                    0.0,
+                ))
                 .padding(40);
 
                 // Game cover/cover
@@ -153,7 +151,7 @@ impl StoreDetailsPage {
 
                             container(
                                 row![
-                                    text(store.name.clone())
+                                    text(store.name.to_string())
                                         .size(18)
                                         .color(Color::from_rgb8(220, 220, 220))
                                         .width(Length::Fixed(150.0)),

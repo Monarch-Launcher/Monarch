@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 
 use iced::widget::{container, stack, text};
 use iced::{alignment, Element, Length};
+use monarch_core::monarch_games::stores::StoreEnum;
 use monarch_core::monarch_utils::monarch_game_downloader::MonarchDownloader;
 
 use crate::gui::components::gamecard::actions;
@@ -14,6 +15,11 @@ use crate::gui::components::modal::download_modal;
 use crate::gui::styles;
 use monarch_core::monarch_games::monarchgame::MonarchGame;
 use monarch_core::monarch_utils::monarch_state::MonarchState;
+
+struct StoreItem {
+    store: StoreEnum,
+    url: String,
+}
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -35,6 +41,7 @@ pub enum Message {
 
 pub struct GameDetailsPage {
     game: Option<Arc<RwLock<MonarchGame>>>,
+    stores: Vec<StoreItem>,
     edit_modal: Option<EditModal>,
     download_modal: Option<download_modal::DownloadModal>,
     app_state: Arc<RwLock<MonarchState>>,
@@ -57,6 +64,7 @@ impl GameDetailsPage {
     ) -> Self {
         Self {
             game: None,
+            stores: Vec::new(),
             edit_modal: None,
             download_modal: None,
             app_state: state_handle,

@@ -104,7 +104,9 @@ fn get_steamcmd_dir(settings_handle: Arc<RwLock<Settings>>) -> PathBuf {
 
 /// Returns path to the SteamCMD binary used in SteamCMD commands
 pub fn get_steamcmd_exe(settings_handle: Arc<RwLock<Settings>>) -> PathBuf {
-    get_steamcmd_dir(settings_handle).join("steamcmd").join("steamcmd.exe")
+    get_steamcmd_dir(settings_handle)
+        .join("steamcmd")
+        .join("steamcmd.exe")
 }
 
 /// Returns whether or not SteamCMD is installed
@@ -114,7 +116,10 @@ pub fn steamcmd_is_installed(settings_handle: Arc<RwLock<Settings>>) -> bool {
 
 /// Runs specified command via SteamCMD and waits for it to finish
 /// before returning.
-pub async fn steamcmd_command(settings_handle: Arc<RwLock<Settings>>, args: Vec<&str>) -> Result<()> {
+pub async fn steamcmd_command(
+    settings_handle: Arc<RwLock<Settings>>,
+    args: Vec<&str>,
+) -> Result<()> {
     let mut path: PathBuf = get_steamcmd_dir(settings_handle);
     path.push("steamcmd");
     path.push("steamcmd.exe");
@@ -154,7 +159,9 @@ pub async fn get_library(settings_handle: Arc<RwLock<Settings>>) -> Vec<MonarchG
 
     let path = get_default_libraryfolders_location().unwrap();
     match monarch_vdf::parse_library_file(&path) {
-        Ok(found_games) => return parse_steam_ids(settings_handle, &found_games, false, true).await,
+        Ok(found_games) => {
+            return parse_steam_ids(settings_handle, &found_games, false, true).await
+        }
         Err(e) => {
             error!("{:#}", e);
             vec![]

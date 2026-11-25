@@ -1,15 +1,16 @@
-use super::games::{GameType, SearchResult};
+use super::games::GameType;
 use super::stores::{DownloadOptions, StoreType};
 use super::{monarchgame::MonarchGame, steam_client};
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::monarchgame::{GameImageType, MonarchGameProperties, MonarchWebApiGame};
-use crate::monarch_games::stores::SearchFilter;
+use crate::monarch_games::stores::{SearchFilter, StoreEnum};
 use crate::monarch_library::library;
+use crate::monarch_utils::api::SearchParams;
 use crate::monarch_utils::monarch_fs::{self, generate_cache_image_path, get_unix_home};
 use crate::monarch_utils::monarch_game_downloader::MonarchDownloader;
 use crate::monarch_utils::monarch_settings::Settings;
 use crate::monarch_utils::monarch_state::MonarchState;
-use crate::monarch_utils::{monarch_http, monarch_vdf};
+use crate::monarch_utils::{self, monarch_http, monarch_vdf};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use sqlx::SqlitePool;
@@ -32,44 +33,12 @@ impl StoreType for MonarchClient {
         settings_handle: Arc<RwLock<Settings>>,
         name: &str,
         _filter: &SearchFilter,
-    ) -> Vec<Box<dyn SearchResult>> {
-        let monarch_url: &'static str = std::env!("MONARCH_URL");
-        let search_term: String = format!("{monarch_url}/api/games?search={}", name);
-        let response = match monarch_http::client().get(search_term).send().await {
-            Ok(resp) => resp,
-            Err(e) => {
-                error!(
-                    "monarch_client::search_games() reqwest::get() failed! | Err: {}",
-                    e
-                );
-                return Vec::new();
-            }
-        };
+    ) -> Result<Vec<MonarchGame>> {
+        let mut games = monarch_utils::api::search_games(SearchParams{name: Some(name.to_string()), id: None, store: None, store_id: None, limit: 30})
+            .await
+            .with_context(|| "monarch_client::search_games() -> ")?;
 
-        let resp_content = match response.text().await {
-            Ok(content) => content,
-            Err(e) => {
-                error!(
-                    "monarch_client::search_games() response.text() failed! | Err: {}",
-                    e
-                );
-                return Vec::new();
-            }
-        };
-
-        let mut web_games: Vec<Box<MonarchWebApiGame>> =
-            match serde_json::from_str::<Vec<MonarchWebApiGame>>(&resp_content) {
-                Ok(games) => games.into_iter().map(Box::new).collect(),
-                Err(e) => {
-                    error!(
-                        "monarch_client::search_games() serde_json::from_str() failed! | Err: {}",
-                        e
-                    );
-                    return Vec::new();
-                }
-            };
-
-        for game in web_games.iter_mut() {
+        for game in games.iter_mut() {
             let cover_path = String::from(
                 generate_cache_image_path(
                     settings_handle.clone(),
@@ -82,10 +51,7 @@ impl StoreType for MonarchClient {
             game.cover_path = cover_path;
         }
 
-        web_games
-            .into_iter()
-            .map(|g| g as Box<dyn SearchResult>)
-            .collect()
+        Ok(games) 
     }
 
     async fn install_game(
@@ -127,10 +93,10 @@ impl StoreType for MonarchClient {
 
     async fn launch_game(
         &mut self,
-        settings_handle: Arc<RwLock<Settings>>,
+        state_handle: Arc<RwLock<MonarchState>>,
         game: &MonarchGame,
     ) -> Result<()> {
-        game.launch(settings_handle).await
+        game.launch(state_handle).await
     }
 }
 
@@ -393,8 +359,8 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
         egs_client
             .load_existing_user(settings_handle.clone())
             .await
-            .with_context(|| "monarch_client -> ")?;
-        egs_client.get_library(settings_handle).await
+            .with_context(|| "monarch_client::refresh_library() -> ")?;
+        egs_client.get_library(settings_handle).await.with_context(|| "monarch_client::refresh_library() -> ")?
     } else {
         vec![]
     };
@@ -415,7 +381,7 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                 "epicgames" => {
                     for epic_game in epic_games.iter() {
                         if game.is_installed {
-                            return true
+                            return true;
                         }
 
                         if game.id == epic_game.id {
@@ -440,7 +406,9 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                     steam_game.imported = game.imported.clone();
                     steam_game.properties = game.properties.clone();
                     steam_game.launch_args = game.launch_args.clone();
+                    steam_game.env_args = game.env_args.clone();
                     steam_game.compatibility = game.compatibility.clone();
+                    steam_game.compatibility_opts = game.compatibility_opts.clone();
                     if steam_game.executable_path.is_none() {
                         steam_game.executable_path = game.executable_path.clone();
                     }
@@ -464,8 +432,10 @@ pub async fn refresh_library(state_handle: Arc<RwLock<MonarchState>>) -> Result<
                     epic_game.imported = game.imported.clone();
                     epic_game.properties = game.properties.clone();
                     epic_game.launch_args = game.launch_args.clone();
+                    epic_game.env_args = game.env_args.clone();
                     epic_game.is_installed = game.is_installed.clone();
                     epic_game.compatibility = game.compatibility.clone();
+                    epic_game.compatibility_opts = game.compatibility_opts.clone();
                     epic_game.managed_by_monarch = game.managed_by_monarch.clone();
                     if epic_game.executable_path.is_none() {
                         epic_game.executable_path = game.executable_path.clone();
@@ -573,11 +543,6 @@ pub async fn get_game_properties(
         }
     }
 
-    let mut store = game.get_store_name();
-    if store == "steamcmd" {
-        store = "steam".to_string();
-    }
-
     // Start from the existing record so enrichment never wipes known install
     // metadata (install_dir / size / version) for stores without a local
     // property source — e.g. Epic Games installs managed by Monarch.
@@ -604,7 +569,7 @@ pub async fn get_game_properties(
     }
 
     if game.is_installed() {
-        if store == "steam" {
+        if game.get_store_name() == StoreEnum::Steam {
             match steam::get_default_libraryfolders_location() {
                 Ok(p) => {
                     let mut props: MonarchGameProperties =

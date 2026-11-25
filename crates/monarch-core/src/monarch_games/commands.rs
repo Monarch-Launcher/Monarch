@@ -12,7 +12,6 @@ use super::steam_client::SteamClient;
 use super::stores::{SearchFilter, StoreType};
 use crate::monarch_games::egs_client::EgsClient;
 use crate::monarch_games::games::GameType;
-use crate::monarch_games::monarchgame::MonarchWebApiGame;
 use crate::monarch_games::steam_client;
 use crate::monarch_games::stores::DownloadOptions;
 use crate::monarch_games::updates::{GameUpdateCheck, MonarchGameUpdate};
@@ -43,41 +42,41 @@ pub async fn search_games(
     settings_handle: Arc<RwLock<Settings>>,
     name: String,
     filter: SearchFilter,
-) -> Vec<MonarchWebApiGame> {
+) -> Vec<MonarchGame> {
     if filter.monarch {
         let client = MonarchClient::new();
-        return client
+        return match client
             .search_games(settings_handle.clone(), &name, &filter)
-            .await
-            .into_iter()
-            .map(|g| g.to_search_result())
-            .collect();
+            .await {
+                Ok(games) => games,
+                Err(e) => {
+                    error!(
+                        "monarch_games::commands::refresh_library() -> {}",
+                        e.chain().map(|e| e.to_string()).collect::<String>()
+                    );
+                    vec![]
+                }
+            }
     }
 
-    let mut games: Vec<MonarchWebApiGame> = Vec::new();
+    let mut games: Vec<MonarchGame> = Vec::new();
 
     if filter.steam_powered {
         let client = SteamClient::new();
-        games.append(
-            &mut client
-                .search_games(settings_handle.clone(), &name, &filter)
-                .await
-                .into_iter()
-                .map(|g| g.to_search_result())
-                .collect(),
-        );
+        if let Ok(mut steam_games) = client
+            .search_games(settings_handle.clone(), &name, &filter)
+            .await {
+                games.append(&mut steam_games);
+        }
     }
 
     if filter.egs {
         let client = EgsClient::new();
-        games.append(
-            &mut client
-                .search_games(settings_handle, &name, &filter)
-                .await
-                .into_iter()
-                .map(|g| g.to_search_result())
-                .collect(),
-        );
+        if let Ok(mut egs_games) = client
+            .search_games(settings_handle, &name, &filter)
+            .await {
+                games.append(&mut egs_games);
+        }
     }
 
     games
@@ -197,7 +196,7 @@ pub async fn download_greyscale(
 
 /// Launch a game
 pub async fn launch_game(
-    settings_handle: Arc<RwLock<Settings>>,
+    state_handle: Arc<RwLock<MonarchState>>,
     game_handle: Arc<RwLock<MonarchGame>>,
 ) -> Result<(), String> {
     // Clone the game to hold across .awaits
@@ -211,7 +210,7 @@ pub async fn launch_game(
 
     info!("Launching game: {}", game_clone.name);
 
-    if let Err(e) = game_clone.launch(settings_handle).await {
+    if let Err(e) = game_clone.launch(state_handle).await {
         error!(
             "monarch_games::commands::launch_game() -> {}",
             e.chain().map(|e| e.to_string()).collect::<String>()
@@ -759,7 +758,7 @@ pub async fn get_executables(
             Ok(path) => {
                 use crate::monarch_utils::monarch_vdf;
 
-                match monarch_vdf::get_install_dir(&mut game_clone, &path) {
+                match monarch_vdf::get_install_dir(&game_clone, &path) {
                     Ok(path) => {
                         game_clone.properties.install_dir = path.to_string_lossy().to_string();
                     }
@@ -964,4 +963,83 @@ pub fn remove_steamcmd(settings_handle: Arc<RwLock<Settings>>) -> Result<(), Str
         return Err(String::from("Failed to remove SteamCMD!"));
     }
     Ok(())
+}
+
+/// Generate a String representation to the user of what Monarch does
+/// when launching a game.
+pub async fn view_launch_command(
+    game_handle: Arc<RwLock<MonarchGame>>,
+    state_handle: Arc<RwLock<MonarchState>>,
+    executable_path: &str,
+) -> Result<String, String> {
+    let game = match game_handle.read() {
+        Ok(g) => g.clone(),
+        Err(e) => {
+            error!("monarch_games::commands::view_launch_command() Failed to acquire read lock on game_handle! | Err: {e}");
+            return Err(String::from("Failed to read game properties!"));
+        }
+    };
+
+    if game.executable_path.is_none() {
+        error!("monarch_games::commands::view_launch_command() executable_path is None!");
+        return Ok(String::from(
+            "No executable (launches via external launcher)",
+        ));
+    }
+
+    #[cfg(target_os = "linux")]
+    let exe_name: String = PathBuf::from(executable_path)
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
+
+    // Dirty solution for displaying launch arg on windows
+    // TODO: Fix it properly later
+    #[cfg(target_os = "windows")]
+    {
+        let mut display: Vec<String> = Vec::new();
+
+        for args in [game.env_args.as_deref(), game.launch_args.as_deref()]
+            .into_iter()
+            .flatten()
+        {
+            let args = args.trim();
+            if !args.is_empty() {
+                display.push(args.to_string());
+            }
+        }
+
+        Ok(display.join(" "))
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        use crate::monarch_games::LaunchCommand;
+
+        let launch_command: LaunchCommand =
+            match umu::generate_launch_command(&game, state_handle, Some(&exe_name)).await {
+                Ok(command) => command,
+                Err(e) => {
+                    error!(
+                        "monarch_games::commands::view_launch_command() -> {}",
+                        e.chain().map(|e| e.to_string()).collect::<String>()
+                    );
+                    return Err(format!(
+                        "Failed to generate launch command for: {}",
+                        game.name
+                    ));
+                }
+            };
+
+        Ok(format!(
+            "{}{}",
+            launch_command
+                .env
+                .iter()
+                .map(|(k, v)| format!(r#"{}="{}" "#, k, v))
+                .collect::<String>(),
+            launch_command.command,
+        ))
+    }
 }
