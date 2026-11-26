@@ -16,12 +16,7 @@ path = "src/main.rs"
 [dependencies]
 iced = { version = "0.14.0", features = ["image", "svg", "tokio", "canvas"] }
 iced_term = "0.7.0"
-<<<<<<< HEAD
-image = { version = "0.25", features = ["webp"] }
 tracing = { workspace = true, features = [
-=======
-tracing = { version = "0.1.41", features = [
->>>>>>> development
   "max_level_trace",
   "release_max_level_info",
 ] }
@@ -30,11 +25,8 @@ futures = { version = "0.3", default-features = false, features = ["executor"] }
 rfd = "0.17.2"
 tokio.workspace = true
 chrono = "0.4.43"
-<<<<<<< HEAD
 anyhow.workspace = true
-=======
 image = { workspace = true, features = ["webp"] }
->>>>>>> development
 
 monarch_core.workspace = true
 monarch_egs.workspace = true
