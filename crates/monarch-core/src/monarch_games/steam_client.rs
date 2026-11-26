@@ -165,7 +165,11 @@ impl StoreType for SteamClient {
     ) -> Result<()> {
         #[cfg(target_os = "linux")]
         {
-            umu::umu_run(game, state_handle).await
+            if game.executable_path.is_some() {
+                umu::umu_run(game, state_handle).await
+            } else {
+                launch_client_game(game)
+            }
         }
 
         #[cfg(not(target_os = "linux"))]

@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use sqlx::{Decode, Encode, FromRow, Row, SqlitePool};
+use sqlx::{AssertSqlSafe, Decode, Encode, FromRow, Row, SqlitePool};
 use tracing::{error, info, warn};
 
 use crate::monarch_games::{
@@ -139,14 +139,6 @@ impl From<MonarchGamePropertiesRecord> for MonarchGameProperties {
 
 /// Fetch all games stores in db, including their properties and storefronts
 pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
-    // NOTE: Select columns explicitly instead of `SELECT *`:
-    // 1. FromRow maps by column name, so decoding can never break when
-    //    physical columns are added by `repair_or_migrate_db()`.
-    // 2. sqlx caches compiled statements per connection; if the schema changes
-    //    (ALTER TABLE) between executions, SQLite silently re-prepares the
-    //    cached `SELECT *` handle with a different column count while sqlx
-    //    still uses the old column metadata, which panics in
-    //    `SqliteRow::current()` ("index out of bounds").
     let game_select = format!(
         "SELECT {} FROM library",
         MONARCH_GAME_FIELDS
@@ -154,7 +146,7 @@ pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
             .trim_end_matches(')')
     );
 
-    let game_records: Vec<MonarchGameRecord> = sqlx::query_as::<_, MonarchGameRecord>(&game_select)
+    let game_records: Vec<MonarchGameRecord> = sqlx::query_as::<_, MonarchGameRecord>(AssertSqlSafe(game_select))
         .fetch_all(pool)
         .await
         .with_context(|| {
@@ -163,12 +155,12 @@ pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
 
     let mut games: Vec<MonarchGame> = Vec::new();
     for game in game_records {
-        let stores: Vec<StoreInfoRecord> = sqlx::query_as(&format!(
+        let stores: Vec<StoreInfoRecord> = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {} FROM stores WHERE monarch_game_id = ?",
             STORE_INFO_FIELDS
                 .trim_start_matches('(')
                 .trim_end_matches(')')
-        ))
+        )))
         .bind(&game.id)
         .fetch_all(pool)
         .await
@@ -179,12 +171,12 @@ pub async fn get_library(pool: &SqlitePool) -> Result<Vec<MonarchGame>> {
             )
         })?;
 
-        let properties: MonarchGamePropertiesRecord = sqlx::query_as(&format!(
+        let properties: MonarchGamePropertiesRecord = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {} FROM properties WHERE monarch_game_id = ?",
             MONARCH_GAME_PROPERTIES_FIELDS
                 .trim_start_matches('(')
                 .trim_end_matches(')')
-        ))
+        )))
         .bind(&game.id)
         .fetch_one(pool)
         .await
@@ -208,10 +200,10 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .await
         .with_context(|| "monarch_sql::insert_game() Failed to start new transaction! | Err: ")?;
 
-    sqlx::query(&format!(
+    sqlx::query(AssertSqlSafe(format!(
         "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         MONARCH_GAME_FIELDS
-    ))
+    )))
     .bind(&game.name)
     .bind(&game.id)
     .bind(&game.executable_path)
@@ -235,10 +227,10 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
     .with_context(|| "monarch_sql::insert_game() Failed to insert game into library! | Err: ")?;
 
     for store in game.stores.iter() {
-        sqlx::query(&format!(
+        sqlx::query(AssertSqlSafe(format!(
             "INSERT INTO stores {} VALUES (?,?,?,?)",
             STORE_INFO_FIELDS
-        ))
+        )))
         .bind(&game.id)
         .bind(&store.name)
         .bind(&store.store_id)
@@ -250,10 +242,10 @@ pub async fn insert_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         })?;
     }
 
-    sqlx::query(&format!(
+    sqlx::query(AssertSqlSafe(format!(
         "INSERT INTO properties {} VALUES (?,?,?,?,?,?,?,?,?,?)",
         MONARCH_GAME_PROPERTIES_FIELDS
-    ))
+    )))
     .bind(&game.id)
     .bind(&game.properties.install_dir)
     .bind(game.properties.size_on_disk as u32)
@@ -389,7 +381,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         .await
         .with_context(|| "monarch_sql::update_game() Failed to start transaction! | Err: ")?;
 
-    sqlx::query(&sql_library_query)
+    sqlx::query(AssertSqlSafe(sql_library_query))
         .bind(&game.name)
         .bind(&game.id)
         .bind(&game.executable_path)
@@ -435,7 +427,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
         })?;
 
     for store in game.stores.iter() {
-        sqlx::query(&sql_stores_query)
+        sqlx::query(AssertSqlSafe(sql_stores_query.clone()))
             .bind(&game.id)
             .bind(&store.name)
             .bind(&store.store_id)
@@ -453,7 +445,7 @@ pub async fn update_game(pool: &SqlitePool, game: &MonarchGame) -> Result<()> {
             })?;
     }
 
-    sqlx::query(&sql_properties_query)
+    sqlx::query(AssertSqlSafe(sql_properties_query))
         .bind(&game.id)
         .bind(&game.properties.install_dir)
         .bind(game.properties.size_on_disk as u32)
@@ -512,10 +504,10 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
         .with_context(|| "monarch_sql::overwrite_games() Failed to drop library! | Err: ")?;
 
     for game in games {
-        sqlx::query(&format!(
+        sqlx::query(AssertSqlSafe(format!(
             "INSERT INTO library {} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             MONARCH_GAME_FIELDS
-        ))
+        )))
         .bind(&game.name)
         .bind(&game.id)
         .bind(&game.executable_path)
@@ -544,10 +536,10 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
         })?;
 
         for store in game.stores.iter() {
-            sqlx::query(&format!(
+            sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO stores {} VALUES (?,?,?,?)",
                 STORE_INFO_FIELDS
-            ))
+            )))
             .bind(&game.id)
             .bind(&store.name)
             .bind(&store.store_id)
@@ -559,10 +551,10 @@ pub async fn overwrite_games(pool: &SqlitePool, games: &[MonarchGame]) -> Result
             })?;
         }
 
-        sqlx::query(&format!(
+        sqlx::query(AssertSqlSafe(format!(
             "INSERT INTO properties {} VALUES (?,?,?,?,?,?,?,?,?,?)",
             MONARCH_GAME_PROPERTIES_FIELDS
-        ))
+        )))
         .bind(&game.id)
         .bind(&game.properties.install_dir)
         .bind(game.properties.size_on_disk as u32)
@@ -599,10 +591,10 @@ pub async fn init_db(pool: &SqlitePool) -> Result<()> {
     {
         warn!("'library' table not found! Creating new...");
 
-        sqlx::query(&format!(
+        sqlx::query(AssertSqlSafe(format!(
             "CREATE TABLE IF NOT EXISTS library {}",
             TYPED_MONARCH_GAME_FIELDS
-        ))
+        )))
         .execute(&mut *tx)
         .await
         .with_context(|| "monarch_sql::init_db() Failed to verify library table! | Err: ")?;
@@ -626,10 +618,10 @@ pub async fn init_db(pool: &SqlitePool) -> Result<()> {
     {
         warn!("'stores' table not found! Creating new...");
 
-        sqlx::query(&format!(
+        sqlx::query(AssertSqlSafe(format!(
             "CREATE TABLE IF NOT EXISTS stores {}",
             TYPED_STORE_INFO_FIELDS
-        ))
+        )))
         .execute(&mut *tx)
         .await
         .with_context(|| "monarch_sql::init_db() Failed to verify stores table! | Err: ")?;
@@ -641,10 +633,10 @@ pub async fn init_db(pool: &SqlitePool) -> Result<()> {
     {
         warn!("'properties' table not found! Creating new...");
 
-        sqlx::query(&format!(
+        sqlx::query(AssertSqlSafe(format!(
             "CREATE TABLE IF NOT EXISTS properties {}",
             TYPED_MONARCH_GAME_PROPERTIES_FIELDS
-        ))
+        )))
         .execute(&mut *tx)
         .await
         .with_context(|| "monarch_sql::init_db() Failed to verify properties table! | Err: ")?;
@@ -738,10 +730,10 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
             warn!("{} not found in library!", col.0);
             info!("Creating column: {} in library...", col.0);
 
-            sqlx::query(&format!(
+            sqlx::query(AssertSqlSafe(format!(
                 "ALTER TABLE library ADD COLUMN {} {}",
                 col.0, col.1
-            ))
+            )))
             .execute(&mut *tx)
             .await
             .with_context(|| format!("monarch_sql::repair_or_migrate_db() Failed to add column {} to library! | Err: ", col.0))?;
@@ -803,10 +795,10 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
             warn!("{} not found in library!", col.0);
             info!("Creating column: {} in store...", col.0);
 
-            sqlx::query(&format!(
+            sqlx::query(AssertSqlSafe(format!(
                 "ALTER TABLE stores ADD COLUMN {} {}",
                 col.0, col.1
-            ))
+            )))
             .execute(&mut *tx)
             .await
             .with_context(|| format!("monarch_sql::repair_or_migrate_db() Failed to add column {} to stores! | Err: ", col.0))?;
@@ -855,10 +847,10 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
             warn!("{} not found in properties!", col.0);
             info!("Creating column: {} in properties...", col.0);
 
-            sqlx::query(&format!(
+            sqlx::query(AssertSqlSafe(format!(
                 "ALTER TABLE properties ADD COLUMN {} {}",
                 col.0, col.1
-            ))
+            )))
             .execute(&mut *tx)
             .await
             .with_context(|| format!("monarch_sql::repair_or_migrate_db() Failed to add column {} to properties! | Err: ", col.0))?;
@@ -893,20 +885,20 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
                 "monarch_sql::repair_or_migrate_db() Failed to rename old properties table! | Err: "
             })?;
 
-        sqlx::query(&format!(
+        sqlx::query(AssertSqlSafe(format!(
             "CREATE TABLE properties {}",
             TYPED_MONARCH_GAME_PROPERTIES_FIELDS
-        ))
+        )))
         .execute(&mut *tx)
         .await
         .with_context(|| {
             "monarch_sql::repair_or_migrate_db() Failed to create new properties table! | Err: "
         })?;
 
-        sqlx::query(&format!(
+        sqlx::query(AssertSqlSafe(format!(
             "INSERT INTO properties {} SELECT monarch_game_id, install_dir, CAST(size_on_disk AS INTEGER), last_played, time_played, description, version, protondb_rating, protondb_url, other FROM properties_old",
             MONARCH_GAME_PROPERTIES_FIELDS
-        ))
+        )))
         .execute(&mut *tx)
         .await
         .with_context(|| {
@@ -962,10 +954,10 @@ pub async fn repair_or_migrate_db(pool: &SqlitePool) -> Result<()> {
 
 /// Fetches all column names for a given table
 async fn get_existing_columns(pool: &SqlitePool, table_name: &str) -> Result<Vec<String>> {
-    let cols = sqlx::query_scalar::<_, String>(&format!(
+    let cols = sqlx::query_scalar::<_, String>(AssertSqlSafe(format!(
         "SELECT name FROM pragma_table_info('{}')",
         table_name
-    ))
+    )))
     .fetch_all(pool)
     .await
     .with_context(|| format!("Failed to read columns for table '{}'", table_name))?;
@@ -980,7 +972,7 @@ async fn get_column_type(
     table_name: &str,
     column_name: &str,
 ) -> Result<Option<String>> {
-    let rows = sqlx::query(&format!("PRAGMA table_info('{}')", table_name))
+    let rows = sqlx::query(AssertSqlSafe(format!("PRAGMA table_info('{}')", table_name)))
         .fetch_all(pool)
         .await
         .with_context(|| format!("Failed to read column types for table '{}'", table_name))?;
@@ -1003,7 +995,7 @@ async fn column_is_unique_key(
     column_name: &str,
 ) -> Result<bool> {
     // A PRIMARY KEY constraint shows up in PRAGMA table_info with pk > 0.
-    let table_info = sqlx::query(&format!("PRAGMA table_info('{}')", table_name))
+    let table_info = sqlx::query(AssertSqlSafe(format!("PRAGMA table_info('{}')", table_name)))
         .fetch_all(pool)
         .await
         .with_context(|| {
@@ -1023,7 +1015,7 @@ async fn column_is_unique_key(
 
     // A UNIQUE index also satisfies ON CONFLICT, but only when it covers
     // exactly the conflict target column.
-    let indexes = sqlx::query(&format!("PRAGMA index_list('{}')", table_name))
+    let indexes = sqlx::query(AssertSqlSafe(format!("PRAGMA index_list('{}')", table_name)))
         .fetch_all(pool)
         .await
         .with_context(|| {
@@ -1039,7 +1031,7 @@ async fn column_is_unique_key(
             continue;
         }
         let index_name: String = index.get(1);
-        let index_columns = sqlx::query(&format!("PRAGMA index_info('{}')", index_name))
+        let index_columns = sqlx::query(AssertSqlSafe(format!("PRAGMA index_info('{}')", index_name)))
             .fetch_all(pool)
             .await
             .with_context(|| {
@@ -1072,10 +1064,10 @@ async fn rebuild_table(
     let old_table = format!("{}_old", table_name);
     let column_list = fields.trim_start_matches('(').trim_end_matches(')');
 
-    sqlx::query(&format!(
+    sqlx::query(AssertSqlSafe(format!(
         "ALTER TABLE {} RENAME TO {}",
         table_name, old_table
-    ))
+    )))
     .execute(&mut **tx)
     .await
     .with_context(|| {
@@ -1085,7 +1077,7 @@ async fn rebuild_table(
         )
     })?;
 
-    sqlx::query(&format!("CREATE TABLE {} {}", table_name, typed_fields))
+    sqlx::query(AssertSqlSafe(format!("CREATE TABLE {} {}", table_name, typed_fields)))
         .execute(&mut **tx)
         .await
         .with_context(|| {
@@ -1095,10 +1087,10 @@ async fn rebuild_table(
             )
         })?;
 
-    sqlx::query(&format!(
+    sqlx::query(AssertSqlSafe(format!(
         "INSERT INTO {} ({}) SELECT {} FROM {}",
         table_name, column_list, column_list, old_table
-    ))
+    )))
     .execute(&mut **tx)
     .await
     .with_context(|| {
@@ -1108,7 +1100,7 @@ async fn rebuild_table(
         )
     })?;
 
-    sqlx::query(&format!("DROP TABLE {}", old_table))
+    sqlx::query(AssertSqlSafe(format!("DROP TABLE {}", old_table)))
         .execute(&mut **tx)
         .await
         .with_context(|| {

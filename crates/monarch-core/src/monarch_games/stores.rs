@@ -155,7 +155,7 @@ impl<'de> sqlx::Decode<'de, sqlx::Sqlite> for StoreEnum {
 impl<'q> sqlx::Encode<'q, sqlx::Sqlite> for StoreEnum {
     fn encode_by_ref(
         &self,
-        buf: &mut Vec<sqlx::sqlite::SqliteArgumentValue<'q>>,
+        buf: &mut sqlx::sqlite::SqliteArgumentsBuffer,
     ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
         <String as sqlx::Encode<'q, sqlx::Sqlite>>::encode_by_ref(&self.to_string(), buf)
     }

@@ -24,3 +24,5 @@ tracing = { version = "0.1.41", features = [
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 anyhow = "1.0.86"
 thiserror = "2"
+prost = "0.14"
+image = { version = "0.25", features = ["webp"] }
